@@ -1,0 +1,27 @@
+ART ASSETS
+
+Ferrari 458 Italia by vicent091036
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+Original: https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6
+Redistribution source: https://github.com/mrdoob/three.js/blob/r183/examples/models/gltf/ferrari.glb
+Author attribution: https://threejs.org/examples/webgl_materials_car.html
+License record in the upstream repository: https://github.com/mrdoob/three.js/issues/23089
+License terms: https://creativecommons.org/licenses/by/4.0/
+Changes: scale normalized for the game; paint and glass materials replaced; wheels animated.
+No endorsement by the artist or car manufacturer is implied.
+
+Poly Haven assets: CC0 1.0 Universal
+https://polyhaven.com/license
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Asphalt 02: https://polyhaven.com/a/asphalt_02
+Grass Path 2: https://polyhaven.com/a/grass_path_2
+Aerial Grass Rock: https://polyhaven.com/a/aerial_grass_rock
+Kloppenheim 06 Pure Sky: https://polyhaven.com/a/kloppenheim_06_puresky
+Fir Sapling: https://polyhaven.com/a/fir_sapling
+Fir Sapling is baked from the original model into three transparent daylight impostors.
+Texture resolution: 1K. Assets are served locally with the game.
+Download URLs and SHA-256 hashes: manifest.json.
+
+Renderer: Three.js, MIT license. See ../vendor/THREE-LICENSE.txt.
+Draco decoder: Google, Apache 2.0. See ../vendor/draco/LICENSE.txt.

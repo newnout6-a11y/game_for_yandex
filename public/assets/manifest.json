@@ -1,0 +1,106 @@
+[
+  {
+    "file": "assets/car.glb",
+    "bytes": 1681572,
+    "sha256": "cafe3f48da6797aa9bde75ca768bc5b57db366575fd233e90df186ae988a876e",
+    "license": "CC-BY-4.0",
+    "source": "https://threejs.org/examples/webgl_materials_car.html",
+    "download": "https://raw.githubusercontent.com/mrdoob/three.js/r183/examples/models/gltf/ferrari.glb"
+  },
+  {
+    "file": "assets/asphalt_02_diff.jpg",
+    "bytes": 731707,
+    "sha256": "1aa5ce99f58a625c71d48cfc3e68b65ca85ccb00f39e045c0a928608a0ea25ed",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/asphalt_02",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_02/asphalt_02_diff_1k.jpg"
+  },
+  {
+    "file": "assets/asphalt_02_nor_gl.jpg",
+    "bytes": 1240122,
+    "sha256": "42a1c381b53204e83a982db2864479a30bc127bbdeebb1006f8ee51bff099df3",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/asphalt_02",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_02/asphalt_02_nor_gl_1k.jpg"
+  },
+  {
+    "file": "assets/asphalt_02_rough.jpg",
+    "bytes": 544032,
+    "sha256": "70ba3edc65525eb4dc366cf010ca7ae0bd34e0251ff0225c2dad627a873d0712",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/asphalt_02",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_02/asphalt_02_rough_1k.jpg"
+  },
+  {
+    "file": "assets/grass_path_2_diff.jpg",
+    "bytes": 716010,
+    "sha256": "7f30b163739435c11f500f3818c7bb4922bab5f2734cc9ba6dd36817f0c9a8ab",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/grass_path_2",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/grass_path_2/grass_path_2_diff_1k.jpg"
+  },
+  {
+    "file": "assets/grass_path_2_nor_gl.jpg",
+    "bytes": 831959,
+    "sha256": "4f6e911619d4c79a6bc340a64eac1e5fcbae8e54ea2674ed1892f6a9a1dfb5fa",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/grass_path_2",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/grass_path_2/grass_path_2_nor_gl_1k.jpg"
+  },
+  {
+    "file": "assets/grass_path_2_rough.jpg",
+    "bytes": 335245,
+    "sha256": "2aaf4400e7892d643a4f64d7347f2a0ca65051b5cb0c1b5d0ef383a65a5fa172",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/grass_path_2",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/grass_path_2/grass_path_2_rough_1k.jpg"
+  },
+  {
+    "file": "assets/daylight.hdr",
+    "bytes": 1173154,
+    "sha256": "206c67e3a1b992282821cf06662bdd69bbb4915c1c4444a66338a40d6a7d4e34",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/kloppenheim_06_puresky",
+    "download": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/kloppenheim_06_puresky_1k.hdr"
+  },
+  {
+    "file": "assets/grass_diff.jpg",
+    "bytes": 666655,
+    "sha256": "57b8041bfe0d0f01430e4dbaad45e7ddddf0a9fc97317f90dbc51f7b0d9e1b5d",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/aerial_grass_rock",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/aerial_grass_rock/aerial_grass_rock_diff_1k.jpg"
+  },
+  {
+    "file": "assets/grass_nor_gl.jpg",
+    "bytes": 904956,
+    "sha256": "1aa3e23bff453f152e089b9f83aa36b4901651e019f7e2ca01d5331a9bbbda78",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/aerial_grass_rock",
+    "download": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/aerial_grass_rock/aerial_grass_rock_nor_gl_1k.jpg"
+  },
+  {
+    "file": "assets/fir-0.png",
+    "bytes": 548437,
+    "sha256": "15be0a213652095554875850f37d0096a36ac9bda9f8eeb49b4c68cd1fafcd08",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/fir_sapling",
+    "changes": "Transparent orthographic rendering with daylight; original by Rico Cilliers / Poly Haven."
+  },
+  {
+    "file": "assets/fir-1.png",
+    "bytes": 636039,
+    "sha256": "3ba11cfb4e22f23b4e6368f991df0f99a606e6e9dbc4f9d43abfcedc22d8be07",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/fir_sapling",
+    "changes": "Transparent orthographic rendering with daylight; original by Rico Cilliers / Poly Haven."
+  },
+  {
+    "file": "assets/fir-2.png",
+    "bytes": 668224,
+    "sha256": "122277438aa11f5bc8239e2bbffadcffb9d87e2118495f81b22f4b648125b208",
+    "license": "CC0-1.0",
+    "source": "https://polyhaven.com/a/fir_sapling",
+    "changes": "Transparent orthographic rendering with daylight; original by Rico Cilliers / Poly Haven."
+  }
+]

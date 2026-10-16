@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101313">
+  <meta name="description" content="ПОТОК — загородная аркадная гонка. Лови просветы в трафике, собирай энергию и включай нитро.">
+  <title>ПОТОК — поймай свой ритм</title>
+  <link rel="icon" href="./public/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles/theme.css">
+  <link rel="stylesheet" href="./styles/app.css">
+</head>
+<body>
+<main id="app" data-screen="menu">
+  <canvas id="scene" aria-label="Дневная загородная трасса. W или стрелка вверх — газ; S или стрелка вниз — тормоз; A/D или стрелки — руль." role="img"></canvas>
+  <div class="scene-shade" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="ПОТОК — главное меню"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="M5 28 15 8h7L12 28Zm14 0L29 8h3L22 28Z" fill="currentColor"/></svg><span>ПОТОК</span></a>
+    <div class="header-center"><span class="live-dot"></span><span id="routeLabel">КОЛЬЦЕВАЯ · 02:14</span></div>
+    <nav class="toolbar" aria-label="Настройки игры">
+      <button class="icon-button" id="soundBtn" aria-label="Включить звук" aria-pressed="false" title="Звук"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11 5-6 5H2v4h3l6 5V5Zm5 4 5 6m0-6-5 6"/></svg></button>
+      <button class="icon-button" id="helpBtn" aria-label="Как играть" title="Как играть"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4.2 1.8c-1.2.7-1.7 1.2-1.7 2.7M12 17h.01"/></svg></button>
+      <button class="icon-button fullscreen-button" id="fullscreenBtn" aria-label="На весь экран" title="На весь экран"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+      <button class="icon-button" id="pauseBtn" aria-label="Пауза" title="Пауза (Esc)" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></button>
+    </nav>
+  </header>
+
+  <section id="menu" class="menu-screen" aria-labelledby="menuTitle">
+    <div class="hero">
+      <h1 id="menuTitle">ПОТОК</h1>
+      <p class="hero-copy">Свободный заезд</p>
+      <div class="start-row"><button id="playBtn" class="button primary">Выехать <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button><span class="start-hint"><kbd>ENTER</kbd></span></div>
+      <p id="loadStatus" class="hero-copy" role="status">Загрузка трассы…</p><div class="record"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v7a4 4 0 0 1-8 0V3Zm0 2H4v3a4 4 0 0 0 4 4m8-7h4v3a4 4 0 0 1-4 4m-4 2v5m-4 2h8"/></svg><span>Личный рекорд</span><strong id="menuBest">0</strong><span class="record-unit">очков</span></div>
+    </div>
+    <div class="menu-bottom">
+      <div class="route-heading"><span class="eyebrow">МАРШРУТ</span><span class="route-note">День / сухо</span></div>
+      <div class="routes" role="group" aria-label="Маршрут">
+        <button class="route-card" data-route="ring" aria-pressed="true"><span class="route-info"><span class="route-index">01</span><strong>Шоссе</strong><span>Поля и редкие сосны</span></span></button>
+        <button class="route-card" data-route="neon" aria-pressed="false"><span class="route-info"><span class="route-index">02</span><strong>Лес</strong><span>Трасса сквозь лес</span></span></button>
+        <button class="route-card" data-route="dawn" aria-pressed="false"><span class="route-info"><span class="route-index">03</span><strong>Поля</strong><span>Простор до горизонта</span></span></button>
+      </div>
+      <div class="menu-footer"><div class="control-legend"><span><kbd>←</kbd><kbd>→</kbd> / A D <span class="legend-label">манёвр</span></span><span><kbd>W</kbd><kbd>S</kbd> газ / тормоз</span><span><kbd>SPACE</kbd> <span class="legend-label">нитро</span></span><span class="touch-legend">На телефоне — руль и педали</span></div><div class="difficulty" role="group" aria-label="Сложность"><button data-difficulty="flow" aria-pressed="true">Поток</button><button data-difficulty="rush" aria-pressed="false">Час пик</button></div></div>
+    </div>
+  </section>
+
+  <section id="hud" class="game-hud" aria-label="Показатели заезда" hidden>
+    <div class="score-block"><span class="eyebrow">СЧЁТ</span><strong id="score">00000</strong><span id="combo" class="combo" hidden></span></div>
+    <div class="challenge"><div><span id="challengeTitle">Цель: проехать 1 500 м</span><span id="distance">0 м</span></div><div class="progress-track"><div id="challengeProgress"></div></div></div>
+    <div class="speed-block" role="group" aria-label="Скорость"><svg class="speed-dial" viewBox="0 0 220 150" aria-hidden="true"><path class="dial-track" d="M20 120A90 90 0 0 1 200 120"/><path id="speedArc" class="dial-progress" d="M20 120A90 90 0 0 1 200 120" pathLength="100"/><path d="M30.00 120.00 20.00 120.00" class="dial-tick"/><text x="45.00" y="123">0</text><path d="M29.16 93.73 24.40 92.19" class="dial-tick"/><path d="M45.28 72.98 37.19 67.10" class="dial-tick"/><text x="57.41" y="84.79">60</text><path d="M60.04 51.23 57.10 47.19" class="dial-tick"/><path d="M85.28 43.92 82.19 34.40" class="dial-tick"/><text x="89.91" y="61.18">120</text><path d="M110.00 35.00 110.00 30.00" class="dial-tick"/><path d="M134.72 43.92 137.81 34.40" class="dial-tick"/><text x="130.09" y="61.18">180</text><path d="M159.96 51.23 162.90 47.19" class="dial-tick"/><path d="M174.72 72.98 182.81 67.10" class="dial-tick"/><text x="162.59" y="84.79">240</text><path d="M190.84 93.73 195.60 92.19" class="dial-tick"/><path d="M190.00 120.00 200.00 120.00" class="dial-tick"/><text x="175.00" y="123">300</text><path id="speedNeedle" class="dial-needle" d="M110 120V43" transform="rotate(-90 110 120)"/><circle cx="110" cy="120" r="3"/></svg><strong id="speed">0</strong><span>КМ/Ч</span></div>
+    <div class="nitro-block"><div class="nitro-label"><span>НИТРО</span><span id="nitroValue">60%</span></div><div class="nitro-track"><div id="nitroFill"></div></div><span class="nitro-hint">Удерживай пробел или кнопку</span></div>
+    <p id="runHint" class="run-hint">W / ↑ — газ <span>·</span> S / ↓ — тормоз <span>·</span> A D / ← → — руль</p>
+    <div id="eventBanner" class="event-banner" role="group" aria-label="Событие на дороге" hidden><div><svg class="warning-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 10 18H2Z M12 9v5m0 3v.1"/></svg><strong id="eventTitle" role="status" aria-live="polite"></strong><span id="eventMeter"></span></div><p id="eventHint"></p></div>
+    <div id="toast" class="run-toast" role="status" aria-live="polite"></div>
+    <div class="touch-controls"><div class="steer-pair"><button class="drive-button" id="leftBtn" aria-label="Удерживать руль влево">←</button><button class="drive-button" id="rightBtn" aria-label="Удерживать руль вправо">→</button></div><button class="boost-button" id="boostBtn" aria-label="Удерживать нитро">НИТРО</button><div class="pedal-pair"><button class="pedal brake-pedal" id="brakeBtn" aria-label="Удерживать тормоз">ТОРМОЗ</button><button class="pedal gas-pedal" id="gasBtn" aria-label="Удерживать газ">ГАЗ</button></div></div>
+  </section>
+
+  <div id="overlay" class="modal-backdrop" hidden><section id="dialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" tabindex="-1"></section></div>
+  <div id="notification" class="notification" role="status" aria-live="polite"></div>
+  <noscript><div class="noscript">Для игры включи JavaScript в настройках браузера.</div></noscript>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
