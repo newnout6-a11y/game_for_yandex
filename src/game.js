@@ -2,7 +2,7 @@ import { CONFIG, DIFFICULTIES } from './config.js';
 import { clamp, lerp, seededRandom } from './util.js';
 import { createFlightState, updateFlight } from './flight.js';
 import { trafficDefinition, chooseTrafficKind, trafficCenterGap } from './traffic-catalog.js';
-import { playerBottom, playerTrafficDepth, playerTrafficWidth, trafficHitsPlayer, trailerTargetYaw, LANE_WIDTH } from './traffic-physics.js';
+import { playerBottom, playerTrafficDepth, playerTrafficWidth, trafficHitsPlayer, updateTrailerKinematics, LANE_WIDTH } from './traffic-physics.js';
 import { trafficLateral, occupiedTrafficLanes, updateTrafficManoeuvres } from './traffic-behavior.js';
 import { trafficDynamics } from './traffic-motion.js';
 const axis = (v, min=0) => Number.isFinite(Number(v)) ? clamp(Number(v),min,1) : 0;
@@ -99,12 +99,7 @@ export class Game {
       if(following&&before<=-depth&&car.z>stopZ){car.z=stopZ;car.speed=Math.min(car.speed,s.speed);car.braking=true;}
       car.acceleration=(car.speed-beforeSpeed)/dt;
       car.travelDistance=(car.travelDistance||0)+Math.hypot(Math.max(0,car.z-before+travelled),(carX-car.previousLateral)*LANE_WIDTH);
-      if(spec.articulated){
-        const target=trailerTargetYaw(car,s.distance);
-        if(!Number.isFinite(car.trailerAngle))car.trailerAngle=target;
-        const headingRate=(car.laneCurvature||0)*Math.hypot(car.speed,car.lateralSpeed||0);
-        car.trailerAngle=clamp(car.trailerAngle+dt*(-car.speed/7.4*Math.sin(car.trailerAngle-target)+headingRate),-.12,.12);
-      }
+      if(spec.articulated)updateTrailerKinematics(car,s.distance,dt);
       const crosses=Math.min(before,car.z)<=depth+.8&&Math.max(before,car.z)>=-depth-.8;
       const lateral=Math.min(Math.abs(s.x-carX),Math.abs(previousX-car.previousLateral));
       if(crosses&&s.invincible<=0&&trafficHitsPlayer(car,s,previousX,before)){this.crash();return;}

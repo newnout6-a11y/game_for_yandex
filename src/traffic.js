@@ -1,5 +1,6 @@
 import * as T from '../public/vendor/three.js';
 import { createTrafficMotion, updateTrafficMotion, curvatureAt, steeringForWheel } from './traffic-motion.js';
+import { prepareDriverRig, animateTrafficDriver, INDICATOR_TOUCH_TIME } from './traffic-driver.js';
 import { TRAFFIC_KINDS, normalizeTrafficKind, trafficDefinition } from './traffic-catalog.js';
 export { TRAFFIC_KINDS, normalizeTrafficKind } from './traffic-catalog.js';
 
@@ -42,12 +43,14 @@ export function createTrafficCar(kind='sedan',color=null) {
   });
   car.userData={...car.userData,kind,category:spec.category,length:spec.length,width:spec.width,height:spec.height,wheelRadius:spec.wheelRadius,wheels,paint,brakeMaterial,indicators,trailer:car.getObjectByName('trailer')||null};
   prepareTrafficRig(car);
+  prepareDriverRig(car);
   return car;
 }
 
 // Runtime-only transform groups keep the authored GLB geometry and draw count.
 function prepareTrafficRig(car){
   const data=car.userData,wheels=data.wheels,point=new T.Vector3(),matrix=new T.Matrix4();
+  const driverRoots=['steering_wheel','driver_shoulder_l','driver_shoulder_r','indicator_stalk'].map(name=>car.getObjectByName(name)).filter(Boolean);
   car.updateMatrixWorld(true);
   const rest=wheels.map(wheel=>{
     const inverse=wheel.matrixWorld.clone().invert();let radius=0;
@@ -58,12 +61,14 @@ function prepareTrafficRig(car){
   data.wheelRest=rest;
   data.groundY=.01-Math.min(...rest.map(w=>w.center.y-w.radius));
   const tractorWheels=rest.filter(w=>!data.trailer||!isWithin(w.wheel,data.trailer));
-  const frontZ=Math.min(...tractorWheels.map(w=>w.center.z)),rearZ=Math.max(...tractorWheels.map(w=>w.center.z));
+  const frontZ=Math.min(...tractorWheels.map(w=>w.center.z));
+  const rearWheels=tractorWheels.filter(w=>!w.front),rearZ=rearWheels.reduce((sum,w)=>sum+w.center.z,0)/rearWheels.length;
   data.wheelbase=Math.max(1,rearZ-frontZ);
   function makeRig(parent,name,z){
     const rig=new T.Group();rig.name=name;rig.position.set(0,.62,z);parent.add(rig);parent.updateMatrixWorld(true);
-    const meshes=[];parent.traverse(node=>{if(!node.isMesh||wheels.some(w=>isWithin(node,w))||parent!==data.trailer&&data.trailer&&isWithin(node,data.trailer))return;meshes.push(node);});
+    const meshes=[];parent.traverse(node=>{if(!node.isMesh||wheels.some(w=>isWithin(node,w))||driverRoots.some(root=>isWithin(node,root))||parent!==data.trailer&&data.trailer&&isWithin(node,data.trailer))return;meshes.push(node);});
     for(const mesh of meshes)rig.attach(mesh);
+    for(const root of driverRoots)if(isWithin(root,parent)){rig.attach(root);root.traverse(node=>{if(node.isMesh)node.castShadow=false;});}
     return rig;
   }
   data.bodyRig=makeRig(car,'sprung_body',(frontZ+rearZ)/2);
@@ -81,11 +86,13 @@ export function animateTrafficCar(car,item,distance,dt){
   data.bodyRig.rotation.set(m.pitch,0,m.roll);
   if(data.trailerRig)data.trailerRig.rotation.set(m.pitch*.3,0,m.roll*.65);
   for(const [name,material] of Object.entries(data.indicators)){
-    const side=name==='indicator_left'?-1:1,on=item.signal===side&&Math.floor((item.signalTime||0)*2.8)%2===0;
+    const side=name==='indicator_left'?-1:1,on=item.signal===side&&(item.signalTime||0)>=INDICATOR_TOUCH_TIME&&Math.floor(((item.signalTime||0)-INDICATOR_TOUCH_TIME)*2.8)%2===0;
     material.emissive.set('#ff870a');material.emissiveIntensity=on?3.2:.02;
   }
   for(const {wheel,radius,center,front} of data.wheelRest){
-    wheel.rotation.x=(m.distance/radius)%(Math.PI*2);
+    const wheelDistance=data.trailer&&isWithin(wheel,data.trailer)&&Number.isFinite(item.trailerTravelDistance)?item.trailerTravelDistance:m.distance;
+    wheel.rotation.x=(wheelDistance/radius)%(Math.PI*2);
     wheel.rotation.y=front?steeringForWheel(k,data.wheelbase,center.x):0;
   }
+  animateTrafficDriver(car,item,steeringForWheel(k,data.wheelbase,0));
 }

@@ -20,7 +20,45 @@ export function trailerTargetYaw(car, distance = 0) {
   return clamp(roadYaw(z + 4, distance) - roadYaw(z - 5, distance), -.12, .12);
 }
 export function trailerYaw(car, distance = 0) {
-  return Number.isFinite(car.trailerAngle) ? clamp(car.trailerAngle,-.12,.12) : trailerTargetYaw(car,distance);
+  return Number.isFinite(car.trailerAngle) ? car.trailerAngle : trailerTargetYaw(car,distance);
+}
+// Kinematic trailer: rear bogie follows the moving kingpin with zero lateral
+// velocity at its axle centre. The renderer and collision shape read the same
+// relative yaw; there is no spring pulling the trailer back to tractor yaw.
+export function trafficHitch(car, distance) {
+  const spec=trafficDefinition(car.kind),yaw=trafficYaw(car,distance),z=-car.z;
+  return {x:(trafficLateral(car)-1)*LANE_WIDTH+roadCurve(z,distance)+Math.sin(yaw)*spec.hitchZ,
+    z:z+Math.cos(yaw)*spec.hitchZ,yaw};
+}
+export function integrateTrailerYaw(yaw,dx,dz,length) {
+  // Implicit midpoint integration of dYaw = -(dH dot axleRight)/wheelbase.
+  // It is stable at the fixed simulation step and independent of frame rate.
+  let change=(-dx*Math.cos(yaw)+dz*Math.sin(yaw))/length;
+  for(let i=0;i<4;i++){const mid=yaw+change*.5;change=(-dx*Math.cos(mid)+dz*Math.sin(mid))/length;}
+  return yaw+change;
+}
+export function updateTrailerKinematics(car,distance,dt) {
+  const spec=trafficDefinition(car.kind);if(!spec.articulated||!(dt>0))return;
+  const hitch=trafficHitch(car,distance),length=spec.trailerAxleDistance;
+  let state=car.trailerState,yaw;
+  const delta=state?distance-state.distance:0;
+  if(!state||!Number.isFinite(delta)||Math.abs(delta)>10){
+    yaw=hitch.yaw+trailerTargetYaw(car,distance);
+    car.trailerTravelDistance=car.travelDistance||0;
+  } else if((car.speed||0)<1e-8){
+    // A stopped vehicle may be seen from a moving road frame, but must not
+    // straighten its hitch or spin its trailer wheels while stationary.
+    yaw=hitch.yaw+trailerYaw(car,distance);
+  } else {
+    const transport=(x,z)=>({x:x+roadCurve(z+delta,distance)-roadCurve(z,state.distance),z:z+delta});
+    const oldHitch=transport(state.hitchX,state.hitchZ),oldAxle=transport(state.axleX,state.axleZ);
+    const oldYaw=Math.atan2(oldAxle.x-oldHitch.x,oldAxle.z-oldHitch.z);
+    yaw=integrateTrailerYaw(oldYaw,hitch.x-oldHitch.x,hitch.z-oldHitch.z,length);
+    const axleX=hitch.x+Math.sin(yaw)*length,axleZ=hitch.z+Math.cos(yaw)*length;
+    car.trailerTravelDistance=(car.trailerTravelDistance||0)+Math.hypot(axleX-oldAxle.x,axleZ-oldAxle.z);
+  }
+  if(!state||(car.speed||0)>=1e-8)car.trailerAngle=Math.atan2(Math.sin(yaw-hitch.yaw),Math.cos(yaw-hitch.yaw));
+  car.trailerState={distance,hitchX:hitch.x,hitchZ:hitch.z,axleX:hitch.x+Math.sin(yaw)*length,axleZ:hitch.z+Math.cos(yaw)*length,yaw};
 }
 export function playerBottom(altitude, rollAngle = 0) {
   // The render pivot is 0.58m above the road. Include the whole rolled width,

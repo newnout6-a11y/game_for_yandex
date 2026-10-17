@@ -57,11 +57,11 @@ test('cab glazing stays clear without opaque shadows and indicators are isolated
    if(/cabin_interior|special_cabin_finish/.test(name)){cabins++;assert.equal(m.vertexColors,true);}
   });
   assert.ok(glass&&mirrors&&cabins,kind+' cabin material contract');
-  animateTrafficCar(a,{kind,speed:15,z:20,signal:-1,signalTime:.1},0,1/60);
+  animateTrafficCar(a,{kind,speed:15,z:20,signal:-1,signalTime:.3},0,1/60);
   assert.ok(a.userData.indicators.indicator_left.emissiveIntensity>3,kind);
   assert.ok(a.userData.indicators.indicator_right.emissiveIntensity<.1,kind);
   assert.notEqual(a.userData.indicators.indicator_left,b.userData.indicators.indicator_left);
-  animateTrafficCar(a,{kind,speed:15,z:20,signal:-1,signalTime:.5},0,1/60);
+  animateTrafficCar(a,{kind,speed:15,z:20,signal:-1,signalTime:.7},0,1/60);
   assert.ok(a.userData.indicators.indicator_left.emissiveIntensity<.1,kind+' blink');
  }
 });

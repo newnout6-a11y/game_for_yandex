@@ -31,11 +31,11 @@ No new missions, emergency rules, towing actions, cargo tasks or rewards were ad
 
 Spacing is bumper-to-bumper using each vehicle's full length. Spawns reject overlapping envelopes and reserve an actually clear lane through the wave, including existing long vehicles. Following drivers slow behind their leader and stop behind the player. An overtake completes only after the whole vehicle is behind.
 
-At 3.3m hover, the player can clear low passenger vehicles and the van when level, but not the tall box truck, semi or fire apparatus. A barrel roll lowers a corner of the player body, so clearance is checked again using its rolled envelope. Trailer rotation is bounded and follows road curvature. This is conservative arcade collision, not a full rigid-body or articulated tire simulation.
+At 3.3m hover, the player can clear low passenger vehicles and the van when level, but not the tall box truck, semi or fire apparatus. A barrel roll lowers a corner of the player body, so clearance is checked again using its rolled envelope. This initial fleet release used bounded road-following trailer rotation. The subsequent kingpin/rear-bogie kinematic implementation is described in DRIVERS_TRAILER_UPDATE.md. Collision remains conservative and arcade-oriented, not full rigid-body or tire-force simulation.
 
 ## Clarity and rendering
 
-The previous native-resolution screenshots had crisp road lines and no global blur filter. The visible softness primarily came from overly pale baked mountain colors and foliage. This pass restores near/middle ridge definition and leaf contrast while retaining distant atmosphere. A shared original 256×256 mip-filtered grayscale stone tile adds restrained surface definition to ridges and rocks, with weaker detail under snow and haze. It adds one texture (about341KiB RGBA including mipmaps), one color sample on those surfaces, and no extra scene pass or geometry. The accepted lake, sky shape, player model, daylight setup, smoke atlas, flight controls and landing mechanics are preserved.
+The previous native-resolution screenshots had crisp road lines and no global blur filter. The visible softness primarily came from overly pale baked mountain colors and foliage. This pass restores near/middle ridge definition and leaf contrast while retaining distant atmosphere. A shared original 256×256 mip-filtered grayscale stone tile adds restrained surface definition to ridges and rocks, with weaker detail under snow and haze. It adds one texture (about 341 KiB RGBA including mipmaps), one color sample on those surfaces, and no extra scene pass or geometry. The accepted lake, sky shape, player model, daylight setup, smoke atlas, flight controls and landing mechanics are preserved.
 
 Aspect-correct rendering, MSAA, alpha-to-coverage foliage, trilinear mipmaps, anisotropy and existing pixel budgets remain. Large screens can still be downsampled by the protective pixel budget; this update does not claim native 4K or removal of all temporal shimmer. Browser screenshots and controlled-time captures are not measurements of real-device FPS.
 
@@ -47,15 +47,15 @@ Aspect-correct rendering, MSAA, alpha-to-coverage foliage, trilinear mipmaps, an
 4. `node scripts/fleet-gallery.mjs after` captures individually fitted GLB inspection views. These cameras are QA views, not a new selectable gameplay mode.
 5. `node scripts/render-benchmark.mjs fleet-after` captures the matched three-vehicle scene; `FLEET_SHOWCASE=1` captures the eight-vehicle composition separately.
 
-Nothing has been deployed or pushed to GitHub. Real mobile GPU performance, Yandex moderation and production hosting are not certified by this local test run.
+This section records the original local fleet release. The later cumulative source is available in PR #1 (https://github.com/newnout6-a11y/game_for_yandex/pull/1), on a separate branch; main has not been merged. Real mobile GPU performance, Yandex moderation and production hosting are not certified by these tests.
 
 ## Validation result
 
-- All114 automated tests passed after integration, including the actual decoded GLBs, editable Blender source headers, finite normals, wheel pivots, shared instance geometry, articulated trailer, size-dependent collision and safe spawning.
-- Source/import/HTML/CSS validation passed:26 JavaScript modules, zero errors.
+- All 114 automated tests passed after integration, including the actual decoded GLBs, editable Blender source headers, finite normals, wheel pivots, shared instance geometry, articulated trailer, size-dependent collision and safe spawning.
+- Source/import/HTML/CSS validation passed: 26 JavaScript modules, zero errors.
 - Matched desktop and mobile captures use real production drawing-buffer sizes and reset Three.js counters before the complete render, including shadows. Controlled-clock timing fields are intentionally null; no hardware FPS claim is made.
 - The eight-vehicle showcase is a separate composition and must not be compared to the three-vehicle baseline as an optimization measurement.
 
-Final matched three-vehicle render counters (desktop and mobile):208 submitted draws before and after;249,782→264,150 submitted triangles (+5.75% from the refined Blender vehicles),18→19 allocated textures. The new shared stone tile accounts for one small texture; terrain/background geometry and instance placements are unchanged. Desktop buffer remains1440×900; mobile390×844 at DPR2 renders585×1266, as before. Counters include shadow submissions, not frame rate.
+Final matched three-vehicle render counters (desktop and mobile):208 submitted draws before and after; 249,782→264,150 submitted triangles (+5.75% from the refined Blender vehicles), 18→19 allocated textures. The new shared stone tile accounts for one small texture; terrain/background geometry and instance placements are unchanged. Desktop buffer remains 1440×900; mobile 390×844 at DPR 2 renders 585×1266, as before. Counters include shadow submissions, not frame rate.
 
-The final built dist directory was loaded and captured in Chromium for both profiles without page/shader errors or horizontal overflow. The scene was scripted at125m for repeatability, not recorded as an uncontrolled live drive. Full before/after and fleet counters are in docs/fleet-metrics/.
+The final built dist directory was loaded and captured in Chromium for both profiles without page/shader errors or horizontal overflow. The scene was scripted at 125 m for repeatability, not recorded as an uncontrolled live drive. Full before/after and fleet counters are in docs/fleet-metrics/.

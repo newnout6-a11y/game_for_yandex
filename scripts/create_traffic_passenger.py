@@ -15,7 +15,7 @@ import json
 import math
 import os
 import subprocess
-from mathutils import Vector
+from mathutils import Vector, Matrix, Quaternion
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = os.path.join(ROOT, 'art', 'traffic')
@@ -243,6 +243,142 @@ def cabin_ring(name,center,radius,tube,normal,color,segments=24):
             faces.append((a,b,((i+1)%segments)*6+(j+1)%6,i*6+(j+1)%6))
     return cabin_tint(model_mesh(name,verts,faces,'cabin_interior',smooth=True),color)
 
+def author_cabin_enclosure(kind,spec):
+    """A closed passenger cell, with actual wheel-house domes below the glass."""
+    p=CABINS[kind];floor=p['floor'];front=p['front']+.06;rear=p['rear']-.025
+    radius=spec['wheelRadius']+.047;cy=spec['wheelRadius']+.015
+    axles=sorted(set(value[2] for value in SOURCE['vehicles'][kind]['wheels'].values()))
+    wheel_x=abs(SOURCE['vehicles'][kind]['wheels']['wheel_fr'][0])
+    inner=wheel_x-WHEEL_WIDTHS[kind]*.60-.022;outer=p['body']*.5-.025
+    start=math.asin(max(-.95,min(.95,(floor-cy)/radius)));extent=radius*math.cos(start)
+    cuts=sorted(set([front,rear]+[max(front,min(rear,z+sign*extent)) for z in axles for sign in [-1,1]]))
+    for index,(z0,z1) in enumerate(zip(cuts,cuts[1:])):
+        mid=(z0+z1)*.5
+        half_width=inner+.009 if any(abs(mid-z)<extent for z in axles) else p['width']*.46
+        cabin_box('Notched carpet floor section '+str(index),(0,floor-.028,mid),(half_width*2,.065,z1-z0+.008),(.028,.034,.041),.003)
+    cabin_box('Sealed forward footwell firewall',(0,(floor+p['belt'])*.5,p['front']+.105),(p['width']*.91,p['belt']-floor+.10,.055),(.040,.048,.058),.012)
+    cabin_box('Rear cabin floor closure',(0,(floor+p['belt'])*.5,rear-.015),(p['width']*.91,p['belt']-floor+.10,.055),(.040,.048,.058),.012)
+    for side in [-1,1]:
+        for axle_index,z in enumerate(axles):
+            # A real inward cap and a curved outer wall leave the tire cavity
+            # open toward the road while closing it toward occupants.
+            angles=[start+(math.pi-2*start)*i/20 for i in range(21)]
+            vertices=[(side*x,cy+math.sin(a)*radius,z+math.cos(a)*radius) for x in [inner,outer] for a in angles]
+            n=len(angles);faces=[(i,n+i,n+i+1,i+1) for i in range(n-1)]+[tuple(range(n))]
+            if side<0:faces=[tuple(reversed(face)) for face in faces]
+            cabin_tint(model_mesh('Inner wheel-house tub '+str(side)+' '+str(axle_index),vertices,faces,'cabin_interior',smooth=True),(.035,.043,.052))
+        cabin_box('Lower sill inner seal '+str(side),(side*p['width']*.449,floor+.08,(front+rear)*.5),(.09,.19,rear-front),(.04,.048,.058),.012)
+
+GAME_TO_BLENDER=Matrix(((1,0,0),(0,0,-1),(0,1,0)))
+
+def rig_empty(name,position=(0,0,0),parent=None,rotation=None):
+    ob=bpy.data.objects.new(name,None);bpy.context.collection.objects.link(ob)
+    ob.parent=parent or ROOT_OBJECT;ob.location=xyz(position)
+    ob.empty_display_type='PLAIN_AXES';ob.empty_display_size=.065
+    if rotation is not None:
+        ob.rotation_mode='QUATERNION'
+        ob.rotation_quaternion=(GAME_TO_BLENDER@rotation.to_matrix()@GAME_TO_BLENDER.transposed()).to_quaternion()
+    ob['rig_contract']='Original seated driver; runtime steering and two-bone IK; no baked animation'
+    return ob
+
+def driver_ellipsoid(name,center,size,color,parent=None,segments=12,rings=8,theta_max=math.pi):
+    cx,cy,cz=center;sx,sy,sz=size;vertices=[]
+    for j in range(rings+1):
+        theta=theta_max*j/rings
+        for i in range(segments):
+            a=math.tau*i/segments
+            vertices.append((cx+sx*math.sin(theta)*math.cos(a),cy+sy*math.cos(theta),cz+sz*math.sin(theta)*math.sin(a)))
+    faces=[]
+    for j in range(rings):
+        for i in range(segments):
+            k=(i+1)%segments;faces.append((j*segments+i,(j+1)*segments+i,(j+1)*segments+k,j*segments+k))
+    return cabin_tint(model_mesh(name,vertices,[tuple(reversed(face)) for face in faces],'cabin_interior',parent=parent,smooth=True),color)
+
+def driver_segment(name,start,end,radius_start,radius_end,color,parent=None):
+    start=Vector(start);end=Vector(end);axis=(end-start).normalized()
+    u=axis.cross(Vector((0,0,1)))
+    if u.length<.01:u=axis.cross(Vector((1,0,0)))
+    u.normalize();v=axis.cross(u).normalized();verts=[]
+    for t,r in [(0,radius_start*.80),(.12,radius_start),(.83,radius_end),(1,radius_end*.78)]:
+        center=start.lerp(end,t)
+        for i in range(10):
+            a=math.tau*i/10;verts.append(tuple(center+u*math.cos(a)*r+v*math.sin(a)*r))
+    faces=[]
+    for j in range(3):
+        for i in range(10):
+            k=(i+1)%10;faces.append((j*10+i,j*10+k,(j+1)*10+k,(j+1)*10+i))
+    faces += [tuple(reversed(range(10))),tuple(30+i for i in range(10))]
+    return cabin_tint(model_mesh(name,verts,faces,'cabin_interior',parent=parent,smooth=True),color)
+
+def author_driver(kind):
+    p=CABINS[kind];seat=p['seat'];z=p['seat_z'];x=-.45 if kind=='van' else -p['width']*.235
+    head_y=seat+({'sedan':.59,'hatch':.59,'suv':.65,'van':.69}[kind]);shoulder_y=head_y-.17
+    jacket={'sedan':(.030,.065,.10),'hatch':(.08,.045,.055),'suv':(.055,.075,.055),'van':(.025,.065,.10)}[kind]
+    trousers=(.035,.044,.054);skin=(.38,.235,.15);hair=(.025,.018,.015);shoe=(.018,.023,.029)
+    pelvis_y=seat+.12;torso_z=z+.055
+    cabin_box('Driver seated pelvis',(x,pelvis_y,z-.005),(.27,.17,.22),trousers,.045)
+    # Tapered torso with separate waist/chest/shoulder rings, not a mannequin box.
+    verts=[]
+    for yy,ww,depth,zz in [(pelvis_y-.01,.115,.10,torso_z-.025),(pelvis_y+.10,.13,.105,torso_z),
+                            (shoulder_y-.07,.165,.108,torso_z+.01),(shoulder_y+.015,.155,.09,torso_z+.015)]:
+        for i in range(12):
+            a=math.tau*i/12;verts.append((x+math.cos(a)*ww,yy,zz+math.sin(a)*depth))
+    faces=[]
+    for j in range(3):
+        for i in range(12):
+            k=(i+1)%12;faces.append((j*12+i,j*12+k,(j+1)*12+k,(j+1)*12+i))
+    faces += [tuple(reversed(range(12))),tuple(36+i for i in range(12))]
+    cabin_tint(model_mesh('Driver clothed adult torso',verts,[tuple(reversed(face)) for face in faces],'cabin_interior',smooth=True),jacket)
+    driver_segment('Driver neck',(x,shoulder_y,torso_z),(x,head_y-.07,torso_z),.041,.039,skin)
+    driver_ellipsoid('Driver adult head',(x,head_y,torso_z-.017),(.087,.115,.093),skin)
+    driver_ellipsoid('Driver short hair',(x,head_y+.006,torso_z-.011),(.089,.116,.094),hair,rings=5,theta_max=math.pi*.47)
+    driver_ellipsoid('Driver nose',(x,head_y-.013,torso_z-.112),(.022,.031,.026),skin,segments=8,rings=5)
+    for side in [-1,1]:
+        driver_ellipsoid('Driver ear '+str(side),(x+side*.085,head_y-.009,torso_z-.008),(.018,.032,.020),skin,segments=8,rings=5)
+        driver_ellipsoid('Driver eye '+str(side),(x+side*.033,head_y+.019,torso_z-.101),(.009,.006,.004),(.018,.023,.027),segments=8,rings=4)
+        knee=(x+side*.082,seat+.025,z-.28);hip=(x+side*.083,pelvis_y,z-.03);ankle=(x+side*.082,p['floor']+.095,z-.43)
+        driver_segment('Driver trouser thigh '+str(side),hip,knee,.070,.060,trousers)
+        driver_segment('Driver trouser shin '+str(side),knee,ankle,.057,.042,trousers)
+        cabin_box('Driver shoe '+str(side),(ankle[0],p['floor']+.058,ankle[2]-.035),(.10,.085,.18),shoe,.026)
+    # A visible restraint runs from the outer shoulder to the inner hip.
+    driver_segment('Driver diagonal seat belt',(x-.145,shoulder_y+.018,torso_z-.105),(x+.11,pelvis_y-.015,torso_z-.132),.018,.018,(.012,.016,.021))
+    driver_segment('Driver lap seat belt',(x-.125,pelvis_y+.035,torso_z-.128),(x+.125,pelvis_y+.035,torso_z-.128),.018,.018,(.012,.016,.021))
+
+    steering=Vector((-p['width']*.245,p['belt']+.04,p['front']+.72))
+    steering_rotation=Quaternion((1,0,0),-math.asin(.34))
+    wheel=rig_empty('steering_wheel',steering,rotation=steering_rotation)
+    wheel['rotation_axis']='local +Z';wheel['grip_radius']=.145
+    rim=cabin_ring('Animated steering leather rim',(0,0,0),.145,.019,(0,0,1),(.022,.029,.038));rim.parent=wheel
+    hub=cabin_box('Animated steering center',(0,0,0),(.11,.085,.055),(.07,.085,.10),.018);hub.parent=wheel
+    for side in [-1,1]:
+        spoke=cabin_box('Animated steering spoke '+str(side),(side*.084,-.012,0),(.092,.025,.023),(.20,.23,.26),.005);spoke.parent=wheel
+    stalk_point=steering+steering_rotation@Vector((-.205,-.020,.040))
+    rig_empty('indicator_stalk',stalk_point,rotation=steering_rotation)
+    driver_segment('Static indicator column lever',steering+steering_rotation@Vector((-.065,-.026,-.038)),stalk_point,.010,.014,(.032,.042,.052))
+    for side,label in [(-1,'l'),(1,'r')]:
+        grip=Vector((side*.132,.047,.012));rig_empty('grip_'+label,grip,parent=wheel)
+        hand_target=steering+steering_rotation@grip
+        shoulder=Vector((x+side*.15,shoulder_y,torso_z+.004))
+        upper_length={'sedan':.270,'hatch':.245,'suv':.300,'van':.275}[kind]
+        fore_length={'sedan':.280,'hatch':.250,'suv':.305,'van':.280}[kind]
+        delta=hand_target-shoulder;distance=delta.length;direction=delta.normalized()
+        along=(upper_length**2-fore_length**2+distance**2)/(2*distance)
+        bend=Vector((side*.45,-1,.16));bend=(bend-direction*bend.dot(direction)).normalized()
+        elbow_world=shoulder+direction*along+bend*math.sqrt(max(0,upper_length**2-along**2))
+        upper_direction=(elbow_world-shoulder).normalized()
+        upper_rotation=Vector((0,1,0)).rotation_difference(upper_direction)
+        shoulder_ob=rig_empty('driver_shoulder_'+label,shoulder,rotation=upper_rotation)
+        shoulder_ob['upper_length']=upper_length;shoulder_ob['forearm_length']=fore_length
+        driver_segment('Driver upper sleeve '+label,(0,0,0),(0,upper_length,0),.060,.047,jacket,parent=shoulder_ob)
+        fore_direction=upper_rotation.inverted()@(hand_target-elbow_world).normalized()
+        elbow_rotation=Vector((0,1,0)).rotation_difference(fore_direction)
+        elbow_ob=rig_empty('driver_elbow_'+label,(0,upper_length,0),parent=shoulder_ob,rotation=elbow_rotation)
+        driver_segment('Driver forearm sleeve '+label,(0,0,0),(0,fore_length,0),.046,.031,jacket,parent=elbow_ob)
+        hand_ob=rig_empty('driver_hand_'+label,(0,fore_length,0),parent=elbow_ob)
+        hand_ob['pivot_definition']='Palm grip center, coincident with grip_'+label
+        driver_ellipsoid('Driver palm '+label,(0,0,0),(.035,.047,.028),skin,parent=hand_ob,segments=10,rings=6)
+        driver_ellipsoid('Driver gripping thumb '+label,(side*.028,.002,.020),(.017,.026,.016),skin,parent=hand_ob,segments=8,rings=5)
+
 def author_cabin(kind,spec):
     p=CABINS[kind];w=p['width'];front=p['front'];rear=p['rear'];floor=p['floor'];belt=p['belt']
     MATERIALS['cabin_interior']=make_material('cabin_interior',{'color':[1,1,1],'roughness':.78})
@@ -272,7 +408,7 @@ def author_cabin(kind,spec):
             faces.append(tuple(reversed(face)))
     liner=cabin_tint(model_mesh('Fitted roof headliner and inner pillars',verts,faces,'cabin_interior',smooth=True),(.065,.075,.085))
     liner.data.normals_split_custom_set_from_vertices([xyz(n) for n in normals])
-    cabin_box('Cabin carpet and structural floor',(0,floor,(front+rear)*.5),(w*.88,.065,rear-front),charcoal,.02)
+    author_cabin_enclosure(kind,spec)
     cabin_box('Dashboard sculpted upper pad',(0,belt-.025,front+.25),(w*.91,.16,.40),charcoal,.045)
     cabin_box('Dashboard lower instrument fascia',(0,belt-.11,front+.43),(w*.85,.24,.12),inset,.025)
     cabin_box('Instrument binnacle',(-w*.245,belt+.062,front+.32),(.35,.095,.18),charcoal,.035)
@@ -281,7 +417,7 @@ def author_cabin(kind,spec):
     cabin_box('Center display',(0,belt-.005,front+.499),(.18,.10,.012),(.035,.13,.17),.008)
     for side in [-1,1]:
         cabin_box('Dash ventilation '+str(side),(side*w*.36,belt-.011,front+.454),(.13,.047,.015),(.013,.018,.023),.006)
-        cabin_box('Inner door panel '+str(side),(side*w*.453,belt-.20,(front+rear)*.5),(.068,.39,rear-front-.12),inset,.024)
+        cabin_box('Inner door panel '+str(side),(side*w*.453,(belt+floor)*.5,(front+rear)*.5),(.068,belt-floor+.05,rear-front-.10),inset,.024)
         cabin_box('Door arm rest '+str(side),(side*w*.423,belt-.18,p['seat_z']-.03),(.09,.06,.42),upholstery,.025)
         cabin_box('Inner door pull '+str(side),(side*w*.419,belt-.11,p['seat_z']-.13),(.019,.035,.12),(.30,.32,.34),.006)
     def seat(x,z,width,index):
@@ -311,11 +447,7 @@ def author_cabin(kind,spec):
             cabin_box('Rear bench head restraint',(x,p['head']-.045,p['rear_z']+.23),(w*.19,.14,.11),upholstery,.03)
         cabin_box('Center console',(0,floor+.14,front+.91),(.16,.25,.58),inset,.025)
         cabin_box('Gear selector',(0,floor+.31,front+.82),(.045,.13,.05),charcoal,.015)
-    steering=(-w*.245,belt+.04,front+.66)
-    cabin_ring('Steering wheel leather rim',steering,.145,.019,(0,.34,.94),charcoal)
-    cabin_box('Steering wheel center',steering,(.11,.085,.055),inset,.018)
-    for side in [-1,1]:
-        cabin_box('Steering wheel spoke '+str(side),(steering[0]+side*.084,steering[1]-.012,steering[2]),(.092,.025,.023),seam,.005)
+    steering=(-w*.245,belt+.04,front+.72)
     cabin_box('Steering column',(steering[0],belt-.055,front+.54),(.065,.075,.22),charcoal,.015)
     if kind!='van':
         cabin_box('Interior rear view mirror',(0,spec['height']-.20,front+.43),(.20,.065,.026),(.055,.065,.075),.012)
@@ -571,7 +703,7 @@ def batch_for_export():
         bpy.context.view_layer.objects.active=objects[0]
         if len(objects)>1: bpy.ops.object.join()
         ob=bpy.context.object
-        ob.name=(parent+'_' if parent.startswith('wheel_') else '')+material
+        ob.name=(parent+'_' if parent!=ROOT_OBJECT.name else '')+material
 
 def preview(kind, spec):
     scene=bpy.context.scene
@@ -607,6 +739,9 @@ def preview(kind, spec):
         views.append(('cabin',(2.7,2.15*scale,-3.5*scale)))
     if 'mirror' in os.environ.get('TRAFFIC_VIEWS',''):
         views.append(('mirror',(1.65,CABINS[kind]['belt']+.28,CABINS[kind]['front']+1.45)))
+    if 'driver' in os.environ.get('TRAFFIC_VIEWS',''):
+        driver_view=(-1.05,1.90,-3.55) if kind=='van' else (-2.15,CABINS[kind]['belt']+.57,CABINS[kind]['front']-1.02)
+        views.append(('driver',driver_view))
     for name,position in views:
         if os.environ.get('TRAFFIC_VIEWS') and name not in os.environ['TRAFFIC_VIEWS'].split(','):
             continue
@@ -614,6 +749,7 @@ def preview(kind, spec):
         target=(.84,spec['wheelRadius']+.06,axle) if name=='wheel' else (0,spec['height']*.43,0)
         if name=='cabin': target=(0,CABINS[kind]['belt']+.17,CABINS[kind]['seat_z']+.10)
         if name=='mirror': target=(CABINS[kind]['body']*.5,CABINS[kind]['belt']+(.32 if kind=='van' else .14),-1.73 if kind=='van' else CABINS[kind]['front']+.30)
+        if name=='driver': target=(-CABINS[kind]['width']*.235,CABINS[kind]['seat']+.40,CABINS[kind]['seat_z']-.10)
         camera.rotation_euler=(xyz(target)-camera.location).to_track_quat('-Z','Y').to_euler()
         scene.render.filepath=os.path.join(PREVIEWS,kind+'-'+name+'.png')
         bpy.ops.render.render(write_still=True)
@@ -633,6 +769,7 @@ for kind in KINDS:
     load_base(kind,vehicle)
     {'sedan':refine_sedan,'hatch':refine_hatch,'suv':refine_suv,'van':refine_van}[kind](vehicle['spec'])
     author_cabin(kind,vehicle['spec'])
+    author_driver(kind)
     author_mirrors(kind)
     author_indicators(kind,vehicle['spec'])
     bpy.context.scene.unit_settings.system='METRIC'

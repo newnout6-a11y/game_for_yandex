@@ -26,8 +26,8 @@ for (const kind of ['boxtruck', 'semi']) {
       }
     });
     assert.equal(wheels.length, spec.axles * 2);
-    assert.equal(meshes, kind === 'boxtruck' ? 17 : 29);
-    assert(triangles < (kind === 'boxtruck' ? 21500 : 39000));
+    assert.equal(meshes, kind === 'boxtruck' ? 24 : 36);
+    assert(triangles < (kind === 'boxtruck' ? 29000 : 46000));
     assert(bounds.min.y >= 0 && bounds.min.y < .013);
     assert(bounds.min.x >= -spec.width / 2 && bounds.max.x <= spec.width / 2);
     assert(bounds.min.z >= -spec.length / 2 && bounds.max.z <= spec.length / 2);
@@ -110,5 +110,62 @@ for (const kind of ['boxtruck', 'semi']) {
       }
     }
     assert(materials.has('lights_red'), 'Turn signals must not replace brake lights');
+  });
+}
+
+
+for (const kind of ['boxtruck', 'semi']) {
+  test(`${kind}: adult driver has reachable unit-scale two-bone arms and steering grips`, async () => {
+    const root = await loadHeavy(kind), spec = TRAFFIC_CATALOG[kind];
+    const wheel = root.getObjectByName('steering_wheel'), stalk = root.getObjectByName('indicator_stalk');
+    assert(wheel && !wheel.isMesh && stalk && !stalk.isMesh);
+    assert.equal(wheel.children.filter(n => n.isMesh).length, 1);
+    const facing = new T.Vector3(0,0,1).applyQuaternion(wheel.getWorldQuaternion(new T.Quaternion()));
+    assert(facing.y > .4 && facing.z > .8, 'Steering wheel local +Z must face back toward driver');
+    for (const side of ['l','r']) {
+      const shoulder = root.getObjectByName(`driver_shoulder_${side}`);
+      const elbow = root.getObjectByName(`driver_elbow_${side}`);
+      const hand = root.getObjectByName(`driver_hand_${side}`);
+      const grip = root.getObjectByName(`grip_${side}`);
+      assert.equal(elbow.parent,shoulder); assert.equal(hand.parent,elbow); assert.equal(grip.parent,wheel);
+      for (const pivot of [wheel,stalk,shoulder,elbow,hand,grip]) {
+        assert(pivot.scale.distanceTo(new T.Vector3(1,1,1)) < 1e-6, 'IK anchors must not inherit baked scale');
+      }
+      assert(elbow.position.distanceTo(new T.Vector3(0,.30,0)) < 1e-6);
+      assert(hand.position.distanceTo(new T.Vector3(0,.28,0)) < 1e-6);
+      assert.equal(shoulder.userData.upperLength,.30);assert.equal(shoulder.userData.forearmLength,.28);
+      assert(hand.getWorldPosition(new T.Vector3()).distanceTo(grip.getWorldPosition(new T.Vector3())) < .00001);
+      for (const part of [shoulder,elbow,hand]) {
+        const meshes=part.children.filter(n=>n.isMesh);assert.equal(meshes.length,1);
+        assert.equal(meshes[0].material.name,'cabin_interior');assert(meshes[0].geometry.attributes.color);
+      }
+      const base=wheel.quaternion.clone();
+      for(const angle of [-.58,-.29,0,.29,.58]) {
+        wheel.quaternion.copy(base).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),angle));
+        root.updateMatrixWorld(true);
+        const reach=shoulder.getWorldPosition(new T.Vector3()).distanceTo(grip.getWorldPosition(new T.Vector3()));
+        assert(reach < .575 && reach > .04, 'Steering grip must remain within the physical arm lengths');
+      }
+      wheel.quaternion.copy(base);root.updateMatrixWorld(true);
+      if(side==='l') assert(shoulder.getWorldPosition(new T.Vector3()).distanceTo(stalk.getWorldPosition(new T.Vector3())) < .575);
+    }
+  });
+  test(`${kind}: floor, firewall and inner liners close wheel exposure without window backing`, async () => {
+    const root = await loadHeavy(kind), spec=TRAFFIC_CATALOG[kind], front=-spec.length/2+.09;
+    const ray=new T.Raycaster();
+    const probe=(origin,direction,label)=>{
+      ray.set(new T.Vector3(...origin),new T.Vector3(...direction).normalize());
+      const hit=ray.intersectObject(root,true).find(h=>!h.object.material.transparent);
+      assert(hit,`${label} must hit a real interior surface`);
+      assert.equal(hit.object.material.name,'cabin_interior',`${label} must meet a liner before an outside wheel or road`);
+    };
+    for(const x of [-.82,-.25,.25,.82]) for(const z of [.30,.70,1.20,1.72,2.08]) {
+      probe([x,1.30,front+z],[0,-1,0],'Sealed floor');
+    }
+    for(const side of [-1,1]) {
+      probe([side*.80,1.65,front+1.2],[side*.2,-1,0],'Wheel-well interior');
+      probe([side*.80,1.42,front+.90],[side,0,0],'Inner door liner');
+    }
+    probe([0,1.44,front+.70],[0,0,-1],'Front firewall');
   });
 }

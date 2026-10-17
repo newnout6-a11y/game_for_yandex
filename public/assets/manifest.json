@@ -121,74 +121,74 @@
   },
   {
     "file": "assets/traffic/boxtruck.glb",
-    "bytes": 1320804,
-    "sha256": "7d03d7e7cee4bbc282ddb432b8bcea917cfafa5840b09bbff1b55b2285192ec2",
+    "bytes": 1698244,
+    "sha256": "3dada17dce4cec102c18a9eaa27e4b0a0fd680a3e3e5c84ed90b293d5280c12a",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_traffic_heavy.py",
     "editableSource": "art/traffic/boxtruck.blend",
-    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
   },
   {
     "file": "assets/traffic/firetruck.glb",
-    "bytes": 1977464,
-    "sha256": "341adaa821f7c41797db1d8adcbd990a6bef4a61a3bb9454e1da763ed6259ae2",
+    "bytes": 2441384,
+    "sha256": "69d6b88c9b7a66906229e647d5110933bbdb12017fa51afa8c767679b176660f",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_traffic_special.py",
     "editableSource": "art/traffic/firetruck.blend",
-    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
   },
   {
     "file": "assets/traffic/hatch.glb",
-    "bytes": 1230112,
-    "sha256": "bebdc71b8636128ff4eb5dadd2e8a3833442e31590b8e83e63b673a871ebc98b",
+    "bytes": 1382548,
+    "sha256": "031fc51a4790fc345e5b140aec77f260374eab39b3246b5422239f62eca179ff",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_traffic_passenger.py",
     "editableSource": "art/traffic/hatch.blend",
-    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
   },
   {
     "file": "assets/traffic/sedan.glb",
-    "bytes": 1265048,
-    "sha256": "ff3abd507fa70fd1a4be3329834ff8a90d61d83cc6e23094cb76a22aaa34a63e",
+    "bytes": 1409100,
+    "sha256": "9db657db5ede1085a5662d57d4a2d62f4c6583fd6fb123461beb2b3ed358169a",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_traffic_passenger.py",
     "editableSource": "art/traffic/sedan.blend",
-    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
   },
   {
     "file": "assets/traffic/semi.glb",
-    "bytes": 2125136,
-    "sha256": "684d86092ba3e349a251cf5efa2bedf3eacbaeee1d1d0057121c8cef6d1c0cc8",
+    "bytes": 2502636,
+    "sha256": "836cd0b0de557e22764410484905157386f7ca2470e7772002737781a983e7a3",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_traffic_heavy.py",
     "editableSource": "art/traffic/semi.blend",
-    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
   },
   {
     "file": "assets/traffic/suv.glb",
-    "bytes": 1350104,
-    "sha256": "db4d89796ae95bd2aeb0f80ec1e140780e43ee5fc2e3873c37cbbdf1ba08ce04",
+    "bytes": 1494140,
+    "sha256": "30a92aebd671f957e7d51cb7495ff5347a26aa0258b681384f8fd8037033b92b",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_traffic_passenger.py",
     "editableSource": "art/traffic/suv.blend",
-    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
   },
   {
     "file": "assets/traffic/towtruck.glb",
-    "bytes": 1529436,
-    "sha256": "cf7ff1096aa6c583d5b1bf4393945a8ed715937fe375ec0137724a99b7aa8607",
+    "bytes": 1993116,
+    "sha256": "7f4a84c4877b00801d59e00b3bb3805b568bf22ad1653c3a8f3e0187d221663d",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_traffic_special.py",
     "editableSource": "art/traffic/towtruck.blend",
-    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
   },
   {
     "file": "assets/traffic/van.glb",
-    "bytes": 1330712,
-    "sha256": "5ca75b729a3ceddf790c71507e0a76a39bb28fd34a85a3dac9a0efdcbebf6553",
+    "bytes": 1466344,
+    "sha256": "297dceaab196b4abc9c8bce4041948b4b381164e705a6d4d5dbdb17186e36db2",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_traffic_passenger.py",
     "editableSource": "art/traffic/van.blend",
-    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
   }
 ]

@@ -8,7 +8,7 @@ No external assets or logos are used. Game convention is +Y up / -Z forward.
 """
 import bpy, bmesh, json, math, os, subprocess, tempfile
 from collections import defaultdict
-from mathutils import Vector
+from mathutils import Vector, Matrix, Quaternion
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = os.path.join(ROOT, 'art', 'traffic')
@@ -275,8 +275,13 @@ def authored_cab_interior(kind, root, collection):
         return cabin_tint(beveled_box(name,center,size,mat.name,collection,root,bevel),color)
     charcoal=(.035,.045,.052); fabric=(.20,.25,.25); bolster=(.29,.34,.32); lining=(.15,.18,.18)
     fire=kind=='firetruck'; floor=.96 if fire else .86; top=2.62 if fire else 2.25
-    front=-3.96 if fire else -2.38; back=-1.34 if fire else -.68; inside=1.83 if fire else 1.68
-    part('Cab floor',(0,floor,(front+back)/2),(inside,.07,back-front),charcoal,.025)
+    front=-4.10 if fire else -2.51; back=-1.34 if fire else -.68; inside=1.83 if fire else 1.68
+    part('Sealed cab floor',(0,floor,(front+back)/2),(inside+.13,.10,back-front+.04),charcoal,.025)
+    part('Closed front footwell bulkhead',(0,floor+.31,front+(.12 if fire else .18)),(inside+.13,.64,.10),charcoal,.025)
+    for side in [-1,1]:
+        part('Continuous inner sill',(side*(inside/2+.035),floor+.19,(front+back)/2),(.10,.42,back-front+.035),lining,.025)
+        part('Closed inner wheel tub',(side*(inside/2-.045),floor+.09,-3.09 if fire else -2.53),(.28,.28,1.02 if fire else .94),charcoal,.075)
+    root['sealedCabFloor']=True
     rear_lining=part('Rear cab lining',(0,(top+floor)/2,back+.015),(inside,top-floor,.055),lining,.012)
     for vertex in rear_lining.data.vertices:
         t=max(0,min(1,(vertex.co.z+rear_lining.location.z-floor)/(top-floor)))
@@ -311,20 +316,7 @@ def authored_cab_interior(kind, root, collection):
         part('Cab air vent',(x,dash_y+.025,dash_z+.228),(.16,.055,.012),(.008,.012,.016),.009)
     part('Center console',(0,floor+.30,dash_z+.63),(.23,.43,.54),charcoal,.035)
     part('Gear selector',(0,floor+.57,dash_z+.60),(.07,.16,.07),(.10,.14,.15),.018)
-    # Steering column and a three-spoke wheel, all correctly inside the glazing.
-    sx,sy,sz=steering
-    column=beveled_beam('Steering column',(sx,sy-.20,sz-.22),(sx,sy,sz),.075,.075,mat.name,collection,root)
-    cabin_tint(column,charcoal)
-    bpy.ops.mesh.primitive_torus_add(major_segments=24,minor_segments=6,location=cv(steering),major_radius=.205,minor_radius=.023)
-    ring=bpy.context.object; ring.name='Steering rim'; ring.rotation_euler.x=1.27
-    for c in list(ring.users_collection): c.objects.unlink(ring)
-    collection.objects.link(ring); ring.parent=root; ring.data.materials.append(mat)
-    for poly in ring.data.polygons: poly.use_smooth=True
-    cabin_tint(ring,(.025,.033,.038))
-    part('Steering hub',(sx,sy,sz),(.16,.12,.09),(.07,.085,.092),.024)
-    for dx,dy,dz in [(-.17,0,0),(.17,0,0),(0,-.16,.05)]:
-        spoke=beveled_beam('Steering spoke',steering,(sx+dx,sy+dy,sz+dz),.028,.025,mat.name,collection,root)
-        cabin_tint(spoke,(.16,.20,.22))
+    authored_driver(kind,root,collection,floor,mat)
     # Original rectangular mirror housings with a genuinely inset rearward pane.
     mirror=wheel_material('traffic_mirror_surface',(.64,.70,.74),1,.055)
     for side in [-1,1]:
@@ -340,6 +332,96 @@ def authored_cab_interior(kind, root, collection):
     root['visibleCabInterior']=True; root['mirrorSurface']='Opaque metalness reflection; no per-vehicle reflection camera'
 
 
+def authored_driver(kind,root,collection,floor,mat):
+    """Original adult driver and rigid two-bone arm chains, no baked animation."""
+    fire=kind=='firetruck'; x=-.53 if fire else -.48
+    seat_y=1.29 if fire else 1.12; seat_z=-3.01 if fire else -1.19
+    shoulder_y=1.96 if fire else 1.75; shoulder_z=-3.045 if fire else -1.25
+    skin=(.36,.22,.15); shirt=(.035,.065,.085) if fire else (.26,.20,.095)
+    trousers=(.025,.035,.045); dark=(.012,.016,.021); strip=(.45,.43,.25)
+    def box(name,center,size,color,parent=root,bevel=.025):
+        return cabin_tint(beveled_box(name,center,size,mat.name,collection,parent,bevel),color)
+    def oval(name,center,size,color,parent=root):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12,ring_count=8,location=cv(center))
+        obj=bpy.context.object; obj.name=name
+        for c in list(obj.users_collection): c.objects.unlink(obj)
+        collection.objects.link(obj); obj.parent=parent; obj.scale=(size[0]/2,size[2]/2,size[1]/2)
+        bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
+        obj.data.materials.append(mat)
+        for face in obj.data.polygons: face.use_smooth=True
+        return cabin_tint(obj,color)
+    def beam(name,a,b,width,depth,color,parent=root):
+        return cabin_tint(beveled_beam(name,a,b,width,depth,mat.name,collection,parent),color)
+    # Adult proportions, work clothes, modest facial detail, no branding.
+    hip=(x,seat_y+.13,seat_z+.005); chest=(x,shoulder_y-.20,shoulder_z+.035)
+    beam('Driver jacket torso',hip,(x,shoulder_y-.065,shoulder_z),.36,.235,shirt)
+    box('Driver jacket hem',(x,seat_y+.17,seat_z-.015),(.37,.075,.25),shirt)
+    for sx in [-1,1]:
+        beam('Jacket reflective strip',(x+sx*.12,seat_y+.24,seat_z-.14),(x+sx*.12,shoulder_y-.075,shoulder_z-.12),.026,.012,strip)
+        leg_x=x+sx*.095
+        beam('Seated driver thigh',(leg_x,seat_y+.09,seat_z-.035),(leg_x,seat_y+.01,seat_z-.36),.145,.14,trousers)
+        beam('Driver lower leg',(leg_x,seat_y+.01,seat_z-.36),(leg_x,floor+.15,seat_z-.54),.115,.105,trousers)
+        box('Driver work shoe',(leg_x,floor+.10,seat_z-.61),(.135,.095,.25),dark,bevel=.025)
+    oval('Driver neck',(x,shoulder_y+.015,shoulder_z),(.105,.14,.105),skin)
+    head=(x,shoulder_y+.17,shoulder_z-.015)
+    oval('Original adult head',head,(.178,.245,.195),skin)
+    oval('Short hair',(x,head[1]+.077,head[2]+.012),(.185,.115,.194),(.025,.018,.015))
+    oval('Driver nose',(x,head[1]-.006,head[2]-.105),(.038,.045,.04),skin)
+    for sx in [-1,1]:
+        oval('Driver ear',(x+sx*.086,head[1]-.01,head[2]),(.025,.065,.035),skin)
+        oval('Driver eye',(x+sx*.037,head[1]+.015,head[2]-.092),(.014,.009,.009),dark)
+    # Steering pivot's game-local XY is the wheel plane; +Z points at the driver.
+    steering=(x,1.92 if fire else 1.70,-3.39 if fire else -1.68)
+    wheel=empty('steering_wheel',steering,root,collection); wheel.rotation_euler.x=-.30
+    wheel['radius']=.205; wheel['steeringAxis']='local Z'; wheel['gripRadius']=.19
+    column_start=(x,steering[1]-.20,steering[2]-.30)
+    beam('Stationary steering column',column_start,steering,.075,.075,dark)
+    bpy.ops.mesh.primitive_torus_add(major_segments=24,minor_segments=6,major_radius=.205,minor_radius=.023)
+    ring=bpy.context.object; ring.name='Rotating steering rim'; ring.rotation_euler.x=math.pi/2
+    for c in list(ring.users_collection): c.objects.unlink(ring)
+    collection.objects.link(ring); ring.parent=wheel; ring.location=(0,0,0); ring.data.materials.append(mat)
+    for face in ring.data.polygons: face.use_smooth=True
+    cabin_tint(ring,dark)
+    box('Rotating steering hub',(0,0,0),(.14,.11,.06),(.06,.075,.08),wheel,.02)
+    for endpoint in [(-.18,.015,0),(.18,.015,0),(0,-.18,0)]:
+        beam('Rotating steering spoke',(0,0,0),endpoint,.026,.023,(.13,.16,.17),wheel)
+    grips={}
+    for side in ['l','r']:
+        grip=empty('grip_'+side,(-.19 if side=='l' else .19,.02,.025),wheel,collection)
+        grips[side]=grip
+    stalk=empty('indicator_stalk',(x-.30,steering[1]-.035,steering[2]-.025),root,collection)
+    beam('Indicator lever',(x-.045,steering[1]-.04,steering[2]-.07),(x-.30,steering[1]-.035,steering[2]-.025),.022,.024,dark)
+    # C maps game coordinates to Blender; convert each rigid-joint rotation too.
+    C=Matrix(((1,0,0),(0,0,-1),(0,1,0)))
+    def orient(obj,q):
+        obj.rotation_mode='QUATERNION'; obj.rotation_quaternion=(C@q.to_matrix()@C.inverted()).to_quaternion()
+    bpy.context.view_layer.update()
+    upper=.30; lower=.28
+    reach={}
+    for side,sign in [('l',-1),('r',1)]:
+        S=Vector((x+sign*.18,shoulder_y,shoulder_z))
+        p=grips[side].matrix_world.translation; G=Vector((p.x,p.z,-p.y))
+        delta=G-S; distance=delta.length; direction=delta.normalized()
+        pole=Vector((0,-1,0)); pole=(pole-direction*pole.dot(direction)).normalized()
+        along=(upper*upper-lower*lower+distance*distance)/(2*distance)
+        E=S+direction*along+pole*math.sqrt(max(0,upper*upper-along*along))
+        shoulder=empty('driver_shoulder_'+side,S,root,collection)
+        shoulder['upperLength']=upper; shoulder['forearmLength']=lower; shoulder['ikPole']=[0,-1,0]
+        q_upper=Vector((0,1,0)).rotation_difference((E-S).normalized()); orient(shoulder,q_upper)
+        elbow=empty('driver_elbow_'+side,(0,upper,0),shoulder,collection)
+        q_lower=Vector((0,1,0)).rotation_difference((G-E).normalized()); orient(elbow,q_upper.inverted()@q_lower)
+        hand=empty('driver_hand_'+side,(0,lower,0),elbow,collection)
+        oval('Driver upper sleeve',(0,upper*.49,0),(.12,upper+.035,.115),shirt,shoulder)
+        oval('Driver forearm',(0,lower*.47,0),(.095,lower+.02,.09),skin,elbow)
+        oval('Driver sleeve cuff',(0,.038,0),(.106,.10,.10),shirt,elbow)
+        oval('Driver palm',(0,.005,0),(.08,.10,.047),skin,hand)
+        oval('Driver wrapped fingers',(0,.035,-.012),(.077,.05,.046),skin,hand)
+        oval('Driver thumb',(sign*.04,.006,-.016),(.028,.055,.031),skin,hand)
+        reach[side]=round(distance,4)
+    root['driverRig']='Two-bone rigid arms; local +Y bones, local Z steering wheel'
+    root['driverGripReach']=json.dumps(reach); root['driverAdult']=True
+
+
 def export_runtime(root, kind, destination):
     """Merge only the runtime copy, preserving all editable objects in the .blend."""
     saved_names={obj:obj.name for obj in bpy.data.objects}
@@ -349,16 +431,29 @@ def export_runtime(root, kind, destination):
     exported=empty(kind,collection=collection)
     for key,value in root.items(): exported[key]=value
     groups={}; buckets=defaultdict(lambda:{'vertices':[],'normals':[],'faces':[],'colors':[],'material':None})
+    def is_pivot(obj):
+        name=obj.get('runtime_name','')
+        return obj.type=='EMPTY' and (name.startswith(('wheel_','driver_','grip_')) or name in ['steering_wheel','indicator_stalk'])
+    def clone_pivots(parent):
+        for original in parent.children:
+            if not is_pivot(original): continue
+            name=original['runtime_name']; parent_name=original.parent.get('runtime_name','')
+            group=empty(name,parent=groups.get(parent_name,exported),collection=collection)
+            group.matrix_local=original.matrix_local.copy()
+            for key,value in original.items():
+                if key!='runtime_name': group[key]=value
+            groups[name]=group; clone_pivots(original)
+    clone_pivots(root)
     dg=bpy.context.evaluated_depsgraph_get()
     for obj in list(bpy.data.objects):
         if obj.type!='MESH' or not obj.parent: continue
         ancestor=obj.parent
         while ancestor and ancestor!=root: ancestor=ancestor.parent
         if ancestor!=root: continue
-        wheel=obj.parent if obj.parent.get('runtime_name','').startswith('wheel_') else None
-        group_name=wheel['runtime_name'] if wheel else ''
+        pivot=obj.parent if is_pivot(obj.parent) else None
+        group_name=pivot['runtime_name'] if pivot else ''
         ev=obj.evaluated_get(dg); me=ev.to_mesh(); me.calc_loop_triangles()
-        transform=obj.matrix_local if wheel else obj.matrix_world
+        transform=obj.matrix_local if pivot else obj.matrix_world
         normal_transform=transform.to_3x3().inverted().transposed()
         for tri in me.loop_triangles:
             mat=me.materials[tri.material_index]; bucket=buckets[(group_name,mat.name)]; bucket['material']=mat
@@ -369,8 +464,6 @@ def export_runtime(root, kind, destination):
                 tint=me.color_attributes.get('CabinTint')
                 bucket['colors'].append(tuple(tint.data[loop_index].color) if tint else (1,1,1,1))
         ev.to_mesh_clear()
-        if wheel and group_name not in groups:
-            group=empty(group_name,parent=exported,collection=collection); group.location=wheel.location.copy(); group['steering']=bool(wheel.get('steering')); group['tireWidth']=wheel.get('tireWidth',.31); group['wheelRadius']=wheel.get('wheelRadius',.5); groups[group_name]=group
     cache={}
     for (group_name,mat_name),bucket in buckets.items():
         key=(mat_name,tuple(tuple(round(v,6) for v in p) for p in bucket['vertices'])) if group_name else None
@@ -394,7 +487,7 @@ def export_runtime(root, kind, destination):
     bpy.ops.export_scene.gltf(filepath=destination,export_format='GLB',use_selection=True,export_yup=True,
       export_apply=True,export_extras=True,export_normals=True,export_materials='EXPORT',export_cameras=False,export_lights=False)
     stats={'meshes':sum(o.type=='MESH' for o in collection.objects),'triangles':sum(len(o.data.polygons) for o in collection.objects if o.type=='MESH'),
-      'wheels':sorted(groups),'file':os.path.relpath(destination,ROOT)}
+      'wheels':sorted(name for name in groups if name.startswith('wheel_')),'driverRigNodes':sorted(name for name in groups if not name.startswith('wheel_')),'file':os.path.relpath(destination,ROOT)}
     for obj in list(collection.objects): bpy.data.objects.remove(obj,do_unlink=True)
     bpy.data.collections.remove(collection)
     for obj,name in saved_names.items():

@@ -78,3 +78,11 @@ Original Blender-authored rounded tire carcasses, recessed alloy/steel rims, bra
 
 Traffic cabins and mirrors
 Original Blender-authored seats, dashboards, steering wheels, inner panels/headliners, cut-through window apertures, mirror panes and separate turn-signal lenses for all eight traffic vehicles. The mirrors use the project's shared sky environment, not per-vehicle live reflection cameras. No external interior or mirror texture/model was used.
+
+Original Blender traffic drivers and interior enclosure refinement (2026-10-17)
+All eight traffic vehicles include original seated adult character geometry, sealed
+floors/footwells/firewalls/inner wheel housings, steering/grip/stalk markers and
+articulated shoulder/elbow/hand groups. Created for this project in the editable
+art/traffic/*.blend sources by scripts/create_traffic_{passenger,heavy,special}.py.
+No third-party human mesh, character texture, manufacturer CAD or motion capture
+was used. Lightweight stylized characters, not photoreal human representations.

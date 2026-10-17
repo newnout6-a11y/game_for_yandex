@@ -1,0 +1,50 @@
+import * as T from '../public/vendor/three.js';
+const UP=new T.Vector3(0,1,0),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+export const INDICATOR_TOUCH_TIME=.18;
+const smooth=x=>{x=clamp(x,0,1);return x*x*(3-2*x);};
+export function stalkGesture(signal,time){
+ if(!signal||time<0||time>=.75)return 0;
+ return time<.18?smooth(time/.18):time<.40?1:1-smooth((time-.40)/.35);
+}
+export function prepareDriverRig(car){
+ const wheel=car.getObjectByName('steering_wheel'),body=car.userData.bodyRig;
+ if(!wheel)return null;
+ const arms=[];car.updateMatrixWorld(true);
+ for(const side of ['l','r']){
+  const shoulder=car.getObjectByName('driver_shoulder_'+side),elbow=car.getObjectByName('driver_elbow_'+side),hand=car.getObjectByName('driver_hand_'+side),grip=car.getObjectByName('grip_'+side);
+  if(!shoulder||!elbow||!hand||!grip)throw new Error('Incomplete Blender driver rig: '+car.userData.kind+'/'+side);
+  const pole=body.worldToLocal(elbow.getWorldPosition(new T.Vector3()));
+  const gripQ=grip.getWorldQuaternion(new T.Quaternion()),handQ=hand.getWorldQuaternion(new T.Quaternion());
+  arms.push({side,shoulder,elbow,hand,grip,pole,upper:elbow.position.length(),lower:hand.position.length(),handOffset:gripQ.invert().multiply(handQ)});
+ }
+ const rig={wheel,body,arms,stalk:car.getObjectByName('indicator_stalk'),rest:wheel.quaternion.clone(),turn:new T.Quaternion(),axis:new T.Vector3(0,0,1),point:new T.Vector3(),shoulder:new T.Vector3(),elbow:new T.Vector3(),end:new T.Vector3(),pole:new T.Vector3(),direction:new T.Vector3(),bend:new T.Vector3(),local:new T.Vector3(),q:new T.Quaternion(),q2:new T.Quaternion(),maxGripError:0};
+ car.userData.driver=rig;return rig;
+}
+function aimJoint(joint,target,rig){
+ joint.getWorldPosition(rig.point);rig.local.copy(target).sub(rig.point).normalize();
+ joint.parent.getWorldQuaternion(rig.q).invert();rig.local.applyQuaternion(rig.q);
+ joint.quaternion.setFromUnitVectors(UP,rig.local);joint.updateMatrixWorld(true);
+}
+export function animateTrafficDriver(car,item,roadWheelAngle){
+ const r=car.userData.driver;if(!r)return;
+ const ratio=car.userData.category==='passenger'?14:18;
+ const angle=clamp(roadWheelAngle*ratio,-1.2,1.2);
+ r.wheel.quaternion.copy(r.rest).multiply(r.turn.setFromAxisAngle(r.axis,angle));
+ car.updateMatrixWorld(true);r.maxGripError=0;
+ for(const arm of r.arms){
+  arm.shoulder.getWorldPosition(r.shoulder);arm.grip.getWorldPosition(r.end);
+  const gesture=arm.side==='l'&&r.stalk?stalkGesture(item.signal,item.signalTime||0):0;
+  if(gesture){r.stalk.getWorldPosition(r.point);r.end.lerp(r.point,gesture);}
+  r.direction.copy(r.end).sub(r.shoulder);const wanted=r.direction.length();
+  const distance=clamp(wanted,Math.abs(arm.upper-arm.lower)+.0001,arm.upper+arm.lower-.0001);r.direction.normalize();
+  r.body.localToWorld(r.pole.copy(arm.pole));r.bend.copy(r.pole).sub(r.shoulder);r.bend.addScaledVector(r.direction,-r.bend.dot(r.direction));
+  if(r.bend.lengthSq()<1e-8)r.bend.set(0,-1,0).addScaledVector(r.direction,r.direction.y);
+  r.bend.normalize();const along=(arm.upper*arm.upper-arm.lower*arm.lower+distance*distance)/(2*distance),height=Math.sqrt(Math.max(0,arm.upper*arm.upper-along*along));
+  r.elbow.copy(r.shoulder).addScaledVector(r.direction,along).addScaledVector(r.bend,height);
+  r.end.copy(r.shoulder).addScaledVector(r.direction,distance);
+  aimJoint(arm.shoulder,r.elbow,r);aimJoint(arm.elbow,r.end,r);
+  arm.grip.getWorldQuaternion(r.q);r.q.multiply(arm.handOffset);arm.hand.parent.getWorldQuaternion(r.q2).invert();arm.hand.quaternion.copy(r.q2.multiply(r.q));arm.hand.updateMatrixWorld(true);
+  r.maxGripError=Math.max(r.maxGripError,Math.abs(wanted-distance));
+ }
+ r.wheel.userData.angle=angle;r.wheel.userData.stalkGesture=stalkGesture(item.signal,item.signalTime||0);
+}

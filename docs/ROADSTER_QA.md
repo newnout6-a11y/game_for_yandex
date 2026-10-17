@@ -43,4 +43,4 @@ Screen-wide gameplay darkening was removed in favor of compact translucent HUD b
 
 ## Blender fleet continuation (2026-10-17)
 
-All114 automated tests pass; source validation passes26 modules with0 errors. Eight final GLBs and eight editable Blender projects are present. All16 front/rear inspection views were rendered in the game renderer; the final build also passed matched desktop/mobile captures and an eight-vehicle scene. Read docs/FLEET_UPDATE.md for costs, size-aware collision and remaining limitations. No new activities or public deployment.
+All 114 automated tests pass; source validation passes 26 modules with 0 errors. Eight final GLBs and eight editable Blender projects are present. All 16 front/rear inspection views were rendered in the game renderer; the final build also passed matched desktop/mobile captures and an eight-vehicle scene. Read docs/FLEET_UPDATE.md for costs, size-aware collision and remaining limitations. No new activities or public deployment.

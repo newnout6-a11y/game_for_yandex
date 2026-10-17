@@ -382,7 +382,25 @@ def refine_visible_cabin(kind, spec, root, palette):
         return ob
     def ibox(name,center,dims,color,bevel=.025):return colorize(box(name,center,dims,interior,parent,bevel),color)
     def ibeam(name,start,end,r,color):return colorize(beam(name,start,end,r,interior,parent),color)
-    ibox('Cabin textured floor',(0,1.18,(front+.30+rear-.17)/2),(width-.23,.07,rear-front-.47),charcoal,.005)
+    # Continuous structural floor reaches the inside of every door sill and
+    # bulkhead. Real inner tubs and a firewall hide the *outside* wheel wells
+    # without placing any opaque backing in the glazed cabin.
+    ibox('Continuous sealed cabin floor',(0,1.18,(front+.17+rear-.075)/2),(width-.09,.11,rear-front-.245),charcoal,.008)
+    ibox('Front cabin firewall',(0,1.43,front+.24),(width-.10,.56,.095),dash_color,.014)
+    ibox('Recessed front footwell toe board',(0,1.27,front+.40),(width-.16,.22,.22),charcoal,.018)
+    axle_z=front+(1.22 if kind=='semi' else 1.20); axle_y=spec['wheelRadius']+.012
+    for side in [-1,1]:
+        inner=side*(half-.40);outer=side*(half-.025);radius=spec['wheelRadius']+.115
+        points=[]
+        for x in [inner,outer]:
+            for i in range(17):
+                a=i*math.pi/16;points.append((x,axle_y+math.sin(a)*radius,axle_z+math.cos(a)*radius))
+        faces=[(i,i+1,i+18,i+17) for i in range(16)]
+        faces.extend([tuple(reversed(range(17))),tuple(range(17,34)),(0,17,33,16)])
+        tub=mesh_part('Sealed inner commercial wheel tub',points,faces,interior,parent,.006)
+        bm=bmesh.new();bm.from_mesh(tub.data);bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces));bm.to_mesh(tub.data);bm.free();colorize(tub,charcoal)
+        ibox('Wheel tub to floor sealed joint',(side*(half-.18),1.145,axle_z),(.30,.18,1.25),charcoal,.018)
+        ibox('Inner door sill',(side*(half-.074),1.24,(front+.32+rear-.13)/2),(.115,.20,rear-front-.45),dash_color,.012)
     ibox('Inner rear bulkhead',(0,2.02,rear-.155),(width-.24,1.57,.035),ceiling,.004)
     ibox('Cabin headliner',(0,height-.145,(front+.4+rear-.16)/2),(width-.25,.035,rear-front-.56),ceiling,.008)
     ibox('Sculpted truck dashboard',(0,1.71,front+.45),(width-.25,.32,.38),dash_color,.07)
@@ -400,15 +418,7 @@ def refine_visible_cabin(kind, spec, root, palette):
         ibox('Interior door trim',(side*(half-.108),1.56,front+1.13),(.034,.65,1.30),dash_color,.012)
         ibox('Interior door arm rest',(side*(half-.16),1.72,front+1.31),(.13,.09,.38),charcoal,.02)
     if kind=='semi':ibox('Sleeper bunk cushion',(0,1.43,rear-.48),(width-.35,.15,.60),(.13,.18,.22,1),.045)
-    center=(-.47,1.98,front+.88);normal=Vector((0,.48,.88)).normalized()
-    bpy.ops.mesh.primitive_torus_add(major_segments=24,minor_segments=5,major_radius=.18,minor_radius=.016,location=v(center))
-    steering=bpy.context.object;steering.name='Original three-spoke steering wheel';steering.rotation_euler=v(normal).to_track_quat('Z','Y').to_euler();steering.parent=parent;steering.data.materials.append(interior);colorize(steering,charcoal)
-    ibox('Steering wheel center',center,(.10,.075,.085),charcoal,.025)
-    basis=normal.cross(Vector((1,0,0))).normalized()
-    for angle in [math.pi/6,5*math.pi/6,3*math.pi/2]:
-        tip=Vector(center)+Vector((1,0,0))*math.cos(angle)*.17+basis*math.sin(angle)*.17
-        ibeam('Steering wheel spoke',center,tip,.012,dash_color)
-    ibeam('Steering column',(-.47,1.57,front+.60),center,.035,charcoal)
+    author_driver_and_steering(kind,spec,root,parent,interior,front,colorize,ibox,ibeam)
     # A named environment-reflective pane faces rearward and slightly outward
     # inside each retained housing. No scene cameras or transmission passes.
     reflector=make_material({'name':'mirror_reflector','color':[.67,.72,.75],'roughness':.085,'metalness':.96})
@@ -419,7 +429,103 @@ def refine_visible_cabin(kind, spec, root, palette):
             mirror=box('Rearward reflective mirror pane',center,dims,reflector,parent,.004)
             mirror.data.transform(Matrix.Translation(-v(center)));mirror.location=v(center);mirror.rotation_euler.z=side*.14
             mirror['mirror_facing']='rearward and outward';mirror['reflection_method']='environment'
-    root['visible_cabin_revision']=1
+    root['visible_cabin_revision']=2
+
+def author_driver_and_steering(kind,spec,root,parent,material,front,colorize,ibox,ibeam):
+    """Original adult driver and low-cost articulated hands, authored in Blender.
+
+    Empties export in the game's coordinates. Wheel local XY is the rim plane,
+    +Z points toward the driver. Arm bones point along local +Y; segment lengths
+    are recorded as extras so the runtime two-bone solver uses actual geometry.
+    """
+    skin=(.43,.255,.15,1);skin_light=(.54,.34,.215,1)
+    jacket=(.055,.115,.16,1);jacket_light=(.085,.16,.205,1)
+    pants=(.055,.064,.075,1);boots=(.022,.028,.033,1)
+    hair=(.035,.022,.016,1);dark=(.017,.023,.027,1)
+    def empty(name,position,owner,rotation=None):
+        ob=bpy.data.objects.new(name,None);bpy.context.collection.objects.link(ob);ob.parent=owner
+        transform=Matrix.Translation(Vector(position))
+        if rotation is not None:transform=transform@rotation.to_4x4()
+        ob.matrix_local=C@transform@C.inverted();ob.empty_display_size=.04
+        ob['authored_in']='Blender';return ob
+    def ellipsoid(name,center,radii,color,owner=parent,segments=12,rings=8):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=segments,ring_count=rings,radius=1,location=v(center))
+        ob=bpy.context.object;ob.name=name;ob.parent=owner;ob.scale=(radii[0],radii[2],radii[1]);ob.data.materials.append(material)
+        for poly in ob.data.polygons:poly.use_smooth=True
+        ob['authored_in']='Blender';colorize(ob,color);return ob
+    def capsule(name,start,end,radii,color,owner=parent):
+        a,b=Vector(start),Vector(end);ob=ellipsoid(name,(a+b)/2,(radii[0],radii[1],(b-a).length/2+radii[1]),color,owner)
+        # Blender sphere local Z is its long axis after replacing scale.
+        ob.scale=(radii[0],radii[1],(b-a).length/2+radii[1]);ob.rotation_euler=v((b-a).normalized()).to_track_quat('Z','Y').to_euler();return ob
+    def local_box(name,center,dims,color,owner,bevel=.008):return colorize(box(name,center,dims,material,owner,bevel),color)
+    def local_beam(name,start,end,r,color,owner):return colorize(beam(name,start,end,r,material,owner),color)
+    # Broad shoulders, shaped torso, neck and original low-poly facial features
+    # make an adult silhouette; there is no downloaded human or branded uniform.
+    ellipsoid('Adult driver pelvis',(-.50,1.65,front+1.28),(.19,.145,.16),pants)
+    ellipsoid('Adult driver jacket torso',(-.50,1.91,front+1.31),(.235,.30,.155),jacket)
+    ibox('Driver jacket zipper',(-.50,1.93,front+1.151),(.012,.37,.012),(.18,.22,.24,1),.003)
+    ibox('Driver jacket chest pocket',(-.385,2.02,front+1.16),(.10,.08,.018),jacket_light,.008)
+    capsule('Driver neck',(-.50,2.16,front+1.30),(-.50,2.24,front+1.30),(.061,.05),skin)
+    ellipsoid('Adult driver head',(-.50,2.365,front+1.30),(.112,.148,.110),skin_light,segments=16,rings=10)
+    ellipsoid('Driver short original hair',(-.50,2.466,front+1.314),(.113,.062,.105),hair)
+    ellipsoid('Driver ear left',(-.614,2.37,front+1.30),(.024,.039,.022),skin)
+    ellipsoid('Driver ear right',(-.386,2.37,front+1.30),(.024,.039,.022),skin)
+    ellipsoid('Driver nose',(-.50,2.363,front+1.185),(.023,.036,.027),skin_light)
+    for x in [-.540,-.460]:
+        ellipsoid('Driver eye',(x,2.399,front+1.200),(.012,.009,.006),dark,segments=8,rings=6)
+        ibox('Driver eyebrow',(x,2.421,front+1.203),(.031,.008,.008),hair,.002)
+    ibox('Driver neutral mouth',(-.50,2.319,front+1.196),(.038,.006,.005),(.19,.085,.055,1),.002)
+    # Physical seated legs terminate above the lined floor, clear of the dash.
+    for side in [-1,1]:
+        x=-.50+side*.105
+        capsule('Driver trouser thigh',(x,1.64,front+1.27),(x,1.56,front+.94),(.095,.083),pants)
+        capsule('Driver trouser shin',(x,1.54,front+.94),(x,1.29,front+.80),(.071,.065),pants)
+        ellipsoid('Driver work shoe',(x,1.265,front+.715),(.083,.060,.15),boots)
+    ibeam('Driver seat belt',(-.70,2.14,front+1.23),(-.35,1.64,front+1.12),.018,dark)
+    ibox('Seat belt buckle',(-.32,1.65,front+1.14),(.055,.07,.04),(.22,.055,.035,1),.009)
+    center=Vector((-.50,1.98,front+.88));normal=Vector((0,.48,.88)).normalized()
+    xaxis=Vector((1,0,0));yaxis=normal.cross(xaxis).normalized()
+    rotation=Matrix((xaxis,yaxis,normal)).transposed()
+    wheel=empty('steering_wheel',center,parent,rotation);wheel['rig_role']='steering';wheel['roll_axis']='local Z'
+    bpy.ops.mesh.primitive_torus_add(major_segments=24,minor_segments=6,major_radius=.18,minor_radius=.016)
+    rim=bpy.context.object;rim.name='Original three-spoke steering rim';rim.parent=wheel;rim.data.transform(C);rim.data.materials.append(material);colorize(rim,dark)
+    for poly in rim.data.polygons:poly.use_smooth=True
+    local_box('Steering wheel center',(0,0,.004),(.10,.075,.065),dark,wheel,.020)
+    for angle in [math.pi/6,5*math.pi/6,3*math.pi/2]:
+        local_beam('Steering wheel spoke',(0,0,0),(math.cos(angle)*.17,math.sin(angle)*.17,0),.012,jacket_light,wheel)
+    ibeam('Steering column',(-.50,1.57,front+.60),center,.035,dark)
+    stalk_position=center+rotation@Vector((-.215,-.055,-.065))
+    stalk=empty('indicator_stalk',stalk_position,parent,rotation);stalk['rig_role']='indicator_hand_target'
+    ibeam('Column indicator stalk',center+rotation@Vector((-.045,-.055,-.065)),stalk_position,.010,dark)
+    # The stalk is a target marker; its visible switch is included in the static
+    # cabin batch. Hands can reach it without adding an unnecessary eighth draw.
+    ibox('Indicator stalk thumb switch',stalk_position,(.038,.025,.032),dark,.008)
+    for side,label in [(-1,'l'),(1,'r')]:
+        grip_local=Vector((side*.162,.072,.014));grip=empty('grip_'+label,grip_local,wheel);grip['rig_role']='hand_hold'
+        target=center+rotation@grip_local
+        shoulder=Vector((-.50+side*.19,2.13,front+1.32));upper_length=.30;forearm_length=.28
+        delta=target-shoulder;distance=delta.length;direction=delta.normalized()
+        bend=Vector((side*.20,-1,.12));bend=(bend-direction*bend.dot(direction)).normalized()
+        along=(upper_length**2-forearm_length**2+distance**2)/(2*distance)
+        elbow_pos=shoulder+direction*along+bend*math.sqrt(max(0,upper_length**2-along**2))
+        upper_rotation=Vector((0,1,0)).rotation_difference((elbow_pos-shoulder).normalized()).to_matrix()
+        forearm_world=Vector((0,1,0)).rotation_difference((target-elbow_pos).normalized()).to_matrix()
+        shoulder_ob=empty('driver_shoulder_'+label,shoulder,parent,upper_rotation)
+        shoulder_ob['upperLength']=upper_length;shoulder_ob['forearmLength']=forearm_length;shoulder_ob['rig_role']='two_bone_arm';shoulder_ob['driver_side']=label
+        elbow_ob=empty('driver_elbow_'+label,(0,upper_length,0),shoulder_ob,upper_rotation.inverted()@forearm_world)
+        hand_ob=empty('driver_hand_'+label,(0,forearm_length,0),elbow_ob,forearm_world.inverted()@rotation)
+        capsule('Driver upper jacket sleeve',(0,.045,0),(0,upper_length-.035,0),(.074,.068),jacket,shoulder_ob)
+        capsule('Driver forearm jacket sleeve',(0,.025,0),(0,forearm_length-.085,0),(.057,.053),jacket_light,elbow_ob)
+        capsule('Driver exposed wrist',(0,forearm_length-.085,0),(0,forearm_length-.015,0),(.039,.036),skin,elbow_ob)
+        # Compact palm plus four curled fingers straddle the wheel rim. The hand
+        # origin is the actual hold, not a wrist offset that would spoil IK.
+        ellipsoid('Driver gripping palm',(0,0,0),(.045,.052,.025),skin_light,hand_ob)
+        for i in range(4):
+            xx=-.025+i*.017
+            capsule('Driver curled grip finger',(xx,.016,-.033),(xx,-.022,-.035),(.008,.010),skin,hand_ob)
+        capsule('Driver wrapped thumb',(-side*.025,-.025,.004),(-side*.039,.006,-.013),(.013,.013),skin_light,hand_ob)
+    root['driver_rig_revision']=1;root['interior_liner_revision']=2
+    root['driver_description']='Original seated adult driver, two-bone arms, wheel grip targets; no external assets'
 
 def split_directional_indicators(spec, root, palette):
     """Separate only turn-signal lenses, preserving static amber markers."""
@@ -511,6 +617,10 @@ for kind in ['boxtruck','semi']:
         bpy.context.scene.render.filepath=os.path.join(PREVIEW,kind+'-cabin-detail.png');bpy.ops.render.render(write_still=True)
         target=v((spec['width']/2-.08,2.23,front+.135));camera.location=target+Vector((1.8,-1.9,.45));camera.rotation_euler=(target-camera.location).to_track_quat('-Z','Y').to_euler();camera.data.lens=64
         bpy.context.scene.render.filepath=os.path.join(PREVIEW,kind+'-mirror-detail.png');bpy.ops.render.render(write_still=True)
+        target=v((-.40,2.20,front+1.18));camera.location=v((.05,2.32,front-2.5));camera.rotation_euler=(target-camera.location).to_track_quat('-Z','Y').to_euler();camera.data.lens=60
+        bpy.context.scene.render.filepath=os.path.join(PREVIEW,kind+'-driver-detail.png');bpy.ops.render.render(write_still=True)
+        target=v((-.13,1.29,front+.92));camera.location=v((.05,2.48,front+(2.48 if kind=='semi' else 2.23)-.25));camera.rotation_euler=(target-camera.location).to_track_quat('-Z','Y').to_euler();camera.data.lens=24
+        bpy.context.scene.render.filepath=os.path.join(PREVIEW,kind+'-footwell-detail.png');bpy.ops.render.render(write_still=True)
     batch_for_export(root)
     bpy.ops.export_scene.gltf(filepath=os.path.join(ASSETS,kind+'.glb'),export_format='GLB',use_selection=True,export_apply=True,export_yup=True,export_materials='EXPORT',export_extras=True,export_cameras=False,export_lights=False)
     record={'kind':kind,'blend':os.path.relpath(os.path.join(OUT,kind+'.blend'),ROOT),'glb':os.path.relpath(os.path.join(ASSETS,kind+'.glb'),ROOT),'mesh_objects':sum(ob.type=='MESH' for ob in descendants(root)),'wheel_pivots':[ob.name for ob in descendants(root) if ob.name.startswith('wheel_') and ob.type=='EMPTY']}

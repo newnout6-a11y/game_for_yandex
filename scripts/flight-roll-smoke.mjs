@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { startServer } from './serve.mjs';
 const out = process.env.FLIGHT_QA_OUT || 'output/flight-roll-qa'; await mkdir(out, { recursive: true });
 const server = startServer({ port: 0, root: process.cwd() }); await once(server, 'listening');
-const browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || '/usr/bin/chromium', headless: true,
+const browser = await chromium.launch({ ...(process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : { channel: 'chrome' }), headless: true,
   args: process.env.SOFTWARE_WEBGL ? ['--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader'] : [] });
 const results = [];
 try {

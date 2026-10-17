@@ -74,7 +74,7 @@ for (const kind of ['towtruck', 'firetruck']) {
     assert.equal(equipment.length, 3);
     assert.ok(materials.has('lights_red'));
     assert.ok(materials.has(kind === 'towtruck' ? 'body' : 'fixed_rescue_red'));
-    assert.ok(draws <= 28); assert.ok(triangles <= 28000);
+    assert.ok(draws <= 35); assert.ok(triangles <= 33000);
     const bounds = new T.Box3().setFromObject(model), size = bounds.getSize(new T.Vector3());
     assert.ok(size.x <= spec.width + .01 && Math.abs(size.z - spec.length) < .015);
     assert.ok(Math.abs(bounds.min.y - .004) < .0001, 'native Blender tires sit 4 mm above the road');
@@ -129,5 +129,53 @@ for (const kind of ['towtruck', 'firetruck']) {
     const source = await readFile(new URL(`../art/traffic/${kind}.blend`, import.meta.url));
     assert.equal(source.subarray(0, 7).toString(), 'BLENDER');
     assert.ok(source.length > 100000, 'editable Blender project is included');
+  });
+}
+
+
+for (const kind of ['towtruck', 'firetruck']) {
+  test(`${kind} seals wheel exposure and exports a reachable adult-driver steering rig`, async () => {
+    const { readFile } = await import('node:fs/promises');
+    const bytes = await readFile(new URL(`../public/assets/traffic/${kind}.glb`, import.meta.url));
+    const { scene } = await new T.GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+    scene.updateMatrixWorld(true);
+    const wheel = scene.getObjectByName('steering_wheel'), stalk = scene.getObjectByName('indicator_stalk');
+    assert.ok(wheel && !wheel.isMesh && stalk && !stalk.isMesh);
+    const neutral = wheel.quaternion.clone();
+    assert.equal(wheel.children.filter(n => n.isMesh).length, 1, 'one merged rotating steering draw');
+    assert.ok(new T.Vector3(0, 0, 1).applyQuaternion(wheel.getWorldQuaternion(new T.Quaternion())).z > .9, '+Z points back toward driver');
+    for (const side of ['l', 'r']) {
+      const shoulder = scene.getObjectByName(`driver_shoulder_${side}`);
+      const elbow = scene.getObjectByName(`driver_elbow_${side}`);
+      const hand = scene.getObjectByName(`driver_hand_${side}`);
+      const grip = scene.getObjectByName(`grip_${side}`);
+      assert.equal(elbow.parent, shoulder); assert.equal(hand.parent, elbow); assert.equal(grip.parent, wheel);
+      for (const joint of [shoulder, elbow, hand]) {
+        assert.deepEqual(joint.scale.toArray(), [1, 1, 1], 'no baked scale on IK pivots');
+        assert.equal(joint.children.filter(n => n.isMesh).length, 1, 'one draw per rigid arm segment');
+      }
+      assert.ok(elbow.position.distanceTo(new T.Vector3(0, .30, 0)) < 1e-5);
+      assert.ok(hand.position.distanceTo(new T.Vector3(0, .28, 0)) < 1e-5);
+      assert.ok(hand.getWorldPosition(new T.Vector3()).distanceTo(grip.getWorldPosition(new T.Vector3())) < 1e-5, 'neutral hands grip the wheel');
+    }
+    for (const angle of [-.9, -.65, 0, .65, .9]) {
+      wheel.quaternion.copy(neutral).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 0, 1), angle));
+      scene.updateMatrixWorld(true);
+      for (const side of ['l', 'r']) {
+        const shoulder = scene.getObjectByName(`driver_shoulder_${side}`).getWorldPosition(new T.Vector3());
+        const grip = scene.getObjectByName(`grip_${side}`).getWorldPosition(new T.Vector3());
+        assert.ok(shoulder.distanceTo(grip) < .56, 'steering range keeps a bent, reachable elbow');
+      }
+    }
+    const leftShoulder = scene.getObjectByName('driver_shoulder_l').getWorldPosition(new T.Vector3());
+    assert.ok(leftShoulder.distanceTo(stalk.getWorldPosition(new T.Vector3())) < .56, 'indicator stalk is within arm reach');
+    wheel.quaternion.copy(neutral); scene.updateMatrixWorld(true);
+    for (const side of [-1, 1]) for (const x of [.78, .84, .90, .96]) for (const dz of [-.25, 0, .25]) {
+      const z = (kind === 'firetruck' ? -3.09 : -2.53) + dz;
+      const ray = new T.Raycaster(new T.Vector3(side * x, 1.42, z), new T.Vector3(0, -1, 0));
+      const hit = ray.intersectObject(scene, true)[0];
+      assert.ok(hit && hit.object.material.name !== 'tire_rubber', 'sealed floor/tub blocks a view down to the road wheel');
+      if (x <= (kind === 'firetruck' ? .98 : .905)) assert.ok(hit.point.y > (kind === 'firetruck' ? 1.08 : .98), 'inner wheel cover leaves suspension clearance within the cab floor');
+    }
   });
 }

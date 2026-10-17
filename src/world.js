@@ -228,7 +228,16 @@ export class RoadRenderer {
       active.add(item.id);let car=this.traffic.get(item.id);
       if(!car){
         const kind=normalizeTrafficKind(item.kind),pool=this.trafficPool.get(kind)||[];
-        car=pool.pop();if(!car){car=createTrafficCar(kind);this.addContact(car);const spec=trafficDefinition(kind);car.userData.contactShadow.scale.set(spec.width/2.1,spec.length/4.7,1);}
+        car=pool.pop();if(!car){
+          car=createTrafficCar(kind);this.addContact(car);const spec=trafficDefinition(kind),contact=car.userData.contactShadow;
+          contact.scale.set(spec.width/2.1,spec.length/4.7,1);
+          if(car.userData.trailer){
+            // The contact patch follows each chassis, not a single rigid 16 m slab.
+            contact.scale.y=5.8/4.7;contact.position.z=-5.3;
+            const trailerContact=contact.clone();trailerContact.scale.y=11.4/4.7;trailerContact.position.z=5.65;
+            car.userData.trailer.add(trailerContact);car.userData.trailerContact=trailerContact;
+          }
+        }
         if(car.userData.paint && car.userData.category!=='special')car.userData.paint.color.set(['#d5d4ce','#294f6a','#697b87','#ae8e58','#3f6050','#8d342c','#dce6e6'][item.color%7||0]);
         resetTrafficMotion(car);this.traffic.set(item.id,car);this.scene.add(car);
       }
@@ -237,6 +246,7 @@ export class RoadRenderer {
       if(car.userData.trailer)car.userData.trailer.rotation.y=trailerYaw(item,distance);
       animateTrafficCar(car,menu?{...item,speed:4,travelDistance:distance}:item,distance,paused?0:dt);
       car.userData.contactShadow.position.y=.025-car.userData.groundY;
+      if(car.userData.trailerContact)car.userData.trailerContact.position.y=.025-car.userData.groundY;
       if(car.userData.brakeMaterial)car.userData.brakeMaterial.emissiveIntensity=item.braking?1.2:.05;
     }
     for(const [id,car]of this.traffic)if(!active.has(id)){this.scene.remove(car);const kind=car.userData.kind;if(!this.trafficPool.has(kind))this.trafficPool.set(kind,[]);this.trafficPool.get(kind).push(car);this.traffic.delete(id);}

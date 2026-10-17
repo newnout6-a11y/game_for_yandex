@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { trafficDefinition } from '../src/traffic-catalog.js';
 
 const kinds = ['sedan', 'hatch', 'suv', 'van'];
+const cabinDatums={sedan:{floor:.43,belt:.92,front:-1.13,seat:-.02},hatch:{floor:.45,belt:.95,front:-.98,seat:.06},suv:{floor:.55,belt:1.105,front:-1.14,seat:.04},van:{floor:.62,belt:1.19,front:-2.10,seat:-1.05}};
 
 for (const kind of kinds) {
   test(`${kind} is an editable Blender asset with a valid optimized game GLB`, async () => {
@@ -33,6 +34,32 @@ for (const kind of kinds) {
     const roofRay=new THREE.Raycaster(new THREE.Vector3(0,spec.height-.30,0),new THREE.Vector3(0,1,0));
     const linerHit=roofRay.intersectObject(cabin)[0];
     assert.ok(linerHit && linerHit.face.normal.y<-.9,'A visible inward-facing headliner must close the cabin roof');
+    const datum=cabinDatums[kind];
+    for(const x of [-.38,.38]){
+      const floorRay=new THREE.Raycaster(new THREE.Vector3(x,datum.floor+.18,datum.front+.37),new THREE.Vector3(0,-1,0));
+      const floorHit=floorRay.intersectObject(cabin)[0];
+      assert.ok(floorHit && Math.abs(floorHit.point.y-datum.floor)<.05,'Footwells need a true floor, not a view down to the road');
+      const firewallRay=new THREE.Raycaster(new THREE.Vector3(x,datum.floor+.18,datum.front+.37),new THREE.Vector3(0,0,-1));
+      const firewallHit=firewallRay.intersectObject(cabin)[0];
+      assert.ok(firewallHit && firewallHit.distance<.40,'Forward footwell must close before the front tires/engine bay');
+    }
+    const steering=scene.getObjectByName('steering_wheel'),stalk=scene.getObjectByName('indicator_stalk');
+    assert.ok(steering && !steering.isMesh && stalk && !stalk.isMesh,'Runtime needs real steering and signal control pivots');
+    const wheelAxis=new THREE.Vector3(0,0,1).applyQuaternion(steering.getWorldQuaternion(new THREE.Quaternion()));
+    assert.ok(wheelAxis.z>.8 && wheelAxis.y>.1,'Steering local XY is its wheel plane; +Z must point toward the driver');
+    for(const side of ['l','r']){
+      const shoulder=scene.getObjectByName('driver_shoulder_'+side),elbow=scene.getObjectByName('driver_elbow_'+side),hand=scene.getObjectByName('driver_hand_'+side),grip=scene.getObjectByName('grip_'+side);
+      assert.ok(shoulder && elbow?.parent===shoulder && hand?.parent===elbow && grip?.parent===steering,'Two-bone driver hierarchy must survive GLB export');
+      for(const node of [shoulder,elbow,hand,grip,steering,stalk])assert.ok(node.scale.distanceTo(new THREE.Vector3(1,1,1))<.00001,'IK control empties cannot have baked scale');
+      assert.ok(Math.abs(elbow.position.x)+Math.abs(elbow.position.z)<.00001 && elbow.position.y>.2,'Upper arm local +Y ends at its elbow');
+      assert.ok(Math.abs(hand.position.x)+Math.abs(hand.position.z)<.00001 && hand.position.y>.2,'Forearm local +Y ends at its palm pivot');
+      assert.ok(hand.getWorldPosition(new THREE.Vector3()).distanceTo(grip.getWorldPosition(new THREE.Vector3()))<.00001,'Palm and grip markers must coincide at rest');
+      for(const angle of [-1.2,-.6,0,.6,1.2]){
+        const target=grip.position.clone().applyAxisAngle(new THREE.Vector3(0,0,1),angle).applyMatrix4(steering.matrixWorld);
+        assert.ok(shoulder.getWorldPosition(new THREE.Vector3()).distanceTo(target)<elbow.position.y+hand.position.y-.004,'Driver arms must retain grip across the full visual steering range');
+      }
+      if(side==='l')assert.ok(shoulder.getWorldPosition(new THREE.Vector3()).distanceTo(stalk.getWorldPosition(new THREE.Vector3()))<elbow.position.y+hand.position.y-.004,'Left hand must be able to reach its indicator stalk');
+    }
     const glazing=scene.getObjectByName('glass');
     assert.ok(glazing?.material.transparent && glazing.material.opacity>=.1 && glazing.material.opacity<=.3,'Windows must reveal the interior without a transmission pass');
     assert.ok(!glazing.material.transmission,'Mobile cabin glass must not require scene transmission');
@@ -68,6 +95,15 @@ for (const kind of kinds) {
       assert.ok(wheel && !wheel.isMesh && wheel.children.length === 3, `Missing rotating pivot ${name}`);
       assert.ok(Math.abs(wheel.position.y - spec.wheelRadius - .015) < .001);
       assert.ok(name.includes('_f') ? wheel.position.z < 0 : wheel.position.z > 0);
+      for(const dy of [spec.wheelRadius*.75,spec.wheelRadius*.90]){
+        const ray=new THREE.Raycaster(new THREE.Vector3(0,wheel.position.y+dy,wheel.position.z),new THREE.Vector3(Math.sign(wheel.position.x),0,0));
+        const wallHit=ray.intersectObject(cabin)[0],tireHit=ray.intersectObject(wheel,true)[0];
+        assert.ok(wallHit && tireHit && wallHit.distance<tireHit.distance,'A closed inward wheel tub must hide the tire from the passenger cell');
+      }
+      const eye=new THREE.Vector3(0,datum.belt-.08,datum.seat),tread=new THREE.Vector3(wheel.position.x,wheel.position.y+spec.wheelRadius*.90,wheel.position.z);
+      const insideRay=new THREE.Raycaster(eye,tread.clone().sub(eye).normalize());
+      const insideHit=insideRay.intersectObject(cabin)[0];
+      assert.ok(insideHit && insideHit.distance<eye.distanceTo(tread),'Occupants must see a cabin surface before any wheel tread');
       const metal = wheel.children.find(child => child.material?.name === 'wheel_metal');
       const tire = wheel.children.find(child => child.material?.name === 'rubber');
       assert.ok(metal?.geometry.attributes.color, 'Rim and brake steel need their baked vertex-metal shades');
@@ -100,7 +136,7 @@ for (const kind of kinds) {
         assert.ok(attribute.array.every(Number.isFinite), `${kind} has non-finite vertex data`);
       }
     });
-    assert.equal(draws, 23, `${kind} should batch cabin, mirrors and two indicator sides while retaining the four wheels`);
-    assert.ok(triangles >= 17000 && triangles <= 22500, `${kind}: unexpected ${triangles} triangles`);
+    assert.equal(draws, 30, `${kind} adds only six articulated arm parts and one steering wheel group`);
+    assert.ok(triangles >= 21000 && triangles <= 27000, `${kind}: unexpected ${triangles} triangles`);
   });
 }
