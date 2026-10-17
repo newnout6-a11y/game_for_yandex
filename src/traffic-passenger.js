@@ -82,7 +82,10 @@ function bodyShell(sections,spec,sill) {
     const sideTop=Math.max(shoulder,lower+.055),right=[];
     for(let i=0;i<=5;i++){const a=Math.PI*i/10;right.push([w*Math.sin(a)**.7,sideTop+(top-sideTop)*Math.cos(a)**.8]);}
     for(let i=1;i<=2;i++){const t=i/2;right.push([w*(1+.008*Math.sin(t*Math.PI)),mix(sideTop,lower+.035,t)]);}
-    right.push([w*.975,lower],[w*.72,Math.max(sill,lower-.10)],[w*.57,sill],[0,sill]);
+    const nearFront=Math.abs(z-spec.frontWheel)<radius+.10;
+    const sweptInner=spec.width*.5-spec.wheelWidth*.43-(spec.wheel*Math.sin(.6)+spec.wheelWidth*.53*Math.cos(.6)+.065);
+    const trayHalf=nearFront?Math.min(w*.57,sweptInner):w*.57;
+    right.push([w*.975,lower],[w*.72,Math.max(sill,lower-.10)],[trayHalf,sill],[0,sill]);
     const ring=[...right,...right.slice(1,-1).reverse().map(([x,y])=>[-x,y])];count=ring.length;
     for(const [x,y]of ring)positions.push(x,y,z);
   }
@@ -91,6 +94,11 @@ function bodyShell(sections,spec,sill) {
     // transparent windows. Keep the shoulder/doors and the structural floor.
     const inCabin=rings[row]>=spec.cabinFront+.044 && rings[row+1]<=spec.cabinRear-.074;
     if(inCabin && (i<3 || i>=count-3))continue;
+    // These four hidden underside strips formerly spanned directly across
+    // the tire volume. The Blender-authored hollow wheel house replaces them;
+    // all visible side, hood, lip and outer arch faces retain their shape.
+    const inWheelHouse=[spec.frontWheel,spec.rearWheel].some(z=>rings[row+1]>=z-radius-.10 && rings[row]<=z+radius+.10);
+    if(inWheelHouse && [8,9,count-10,count-9].includes(i))continue;
     const a=row*count+i,b=row*count+(i+1)%count,c=b+count,d=a+count;indices.push(a,d,b,b,d,c);
   }
   for(const [row,reverse]of [[0,false],[rings.length-1,true]]){
@@ -302,12 +310,8 @@ function arch(group, sections, p, radius, side, wheelZ, wide) {
     const a=mix(start,Math.PI-start,side>0?1-v:v),z=wheelZ+Math.cos(a)*r;
     return [side*(profileAt(sections,z)[0]/2+.005-u*.065),y+Math.sin(a)*r,z];
   },1,24));
-  // Inner liner sits behind the wheel. The outside sheet metal has a true
-  // semicircular opening; no black decal is painted over a solid body side.
-  const well=new T.Mesh(new T.CircleGeometry(r,20,start,Math.PI-2*start),trim);
-  well.rotation.y=side*Math.PI/2;
-  well.position.set(side*(p.bodyWidth/2-p.wheelWidth*.72),y,wheelZ);
-  group.add(well);
+  // The final Blender model authors a closed, swept-clearance wheel house.
+  // A flat disc behind the neutral wheel would intersect its steered rim.
 }
 
 function buildWheel(radius,width,style) {
@@ -513,7 +517,7 @@ export function buildPassengerVehicle(kind, definition=trafficDefinition(kind)) 
   if(!Object.hasOwn(PROPORTIONS,kind)) throw new Error(`Unsupported passenger vehicle: ${kind}`);
   const p=PROPORTIONS[kind], g=new T.Group(), l=definition.length/2;
   const sections=bodyProfiles(kind,l-.018,p);
-  const shellSpec={length:definition.length-.036,width:p.bodyWidth,wheel:definition.wheelRadius,frontWheel:p.frontWheel,rearWheel:p.rearWheel,cabinFront:p.cabinFront,cabinRear:p.cabinRear};
+  const shellSpec={length:definition.length-.036,width:p.bodyWidth,wheel:definition.wheelRadius,wheelWidth:p.wheelWidth,frontWheel:p.frontWheel,rearWheel:p.rearWheel,cabinFront:p.cabinFront,cabinRear:p.cabinRear};
   addMesh(g,basePaint,bodyShell(sections,shellSpec,p.sill));
   const roofRows=roofProfiles(kind,p,definition.height),skin=greenhouse(roofRows,p);
   addMesh(g,basePaint,glazedCabinGeometry(skin,p,kind));

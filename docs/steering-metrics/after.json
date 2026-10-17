@@ -16,7 +16,7 @@
       "pixels": 1296000,
       "drawCallsIncludeShadows": true,
       "drawCalls": 253,
-      "triangles": 358558,
+      "triangles": 358814,
       "geometries": 156,
       "textures": 19,
       "context": {
@@ -44,9 +44,9 @@
       "pixels": 740610,
       "drawCallsIncludeShadows": true,
       "drawCalls": 253,
-      "triangles": 358558,
-      "geometries": 150,
-      "textures": 18,
+      "triangles": 358814,
+      "geometries": 156,
+      "textures": 19,
       "context": {
         "antialias": true,
         "preserveDrawingBuffer": false

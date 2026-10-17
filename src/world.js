@@ -175,6 +175,24 @@ export class RoadRenderer {
     if(this.canvas.width!==size.width||this.canvas.height!==size.height)this.renderer.setSize(size.width,size.height,false);
     this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.needsRender=true;
   }
+  recycleTraffic(id,car) {
+    this.scene.remove(car);
+    const kind=car.userData.kind;
+    if(!this.trafficPool.has(kind))this.trafficPool.set(kind,[]);
+    this.trafficPool.get(kind).push(car);this.traffic.delete(id);
+  }
+  syncTrafficState(state,menu=false) {
+    // A retry creates a new state and restarts numeric IDs. Never carry an old
+    // model, paint or suspension history into that new run under the same ID.
+    if(menu||this.trafficState===state)return;
+    for(const [id,car]of this.traffic)this.recycleTraffic(id,car);
+    this.trafficState=state;
+  }
+  trafficForItem(id,kind) {
+    const car=this.traffic.get(id);
+    if(car&&car.userData.kind!==kind){this.recycleTraffic(id,car);return undefined;}
+    return car;
+  }
   render(state,{menu=false,dt=0,paused=false}={}) {
     if(!this.loaded)return;
     if(menu&&this.reducedMotion&&!this.needsRender&&this.wasMenu)return;
@@ -222,12 +240,13 @@ export class RoadRenderer {
     this.flightEffects.update(menu ? { phase:'menu', altitude:0, thrusterPower:0, distance } : state, paused ? 0 : dt, this.time);
     this.player.visible=state.invincible<=0||Math.floor(this.time*9)%2===0||menu;
     const spin=distance/.34;for(const wheel of this.player.userData.wheels){wheel.rotation.x=spin;if(wheel.name==='wheel_fl'||wheel.name==='wheel_fr')wheel.rotation.y=-(state.steerAngle||0);}
+    this.syncTrafficState(state,menu);
     const active=new Set();
     const traffic=menu?[{id:'m1',lane:0,z:45,color:2,kind:'suv'},{id:'m2',lane:2,z:76,color:3,kind:'van'},{id:'m3',lane:1,z:120,color:0,kind:'sedan'}]:state.traffic;
     for(const item of traffic){
-      active.add(item.id);let car=this.traffic.get(item.id);
+      active.add(item.id);const kind=normalizeTrafficKind(item.kind);let car=this.trafficForItem(item.id,kind);
       if(!car){
-        const kind=normalizeTrafficKind(item.kind),pool=this.trafficPool.get(kind)||[];
+        const pool=this.trafficPool.get(kind)||[];
         car=pool.pop();if(!car){
           car=createTrafficCar(kind);this.addContact(car);const spec=trafficDefinition(kind),contact=car.userData.contactShadow;
           contact.scale.set(spec.width/2.1,spec.length/4.7,1);
@@ -249,7 +268,7 @@ export class RoadRenderer {
       if(car.userData.trailerContact)car.userData.trailerContact.position.y=.025-car.userData.groundY;
       if(car.userData.brakeMaterial)car.userData.brakeMaterial.emissiveIntensity=item.braking?1.2:.05;
     }
-    for(const [id,car]of this.traffic)if(!active.has(id)){this.scene.remove(car);const kind=car.userData.kind;if(!this.trafficPool.has(kind))this.trafficPool.set(kind,[]);this.trafficPool.get(kind).push(car);this.traffic.delete(id);}
+    for(const [id,car]of this.traffic)if(!active.has(id))this.recycleTraffic(id,car);
     const pickIds=new Set();
     for(const item of menu?[]:state.pickups){
       pickIds.add(item.id);let mesh=this.pickups.get(item.id);

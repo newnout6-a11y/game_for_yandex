@@ -385,22 +385,31 @@ def refine_visible_cabin(kind, spec, root, palette):
     # Continuous structural floor reaches the inside of every door sill and
     # bulkhead. Real inner tubs and a firewall hide the *outside* wheel wells
     # without placing any opaque backing in the glazed cabin.
-    ibox('Continuous sealed cabin floor',(0,1.18,(front+.17+rear-.075)/2),(width-.09,.11,rear-front-.245),charcoal,.008)
+    liner_parent=bpy.data.objects.new('front_liner_enclosure',None);bpy.context.collection.objects.link(liner_parent);liner_parent.parent=parent
+    liner_parent['liner_revision']=3
+    center_floor=box('Sealed central cabin floor',(0,1.18,(front+.17+rear-.075)/2),(1.04,.11,rear-front-.245),interior,liner_parent,.008);colorize(center_floor,charcoal)
     ibox('Front cabin firewall',(0,1.43,front+.24),(width-.10,.56,.095),dash_color,.014)
     ibox('Recessed front footwell toe board',(0,1.27,front+.40),(width-.16,.22,.22),charcoal,.018)
-    axle_z=front+(1.22 if kind=='semi' else 1.20); axle_y=spec['wheelRadius']+.012
+    axle_z=front+(1.22 if kind=='semi' else 1.20);axle_y=spec['wheelRadius']+.012
+    # Raised side floor is a *hollow thin shell*, not a filled half-cylinder.
+    # The cavity has room for the actual yawed wheel plus full body suspension.
+    # Upper surface stays connected to the central floor and door sill.
+    inner_radius=spec['wheelRadius']+.27;outer_radius=inner_radius+.045
     for side in [-1,1]:
-        inner=side*(half-.40);outer=side*(half-.025);radius=spec['wheelRadius']+.115
-        points=[]
-        for x in [inner,outer]:
-            for i in range(17):
-                a=i*math.pi/16;points.append((x,axle_y+math.sin(a)*radius,axle_z+math.cos(a)*radius))
-        faces=[(i,i+1,i+18,i+17) for i in range(16)]
-        faces.extend([tuple(reversed(range(17))),tuple(range(17,34)),(0,17,33,16)])
-        tub=mesh_part('Sealed inner commercial wheel tub',points,faces,interior,parent,.006)
+        inner=side*.50;outer=side*(half-.025);points=[];count=40
+        for i in range(count+1):
+            z=front+.17+(rear-front-.245)*i/count;dz=z-axle_z
+            low=max(1.125,axle_y+math.sqrt(max(0,inner_radius**2-dz**2)))
+            high=max(1.235,axle_y+math.sqrt(max(0,outer_radius**2-dz**2)))
+            points.extend([(inner,1.125,z),(outer,low,z),(outer,high,z),(inner,1.235,z)])
+        faces=[]
+        for i in range(count):
+            for j in range(4):faces.append((4*i+j,4*i+(j+1)%4,4*(i+1)+(j+1)%4,4*(i+1)+j))
+        faces.extend([(3,2,1,0),tuple(range(count*4,count*4+4))])
+        tub=mesh_part('Hollow swept-clearance wheel-well floor',points,faces,interior,liner_parent)
         bm=bmesh.new();bm.from_mesh(tub.data);bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces));bm.to_mesh(tub.data);bm.free();colorize(tub,charcoal)
-        ibox('Wheel tub to floor sealed joint',(side*(half-.18),1.145,axle_z),(.30,.18,1.25),charcoal,.018)
-        ibox('Inner door sill',(side*(half-.074),1.24,(front+.32+rear-.13)/2),(.115,.20,rear-front-.45),dash_color,.012)
+        tub['liner_revision']=3
+        sill=box('Sealed raised inner door sill',(side*(half-.074),1.36,(front+.32+rear-.13)/2),(.115,.20,rear-front-.45),interior,liner_parent,.012);colorize(sill,dash_color)
     ibox('Inner rear bulkhead',(0,2.02,rear-.155),(width-.24,1.57,.035),ceiling,.004)
     ibox('Cabin headliner',(0,height-.145,(front+.4+rear-.16)/2),(width-.25,.035,rear-front-.56),ceiling,.008)
     ibox('Sculpted truck dashboard',(0,1.71,front+.45),(width-.25,.32,.38),dash_color,.07)
@@ -657,6 +666,7 @@ def batch_for_export(root):
     for ob in descendants(root):
         if ob.type=='MESH' and not ob.parent.name.startswith('wheel_'):
             ob.data.transform(ob.matrix_basis); ob.matrix_basis=Matrix.Identity(4); ob.data.update()
+            if ob.parent.name=='front_liner_enclosure':ob.name='sealed_front_wheel_liners';ob['liner_revision']=3
     bpy.ops.object.select_all(action='DESELECT')
     for ob in descendants(root):ob.select_set(True)
 

@@ -265,6 +265,101 @@ def cabin_tint(obj, color):
     return obj
 
 
+def hollow_front_wheel_clearance(kind, root, collection, floor, inside, front, back, mat):
+    """Actual hollow liners, not a filled box crossing the unsprung road wheels.
+
+    Model the wheel's swept volume in the sprung cab's local frame.  The body
+    pivot and XYZ rotation order match createTrafficCar(); the extra envelope
+    deliberately covers more pitch/roll than normal road targets.  Cutting the
+    floor, sill and footwell as well as the old tub is essential: a raised cover
+    on an uncut flat floor would still intersect the tire underneath.
+    """
+    fire=kind=='firetruck'; radius=.5 if fire else .45; half=.15 if fire else .14
+    axle_z=-3.09 if fire else -2.53; track=1.0 if fire else .92
+    pivot=Vector((0,.62,(axle_z+((1.61+2.91)/2 if fire else 1.99))/2))
+    cabin_parts=[o for o in collection.objects if o.type=='MESH' and o.parent==root and mat in o.data.materials[:]]
+    clearance_parts=[o for o in collection.objects if o.type=='MESH' and o.parent==root and
+      not any('glass' in material.name or material.name in ['body','fixed_rescue_red'] for material in o.data.materials)]
+    def apply_modifiers(obj):
+        bpy.context.view_layer.objects.active=obj
+        for modifier in list(obj.modifiers):
+            if modifier.type=='BEVEL' and modifier.width==0: obj.modifiers.remove(modifier)
+            else: bpy.ops.object.modifier_apply(modifier=modifier.name)
+    def hull(name,side,margin):
+        points=[]; center=Vector((side*track,radius+.004,axle_z))
+        for pitch in [-.05,0,.05]:
+            for roll in [-.06,0,.06]:
+                inverse=(Matrix.Rotation(pitch,3,'X')@Matrix.Rotation(roll,3,'Z')).transposed()
+                for step in range(-6,7):
+                    yaw=Matrix.Rotation(step*.1,3,'Y')
+                    for x in [-half*1.05-margin,half*1.05+margin]:
+                        for i in range(32):
+                            a=i*math.tau/32
+                            local=Vector((x,(radius+margin)*math.cos(a),(radius+margin)*math.sin(a)))
+                            points.append(cv(pivot+inverse@(center+yaw@local-pivot)))
+        bm=bmesh.new()
+        for p in points: bm.verts.new(p)
+        result=bmesh.ops.convex_hull(bm,input=list(bm.verts),use_existing_faces=False)
+        unused=[v for v in bm.verts if not v.link_faces]
+        if unused:bmesh.ops.delete(bm,geom=unused,context='VERTS')
+        bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))
+        mesh=bpy.data.meshes.new(name); bm.to_mesh(mesh); bm.free(); mesh.update()
+        obj=bpy.data.objects.new(name,mesh); collection.objects.link(obj); obj.parent=root
+        return obj
+    def boolean(obj,cutter,operation):
+        if operation=='DIFFERENCE':
+            a=[obj.matrix_world@Vector(p) for p in obj.bound_box]
+            b=[cutter.matrix_world@Vector(p) for p in cutter.bound_box]
+            if any(max(p[i] for p in a)<min(p[i] for p in b) or min(p[i] for p in a)>max(p[i] for p in b) for i in range(3)): return
+        modifier=obj.modifiers.new('Real swept wheel cavity','BOOLEAN'); modifier.operation=operation
+        modifier.solver='EXACT'; modifier.object=cutter
+        bpy.context.view_layer.objects.active=obj; bpy.ops.object.modifier_apply(modifier=modifier.name)
+    for obj in cabin_parts: apply_modifiers(obj)
+    # The imported authoring block-in keeps split normal vertices per face.
+    # Weld coincident geometric seams before a solid Boolean, otherwise an
+    # apparently closed axle can be mistaken for disconnected open triangles.
+    for obj in clearance_parts:
+        if obj.get('source_stage'):
+            weld=obj.modifiers.new('Weld manufactured seams','WELD'); weld.merge_threshold=.000001
+            bpy.context.view_layer.objects.active=obj; bpy.ops.object.modifier_apply(modifier=weld.name)
+            bpy.ops.object.select_all(action='DESELECT'); obj.select_set(True)
+            bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.separate(type='LOOSE'); bpy.ops.object.mode_set(mode='OBJECT')
+    clearance_parts=[o for o in collection.objects if o.type=='MESH' and o.parent==root and
+      not any('glass' in material.name or material.name in ['body','fixed_rescue_red'] for material in o.data.materials)]
+    bpy.context.view_layer.update()
+    for side in [-1,1]:
+        cutter=hull('Wheel clearance construction volume',side,.026)
+        cabin_cutter=hull('Floor seam inside liner wall',side,.044)
+        # Build the liner directly from the clearance hull surface.  An
+        # outward solidified vault has no coincident Boolean inner/outer caps.
+        liner=bpy.data.objects.new('Hollow swept front wheel liner',cutter.data.copy())
+        collection.objects.link(liner); liner.parent=root; liner.data.materials.append(mat)
+        liner_front=min(front,axle_z-radius*1.7)
+        bm=bmesh.new(); bm.from_mesh(liner.data)
+        half_width=(inside+.40)/2
+        for point,normal in [((half_width,0,0),(1,0,0)),((-half_width,0,0),(-1,0,0)),
+          ((0,floor-.065,0),(0,-1,0)),((0,0,liner_front-.02),(0,0,-1)),((0,0,back+.02),(0,0,1))]:
+            bmesh.ops.bisect_plane(bm,geom=list(bm.verts)+list(bm.edges)+list(bm.faces),
+              plane_co=cv(point),plane_no=cv(normal),clear_outer=True,clear_inner=False,dist=.000001)
+        bm.to_mesh(liner.data); bm.free(); liner.data.update()
+        solid=liner.modifiers.new('Manufactured hollow liner thickness','SOLIDIFY'); solid.thickness=.030; solid.offset=1
+        apply_modifiers(liner)
+        cabin_tint(liner,(.035,.045,.052)); liner['construction']='Hollow shell outside unsprung swept tire envelope'
+        for polygon in liner.data.polygons: polygon.use_smooth=False
+        # Cut all lower cabin pieces.  Boolean also leaves a real closed rim
+        # where the floor meets the liner; no camera-dependent concealment.
+        # The original rigid axle, damper and outer arch are sprung as well.
+        # Their real surfaces need the same wheel travel space, not just the
+        # cabin floor.  This shortens the old axle ends inside the wheel well
+        # and sculpts the arch rather than masking an intersecting rim.
+        for obj in clearance_parts:
+            boolean(obj,cabin_cutter if obj in cabin_parts else cutter,'DIFFERENCE')
+        bpy.data.objects.remove(cutter,do_unlink=True)
+        bpy.data.objects.remove(cabin_cutter,do_unlink=True)
+    root['frontWheelClearance']={'steer':.6,'pitch':.05,'roll':.06,'margin':.026,'hollow':True}
+
+
 def authored_cab_interior(kind, root, collection):
     # Every interior finish shares one vertex-colored material and one runtime draw.
     mat=bpy.data.materials.new('special_cabin_finish'); mat.use_nodes=True; mat.use_backface_culling=True
@@ -280,7 +375,6 @@ def authored_cab_interior(kind, root, collection):
     part('Closed front footwell bulkhead',(0,floor+.31,front+(.12 if fire else .18)),(inside+.13,.64,.10),charcoal,.025)
     for side in [-1,1]:
         part('Continuous inner sill',(side*(inside/2+.035),floor+.19,(front+back)/2),(.10,.42,back-front+.035),lining,.025)
-        part('Closed inner wheel tub',(side*(inside/2-.045),floor+.09,-3.09 if fire else -2.53),(.28,.28,1.02 if fire else .94),charcoal,.075)
     root['sealedCabFloor']=True
     rear_lining=part('Rear cab lining',(0,(top+floor)/2,back+.015),(inside,top-floor,.055),lining,.012)
     for vertex in rear_lining.data.vertices:
@@ -316,6 +410,7 @@ def authored_cab_interior(kind, root, collection):
         part('Cab air vent',(x,dash_y+.025,dash_z+.228),(.16,.055,.012),(.008,.012,.016),.009)
     part('Center console',(0,floor+.30,dash_z+.63),(.23,.43,.54),charcoal,.035)
     part('Gear selector',(0,floor+.57,dash_z+.60),(.07,.16,.07),(.10,.14,.15),.018)
+    hollow_front_wheel_clearance(kind,root,collection,floor,inside,front,back,mat)
     authored_driver(kind,root,collection,floor,mat)
     # Original rectangular mirror housings with a genuinely inset rearward pane.
     mirror=wheel_material('traffic_mirror_surface',(.64,.70,.74),1,.055)
