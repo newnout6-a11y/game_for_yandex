@@ -243,31 +243,69 @@ def cabin_ring(name,center,radius,tube,normal,color,segments=24):
             faces.append((a,b,((i+1)%segments)*6+(j+1)%6,i*6+(j+1)%6))
     return cabin_tint(model_mesh(name,verts,faces,'cabin_interior',smooth=True),color)
 
+def wheel_cavity_spec(kind,spec,z):
+    """Conservative steering + body-load envelope in the authored body frame."""
+    wheels=SOURCE['vehicles'][kind]['wheels'];wheel_x=abs(wheels['wheel_fr'][0]);radius=spec['wheelRadius']
+    front=z<0;span=abs(wheels['wheel_rr'][2]-wheels['wheel_fr'][2])
+    # Front wheels steer through ±.6. Body pitch/roll may independently reach
+    # ±.05/±.06 around the real axle-midpoint suspension pivot.
+    inward=radius*math.sin(.6)+WHEEL_WIDTHS[kind]*.53*math.cos(.6)+.055 if front else WHEEL_WIDTHS[kind]*.60+.022
+    inner=wheel_x-inward
+    clearance=span*.5*math.sin(.05)+wheel_x*math.sin(.06)+.030 if front else .047
+    return dict(inner=inner,outer=CABINS[kind]['body']*.5-.025,radius=radius+clearance,cy=radius+.015,z=z,front=front)
+
 def author_cabin_enclosure(kind,spec):
     """A closed passenger cell, with actual wheel-house domes below the glass."""
     p=CABINS[kind];floor=p['floor'];front=p['front']+.06;rear=p['rear']-.025
-    radius=spec['wheelRadius']+.047;cy=spec['wheelRadius']+.015
     axles=sorted(set(value[2] for value in SOURCE['vehicles'][kind]['wheels'].values()))
-    wheel_x=abs(SOURCE['vehicles'][kind]['wheels']['wheel_fr'][0])
-    inner=wheel_x-WHEEL_WIDTHS[kind]*.60-.022;outer=p['body']*.5-.025
-    start=math.asin(max(-.95,min(.95,(floor-cy)/radius)));extent=radius*math.cos(start)
-    cuts=sorted(set([front,rear]+[max(front,min(rear,z+sign*extent)) for z in axles for sign in [-1,1]]))
-    for index,(z0,z1) in enumerate(zip(cuts,cuts[1:])):
-        mid=(z0+z1)*.5
-        half_width=inner+.009 if any(abs(mid-z)<extent for z in axles) else p['width']*.46
-        cabin_box('Notched carpet floor section '+str(index),(0,floor-.028,mid),(half_width*2,.065,z1-z0+.008),(.028,.034,.041),.003)
+    # The floor and wall panels are genuinely carved by the same cavity that
+    # generates the inner tub. This avoids square floor or firewall remnants
+    # cutting through the steered tire while keeping a watertight cabin.
+    cabin_box('Notched carpet floor',(0,floor-.028,(front+rear)*.5),(p['width']*.92,.065,rear-front+.008),(.028,.034,.041),.003)
     cabin_box('Sealed forward footwell firewall',(0,(floor+p['belt'])*.5,p['front']+.105),(p['width']*.91,p['belt']-floor+.10,.055),(.040,.048,.058),.012)
     cabin_box('Rear cabin floor closure',(0,(floor+p['belt'])*.5,rear-.015),(p['width']*.91,p['belt']-floor+.10,.055),(.040,.048,.058),.012)
     for side in [-1,1]:
         for axle_index,z in enumerate(axles):
+            cavity=wheel_cavity_spec(kind,spec,z);inner=cavity['inner'];outer=cavity['outer'];radius=cavity['radius'];cy=cavity['cy']
+            start=math.asin(max(-.95,min(.95,(floor-.072-cy)/radius)))
             # A real inward cap and a curved outer wall leave the tire cavity
             # open toward the road while closing it toward occupants.
             angles=[start+(math.pi-2*start)*i/20 for i in range(21)]
             vertices=[(side*x,cy+math.sin(a)*radius,z+math.cos(a)*radius) for x in [inner,outer] for a in angles]
             n=len(angles);faces=[(i,n+i,n+i+1,i+1) for i in range(n-1)]+[tuple(range(n))]
             if side<0:faces=[tuple(reversed(face)) for face in faces]
-            cabin_tint(model_mesh('Inner wheel-house tub '+str(side)+' '+str(axle_index),vertices,faces,'cabin_interior',smooth=True),(.035,.043,.052))
+            tub=cabin_tint(model_mesh('Inner wheel-house tub '+str(side)+' '+str(axle_index),vertices,faces,'cabin_interior',smooth=True),(.035,.043,.052))
+            # Occupants see the inner surface; the wheel cavity needs the
+            # opposite manufactured surface too, not a backface-culled hole.
+            wall=tub.modifiers.new('Three millimeter formed wheel-house wall','SOLIDIFY')
+            wall.thickness=.003;wall.offset=-1;wall.use_even_offset=True;wall.use_quality_normals=True
         cabin_box('Lower sill inner seal '+str(side),(side*p['width']*.449,floor+.08,(front+rear)*.5),(.09,.19,rear-front),(.04,.048,.058),.012)
+    ROOT_OBJECT['front_tub_clearance']=wheel_cavity_spec(kind,spec,axles[0])
+
+def carve_cabin_wheel_cavities(kind,spec):
+    prefixes=('Notched carpet floor','Sealed forward footwell','Rear cabin floor closure','Lower sill inner seal','Inner door panel')
+    panels=[ob for ob in bpy.context.scene.objects if ob.type=='MESH' and ob.name.startswith(prefixes)]
+    for panel in panels:
+        bpy.context.view_layer.objects.active=panel
+        for modifier in list(panel.modifiers):bpy.ops.object.modifier_apply(modifier=modifier.name)
+    for z in sorted(set(value[2] for value in SOURCE['vehicles'][kind]['wheels'].values())):
+        cavity=wheel_cavity_spec(kind,spec,z);inner=cavity['inner'];radius=cavity['radius'];cy=cavity['cy']
+        for side in [-1,1]:
+            # A closed 64-sided cutter gives the floor-to-tub joint an actual
+            # curved aperture; it is never an opaque patch over the tire.
+            vertices=[];segments=64
+            for x in [side*inner,side*(CABINS[kind]['body']*.5+.6)]:
+                for i in range(segments):
+                    a=i*math.tau/segments;vertices.append((x,cy+math.sin(a)*radius,z+math.cos(a)*radius))
+            faces=[(i,(i+1)%segments,(i+1)%segments+segments,i+segments) for i in range(segments)]
+            faces += [tuple(reversed(range(segments))),tuple(segments+i for i in range(segments))]
+            if side>0:faces=[tuple(reversed(f)) for f in faces]
+            cutter=model_mesh('Temporary exact wheel cavity cutter',vertices,faces,'cabin_interior')
+            for panel in panels:
+                bpy.context.view_layer.objects.active=panel
+                modifier=panel.modifiers.new('True wheel-house swept opening','BOOLEAN');modifier.operation='DIFFERENCE';modifier.solver='EXACT';modifier.object=cutter
+                bpy.ops.object.modifier_apply(modifier=modifier.name)
+            bpy.data.objects.remove(cutter,do_unlink=True)
 
 GAME_TO_BLENDER=Matrix(((1,0,0),(0,0,-1),(0,1,0)))
 
@@ -548,6 +586,7 @@ def author_cabin(kind,spec):
         cabin_box('Inner door panel '+str(side),(side*w*.453,(belt+floor)*.5,(front+rear)*.5),(.068,belt-floor+.05,rear-front-.10),inset,.024)
         cabin_box('Door arm rest '+str(side),(side*w*.423,belt-.18,p['seat_z']-.03),(.09,.06,.42),upholstery,.025)
         cabin_box('Inner door pull '+str(side),(side*w*.419,belt-.11,p['seat_z']-.13),(.019,.035,.12),(.30,.32,.34),.006)
+    carve_cabin_wheel_cavities(kind,spec)
     def seat(x,z,width,index):
         sy=p['seat'];top=p['back']
         cabin_box('Seat '+index+' cushion',(x,sy,z),(width,.145,.46),upholstery,.055)

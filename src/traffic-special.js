@@ -53,11 +53,11 @@ function cap(g, material, radius, depth, position, axis = 'z', segments = 16) {
 
 // A station loft with rolled shoulders and true wheel openings. The lower edge
 // rises around each tire, rather than placing a black disc on a solid box.
-function hull(g, material, sections, wheelZs, radius, bottom, openRoofFrom = null) {
+function hull(g, material, sections, wheelZs, radius, bottom, openRoofFrom = null, frontClearance = false) {
   const first = sections[0][0], last = sections.at(-1)[0];
   const stations = new Set(Array.from({ length: 19 }, (_, i) => mix(first, last, i / 18)));
   for (const z of wheelZs) for (let i = 0; i <= 12; i++) {
-    const at = z + Math.cos(i * Math.PI / 12) * radius * 1.12;
+    const at = z + Math.cos(i * Math.PI / 12) * radius * (frontClearance ? 1.60 : 1.12);
     if (at > first && at < last) stations.add(at);
   }
   if (openRoofFrom !== null) stations.add(openRoofFrom);
@@ -67,13 +67,13 @@ function hull(g, material, sections, wheelZs, radius, bottom, openRoofFrom = nul
     const [width, shoulder, top] = profileAt(sections, z), w = width * .5;
     let edge = bottom;
     for (const wheelZ of wheelZs) {
-      const dz = z - wheelZ, arch = radius * 1.12;
+      const dz = z - wheelZ, arch = radius * (frontClearance ? 1.60 : 1.12);
       if (Math.abs(dz) < arch) edge = Math.max(edge, radius + .004 + Math.sqrt(arch * arch - dz * dz));
     }
     const s = Math.max(shoulder, edge + .055);
     const right = [[0, top], [w * .72, top - .018],
       [w * .95, s + .035], [w, s], [w, edge + .07], [w * .975, edge],
-      [w * .68, edge], [w * .61, bottom], [0, bottom]];
+      [w * (frontClearance ? .36 : .68), edge], [w * (frontClearance ? .32 : .61), bottom], [0, bottom]];
     const ring = [...right, ...right.slice(1, -1).reverse().map(([x, y]) => [-x, y])];
     count = ring.length;
     for (const [x, y] of ring) positions.push(x, y, z);
@@ -90,14 +90,14 @@ function hull(g, material, sections, wheelZs, radius, bottom, openRoofFrom = nul
   }
   g.add(new T.Mesh(geometry(positions, indices), material));
 }
-function arch(g, material, x, z, radius, y, side, start = -.23) {
+function arch(g, material, x, z, radius, y, side, start = -.23, liner = true) {
   const end = Math.PI - start;
   g.add(new T.Mesh(surface((u, v) => {
     const angle = mix(start, end, side === 1 ? v : 1 - v), r = radius + u * .075;
     return [side * (x + Math.sin(u * Math.PI) * .035), y + Math.sin(angle) * r, z + Math.cos(angle) * r];
   }, 2, 18), material));
   // Dark arch liner is a curved vault, leaving the hub and chassis unobstructed.
-  g.add(new T.Mesh(surface((u, v) => {
+  if (liner) g.add(new T.Mesh(surface((u, v) => {
     const angle = mix(start, end, side === 1 ? v : 1 - v);
     return [side * (x - .26 * u), y + Math.sin(angle) * radius, z + Math.cos(angle) * radius];
   }, 1, 16), trim));
@@ -159,7 +159,7 @@ function openedCabShell(roof, front, back, apertures) {
 }
 function cab(g, options) {
   const { width, front, back, roofFront, roofBack, height, belt, lowerSections, frontWheel, radius, material, crew } = options;
-  hull(g, material, lowerSections, [frontWheel], radius, .64, front + .04);
+  hull(g, material, lowerSections, [frontWheel], radius, .64, front + .04, true);
   const roof = linearCabinSurface([[front, belt + .015], [roofFront - .07, height - .10],
     [roofFront + .12, height], [roofBack - .14, height - .01], [roofBack + .015, height - .055],
     [back, height - .18]], width * .96, belt);
@@ -215,7 +215,7 @@ function cab(g, options) {
       return [mix(p[0], side * w * .475, u), mix(p[1], shoulder + .035, u), z];
     }, 1, 20), material));
     // Inset reflective mirror assemblies are authored natively in Blender.
-    arch(g, material, width * .5 + .012, frontWheel, radius * 1.12, radius + .004, side);
+    arch(g, material, width * .5 + .012, frontWheel, radius * 1.60, radius + .004, side, -.23, false);
   }
   g.add(new T.Mesh(openedCabShell(roof, front, back, apertures), material));
   // Separate wipers lie on the swept front glazing, not across the roof.

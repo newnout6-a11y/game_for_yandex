@@ -26,7 +26,7 @@ for (const kind of ['boxtruck', 'semi']) {
       }
     });
     assert.equal(wheels.length, spec.axles * 2);
-    assert.equal(meshes, kind === 'boxtruck' ? 25 : 37);
+    assert.equal(meshes, kind === 'boxtruck' ? 26 : 38);
     assert(triangles < (kind === 'boxtruck' ? 32000 : 49000));
     assert(bounds.min.y >= 0 && bounds.min.y < .013);
     assert(bounds.min.x >= -spec.width / 2 && bounds.max.x <= spec.width / 2);
@@ -168,12 +168,78 @@ for (const kind of ['boxtruck', 'semi']) {
       assert.equal(hit.object.material.name,'cabin_interior',`${label} must meet a liner before an outside wheel or road`);
     };
     for(const x of [-.82,-.25,.25,.82]) for(const z of [.30,.70,1.20,1.72,2.08]) {
-      probe([x,1.30,front+z],[0,-1,0],'Sealed floor');
+      probe([x,1.50,front+z],[0,-1,0],'Sealed floor');
     }
     for(const side of [-1,1]) {
       probe([side*.80,1.65,front+1.2],[side*.2,-1,0],'Wheel-well interior');
       probe([side*.80,1.42,front+.90],[side,0,0],'Inner door liner');
     }
     probe([0,1.44,front+.70],[0,0,-1],'Front firewall');
+    // The raised side shell must blend into the central floor rather than
+    // create an open vertical seam at the arch crown.
+    const liner=root.getObjectByName('sealed_front_wheel_liners');
+    const floorHeight=(x,z)=>{
+      ray.set(new T.Vector3(x,2,z),new T.Vector3(0,-1,0));
+      const hit=ray.intersectObject(liner,false)[0];
+      assert(hit,'Floor join must remain physically closed');
+      return hit.point.y;
+    };
+    for(const side of [-1,1])for(const offset of [-.1,0,.1]) {
+      const z=front+(kind==='semi'?1.22:1.20)+offset;
+      assert(Math.abs(floorHeight(side*.525,z)-floorHeight(side*.495,z))<.015,
+        'Arch crown must join central floor without an exposed step seam');
+    }
+  });
+}
+
+// Conservative geometric proof, not neutral-pose silhouettes: every actual
+// tire/rim triangle lies inside its measured pivot-centred sphere. Rotating
+// about steering Y or rolling X preserves that enclosure for every angle.
+// Testing actual liner triangles outside that sphere therefore covers the
+// complete steering ±.6 and spin sweep, including phases between samples.
+import { TRAFFIC_KINDS, installTrafficTemplates, createTrafficCar } from '../src/traffic.js';
+const runtimeHeavyReady = (async () => {
+  const models = Object.fromEntries(await Promise.all(TRAFFIC_KINDS.map(async kind => [kind, await loadHeavy(kind)])));
+  installTrafficTemplates(models);
+})();
+for (const kind of ['boxtruck','semi']) {
+  test(`${kind}: actual closed liner triangles clear all steered/spun wheels across continuous suspension envelope`, async t => {
+    await runtimeHeavyReady;
+    const car=createTrafficCar(kind), body=car.userData.bodyRig;
+    const liner=car.getObjectByName('sealed_front_wheel_liners');
+    assert(liner?.isMesh && liner.parent===body, 'Named physical liner batch must follow the real runtime body rig');
+    assert.equal(liner.userData.liner_revision,3);
+    car.updateMatrixWorld(true);
+    const toBody=new T.Matrix4().multiplyMatrices(body.matrixWorld.clone().invert(),liner.matrixWorld);
+    const pos=liner.geometry.attributes.position,idx=liner.geometry.index;
+    const triangles=[];
+    for(let i=0;i<(idx?.count??pos.count);i+=3){
+      const vertices=[0,1,2].map(j=>new T.Vector3().fromBufferAttribute(pos,idx?idx.getX(i+j):i+j).applyMatrix4(toBody));
+      triangles.push(new T.Triangle(...vertices));
+    }
+    const linerMinY=Math.min(...triangles.flatMap(triangle=>[triangle.a.y,triangle.b.y,triangle.c.y]));
+    const closest=new T.Vector3(),sample=new T.Vector3(),steps=32;
+    for(const name of ['wheel_fl','wheel_fr']){
+      const wheel=car.getObjectByName(name),center=wheel.getWorldPosition(new T.Vector3());
+      let radius=0;
+      wheel.traverse(mesh=>{if(!mesh.isMesh)return;const p=mesh.geometry.attributes.position;for(let i=0;i<p.count;i++){
+        sample.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld);radius=Math.max(radius,sample.distanceTo(center));
+      }});
+      const orbit=center.distanceTo(body.getWorldPosition(new T.Vector3()));
+      let minDistance=Infinity;
+      for(let p=0;p<=steps;p++)for(let r=0;r<=steps;r++){
+        body.rotation.set(-.05+.10*p/steps,0,-.06+.12*r/steps);body.updateMatrixWorld(true);
+        sample.copy(center);body.worldToLocal(sample);
+        assert(sample.y<linerMinY, 'Wheel centre must be outside/below the closed liner volume');
+        for(const triangle of triangles){triangle.closestPointToPoint(sample,closest);minDistance=Math.min(minDistance,closest.distanceTo(sample));}
+      }
+      // Distance to a triangle is 1-Lipschitz. Bound centre motion from each
+      // arbitrary pitch/roll to its nearest sample using the actual orbit.
+      const interpolationBound=orbit*(.10/steps+.12/steps)/2;
+      const continuousClearance=minDistance-radius-interpolationBound;
+      t.diagnostic(`${name}: continuous all-angle wheel/liner clearance ${continuousClearance.toFixed(5)}m`);
+      assert(continuousClearance>.005, `${name}: opaque liner must clear every steering/spin pose, gap=${continuousClearance.toFixed(5)}m`);
+      body.rotation.set(0,0,0);car.updateMatrixWorld(true);
+    }
   });
 }
