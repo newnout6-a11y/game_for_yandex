@@ -1,9 +1,10 @@
 import { trafficDefinition } from './traffic-catalog.js';
+import { PLAYER_BOUNDS } from './player-spec.js';
 
 // Simulation-only lane planning. Coordinates are lane units (right is positive),
 // z is metres ahead of the player, and all speeds/accelerations are SI units.
 // Keep this module independent of rendering and traffic-physics to avoid cycles.
-const LANE_WIDTH = 3.5, PLAYER_WIDTH = 2.256, PLAYER_LENGTH = 4.7;
+const LANE_WIDTH = 3.5, PLAYER_WIDTH = PLAYER_BOUNDS.width, PLAYER_LENGTH = PLAYER_BOUNDS.length;
 /**
  * Clamps a scalar to inclusive bounds without changing simulation state.
  * @param {number} x - Value to constrain.

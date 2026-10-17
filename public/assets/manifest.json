@@ -105,11 +105,12 @@
   },
   {
     "file": "assets/roadster.glb",
-    "bytes": 1365540,
-    "sha256": "a05926369d0c9ff3bfe1f356ad031f53b84ba052e4f0b3b0c057510933b3fa2e",
+    "bytes": 6505056,
+    "sha256": "9c710df7a868ce6729ffac6696a05dd3361e99a193d3a2130189b46168665d4e",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_roadster.py",
-    "changes": "Original Blender vehicle and detailed EV-inspired underbody authored for this project from user-supplied visual references; no manufacturer CAD or third-party mesh copied."
+    "changes": "Original reference-driven Blender reconstruction of the single-seat Rocket, with authored cabin maps, reconstructed passenger-space vessel, underfloor components, optical lamps, telescopic/folding wing, independent wheel/fan/yoke pivots and nozzle metadata. Visual reference reconstruction, not factory CAD, certified engineering or exact Tesla flight physics. No third-party mesh or photo texture copied.",
+    "editableSource": "art/roadster.blend"
   },
   {
     "file": "assets/cold-gas-smoke-atlas.png",

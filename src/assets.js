@@ -1,6 +1,28 @@
 import * as T from '../public/vendor/three.js';
 import { TRAFFIC_KINDS } from './traffic-catalog.js';
 
+/**
+ * Apply the device's existing anisotropic sampling budget to embedded model maps.
+ * glTF owns color-space and mip/filter semantics; those stay unchanged. Shared
+ * material textures are visited once, with no new texture or per-frame work.
+ * @param {T.Object3D} model - Loaded glTF scene containing ordinary PBR materials.
+ * @param {number} anisotropy - Renderer-supported quality cap, normally 4 or 8.
+ * @returns {number} Number of unique authored textures updated.
+ */
+export function tuneModelTextureSampling(model, anisotropy) {
+  const seen = new Set(), limit = Math.max(1, Number.isFinite(anisotropy) ? anisotropy : 1);
+  model.traverse(node => {
+    if (!node.isMesh) return;
+    for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+      for (const value of Object.values(material || {})) {
+        if (!value?.isTexture || seen.has(value)) continue;
+        seen.add(value); value.anisotropy = limit; value.needsUpdate = true;
+      }
+    }
+  });
+  return seen.size;
+}
+
 // PMREM's normal 256px cube budget needs only a 1024×512 panorama. Reuse the
 // original visible sky, but don't accidentally quadruple the reflection target
 // just because its background texture is 2048px wide.
@@ -71,6 +93,7 @@ export async function loadAssets(onProgress = () => {}, { anisotropy = 4 } = {})
       texture('grass_diff.jpg', true),
       ...[0, 1, 2].map(i => texture('fir-' + i + '.png', true)),
     ]);
+    tuneModelTextureSampling(car.scene, anisotropy);
     for (const map of [asphalt, asphaltNormal, ground, grass]) map.wrapS = map.wrapT = T.RepeatWrapping;
     return { car: car.scene, traffic: Object.fromEntries(trafficEntries), asphalt, asphaltNormal, ground, grass, trees };
   } finally { draco.dispose(); }

@@ -1,10 +1,15 @@
 import { chromium } from 'playwright';
 import { once } from 'node:events';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import { startServer } from './serve.mjs';
 const out = process.env.FLIGHT_QA_OUT || 'output/flight-roll-qa'; await mkdir(out, { recursive: true });
-const server = startServer({ port: 0, root: process.cwd() }); await once(server, 'listening');
+const root = path.resolve(process.env.FLIGHT_QA_ROOT || process.cwd());
+const playerBytes = await readFile(path.join(root,'public/assets/roadster.glb'));
+const playerSha256 = createHash('sha256').update(playerBytes).digest('hex');
+const server = startServer({ port: 0, root }); await once(server, 'listening');
 const browser = await chromium.launch({ ...(process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : { channel: 'chrome' }), headless: true,
   args: process.env.SOFTWARE_WEBGL ? ['--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader'] : [] });
 const results = [];
@@ -12,6 +17,8 @@ try {
   for (const [name, viewport] of [['desktop', { width: 1280, height: 720 }], ['mobile', { width: 390, height: 844 }]].filter(([name]) => !process.env.FLIGHT_QA_PROFILE || process.env.FLIGHT_QA_PROFILE === name)) {
     const mobile = name === 'mobile';
     const page = await browser.newPage({ viewport, deviceScaleFactor: mobile ? 2 : 1, ...(mobile ? { isMobile: true, hasTouch: true } : {}) });
+    // Fix one exact authoring candidate across all profiles while a later export may be running.
+    await page.route('**/public/assets/roadster.glb',route=>route.fulfill({body:playerBytes,contentType:'model/gltf-binary'}));
     const errors = [], consoleErrors = [];
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => { if (m.type() === 'error' && /WebGL|THREE|shader/i.test(m.text())) consoleErrors.push(m.text()); });
@@ -91,17 +98,17 @@ try {
       await page.screenshot({ path: `${out}/${name}-${label}.png` }); console.log(name, label, JSON.stringify(data)); return data;
     };
     /**
-     * Hold or release gas, flight or right roll through real UI input handlers.
+     * Hold or release gas, flight, boost or right roll through real UI input handlers.
      * Mobile uses one independent pointer ID per action; desktop uses W, F or E.
-     * @param {string} action - One of 'gas', 'flight' or 'roll'.
+     * @param {string} action - One of 'gas', 'flight', 'boost' or 'roll'.
      * @param {boolean} down - Whether to press rather than release the control.
      */
     const key = async (action, down) => {
       if (mobile) {
-        const ids = { gas: ['gasBtn', 1], flight: ['flightBtn', 2], roll: ['rollRightBtn', 3] };
+        const ids = { gas: ['gasBtn', 1], flight: ['flightBtn', 2], roll: ['rollRightBtn', 3], boost: ['boostBtn', 4] };
         const [id, pointerId] = ids[action];
         await page.locator('#' + id).dispatchEvent(down ? 'pointerdown' : 'pointerup', { pointerId, pointerType: 'touch' });
-      } else await page.keyboard[down ? 'down' : 'up']({ gas: 'KeyW', flight: 'KeyF', roll: 'KeyE' }[action]);
+      } else await page.keyboard[down ? 'down' : 'up']({ gas: 'KeyW', flight: 'KeyF', roll: 'KeyE', boost: 'Space' }[action]);
     };
     const ground = await capture('ground');
     await key('gas', true); await key('flight', true); await advance(1.6);
@@ -125,6 +132,19 @@ try {
     await advance(.8); const descent = await capture('descent'); assert.ok(descent.thrusterPower > .3);
     await advance(1.3); const flare = await capture('flare'); assert.ok(flare.thrusterPower > .55); assert.ok(flare.altitude < .3);
     await advance(.8); const landed = await capture('landed'); assert.equal(landed.altitude, 0); assert.ok(landed.cooldown > 0);
+    let boost;
+    if (process.env.CAPTURE_ROCKET_BOOST) {
+      await key('boost', true); await advance(.35);
+      assert.equal(await page.evaluate(() => window.__s.boosting), true);
+      await page.evaluate(() => {
+        const w=window.__w,c=w.camera;
+        window.__boostCamera={p:c.position.clone(),q:c.quaternion.clone()};
+        c.position.set(4.6,2.2,7.8);c.lookAt(w.player.position.x,.65,0);
+      });
+      boost=await capture('boost-inspection');
+      await page.evaluate(() => {const c=window.__w.camera;c.position.copy(window.__boostCamera.p);c.quaternion.copy(window.__boostCamera.q);});
+      await key('boost',false);
+    }
     const layouts = [];
     if (mobile) for (const size of [{ width: 844, height: 390 }, { width: 480, height: 320 }, { width: 280, height: 640 }]) {
       await page.setViewportSize(size); await advance(.034);
@@ -133,8 +153,8 @@ try {
       layouts.push({ ...size, ...layout });
     }
     assert.deepEqual(errors, []); assert.deepEqual(consoleErrors, []);
-    results.push({ name, ground, hover, roll, descent, flare, landed, layouts, errors, consoleErrors }); await page.close();
+    results.push({ name, ground, hover, roll, descent, flare, landed, boost, layouts, errors, consoleErrors }); await page.close();
   }
-  await writeFile(`${out}/results.json`, JSON.stringify({ method: 'Controlled-time real keyboard/touch simulation. No forced altitude/roll after the initial safe driving fixture; not an FPS benchmark.', results }, null, 2));
+  await writeFile(`${out}/results.json`, JSON.stringify({ playerSha256, assetLockedToCapturedBytes:true, method: 'Controlled-time real keyboard/touch simulation. No forced altitude/roll after the initial safe driving fixture; not an FPS benchmark.', results }, null, 2));
   console.log('PASS all desktop/touch flight, roll, landing and layouts');
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
