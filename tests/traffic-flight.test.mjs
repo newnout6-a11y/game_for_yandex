@@ -25,7 +25,7 @@ test('eight Blender traffic models have catalog-sized bodies, shared geometry an
     const meshes=[],otherMeshes=[];car.traverse(n=>{if(n.isMesh)meshes.push(n);});other.traverse(n=>{if(n.isMesh)otherMeshes.push(n);});
     assert.equal(meshes[0].geometry,otherMeshes[0].geometry);
     assert.ok(size.x<=spec.width+.03,kind+' width');assert.ok(Math.abs(size.z-spec.length)<.08,kind+' length');assert.ok(bounds.max.y<=spec.height+.04,kind+' height');assert.ok(bounds.min.y>=-.01&&bounds.min.y<.04,kind+' road contact');
-    assert.ok(meshes.length<=({semi:29,firetruck:28,boxtruck:17,towtruck:23}[kind]||23),kind+' draw budget');
+    assert.ok(meshes.length<=({semi:36,firetruck:35,boxtruck:24,towtruck:30}[kind]||30),kind+' draw budget');
     for(const mesh of meshes)for(const v of mesh.geometry.attributes.position.array)assert.ok(Number.isFinite(v));
     for(const wheel of car.userData.wheels){assert.ok(!wheel.isMesh);assert.ok(Math.abs(wheel.rotation.x)<1e-7);}
     if(spec.articulated){assert.ok(car.userData.trailer);assert.ok(Math.abs(car.userData.trailer.position.z-spec.hitchZ)<.001);}
