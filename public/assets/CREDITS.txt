@@ -26,15 +26,27 @@ Download URLs and SHA-256 hashes: manifest.json.
 Renderer: Three.js, MIT license. See ../vendor/THREE-LICENSE.txt.
 Draco decoder: Google, Apache 2.0. See ../vendor/draco/LICENSE.txt.
 
-Roadster reference-inspired concept (roadster.glb)
+Roadster Rocket reference reconstruction (roadster.glb)
 Original project artwork, authored in Blender for this project in October 2026.
-Editable source: art/roadster.blend; reproducible source: scripts/create_roadster.py.
-Based on the user's supplied concept references, not an imported Tesla mesh.
-Includes an original angular silver body, detailed wheels, dark canopy,
-ivory bucket-seat cabin, yoke, active-wing styling and thrust nozzles.
-No Tesla trademarks or badges are included. No manufacturer endorsement implied.
-The short hover mechanic is an arcade interpretation, not a real-world specification.
-Scenic terrain/landmarks are original project code. The current traffic fleet is original Blender project artwork (see fleet section below).
+Editable source: art/roadster.blend. Rebuild: scripts/create_roadster.py,
+scripts/roadster_geometry.py and scripts/roadster_cabin.py.
+Original cabin PNG material/UI sources: art/textures/roadster-cabin-*.png;
+the same maps are embedded in the runtime GLB.
+Reference basis: user-supplied images and Tesla's current public Roadster media
+https://www.tesla.com/roadster
+https://www.youtube.com/watch?v=r5vsHHPVhJg
+No downloaded manufacturer mesh, official photograph or factory CAD is included.
+The selected Rocket variant is single-seat. Exact seat placement, unseen hardware,
+working game dimensions and the wing mechanism are reconstructed, not verified
+factory specifications. Visible geometry, glazing, upholstery, lighting, wing,
+fans, wheels and nozzle apertures are modeled rather than photograph overlays.
+The original screen artwork is illustrative, not a factory UI or live telemetry.
+No manufacturer endorsement is implied. Flight, roll, fan speed and wing control
+remain explicitly arcade/visual interpretations, not manufacturer control laws.
+Technical scope and limitations: docs/ROADSTER_ROCKET_PLAN.md and
+ROADSTER_ROCKET_UPDATE.md. Legacy revision reports describe earlier snapshots.
+Scenic terrain/landmarks are original project code. The current traffic fleet is
+original Blender project artwork (see fleet section below).
 Legacy Ferrari asset remains in this source bundle with its attribution above;
 it is not the active player or traffic model in the current game.
 

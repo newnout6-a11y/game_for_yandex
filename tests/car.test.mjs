@@ -14,7 +14,7 @@ test('artist car binary includes four animated wheels, body and detailed indexed
   assert.ok(gltf.accessors.filter(a=>a.type==='VEC3').reduce((n,a)=>n+a.count,0)>10000);
   assert.ok(gltf.extensionsUsed.includes('KHR_draco_mesh_compression'));
 });
-test('reference Roadster includes editable wheel pivots, cabin and optimized original geometry', async () => {
+test('reference-built Rocket includes editable hardware, cabin and bounded original geometry', async () => {
   const bytes=await readFile('public/assets/roadster.glb');
   assert.equal(bytes.readUInt32LE(0),0x46546c67);
   const gltf=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)));
@@ -28,8 +28,16 @@ test('reference Roadster includes editable wheel pivots, cabin and optimized ori
   }
   for (const name of ['detail_underbody', 'detail_shield', 'thruster_fl', 'thruster_fr', 'thruster_rl', 'thruster_rr'])
     assert.ok(gltf.nodes.some(node=>node.name===name), name);
-  assert.ok(bytes.length<3_000_000,'mobile asset budget');
-  assert.ok(gltf.meshes.length<40,'draw-call budget');
+  // The fidelity revision deliberately increases the single near-player budget.
+  // These are regression ceilings, not a claim of measured phone performance.
+  assert.ok(bytes.length<8_000_000,'documented detailed-player transfer budget');
+  assert.ok(gltf.meshes.length<=80,'documented detailed-player mesh budget');
+  const triangles=gltf.meshes.reduce((sum,mesh)=>sum+mesh.primitives.reduce((count,primitive)=>count+gltf.accessors[primitive.indices].count/3,0),0);
+  assert.ok(triangles<=300_000,'documented detailed-player triangle budget');
+  assert.ok((gltf.images?.length||0)<=12,'bounded embedded material maps');
+  const metadata=gltf.nodes.find(node=>node.extras?.wheelRadius)?.extras;
+  assert.match(metadata.variant,/Rocket.*single-seat/);
+  assert.match(metadata.referenceBasis,/not factory CAD/);
 });
 test('car instances normalize imported scale, retain wheel animation and isolate paint', () => {
   const original=new T.Group();

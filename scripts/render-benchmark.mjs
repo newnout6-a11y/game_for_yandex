@@ -1,18 +1,22 @@
 import { chromium } from 'playwright';
 import { once } from 'node:events';
-import { mkdir,writeFile } from 'node:fs/promises';
+import { mkdir,writeFile,readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { startServer } from './serve.mjs';
 const stage=process.argv[2]||'after';
 const root=process.env.BENCHMARK_ROOT?path.resolve(process.env.BENCHMARK_ROOT):stage==='before'?path.resolve('output/perf-baseline'):process.cwd();
+const playerBytes=await readFile(path.join(root,'public/assets/roadster.glb'));
+const playerSha256=createHash('sha256').update(playerBytes).digest('hex');
 const out=`output/optimization/${stage}`;await mkdir(out,{recursive:true});
 const server=startServer({port:0,root});await once(server,'listening');
-const browser=await chromium.launch({executablePath:process.env.CHROME_BIN||'/usr/bin/chromium',headless:true,args:process.env.SOFTWARE_WEBGL?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
+const browser=await chromium.launch({...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{channel:'chrome'}),headless:true,args:process.env.SOFTWARE_WEBGL?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
 const results=[];
 try{
 const profiles=[['desktop',{width:1440,height:900},1],['mobile',{width:390,height:844},2]];
 for(const [name,size,dpr]of(process.env.CAPTURE_MOTION?profiles.slice(0,1):profiles)){
  const page=await browser.newPage({viewport:size,deviceScaleFactor:dpr,reducedMotion:'reduce',...(name==='mobile'?{isMobile:true,hasTouch:true}:{})});const errors=[],consoleErrors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/WebGL|THREE|shader/i.test(m.text()))consoleErrors.push(m.text());});
+ await page.route('**/public/assets/roadster.glb',route=>route.fulfill({body:playerBytes,contentType:'model/gltf-binary'}));
  await page.clock.install(); page.setDefaultTimeout(120000);
  console.log(stage,name,'loading');await page.goto('http://127.0.0.1:'+server.address().port);await page.waitForFunction(()=>document.querySelector('#loadStatus').hidden,null,{timeout:120000});
  await page.evaluate(async()=>{const{RoadRenderer}=await import('./src/world.js');const{UI}=await import('./src/ui.js');window.__captureHud=UI.prototype.hud;const original=RoadRenderer.prototype.render;window.__originalRender=original;/** Expose live state/world without drawing so deterministic inspection states can be rendered explicitly. */ RoadRenderer.prototype.render=function(s){window.__world=this;window.__state=s;};});
@@ -61,5 +65,5 @@ if(process.env.CAPTURE_MOTION){
  }
  results.push({name,...result,errors,consoleErrors});console.log(name,JSON.stringify({...result,errors,consoleErrors}));if(errors.length||consoleErrors.length)throw new Error('Browser rendering errors: '+JSON.stringify({errors,consoleErrors}));await page.close();
 }
-await writeFile(`${out}/metrics.json`,JSON.stringify({stage,method:'Same deterministic distance=125m scene, viewport and DPR. Real production render surface; no screenshot-only resolution override. Controlled page clock is paused for stable captures; timing fields are intentionally null. This records render counters, not hardware/device FPS. renderer.info counters are reset before the complete render, including shadow submissions.',results},null,2));
+await writeFile(`${out}/metrics.json`,JSON.stringify({stage,playerSha256,playerBytes:playerBytes.length,assetLockedToCapturedBytes:true,method:'Same deterministic distance=125m scene, viewport and DPR. Real production render surface; no screenshot-only resolution override. Controlled page clock is paused for stable captures; timing fields are intentionally null. This records render counters, not hardware/device FPS. renderer.info counters are reset before the complete render, including shadow submissions.',results},null,2));
 }finally{await browser.close();await new Promise(r=>server.close(r));}

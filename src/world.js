@@ -1,5 +1,5 @@
 import * as T from '../public/vendor/three.js';
-import { createCar } from './car.js';
+import { createCar, animatePlayerCar, animatePlayerHardware } from './car.js';
 import { loadAssets, createSkyReflectionSource } from './assets.js';
 import { renderDimensions, textureAnisotropy } from './render-settings.js';
 import { updateChase } from './motion.js';
@@ -82,7 +82,7 @@ export class RoadRenderer {
     this.scene.environment = this.environmentTarget.texture;
     reflectionSource.dispose(); pmrem.dispose();
     this.scene.environmentIntensity = 1.15;
-    this.player = createCar(a.car, '#b9c4cc'); this.scene.add(this.player);
+    this.player = createCar(a.car); this.scene.add(this.player);
     const shadowCanvas = document.createElement('canvas'); shadowCanvas.width = shadowCanvas.height = 128;
     const ctx = shadowCanvas.getContext('2d'), gradient = ctx.createRadialGradient(64,64,5,64,64,64);
     gradient.addColorStop(0,'rgba(0,0,0,.55)'); gradient.addColorStop(.48,'rgba(0,0,0,.2)'); gradient.addColorStop(1,'rgba(0,0,0,0)');
@@ -355,13 +355,13 @@ export class RoadRenderer {
       this.player.position.y+=.58-this.rollPivot.y;
       this.player.position.z-=this.rollPivot.z;
     }
-    this.player.userData.brakeMaterial.emissiveIntensity=state.braking?2:.55;
+    animatePlayerCar(this.player, distance, menu ? 0 : (state.steerAngle || 0), state.braking);
+    animatePlayerHardware(this.player, menu ? { phase: 'menu', speed: 0 } : state, paused ? 0 : dt);
     const contact=this.player.userData.contactShadow;
     contact.position.set(desiredX,.028,0);contact.scale.setScalar(1+altitude*.15);contact.material.opacity=.62-altitude*.1;
     this.player.updateMatrixWorld(true);
     this.flightEffects.update(menu ? { phase:'menu', altitude:0, thrusterPower:0, distance } : state, paused ? 0 : dt, this.time);
     this.player.visible=state.invincible<=0||Math.floor(this.time*9)%2===0||menu;
-    const spin=distance/.34;for(const wheel of this.player.userData.wheels){wheel.rotation.x=spin;if(wheel.name==='wheel_fl'||wheel.name==='wheel_fr')wheel.rotation.y=-(state.steerAngle||0);}
     this.syncTrafficState(state,menu);
     const active=new Set();
     const traffic=menu?[{id:'m1',lane:0,z:45,color:2,kind:'suv'},{id:'m2',lane:2,z:76,color:3,kind:'van'},{id:'m3',lane:1,z:120,color:0,kind:'sedan'}]:state.traffic;

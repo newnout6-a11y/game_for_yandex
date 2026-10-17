@@ -1,7 +1,8 @@
 import { trafficLateral } from './traffic-behavior.js';
 import { trafficDefinition } from './traffic-catalog.js';
+import { PLAYER_BOUNDS } from './player-spec.js';
 
-export const PLAYER_BOUNDS = Object.freeze({ length: 4.7, width: 2.256, height: 1.218 });
+export { PLAYER_BOUNDS };
 export const LANE_WIDTH = 3.5;
 /**
  * Bounds a scalar inclusively, used here for articulation angle limits.
