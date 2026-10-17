@@ -1,0 +1,80 @@
+{
+  "stage": "after",
+  "method": "Same deterministic distance=125m scene, viewport and DPR. Real production render surface; no screenshot-only resolution override. CPU timings exclude WebGL render; Render submission timings include Chromium SwiftShader gl.finish calls but are not GPU timer queries or hardware/device FPS. renderer.info counters are reset before the complete render, including shadow submissions.",
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": [
+        1440,
+        900
+      ],
+      "dpr": 1,
+      "renderSurface": [
+        1440,
+        900
+      ],
+      "pixels": 1296000,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 204,
+      "triangles": 201106,
+      "geometries": 91,
+      "textures": 17,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": false
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": [
+        0.4666666666666667,
+        0.25500000019868213,
+        0.225,
+        0.1483333331843217,
+        0.15333333338300387
+      ],
+      "softwareRenderSubmissionMs": [
+        2.0999999940395355,
+        1.6000000089406967,
+        1.5
+      ],
+      "horizontalOverflow": false,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 2,
+      "renderSurface": [
+        585,
+        1266
+      ],
+      "pixels": 740610,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 204,
+      "triangles": 201106,
+      "geometries": 91,
+      "textures": 17,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": false
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": [
+        0.5416666666666666,
+        0.3366666667163372,
+        0.16333333328366278,
+        0.14333333323399225,
+        0.15666666676600774
+      ],
+      "softwareRenderSubmissionMs": [
+        3.8999999910593033,
+        2.7999999970197678,
+        3.4000000059604645
+      ],
+      "horizontalOverflow": false,
+      "errors": []
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "stage": "fleet-final",
+  "method": "Same deterministic distance=125m scene, viewport and DPR. Real production render surface; no screenshot-only resolution override. Controlled page clock is paused for stable captures; timing fields are intentionally null. This records render counters, not hardware/device FPS. renderer.info counters are reset before the complete render, including shadow submissions.",
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": [
+        1440,
+        900
+      ],
+      "dpr": 1,
+      "renderSurface": [
+        1440,
+        900
+      ],
+      "pixels": 1296000,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 208,
+      "triangles": 264150,
+      "geometries": 120,
+      "textures": 19,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": false
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": null,
+      "softwareRenderSubmissionMs": null,
+      "horizontalOverflow": false,
+      "errors": [],
+      "consoleErrors": []
+    },
+    {
+      "name": "mobile",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 2,
+      "renderSurface": [
+        585,
+        1266
+      ],
+      "pixels": 740610,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 208,
+      "triangles": 264150,
+      "geometries": 120,
+      "textures": 19,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": false
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": null,
+      "softwareRenderSubmissionMs": null,
+      "horizontalOverflow": false,
+      "errors": [],
+      "consoleErrors": []
+    }
+  ]
+}

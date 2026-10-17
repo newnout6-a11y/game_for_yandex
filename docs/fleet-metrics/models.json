@@ -1,0 +1,50 @@
+[
+  {
+    "kind": "sedan",
+    "bytes": 682724,
+    "triangles": 9426,
+    "meshDraws": 19
+  },
+  {
+    "kind": "hatch",
+    "bytes": 674784,
+    "triangles": 9298,
+    "meshDraws": 19
+  },
+  {
+    "kind": "suv",
+    "bytes": 760264,
+    "triangles": 10296,
+    "meshDraws": 19
+  },
+  {
+    "kind": "van",
+    "bytes": 729912,
+    "triangles": 9998,
+    "meshDraws": 19
+  },
+  {
+    "kind": "boxtruck",
+    "bytes": 955340,
+    "triangles": 10672,
+    "meshDraws": 13
+  },
+  {
+    "kind": "semi",
+    "bytes": 1668516,
+    "triangles": 18196,
+    "meshDraws": 23
+  },
+  {
+    "kind": "towtruck",
+    "bytes": 707956,
+    "triangles": 10826,
+    "meshDraws": 19
+  },
+  {
+    "kind": "firetruck",
+    "bytes": 970708,
+    "triangles": 15448,
+    "meshDraws": 24
+  }
+]

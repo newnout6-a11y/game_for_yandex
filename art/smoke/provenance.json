@@ -1,0 +1,17 @@
+{
+  "author": "Original project artwork",
+  "source": "Blender procedural volume; no external media, models, addons or licensed source images",
+  "script": "scripts/create_smoke_atlas.py",
+  "variants": 8,
+  "tile_px": 256,
+  "renderer": "Blender Cycles CPU",
+  "samples": 24,
+  "runtime_asset": "public/assets/cold-gas-smoke-atlas.png",
+  "atlas_px": [
+    1024,
+    512
+  ],
+  "file_bytes": 600548,
+  "sha256": "8fde9701209aad9e90c543f40e755a07b486ad8880feb0101af02c414e7dea26",
+  "alpha": "straight RGBA, transparent edges, pale RGB bleed prevents black halos"
+}

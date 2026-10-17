@@ -102,5 +102,93 @@
     "license": "CC0-1.0",
     "source": "https://polyhaven.com/a/fir_sapling",
     "changes": "Transparent orthographic rendering with daylight; original by Rico Cilliers / Poly Haven."
+  },
+  {
+    "file": "assets/roadster.glb",
+    "bytes": 1365540,
+    "sha256": "a05926369d0c9ff3bfe1f356ad031f53b84ba052e4f0b3b0c057510933b3fa2e",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_roadster.py",
+    "changes": "Original Blender vehicle and detailed EV-inspired underbody authored for this project from user-supplied visual references; no manufacturer CAD or third-party mesh copied."
+  },
+  {
+    "file": "assets/cold-gas-smoke-atlas.png",
+    "bytes": 600548,
+    "sha256": "8fde9701209aad9e90c543f40e755a07b486ad8880feb0101af02c414e7dea26",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_smoke_atlas.py",
+    "changes": "Eight original Blender Cycles volumetric vapor renders packed as a transparent RGBA atlas by scripts/pack_smoke_atlas.py; no third-party smoke bitmap copied."
+  },
+  {
+    "file": "assets/traffic/boxtruck.glb",
+    "bytes": 1320804,
+    "sha256": "7d03d7e7cee4bbc282ddb432b8bcea917cfafa5840b09bbff1b55b2285192ec2",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_heavy.py",
+    "editableSource": "art/traffic/boxtruck.blend",
+    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/firetruck.glb",
+    "bytes": 1977464,
+    "sha256": "341adaa821f7c41797db1d8adcbd990a6bef4a61a3bb9454e1da763ed6259ae2",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_special.py",
+    "editableSource": "art/traffic/firetruck.blend",
+    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/hatch.glb",
+    "bytes": 1230112,
+    "sha256": "bebdc71b8636128ff4eb5dadd2e8a3833442e31590b8e83e63b673a871ebc98b",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_passenger.py",
+    "editableSource": "art/traffic/hatch.blend",
+    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/sedan.glb",
+    "bytes": 1265048,
+    "sha256": "ff3abd507fa70fd1a4be3329834ff8a90d61d83cc6e23094cb76a22aaa34a63e",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_passenger.py",
+    "editableSource": "art/traffic/sedan.blend",
+    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/semi.glb",
+    "bytes": 2125136,
+    "sha256": "684d86092ba3e349a251cf5efa2bedf3eacbaeee1d1d0057121c8cef6d1c0cc8",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_heavy.py",
+    "editableSource": "art/traffic/semi.blend",
+    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/suv.glb",
+    "bytes": 1350104,
+    "sha256": "db4d89796ae95bd2aeb0f80ec1e140780e43ee5fc2e3873c37cbbdf1ba08ce04",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_passenger.py",
+    "editableSource": "art/traffic/suv.blend",
+    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/towtruck.glb",
+    "bytes": 1529436,
+    "sha256": "cf7ff1096aa6c583d5b1bf4393945a8ed715937fe375ec0137724a99b7aa8607",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_special.py",
+    "editableSource": "art/traffic/towtruck.blend",
+    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/van.glb",
+    "bytes": 1330712,
+    "sha256": "5ca75b729a3ceddf790c71507e0a76a39bb28fd34a85a3dac9a0efdcbebf6553",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_passenger.py",
+    "editableSource": "art/traffic/van.blend",
+    "changes": "Original project geometry refined in editable Blender projects with rounded wheel assemblies, genuine window apertures, visible cabins, mirror panes and separate side-specific indicators, then exported as batched runtime GLBs. No third-party vehicle mesh or manufacturer CAD copied."
   }
 ]

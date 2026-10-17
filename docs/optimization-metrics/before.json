@@ -1,0 +1,80 @@
+{
+  "stage": "before",
+  "method": "Same deterministic distance=125m scene, viewport and DPR. Real production render surface; no screenshot-only resolution override. CPU timings exclude WebGL render; Render submission timings include Chromium SwiftShader gl.finish calls but are not GPU timer queries or hardware/device FPS. renderer.info counters are reset before the complete render, including shadow submissions.",
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": [
+        1440,
+        900
+      ],
+      "dpr": 1,
+      "renderSurface": [
+        1280,
+        1280
+      ],
+      "pixels": 1638400,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 313,
+      "triangles": 201090,
+      "geometries": 91,
+      "textures": 21,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": true
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": [
+        1.1850000001490115,
+        0.7683333332339922,
+        0.7033333333830039,
+        0.6683333332339922,
+        0.6683333332339922
+      ],
+      "softwareRenderSubmissionMs": [
+        2.5999999940395355,
+        5.200000002980232,
+        1.5
+      ],
+      "horizontalOverflow": false,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 2,
+      "renderSurface": [
+        929,
+        929
+      ],
+      "pixels": 863041,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 313,
+      "triangles": 201090,
+      "geometries": 91,
+      "textures": 21,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": true
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": [
+        0.9616666667163372,
+        0.8316666667660078,
+        0.7950000000496705,
+        0.7516666665673256,
+        0.7700000000496705
+      ],
+      "softwareRenderSubmissionMs": [
+        2.5,
+        4.4000000059604645,
+        1.5
+      ],
+      "horizontalOverflow": false,
+      "errors": []
+    }
+  ]
+}

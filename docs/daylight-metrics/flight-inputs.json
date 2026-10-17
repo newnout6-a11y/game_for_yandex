@@ -1,0 +1,984 @@
+{
+  "method": "Controlled-time real keyboard/touch simulation. No forced altitude/roll after the initial safe driving fixture; not an FPS benchmark.",
+  "results": [
+    {
+      "name": "desktop",
+      "ground": {
+        "altitude": 0,
+        "verticalSpeed": 0,
+        "thrusterPower": 0,
+        "reserve": 0,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 0,
+        "cooldown": 0,
+        "speed": 26,
+        "throttle": 0,
+        "nitro": 100,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 208,
+        "triangles": 249782,
+        "textures": 18,
+        "particleCount": 0,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "flightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "boostBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "brakeBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        ]
+      },
+      "hover": {
+        "altitude": 3.3,
+        "verticalSpeed": 0,
+        "thrusterPower": 0.6798382356674333,
+        "reserve": 3.2,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 0,
+        "cooldown": 0,
+        "speed": 35.67096334760794,
+        "throttle": 1,
+        "nitro": 75.10000000000105,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 209,
+        "triangles": 250000,
+        "textures": 19,
+        "particleCount": 109,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "flightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "boostBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "brakeBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        ]
+      },
+      "roll": {
+        "altitude": 3.3,
+        "verticalSpeed": 0,
+        "thrusterPower": 0.6200134556639381,
+        "reserve": 3.2,
+        "rolling": true,
+        "rollAngle": 2.987997496926291,
+        "progress": 0.48695652173913,
+        "cooldown": 0,
+        "speed": 38.77187615920427,
+        "throttle": 1,
+        "nitro": 59.26000000000111,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 212,
+        "triangles": 249946,
+        "textures": 19,
+        "particleCount": 52,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "flightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "boostBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "brakeBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        ]
+      },
+      "descent": {
+        "altitude": 1.5704782222222198,
+        "verticalSpeed": -2.2,
+        "thrusterPower": 0.38000024497336493,
+        "reserve": 2.2803333333333327,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 1,
+        "cooldown": 0,
+        "speed": 46.31384579909944,
+        "throttle": 1,
+        "nitro": 59.26000000000111,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 158,
+        "triangles": 231866,
+        "textures": 19,
+        "particleCount": 81,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "flightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "boostBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "brakeBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        ]
+      },
+      "flare": {
+        "altitude": 0.06472248538428925,
+        "verticalSpeed": -0.22,
+        "thrusterPower": 0.8494883218135658,
+        "reserve": 0.9843333333333315,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 1,
+        "cooldown": 0,
+        "speed": 51.88370688292367,
+        "throttle": 1,
+        "nitro": 59.26000000000111,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 134,
+        "triangles": 219918,
+        "textures": 19,
+        "particleCount": 142,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "flightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "boostBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "brakeBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        ]
+      },
+      "landed": {
+        "altitude": 0,
+        "verticalSpeed": 0,
+        "thrusterPower": 0.004877959589138844,
+        "reserve": 0,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 1,
+        "cooldown": 1.4323333333333328,
+        "speed": 52,
+        "throttle": 1,
+        "nitro": 59.26000000000111,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 124,
+        "triangles": 217076,
+        "textures": 19,
+        "particleCount": 91,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "flightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "boostBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          {
+            "id": "brakeBtn",
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          }
+        ]
+      },
+      "layouts": [],
+      "errors": [],
+      "consoleErrors": []
+    },
+    {
+      "name": "mobile",
+      "ground": {
+        "altitude": 0,
+        "verticalSpeed": 0,
+        "thrusterPower": 0,
+        "reserve": 0,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 0,
+        "cooldown": 0,
+        "speed": 26,
+        "throttle": 0,
+        "nitro": 100,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 208,
+        "triangles": 249782,
+        "textures": 18,
+        "particleCount": 0,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 322,
+            "y": 748,
+            "width": 48,
+            "height": 80
+          },
+          {
+            "id": "flightBtn",
+            "x": 210,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 210,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 294,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "boostBtn",
+            "x": 294,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "brakeBtn",
+            "x": 250,
+            "y": 772,
+            "width": 64,
+            "height": 56
+          }
+        ]
+      },
+      "hover": {
+        "altitude": 3.3,
+        "verticalSpeed": 0,
+        "thrusterPower": 0.6798382356674333,
+        "reserve": 3.2,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 0,
+        "cooldown": 0,
+        "speed": 35.67096334760794,
+        "throttle": 1,
+        "nitro": 75.10000000000105,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 209,
+        "triangles": 249922,
+        "textures": 19,
+        "particleCount": 70,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 322,
+            "y": 750,
+            "width": 48,
+            "height": 80
+          },
+          {
+            "id": "flightBtn",
+            "x": 210,
+            "y": 690,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 210,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 294,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "boostBtn",
+            "x": 294,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "brakeBtn",
+            "x": 250,
+            "y": 772,
+            "width": 64,
+            "height": 56
+          }
+        ]
+      },
+      "roll": {
+        "altitude": 3.3,
+        "verticalSpeed": 0,
+        "thrusterPower": 0.6200134556639381,
+        "reserve": 3.2,
+        "rolling": true,
+        "rollAngle": 2.987997496926291,
+        "progress": 0.48695652173913,
+        "cooldown": 0,
+        "speed": 38.77187615920427,
+        "throttle": 1,
+        "nitro": 59.26000000000111,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 209,
+        "triangles": 249268,
+        "textures": 19,
+        "particleCount": 37,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 322,
+            "y": 750,
+            "width": 48,
+            "height": 80
+          },
+          {
+            "id": "flightBtn",
+            "x": 210,
+            "y": 690,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 210,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 294,
+            "y": 633,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "boostBtn",
+            "x": 294,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "brakeBtn",
+            "x": 250,
+            "y": 772,
+            "width": 64,
+            "height": 56
+          }
+        ]
+      },
+      "descent": {
+        "altitude": 1.6056782222222197,
+        "verticalSpeed": -2.2,
+        "thrusterPower": 0.380000311422182,
+        "reserve": 2.2963333333333327,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 1,
+        "cooldown": 0,
+        "speed": 46.23973043345896,
+        "throttle": 1,
+        "nitro": 59.26000000000111,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 159,
+        "triangles": 231922,
+        "textures": 19,
+        "particleCount": 55,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 322,
+            "y": 750,
+            "width": 48,
+            "height": 80
+          },
+          {
+            "id": "flightBtn",
+            "x": 210,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 210,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 294,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "boostBtn",
+            "x": 294,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "brakeBtn",
+            "x": 250,
+            "y": 772,
+            "width": 64,
+            "height": 56
+          }
+        ]
+      },
+      "flare": {
+        "altitude": 0.06472248538428925,
+        "verticalSpeed": -0.22,
+        "thrusterPower": 0.8494883218135658,
+        "reserve": 0.9843333333333315,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 1,
+        "cooldown": 0,
+        "speed": 51.88370688292367,
+        "throttle": 1,
+        "nitro": 59.26000000000111,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 134,
+        "triangles": 219826,
+        "textures": 19,
+        "particleCount": 96,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 322,
+            "y": 750,
+            "width": 48,
+            "height": 80
+          },
+          {
+            "id": "flightBtn",
+            "x": 210,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 210,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 294,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "boostBtn",
+            "x": 294,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "brakeBtn",
+            "x": 250,
+            "y": 772,
+            "width": 64,
+            "height": 56
+          }
+        ]
+      },
+      "landed": {
+        "altitude": 0,
+        "verticalSpeed": 0,
+        "thrusterPower": 0.004877959589138844,
+        "reserve": 0,
+        "rolling": false,
+        "rollAngle": 0,
+        "progress": 1,
+        "cooldown": 1.4323333333333328,
+        "speed": 52,
+        "throttle": 1,
+        "nitro": 59.26000000000111,
+        "phase": "playing",
+        "overflow": false,
+        "calls": 122,
+        "triangles": 216312,
+        "textures": 19,
+        "particleCount": 60,
+        "atlasReady": true,
+        "controls": [
+          {
+            "id": "gasBtn",
+            "x": 322,
+            "y": 750,
+            "width": 48,
+            "height": 80
+          },
+          {
+            "id": "flightBtn",
+            "x": 210,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "rollLeftBtn",
+            "x": 210,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "rollRightBtn",
+            "x": 294,
+            "y": 631,
+            "width": 76,
+            "height": 49
+          },
+          {
+            "id": "boostBtn",
+            "x": 294,
+            "y": 688,
+            "width": 76,
+            "height": 44
+          },
+          {
+            "id": "brakeBtn",
+            "x": 250,
+            "y": 772,
+            "width": 64,
+            "height": 56
+          }
+        ]
+      },
+      "layouts": [
+        {
+          "width": 844,
+          "height": 390,
+          "altitude": 0,
+          "verticalSpeed": 0,
+          "thrusterPower": 0.003018400379660623,
+          "reserve": 0,
+          "rolling": false,
+          "rollAngle": 0,
+          "progress": 1,
+          "cooldown": 1.4003333333333328,
+          "speed": 52,
+          "throttle": 1,
+          "nitro": 59.26000000000111,
+          "phase": "playing",
+          "overflow": false,
+          "calls": 124,
+          "triangles": 216998,
+          "textures": 19,
+          "particleCount": 52,
+          "atlasReady": true,
+          "controls": [
+            {
+              "id": "gasBtn",
+              "x": 758.03125,
+              "y": 300,
+              "width": 48,
+              "height": 80
+            },
+            {
+              "id": "flightBtn",
+              "x": 646.03125,
+              "y": 238,
+              "width": 76,
+              "height": 44
+            },
+            {
+              "id": "rollLeftBtn",
+              "x": 646.03125,
+              "y": 181,
+              "width": 76,
+              "height": 49
+            },
+            {
+              "id": "rollRightBtn",
+              "x": 730.03125,
+              "y": 181,
+              "width": 76,
+              "height": 49
+            },
+            {
+              "id": "boostBtn",
+              "x": 730.03125,
+              "y": 238,
+              "width": 76,
+              "height": 44
+            },
+            {
+              "id": "brakeBtn",
+              "x": 686.03125,
+              "y": 322,
+              "width": 64,
+              "height": 56
+            }
+          ]
+        },
+        {
+          "width": 480,
+          "height": 320,
+          "altitude": 0,
+          "verticalSpeed": 0,
+          "thrusterPower": 0.0018677360247553439,
+          "reserve": 0,
+          "rolling": false,
+          "rollAngle": 0,
+          "progress": 1,
+          "cooldown": 1.3683333333333327,
+          "speed": 52,
+          "throttle": 1,
+          "nitro": 59.26000000000111,
+          "phase": "playing",
+          "overflow": false,
+          "calls": 123,
+          "triangles": 216408,
+          "textures": 19,
+          "particleCount": 48,
+          "atlasReady": true,
+          "controls": [
+            {
+              "id": "gasBtn",
+              "x": 412,
+              "y": 234,
+              "width": 48,
+              "height": 80
+            },
+            {
+              "id": "flightBtn",
+              "x": 300,
+              "y": 188,
+              "width": 76,
+              "height": 44
+            },
+            {
+              "id": "rollLeftBtn",
+              "x": 300,
+              "y": 131,
+              "width": 76,
+              "height": 49
+            },
+            {
+              "id": "rollRightBtn",
+              "x": 384,
+              "y": 131,
+              "width": 76,
+              "height": 49
+            },
+            {
+              "id": "boostBtn",
+              "x": 384,
+              "y": 188,
+              "width": 76,
+              "height": 44
+            },
+            {
+              "id": "brakeBtn",
+              "x": 340,
+              "y": 256,
+              "width": 64,
+              "height": 56
+            }
+          ]
+        },
+        {
+          "width": 280,
+          "height": 640,
+          "altitude": 0,
+          "verticalSpeed": 0,
+          "thrusterPower": 0.00115572403239663,
+          "reserve": 0,
+          "rolling": false,
+          "rollAngle": 0,
+          "progress": 1,
+          "cooldown": 1.3363333333333327,
+          "speed": 52,
+          "throttle": 1,
+          "nitro": 59.26000000000111,
+          "phase": "playing",
+          "overflow": false,
+          "calls": 120,
+          "triangles": 212364,
+          "textures": 19,
+          "particleCount": 42,
+          "atlasReady": true,
+          "controls": [
+            {
+              "id": "gasBtn",
+              "x": 226,
+              "y": 546,
+              "width": 40,
+              "height": 80
+            },
+            {
+              "id": "flightBtn",
+              "x": 130,
+              "y": 484,
+              "width": 66,
+              "height": 44
+            },
+            {
+              "id": "rollLeftBtn",
+              "x": 130,
+              "y": 431,
+              "width": 66,
+              "height": 49
+            },
+            {
+              "id": "rollRightBtn",
+              "x": 200,
+              "y": 431,
+              "width": 66,
+              "height": 49
+            },
+            {
+              "id": "boostBtn",
+              "x": 200,
+              "y": 484,
+              "width": 66,
+              "height": 44
+            },
+            {
+              "id": "brakeBtn",
+              "x": 166,
+              "y": 568,
+              "width": 56,
+              "height": 56
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "consoleErrors": []
+    }
+  ]
+}
