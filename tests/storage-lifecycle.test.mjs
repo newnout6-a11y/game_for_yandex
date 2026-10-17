@@ -2,7 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createStorage, sanitizeSave, STORAGE_KEY } from '../src/storage.js';
 import { createLifecycle } from '../src/lifecycle.js';
-const memory = raw => { let value = raw; return { getItem: () => value, setItem: (key, v) => { assert.equal(key, STORAGE_KEY); value = v; } }; };
+/**
+ * Create a single-value storage double that asserts writes use STORAGE_KEY.
+ * Reads ignore their key; writes replace the captured value for reload tests.
+ * @param {string|null} raw - Initial serialized save, including invalid fixtures.
+ * @returns {object} Minimal mutable getItem/setItem provider.
+ */
+const memory = raw => { let value = raw; return { /** Return the current raw save; unlike real localStorage, this double ignores the requested key. */ getItem: () => value, /** Assert the game save key and replace the captured raw value for subsequent reads. */ setItem: (key, v) => { assert.equal(key, STORAGE_KEY); value = v; } }; };
 test('missing, corrupt and inaccessible storage all fall back safely', () => {
   for (const raw of [null, 'bad json', 'null', '[]']) assert.equal(createStorage(() => memory(raw)).get().best.flow, 0);
   const store = createStorage(() => { throw new Error('blocked'); }); assert.equal(store.finish(120, 100, 'flow'), true); assert.equal(store.get().best.flow, 120);

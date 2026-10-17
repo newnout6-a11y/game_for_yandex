@@ -1,0 +1,46 @@
+{
+  "sedan": {
+    "triangles": 27514,
+    "draw_groups": 31,
+    "game_size": [
+      1.9389584064483643,
+      1.4450000524520874,
+      4.6529998779296875
+    ],
+    "blend": "art/traffic/sedan.blend",
+    "glb": "public/assets/traffic/sedan.glb"
+  },
+  "hatch": {
+    "triangles": 27406,
+    "draw_groups": 31,
+    "game_size": [
+      1.85895836353302,
+      1.5049999952316284,
+      4.078999996185303
+    ],
+    "blend": "art/traffic/hatch.blend",
+    "glb": "public/assets/traffic/hatch.glb"
+  },
+  "suv": {
+    "triangles": 28751,
+    "draw_groups": 31,
+    "game_size": [
+      2.0389585494995117,
+      1.8600694835186005,
+      4.822999954223633
+    ],
+    "blend": "art/traffic/suv.blend",
+    "glb": "public/assets/traffic/suv.glb"
+  },
+  "van": {
+    "triangles": 27826,
+    "draw_groups": 31,
+    "game_size": [
+      2.1689584255218506,
+      2.5409999787807465,
+      5.619000196456909
+    ],
+    "blend": "art/traffic/van.blend",
+    "glb": "public/assets/traffic/van.glb"
+  }
+}

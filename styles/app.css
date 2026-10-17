@@ -63,8 +63,17 @@ kbd { font: var(--text-xs)/var(--line-heading) var(--font-mono); border: var(--s
 #app[data-screen="playing"], #app[data-screen="paused"], #app[data-screen="results"] { height: 100svh; min-height: 0; }
 #app:not([data-screen="menu"]) .scene-shade { opacity: 0; }
 #app:not([data-screen="menu"]) .header-center { display: none; }
-.game-hud { position: absolute; z-index: var(--z-content); inset: var(--header-height) var(--page-gutter) var(--space-6); pointer-events: none; text-shadow: var(--shadow-text); }
-.game-hud::before { content: ""; position: absolute; z-index: -1; top: calc(-1 * var(--header-height)); left: calc(-1 * var(--page-gutter)); right: calc(-1 * var(--page-gutter)); height: var(--hud-shade-height); background: var(--gradient-hud); }
+/* Keep the scene's lighting untouched during a run; contrast belongs to the controls. */
+#app:not([data-screen="menu"]) .topbar { background: var(--color-transparent); }
+#app:not([data-screen="menu"]) .brand { text-shadow: var(--shadow-text); }
+#app:not([data-screen="menu"]) .icon-button { background: color-mix(in srgb, var(--color-event-scrim) 50%, var(--color-transparent)); }
+#app:not([data-screen="menu"]) .icon-button:hover,
+#app:not([data-screen="menu"]) .icon-button:active { background: color-mix(in srgb, var(--color-elevated) 50%, var(--color-transparent)); }
+.game-hud { position: absolute; z-index: var(--z-content); inset: var(--header-height) var(--page-gutter) var(--space-6); pointer-events: none; text-shadow: 0 var(--stroke) var(--space-1) color-mix(in srgb, var(--color-black) 65%, var(--color-transparent)); }
+.game-hud :is(.score-block, .challenge, .nitro-block, .run-hint, .run-toast) { background: color-mix(in srgb, var(--color-event-scrim) 50%, var(--color-transparent)); border-radius: var(--radius-small); box-shadow: 0 0 0 var(--space-2) color-mix(in srgb, var(--color-event-scrim) 50%, var(--color-transparent)); }
+/* The dial stays open to the road; only its compact numeric readout gets backing. */
+.game-hud .speed-block > :is(strong, span) { background: color-mix(in srgb, var(--color-event-scrim) 50%, var(--color-transparent)); border-radius: var(--radius-small); box-shadow: 0 0 0 var(--space-1) color-mix(in srgb, var(--color-event-scrim) 50%, var(--color-transparent)); }
+.game-hud :is(.event-banner, .flight-status) { background: color-mix(in srgb, var(--color-event-scrim) 50%, var(--color-transparent)); }
 .score-block { position: absolute; top: 0; left: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .score-block > strong { font: 600 var(--text-hud-score)/var(--line-heading) var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: var(--tracking-medium); }
 .combo { color: var(--color-warning); font: 700 var(--text-body)/1 var(--font-display); }
@@ -201,3 +210,101 @@ kbd { font: var(--text-xs)/var(--line-heading) var(--font-mono); border: var(--s
   .challenge { top: var(--space-1); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+
+/* Roadster instrument panel: one shared energy reserve for boost and hover. */
+.vehicle-badge { display: inline-flex; align-items: center; gap: var(--space-2); margin: calc(-1 * var(--space-3)) 0 var(--space-6); padding-block: var(--space-2); border-block: var(--stroke) solid var(--color-border); color: var(--color-muted); font: var(--text-micro)/var(--line-heading) var(--font-mono); letter-spacing: var(--tracking-medium); }
+.vehicle-badge svg { width: var(--space-5); height: var(--space-5); color: var(--color-warning); }
+.badge-divider { color: var(--color-warning); padding-inline: var(--space-2); }
+.control-legend { flex-wrap: wrap; row-gap: var(--space-2); }
+.nitro-hint { display: block; margin-top: var(--space-2); font-size: var(--text-micro); color: var(--color-muted); }
+.flight-status { position: absolute; bottom: 0; left: 0; width: 12rem; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--color-event-scrim); border-left: var(--stroke-focus) solid var(--color-border); }
+.flight-status-heading { display: flex; align-items: center; gap: var(--space-2); color: var(--color-muted); font: var(--text-micro)/1 var(--font-mono); letter-spacing: var(--tracking-wide); }
+.flight-status-heading svg { width: var(--space-4); height: var(--space-4); }
+.flight-status-heading kbd { margin-left: auto; font-size: var(--text-micro); }
+.flight-status > strong { font: 600 var(--text-small)/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.flight-hint { color: var(--color-muted); font-size: var(--text-micro); line-height: 1.4; }
+.flight-status[data-mode="flying"], .flight-status[data-mode="ready"] { border-left-color: var(--color-warning); }
+.flight-status[data-mode="flying"] > strong { color: var(--color-warning); font-size: var(--text-large); }
+.flight-status[data-mode="empty"] > strong { color: var(--color-danger); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ability-pair { position: absolute; right: 0; bottom: var(--space-24); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); width: 10rem; }
+.touch-controls .ability-pair button { position: static; min-width: 0; min-height: var(--control-size); padding: var(--space-2); border-radius: var(--radius-small); font-size: var(--text-micro); font-weight: 700; }
+.touch-controls .flight-button { display: flex; align-items: center; justify-content: center; gap: var(--space-1); }
+.flight-button svg { width: var(--space-4); height: var(--space-4); }
+.touch-controls .flight-button[data-mode="ready"], .touch-controls .flight-button[data-mode="flying"] { color: var(--color-warning); border-color: var(--color-warning); }
+.touch-controls button { user-select: none; -webkit-user-select: none; }
+@media (pointer: coarse), (max-width: 600px) {
+  .flight-status { bottom: var(--space-24); width: min(9rem, calc(100% - 11rem)); padding: var(--space-2); gap: var(--space-1); }
+  .flight-status-heading { font-size: var(--text-micro); gap: var(--space-1); }
+  .flight-status-heading kbd { display: none; }
+  .flight-status > strong { font-size: var(--text-micro); }
+  .flight-status[data-mode="flying"] > strong { font-size: var(--text-body); }
+  .flight-hint { font-size: var(--text-micro); }
+  .nitro-hint { display: none; }
+}
+@media (max-width: 360px) {
+  .ability-pair { width: 8.5rem; gap: var(--space-1); }
+  .flight-status { width: calc(100% - 9rem); }
+  .touch-controls .ability-pair button { padding-inline: var(--space-1); }
+  .flight-button svg { display: none; }
+  .vehicle-badge { letter-spacing: 0; }
+}
+@media (max-height: 500px) and (min-width: 601px) {
+  .vehicle-badge { margin: 0 0 var(--space-2); padding-block: var(--space-1); }
+  .flight-status { bottom: var(--space-24); }
+  .nitro-hint { display: none; }
+}
+@media (max-height: 500px) and (min-width: 601px) {
+  .event-banner { width: min(calc(100% - 19rem), var(--event-width)); }
+}
+@media (max-height: 500px) and (max-width: 600px) {
+  :root { --header-height: var(--header-height-landscape); }
+  .game-hud { bottom: max(var(--space-2), env(safe-area-inset-bottom)); }
+  .challenge { top: var(--space-12); }
+  .flight-status { bottom: var(--space-24); padding-block: var(--space-1); }
+  .flight-status .flight-hint { display: none; }
+  .event-banner { top: var(--space-20); padding: var(--space-2); }
+  .event-banner p { display: none; }
+  .event-banner .warning-icon { display: none; }
+  .run-toast { top: 40%; font-size: var(--text-small); }
+}
+
+/* Airborne controls stay in the existing touch cluster, above the pedals. */
+.roll-status { border-top: var(--stroke) solid var(--color-border); padding-top: var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); }
+.roll-label { display: flex; justify-content: space-between; gap: var(--space-1); font: var(--text-micro)/1.2 var(--font-mono); color: var(--color-muted); letter-spacing: var(--tracking-medium); }
+.roll-keys { letter-spacing: 0; white-space: nowrap; }
+.roll-status strong { font: 600 var(--text-micro)/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.roll-status[data-mode="ready"] strong, .roll-status[data-mode="rolling"] strong { color: var(--color-warning); }
+.flight-status[data-mode="rolling"] { border-color: var(--color-warning); }
+.flight-status[data-mode="rolling"] > strong { color: var(--color-warning); font-size: var(--text-large); }
+.flight-telemetry { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1); font: var(--text-micro)/1.2 var(--font-mono); color: var(--color-muted); font-variant-numeric: tabular-nums; }
+.flight-telemetry > span { white-space: nowrap; }
+.touch-controls .roll-button { display: flex; align-items: center; justify-content: center; gap: var(--space-1); font-size: .5625rem; letter-spacing: 0; }
+.roll-button .roll-icon { font: var(--text-large)/1 var(--font-body); }
+.touch-controls .roll-button[aria-disabled="true"] { color: var(--color-subtle); border-style: dashed; cursor: not-allowed; }
+.touch-controls .roll-button[data-mode="ready"] { color: var(--color-warning); border-color: var(--color-warning); }
+.touch-controls .roll-button[data-mode="rolling"] { border-color: var(--color-warning); }
+@media (pointer: coarse), (max-width: 600px) {
+  .roll-keys { display: none; }
+  .roll-status { padding-top: var(--space-1); }
+  .flight-status[data-mode="rolling"] > strong { font-size: var(--text-body); }
+  .touch-controls .roll-button { flex-direction: column; gap: 0; padding-block: var(--space-1); }
+}
+@media (max-height: 500px) {
+  .flight-status .flight-hint, .flight-telemetry { display: none; }
+}
+@media (max-height: 500px) and (max-width: 600px) {
+  :root { --header-height: var(--control-size); }
+  .challenge { top: var(--control-size); }
+  .challenge > div:first-child { margin-bottom: var(--space-1); }
+  .flight-status, .ability-pair { bottom: var(--space-20); }
+  .event-banner { top: calc(var(--space-16) + var(--space-1)); padding: var(--space-1); }
+  .event-banner strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .flight-status-heading, .flight-status .flight-hint, .flight-status .flight-telemetry { display: none; }
+  .flight-status { gap: var(--space-1); }
+  .roll-status { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1); }
+  .roll-status .roll-label { letter-spacing: 0; font-size: .5625rem; }
+  .roll-status strong { white-space: nowrap; }
+}

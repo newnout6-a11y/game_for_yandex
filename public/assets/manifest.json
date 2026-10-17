@@ -102,5 +102,93 @@
     "license": "CC0-1.0",
     "source": "https://polyhaven.com/a/fir_sapling",
     "changes": "Transparent orthographic rendering with daylight; original by Rico Cilliers / Poly Haven."
+  },
+  {
+    "file": "assets/roadster.glb",
+    "bytes": 1365540,
+    "sha256": "a05926369d0c9ff3bfe1f356ad031f53b84ba052e4f0b3b0c057510933b3fa2e",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_roadster.py",
+    "changes": "Original Blender vehicle and detailed EV-inspired underbody authored for this project from user-supplied visual references; no manufacturer CAD or third-party mesh copied."
+  },
+  {
+    "file": "assets/cold-gas-smoke-atlas.png",
+    "bytes": 600548,
+    "sha256": "8fde9701209aad9e90c543f40e755a07b486ad8880feb0101af02c414e7dea26",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_smoke_atlas.py",
+    "changes": "Eight original Blender Cycles volumetric vapor renders packed as a transparent RGBA atlas by scripts/pack_smoke_atlas.py; no third-party smoke bitmap copied."
+  },
+  {
+    "file": "assets/traffic/boxtruck.glb",
+    "bytes": 1686864,
+    "sha256": "41caa6397cf34fa07fbe63d495bd20eb34b71fbfea47a4e7b6c535d38251d55d",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_heavy.py",
+    "editableSource": "art/traffic/boxtruck.blend",
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/firetruck.glb",
+    "bytes": 3033776,
+    "sha256": "1fbc0d06941bd11813d18eb3549299853dbae7f2bc388d75f0c9d4f4792d4e3b",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_special.py",
+    "editableSource": "art/traffic/firetruck.blend",
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/hatch.glb",
+    "bytes": 1450432,
+    "sha256": "cb3c1e9f7661836907bc4680e76d9360a582f138774cb527bb672d83cd6f5365",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_passenger.py",
+    "editableSource": "art/traffic/hatch.blend",
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/sedan.glb",
+    "bytes": 1454376,
+    "sha256": "3f4beba6c4deebd4a7f4058154d9d8b9f1f1f51575741069fc42f73748e0b893",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_passenger.py",
+    "editableSource": "art/traffic/sedan.blend",
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/semi.glb",
+    "bytes": 2486264,
+    "sha256": "8fb05844eca2a350a46cd640d26f080fa970fcdcfe72d3cab2696289fdea4089",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_heavy.py",
+    "editableSource": "art/traffic/semi.blend",
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/suv.glb",
+    "bytes": 1569612,
+    "sha256": "15557ddb1b0faca2d0aa46ed66619a90ec378ef6a2ffb0fe7934dde4dfd7a6ae",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_passenger.py",
+    "editableSource": "art/traffic/suv.blend",
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/towtruck.glb",
+    "bytes": 2499296,
+    "sha256": "cb1c821006c371dd986eabbc70c604c7afd3f2572609ab42167e6b097153b7c0",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_special.py",
+    "editableSource": "art/traffic/towtruck.blend",
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/traffic/van.glb",
+    "bytes": 1524184,
+    "sha256": "407ffc157de6f6693c227f887de1041b91d287f57d6e48b31255675a902320e5",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_traffic_passenger.py",
+    "editableSource": "art/traffic/van.blend",
+    "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
   }
 ]

@@ -14,9 +14,15 @@ try {
   await page.clock.install();await page.goto('http://127.0.0.1:'+server.address().port);
   await page.waitForFunction(()=>document.querySelector('#loadStatus').hidden);
   const now=await page.evaluate(()=>Date.now());await page.clock.pauseAt(now+100);
-  await page.evaluate(async()=>{const{RoadRenderer}=await import('./src/world.js'),render=RoadRenderer.prototype.render;RoadRenderer.prototype.render=function(...args){window.__eventWorld=this;return render.apply(this,args);};});
+  await page.evaluate(async()=>{const{RoadRenderer}=await import('./src/world.js'),render=RoadRenderer.prototype.render;/** Expose the renderer for isolated event fixtures while forwarding live-game render calls unchanged. */ RoadRenderer.prototype.render=function(...args){window.__eventWorld=this;return render.apply(this,args);};});
   await page.locator('#playBtn').click();await page.clock.runFor(1000);
   for(const type of ['roadworks','checkpoint','convoy']){
+    /**
+     * Build a separate seeded event state and render it through production APIs.
+     * Moves obstacles/traffic with the prescribed travelled metres, settles 40 frames
+     * and returns HUD/geometry/brake evidence. It does not award events to the active game.
+     * @param {string} type - Roadworks, checkpoint or convoy fixture to inspect.
+     */
     const result=await page.evaluate(async type=>{
       const{Game}=await import('./src/game.js'),{UI}=await import('./src/ui.js'),{seededRandom}=await import('./src/util.js');
       const game=new Game({random:seededRandom(123)});game.start();const s=game.state;

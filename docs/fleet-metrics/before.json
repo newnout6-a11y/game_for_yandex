@@ -1,0 +1,62 @@
+{
+  "stage": "fleet-before",
+  "method": "Matched deterministic distance=125m scene, viewport and DPR. Production rendering resolution; counters include shadow submissions. Controlled clock paused for stable captures, so timing fields are null, not FPS.",
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": [
+        1440,
+        900
+      ],
+      "dpr": 1,
+      "renderSurface": [
+        1440,
+        900
+      ],
+      "pixels": 1296000,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 208,
+      "triangles": 249782,
+      "geometries": 93,
+      "textures": 18,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": false
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": null,
+      "softwareRenderSubmissionMs": null,
+      "horizontalOverflow": false,
+      "errors": [],
+      "consoleErrors": []
+    },
+    {
+      "name": "mobile",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 2,
+      "renderSurface": [
+        585,
+        1266
+      ],
+      "pixels": 740610,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 208,
+      "triangles": 249782,
+      "geometries": 93,
+      "textures": 18,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": false
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": null,
+      "softwareRenderSubmissionMs": null,
+      "horizontalOverflow": false,
+      "errors": [],
+      "consoleErrors": []
+    }
+  ]
+}

@@ -13,6 +13,13 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
 for (const name of ['index.html', 'src', 'styles', 'public']) await cp(path.join(root, name), path.join(dist, name), { recursive: true });
 const archive = {};
+/**
+ * Recursively add release files to the shared ZIP-entry map.
+ * Reads bytes without modifying files; archive paths always use '/' separators.
+ * @param {string} dir - Filesystem directory to enumerate.
+ * @param {string} [prefix=''] - Relative archive prefix, ending in '/' when nonempty.
+ * @returns {Promise<void>} Resolves after every descendant file has been collected.
+ */
 async function collect(dir, prefix = '') {
   for (const item of await readdir(dir, { withFileTypes: true })) {
     const key = prefix + item.name;

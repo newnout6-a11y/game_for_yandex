@@ -18,10 +18,21 @@ const errors = [], results = [];
 let completed = false;
 const seed = 1792022400000;
 const fixture = new Game({ random: seededRandom(seed) }); fixture.start();
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const browser = await chromium.launch({ ...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{channel:'chrome'}), headless: true });
 let safari;
+/**
+ * Append and print one completed browser-check result.
+ * @param {string} name - Human-readable assertion group that has already passed.
+ */
 const pass = name => { results.push({ name, status: 'PASS' }); console.log('PASS ' + name); };
 
+/**
+ * Open an instrumented page, wait for assets and pause its seeded clock.
+ * Collects script, console, HTTP and external-runtime-request errors globally;
+ * then installs state observation while preserving production rendering.
+ * @param {object} context - Playwright browser context owned by the caller.
+ * @returns {Promise<object>} Loaded page with a controlled clock and observed world.
+ */
 async function setup(context) {
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
@@ -29,7 +40,7 @@ async function setup(context) {
   page.on('response', response => { if (response.status() >= 400) errors.push(response.status() + ' ' + response.url()); });
   page.on('request', request => { const target = new URL(request.url()); if (target.protocol.startsWith('http') && !['127.0.0.1','localhost'].includes(target.hostname)) errors.push('External runtime request: ' + request.url()); });
   await page.clock.install({ time: new Date(seed) });
-  await page.addInitScript(value => { Date.now = () => value; }, seed);
+  await page.addInitScript(value => { /** Return the fixed millisecond seed used by game randomness; new Date still follows the controlled clock. */ Date.now = () => value; }, seed);
   await page.goto(url);
   await page.waitForFunction(() => document.querySelector('#loadStatus').hidden, { timeout: 60000 });
   const readyTime = await page.evaluate(() => new Date().getTime());
@@ -37,13 +48,33 @@ async function setup(context) {
   await observe(page); await frame(page,32);
   return page;
 }
+/**
+ * Wrap the page renderer to expose the live state/world without suppressing draws.
+ * Mutates only this test page's prototype; navigation discards the instrumentation.
+ * @param {object} page - Loaded Playwright page with the production world module.
+ */
 async function observe(page) {
   await page.evaluate(async()=>{
     const {RoadRenderer}=await import('./src/world.js'); const render=RoadRenderer.prototype.render;
-    RoadRenderer.prototype.render=function(state,...rest){window.__driveState=state;window.__testWorld=this;return render.call(this,state,...rest);};
+    /** Expose live state/world references, then forward every original render argument and return value. */ RoadRenderer.prototype.render=function(state,...rest){window.__driveState=state;window.__testWorld=this;return render.call(this,state,...rest);};
   });
 }
+/**
+ * Dispatch one touch-control press/release through the real pointer handler.
+ * Distinct pointer IDs keep simultaneous held controls independently releasable.
+ * @param {object} page - Playwright page.
+ * @param {string} id - Control element ID without '#'.
+ * @param {boolean} down - True for pointerdown, false for pointerup.
+ * @param {number} [pointerId=1] - Synthetic touch identity.
+ */
 async function hold(page,id,down,pointerId=1){await page.locator('#'+id).dispatchEvent(down?'pointerdown':'pointerup',{pointerId,pointerType:'touch'});}
+/**
+ * Require held gas/boost to remain active and drain energy between pickups.
+ * Samples ten 16 ms updates, ignoring reward-caused energy increases, then
+ * advances the remaining duration. Mutates simulation time and throws on failure.
+ * @param {object} page - Observed page with gas and boost already held.
+ * @param {number} ms - Total simulated milliseconds, expected to be at least 160.
+ */
 async function assertBoostDrain(page,ms) {
   let previous=await page.evaluate(()=>({nitro:window.__driveState.nitro,charges:window.__driveState.charges})), spent=false;
   for(let i=0;i<10;i++){
@@ -54,18 +85,54 @@ async function assertBoostDrain(page,ms) {
   }
   assert.ok(spent,'Nitro must drain between pickup rewards');await frame(page,ms-160);
 }
+/**
+ * Advance the controlled browser clock, including real game/input callbacks.
+ * @param {object} page - Page whose clock is installed.
+ * @param {number} ms - Simulated milliseconds, not an FPS or wall-time sample.
+ */
 async function frame(page, ms) { await page.clock.runFor(ms); }
+/**
+ * Assert the app's declared screen equals the requested UI state.
+ * @param {object} page - Playwright page containing #app.
+ * @param {string} expected - Expected data-screen value.
+ */
 async function screen(page, expected) { assert.equal(await page.locator('#app').getAttribute('data-screen'), expected); }
+/**
+ * Write a PNG under the browser-check output directory.
+ * @param {object} page - Playwright page to capture.
+ * @param {string} name - Output basename without extension.
+ * @param {boolean} [fullPage=false] - Capture the whole document instead of viewport.
+ */
 async function screenshot(page, name, fullPage = false) { await page.screenshot({ path: path.join(output, name + '.png'), fullPage }); }
+/**
+ * Exercise default, hover, focus and active states of the primary play button.
+ * Asserts 4.5:1 computed-color contrast and a non-none focus outline, then saves
+ * measurements. This does not model transparency/compositing or all WCAG criteria.
+ * @param {object} page - Menu page; focus and pointer state are changed by the check.
+ */
 async function buttonStates(page) {
   const button = page.locator('#playBtn');
   const states = [];
+  /**
+   * Read current button colors, assert contrast/focus and append measurements.
+   * @param {string} name - State label; 'focus' additionally requires an outline.
+   */
   async function inspect(name) {
     const colors = await button.evaluate(el => {
       const style = getComputedStyle(el);
       return { foreground: style.color, background: style.backgroundColor, outline: style.outlineStyle };
     });
+    /**
+     * Extract the first three channels of a computed rgb()/rgba() color.
+     * @param {string} value - Browser-computed color string, not an arbitrary CSS token.
+     * @returns {number[]} Red, green and blue in 0–255 units; alpha is ignored.
+     */
     const rgb = value => value.match(/[\d.]+/g).slice(0,3).map(Number);
+    /**
+     * Convert computed sRGB channels to WCAG relative luminance.
+     * @param {string} value - Opaque computed rgb()/rgba() color used by this fixture.
+     * @returns {number} Linear-light weighted luminance in the range 0–1.
+     */
     const luminance = value => rgb(value).map(v => { const c = v / 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; }).reduce((sum,v,i) => sum + v * [.2126,.7152,.0722][i], 0);
     const a = luminance(colors.foreground), b = luminance(colors.background);
     const contrast = (Math.max(a,b) + .05) / (Math.min(a,b) + .05);
@@ -81,6 +148,13 @@ async function buttonStates(page) {
   await writeFile(path.join(output, 'button-states.json'), JSON.stringify(states, null, 2));
   pass('primary button default/hover/focus/active contrast and visible focus');
 }
+/**
+ * Run the selected WCAG A/AA axe rules and assert there are no violations.
+ * Temporarily resumes timers required by axe, pauses the clock afterward and
+ * writes the full JSON report; automated checks are not a full accessibility audit.
+ * @param {object} page - Loaded Playwright page to inspect.
+ * @param {string} label - Report filename suffix and pass-result label.
+ */
 async function axe(page, label) {
   // axe uses timers internally; it must run with the virtual clock ticking.
   await page.clock.resume();
@@ -92,6 +166,13 @@ async function axe(page, label) {
   assert.deepEqual(report.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) })), []);
   pass('axe ' + label + ': no violations in selected WCAG rules');
 }
+/**
+ * Estimate player center from red-dominant pixels in the lower WebGL buffer.
+ * This color heuristic assumes the red player fixture and can include other red
+ * pixels; it checks rendered steering movement, not exact geometry bounds.
+ * @param {object} page - Page whose canvas exposes a readable WebGL2 buffer.
+ * @returns {Promise<number>} Mean horizontal CSS-pixel coordinate, or -1 if absent.
+ */
 async function playerX(page) {
   return await page.evaluate(() => {
     const canvas = document.querySelector('canvas');
@@ -106,6 +187,12 @@ async function playerX(page) {
     return count ? total / count / (canvas.width / canvas.clientWidth) : -1;
   });
 }
+/**
+ * Drive toward the nearest ahead traffic using actual held keyboard events.
+ * Uses heading-aware 0.3-second steering prediction, stopping when results appears
+ * or throwing after 220 × 350 ms of controlled time. Held keys remain page state.
+ * @param {object} page - Observed game page; mutates inputs and simulation state.
+ */
 async function waitForCrash(page) {
   await page.keyboard.down('KeyW');
   for (let i = 0; i < 220; i++) {
@@ -121,6 +208,13 @@ async function waitForCrash(page) {
   }
   throw Error('No collision while driving toward traffic after 77 simulated seconds');
 }
+/**
+ * Estimate the red player's CSS-pixel center from a composited screenshot.
+ * Uses the lower image band for WebKit, where direct WebGL pixel reads can differ
+ * from visible output. Fewer than 101 qualifying pixels is treated as no player.
+ * @param {object} page - Playwright page to screenshot without writing a file.
+ * @returns {Promise<number>} Mean horizontal CSS-pixel coordinate, or -1.
+ */
 async function compositedPlayerX(page) {
   const png = await page.screenshot();
   return await page.evaluate(async data => {
@@ -138,12 +232,12 @@ try {
   const loadingContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   await loadingContext.addInitScript(() => {
     window.__readyCalls = 0;
-    window.YaGames = { init: async () => ({ features: { LoadingAPI: { ready: () => window.__readyCalls++ } } }) };
+    window.YaGames = { /** Resolve a loading-only SDK mock used to count ready notifications while an asset is held. */ init: async () => ({ features: { LoadingAPI: { /** Count readiness calls without contacting Yandex. */ ready: () => window.__readyCalls++ } } }) };
   });
   const loadingPage = await loadingContext.newPage();
   let releaseCar;
   const heldCar = new Promise(resolve => { releaseCar = resolve; });
-  await loadingPage.route('**/public/assets/car.glb', async route => { await heldCar; await route.continue(); });
+  await loadingPage.route('**/public/assets/roadster.glb', async route => { await heldCar; await route.continue(); });
   await loadingPage.goto(url);
   await loadingPage.waitForFunction(() => document.querySelector('#playBtn').textContent.includes('Загрузка'));
   assert.equal(await loadingPage.locator('#playBtn').isDisabled(), true);
@@ -229,11 +323,17 @@ try {
   await page.evaluate(async () => {
     const { RoadRenderer } = await import('./src/world.js');
     const original = RoadRenderer.prototype.render;
-    RoadRenderer.prototype.render = function (...args) { window.__testWorld = this; return original.apply(this, args); };
+    /** Refresh the observed renderer instance while preserving the original draw behavior. */ RoadRenderer.prototype.render = function (...args) { window.__testWorld = this; return original.apply(this, args); };
   });
   await frame(page, 32);
   const resources = await page.evaluate(state => {
     const world = window.__testWorld;
+    /**
+     * Render a fresh set of IDs while reusing the cloned simulation fixture.
+     * Mutates distance, two traffic entries and one pickup to exercise recycling;
+     * 0.1-second render updates also age crash particles before resource assertions.
+     * @param {number} index - Unique batch index and 15 m distance multiplier.
+     */
     const renderBatch = index => {
       state.distance = index * 15;
       state.traffic = [0,2].map(lane => ({ id: 'test-car-' + index + '-' + lane, lane, z: 80 + lane * 25, color: lane }));
@@ -243,9 +343,9 @@ try {
     renderBatch(0); world.effect('crash');
     for (let i = 1; i < 15; i++) renderBatch(i);
     const before = world.renderer.info.memory.geometries;
-    const beforeCars=world.traffic.size+world.trafficPool.length,beforePickups=world.pickups.size+world.pickupPool.length;
+    const beforeCars=world.traffic.size+[...world.trafficPool.values()].reduce((sum,pool)=>sum+pool.length,0),beforePickups=world.pickups.size+world.pickupPool.length;
     for (let i = 15; i < 40; i++) renderBatch(i);
-    return { before, after: world.renderer.info.memory.geometries, beforeCars, beforePickups, cars: world.traffic.size + world.trafficPool.length, pickups: world.pickups.size + world.pickupPool.length, particles: world.particles.length };
+    return { before, after: world.renderer.info.memory.geometries, beforeCars, beforePickups, cars: world.traffic.size + [...world.trafficPool.values()].reduce((sum,pool)=>sum+pool.length,0), pickups: world.pickups.size + world.pickupPool.length, particles: world.particles.length };
   }, structuredClone(fixture.state));
   assert.equal(resources.after, resources.before);
   assert.equal(resources.cars,resources.beforeCars);assert.equal(resources.pickups,resources.beforePickups);assert.equal(resources.particles, 0);
@@ -338,10 +438,10 @@ try {
   const platform = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   await platform.addInitScript(() => {
     window.__sdkCalls = []; window.__platformEvents = {};
-    window.YaGames = { init: async () => ({
-      on: (name, callback) => { window.__platformEvents[name] = callback; },
-      features: { LoadingAPI: { ready: () => window.__sdkCalls.push('ready') }, GameplayAPI: { start: () => window.__sdkCalls.push('start'), stop: () => window.__sdkCalls.push('stop') } },
-      adv: { showRewardedVideo: ({ callbacks }) => { window.__adCallbacks = callbacks; }, showFullscreenAdv: ({ callbacks }) => callbacks.onClose(false) },
+    window.YaGames = { /** Resolve the page-local SDK mock with manually driven platform/ad callbacks. */ init: async () => ({
+      /** Store a platform listener by event name for explicit pause/resume dispatch in the test. */ on: (name, callback) => { window.__platformEvents[name] = callback; },
+      features: { LoadingAPI: { /** Record loading-ready notifications for exactly-once assertions. */ ready: () => window.__sdkCalls.push('ready') }, GameplayAPI: { /** Record gameplay-start notifications without calling the external SDK. */ start: () => window.__sdkCalls.push('start'), /** Record gameplay-stop notifications without calling the external SDK. */ stop: () => window.__sdkCalls.push('stop') } },
+      adv: { /** Save rewarded-ad callbacks so skipped and earned rewards can be tested independently. */ showRewardedVideo: ({ callbacks }) => { window.__adCallbacks = callbacks; }, /** Close the fake interstitial immediately with the not-shown flag. */ showFullscreenAdv: ({ callbacks }) => callbacks.onClose(false) },
     }) };
   });
   const sdkPage = await setup(platform);

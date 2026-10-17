@@ -1,0 +1,82 @@
+{
+  "stage": "daylight-after",
+  "method": "Same deterministic distance=125m scene, viewport and DPR. Real production render surface; no screenshot-only resolution override. CPU timings exclude WebGL render; Render submission timings include Chromium SwiftShader gl.finish calls but are not GPU timer queries or hardware/device FPS. renderer.info counters are reset before the complete render, including shadow submissions.",
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": [
+        1440,
+        900
+      ],
+      "dpr": 1,
+      "renderSurface": [
+        1440,
+        900
+      ],
+      "pixels": 1296000,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 208,
+      "triangles": 249782,
+      "geometries": 93,
+      "textures": 18,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": false
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": [
+        0.6050000001986822,
+        0.3,
+        0.17999999995032948,
+        0.17000000004967053,
+        0.1766666665673256
+      ],
+      "softwareRenderSubmissionMs": [
+        2,
+        2.7999999970197678,
+        3.0999999940395355
+      ],
+      "horizontalOverflow": false,
+      "errors": [],
+      "consoleErrors": []
+    },
+    {
+      "name": "mobile",
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 2,
+      "renderSurface": [
+        585,
+        1266
+      ],
+      "pixels": 740610,
+      "drawCallsIncludeShadows": true,
+      "drawCalls": 208,
+      "triangles": 249782,
+      "geometries": 87,
+      "textures": 17,
+      "context": {
+        "antialias": true,
+        "preserveDrawingBuffer": false
+      },
+      "maxAnisotropy": 16,
+      "cpuUpdateMs": [
+        0.5933333332339923,
+        0.2633333332836628,
+        0.2616666667163372,
+        0.16333333328366278,
+        0.16333333353201548
+      ],
+      "softwareRenderSubmissionMs": [
+        2.5999999940395355,
+        2.9000000059604645,
+        2.0999999940395355
+      ],
+      "horizontalOverflow": false,
+      "errors": [],
+      "consoleErrors": []
+    }
+  ]
+}

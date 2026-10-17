@@ -1,0 +1,127 @@
+{
+  "stage": "after",
+  "method": "Individual fitted inspection views under identical studio key/fill and existing sky environment. Not a selectable game camera or FPS measurement.",
+  "records": [
+    {
+      "kind": "sedan",
+      "category": "Легковые",
+      "view": "wheel",
+      "dimensions": {
+        "length": 4.6529998779296875,
+        "width": 1.940000057220459,
+        "height": 1.4450000524520874
+      },
+      "meshes": 19,
+      "triangles": 15762,
+      "drawCalls": 39,
+      "submittedTriangles": 31526,
+      "wheels": 4
+    },
+    {
+      "kind": "hatch",
+      "category": "Легковые",
+      "view": "wheel",
+      "dimensions": {
+        "length": 4.078999996185303,
+        "width": 1.8600000143051147,
+        "height": 1.5049999952316284
+      },
+      "meshes": 19,
+      "triangles": 15282,
+      "drawCalls": 39,
+      "submittedTriangles": 30566,
+      "wheels": 4
+    },
+    {
+      "kind": "suv",
+      "category": "Легковые",
+      "view": "wheel",
+      "dimensions": {
+        "length": 4.822999954223633,
+        "width": 2.0399999618530273,
+        "height": 1.8600694835186005
+      },
+      "meshes": 19,
+      "triangles": 16472,
+      "drawCalls": 39,
+      "submittedTriangles": 32946,
+      "wheels": 4
+    },
+    {
+      "kind": "van",
+      "category": "Малотоннажные",
+      "view": "wheel",
+      "dimensions": {
+        "length": 5.619000196456909,
+        "width": 2.1700000762939453,
+        "height": 2.5409999787807465
+      },
+      "meshes": 19,
+      "triangles": 15726,
+      "drawCalls": 39,
+      "submittedTriangles": 31454,
+      "wheels": 4
+    },
+    {
+      "kind": "boxtruck",
+      "category": "Грузовые",
+      "view": "wheel",
+      "dimensions": {
+        "length": 8.187999725341797,
+        "width": 2.4730000495910645,
+        "height": 3.468000054359436
+      },
+      "meshes": 13,
+      "triangles": 16248,
+      "drawCalls": 27,
+      "submittedTriangles": 32498,
+      "wheels": 4
+    },
+    {
+      "kind": "semi",
+      "category": "Грузовые",
+      "view": "wheel",
+      "dimensions": {
+        "length": 16.38800048828125,
+        "width": 2.493000030517578,
+        "height": 3.9679999947547913
+      },
+      "meshes": 23,
+      "triangles": 33096,
+      "drawCalls": 42,
+      "submittedTriangles": 56506,
+      "wheels": 10
+    },
+    {
+      "kind": "towtruck",
+      "category": "Спецтехника",
+      "view": "wheel",
+      "dimensions": {
+        "length": 7.25,
+        "width": 2.3980000019073486,
+        "height": 2.775999963283539
+      },
+      "meshes": 19,
+      "triangles": 15650,
+      "drawCalls": 38,
+      "submittedTriangles": 30420,
+      "wheels": 4
+    },
+    {
+      "kind": "firetruck",
+      "category": "Спецтехника",
+      "view": "wheel",
+      "dimensions": {
+        "length": 8.600000381469727,
+        "width": 2.49399995803833,
+        "height": 3.216000020503998
+      },
+      "meshes": 24,
+      "triangles": 22684,
+      "drawCalls": 47,
+      "submittedTriangles": 43528,
+      "wheels": 6
+    }
+  ],
+  "errors": []
+}

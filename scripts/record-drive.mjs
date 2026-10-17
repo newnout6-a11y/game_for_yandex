@@ -6,12 +6,12 @@ try {
   const context=await browser.newContext({viewport:{width:1280,height:720},recordVideo:{dir:'output/playwright/video',size:{width:1280,height:720}}});
   const page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  await page.addInitScript(()=>{Date.now=()=>1792022400000;});
+  await page.addInitScript(()=>{/** Use the fixed millisecond seed for repeatable game randomness without replacing the real recording clock. */ Date.now=()=>1792022400000;});
   await page.goto('http://127.0.0.1:4173');
   await page.waitForFunction(()=>document.querySelector('#loadStatus').hidden);
   await page.evaluate(async()=>{
     const {RoadRenderer}=await import('./src/world.js'),render=RoadRenderer.prototype.render;
-    RoadRenderer.prototype.render=function(s,...rest){window.__recordState=s;return render.call(this,s,...rest);};
+    /** Expose the live driving state to the input planner and preserve production rendering. */ RoadRenderer.prototype.render=function(s,...rest){window.__recordState=s;return render.call(this,s,...rest);};
   });
   await page.locator('#playBtn').click();await page.waitForTimeout(600);
   await page.keyboard.down('KeyW');
@@ -19,6 +19,11 @@ try {
   let lastDirection=0;
   while(performance.now()-began<52000){
     if(await page.locator('#app').getAttribute('data-screen')!=='playing')break;
+    /**
+     * Choose keyboard steering/braking from current traffic and event state.
+     * This recording-only heuristic predicts 0.3 seconds ahead and does not mutate
+     * vehicle state; it is not a production autopilot or a collision-safety guarantee.
+     */
     const drive=await page.evaluate(()=>{
       const s=window.__recordState;if(!s)return null;
       let target=Math.round(s.x),brake=false;

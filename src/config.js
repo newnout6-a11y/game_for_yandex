@@ -8,9 +8,9 @@ export const CONFIG = Object.freeze({
 
 // Persisted keys retain compatibility with existing saves; every setting is daylight.
 export const ROUTES = Object.freeze({
-  ring: { name: 'Загородное шоссе', time: '14:20', index: '01', density: .64 },
-  neon: { name: 'Сосновый бор', time: '14:20', index: '02', density: 1 },
-  dawn: { name: 'Открытая дорога', time: '14:20', index: '03', density: .25 },
+  ring: { name: 'Горное озеро', time: '14:20', index: '01', density: .64 },
+  neon: { name: 'Хвойный перевал', time: '14:20', index: '02', density: 1 },
+  dawn: { name: 'Прибрежное шоссе', time: '14:20', index: '03', density: .25 },
 });
 export const DIFFICULTIES = Object.freeze({
   flow: { name: 'Поток', speed: 1, spacing: 1, score: 1 },
