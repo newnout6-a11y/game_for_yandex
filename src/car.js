@@ -118,10 +118,13 @@ export function setPlayerAeroPose(car, deployment) {
 
 /**
  * Animate reference-led aero and fan hardware from arcade driving state.
- * Deployment is rate-limited and fans retain a continuous phase. These are visual
- * game control rules, not Tesla's unpublished wing law or measured rotor RPM.
+ * The flight wing stays raised through descent, then retracts smoothly after
+ * confirmed ground contact. Speed, braking, boost and residual touchdown thrust
+ * cannot keep it raised. Menu/reset returns it to its stowed pose immediately;
+ * zero dt otherwise preserves a paused pose. These are requested game rules,
+ * not Tesla's unpublished aero law or measured rotor RPM.
  * @param {T.Group} car - Prepared player with optional aero/fan pivots.
- * @param {object} state - speed in m/s, altitude in metres, thrust and braking state.
+ * @param {object} state - Speed in m/s, altitude in metres, flying/rolling flags and thrust.
  * @param {number} dt - Nonnegative frame seconds; zero preserves a paused pose.
  * @returns {void} Applies mechanical transforms without spawning meshes or textures.
  */
@@ -129,8 +132,9 @@ export function animatePlayerHardware(car, state, dt) {
   const data = car.userData, step = Math.min(.1, Math.max(0, Number.isFinite(dt) ? dt : 0));
   const speed = Number.isFinite(state.speed) ? Math.max(0, state.speed) : 0;
   const menu = state.phase === 'menu';
-  const target = !menu && ((state.altitude || 0) > .05 || state.thrusterPower > .12 || (state.braking && speed > 18) || speed > 45) ? 1 : 0;
-  const deployment = data.aeroDeployment + Math.max(-step * 1.5, Math.min(step * 1.5, target - data.aeroDeployment));
+  const airborne = Number.isFinite(state.altitude) && state.altitude > 0;
+  const target = !menu && (airborne || state.flying || state.rolling) ? 1 : 0;
+  const deployment = menu ? 0 : data.aeroDeployment + Math.max(-step * 1.5, Math.min(step * 1.5, target - data.aeroDeployment));
   setPlayerAeroPose(car, deployment);
   const demand = menu ? 0 : Math.max(Math.min(1, speed / 45), Math.min(1, state.thrusterPower || 0));
   data.fanPhase = (data.fanPhase + step * demand * 23) % (Math.PI * 2);

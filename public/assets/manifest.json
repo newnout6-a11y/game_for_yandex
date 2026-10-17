@@ -105,8 +105,8 @@
   },
   {
     "file": "assets/roadster.glb",
-    "bytes": 6505056,
-    "sha256": "9c710df7a868ce6729ffac6696a05dd3361e99a193d3a2130189b46168665d4e",
+    "bytes": 6513500,
+    "sha256": "8bd33a39215813787635fb4cad0ba5671e97b257cc12383eb6de1e77a339da69",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_roadster.py",
     "changes": "Original reference-driven Blender reconstruction of the single-seat Rocket, with authored cabin maps, reconstructed passenger-space vessel, underfloor components, optical lamps, telescopic/folding wing, independent wheel/fan/yoke pivots and nozzle metadata. Visual reference reconstruction, not factory CAD, certified engineering or exact Tesla flight physics. No third-party mesh or photo texture copied.",

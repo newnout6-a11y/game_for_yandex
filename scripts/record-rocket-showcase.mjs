@@ -7,8 +7,9 @@ import path from 'node:path';
 import { startServer } from './serve.mjs';
 
 // Inspection capture only: production controls, flight and geometry are unchanged.
-const probe = Boolean(process.env.ROCKET_VIDEO_PROBE), rate = 30, frames = 360;
-const out = path.resolve(probe ? 'output/rocket-showcase-probe' : 'output/rocket-showcase');
+const probe = Boolean(process.env.ROCKET_VIDEO_PROBE), landingDemo = Boolean(process.env.ROCKET_LANDING_DEMO);
+const rate = 30, frames = landingDemo ? 420 : 360;
+const out = path.resolve(process.env.ROCKET_VIDEO_OUT || (probe ? 'output/rocket-showcase-probe' : 'output/rocket-showcase'));
 await mkdir(path.join(out, 'frames'), { recursive: true });
 const bytes = await readFile('public/assets/roadster.glb');
 const sha256 = createHash('sha256').update(bytes).digest('hex');
@@ -21,7 +22,7 @@ const browser = await chromium.launch({
 const samples = [], errors = [], consoleErrors = [];
 const keys = new Map([[0, ['down', 'KeyW']], [60, ['down', 'KeyF']], [123, ['down', 'KeyE']],
   [130, ['up', 'KeyE']], [165, ['up', 'KeyF']], [255, ['down', 'Space']],
-  [276, ['up', 'Space']], [359, ['up', 'KeyW']]]);
+  [276, ['up', 'Space']], [frames - 1, ['up', 'KeyW']]]);
 try {
   const page = await browser.newPage({ viewport: { width: 960, height: 600 }, deviceScaleFactor: 1 });
   await page.route('**/public/assets/roadster.glb', route => route.fulfill({ body: bytes, contentType: 'model/gltf-binary' }));
@@ -68,7 +69,7 @@ try {
     caption.style.cssText = 'position:fixed;left:20px;top:82px;max-width:550px;padding:9px 12px;border-radius:10px;background:rgba(12,25,34,.62);color:white;font:14px Arial;z-index:999;pointer-events:none';
     document.body.append(caption);
   });
-  const snapshots = new Set([0, 59, 95, 122, 140, 165, 205, 239, 265, 330, 359]);
+  const snapshots = new Set([0, 59, 95, 122, 140, 165, 205, 239, 250, 265, 280, 330, frames - 1]);
   for (let frame = 0; frame < frames; frame++) {
     const key = keys.get(frame); if (key) await page.keyboard[key[0]](key[1]);
     await page.clock.runFor(Math.round((frame + 1) * 1000 / rate) - Math.round(frame * 1000 / rate));
@@ -79,11 +80,11 @@ try {
      * @param {object} options - Capture frame number, rate and GPU submission flag.
      * @returns {object} Real flight/mechanical telemetry for the rendered frame.
      */
-    const sample = await page.evaluate(({ frame, rate, capture }) => {
+    const sample = await page.evaluate(({ frame, rate, capture, landingDemo }) => {
       const state = window.__rocketState, world = window.__rocketWorld;
       window.__rocketRender.call(world, state, { menu: false, dt: 1 / rate });
       let inspection = false;
-      if (frame < 60 || (frame >= 240 && frame < 330)) {
+      if (frame < 60 || (landingDemo ? frame >= 190 : frame >= 240 && frame < 330)) {
         inspection = true;
         const offset = window.__rocketOffset.set(frame < 60 ? 4.4 : 4.7, 2.0, frame < 60 ? -6.0 : 6.4);
         offset.applyQuaternion(world.player.quaternion).add(world.player.position);
@@ -91,9 +92,10 @@ try {
         world.camera.position.copy(offset); world.camera.lookAt(target); world.camera.fov = 43;
         world.camera.updateProjectionMatrix();
       }
-      const label = frame < 60 ? 'Кузов и убранное крыло' : frame < 123 ? 'Подъём и раскрытие крыла'
-        : frame < 165 ? 'Боковой оборот' : frame < 240 ? 'Снижение и мягкая посадка'
-        : frame < 276 ? 'Наземный буст и задние сопла' : 'Буст завершён · движение на тяге';
+      const label = frame < 60 ? 'Кузов и убранное крыло' : state.rolling ? 'Боковой оборот'
+        : state.altitude > 0 ? (state.landing ? 'Мягкая посадка · крыло пока поднято' : 'Подъём и раскрытие крыла')
+        : world.player.userData.aeroDeployment > 0 ? 'Касание земли · крыло складывается'
+        : state.boosting ? 'Наземный буст · крыло остаётся убранным' : 'После посадки · крыло полностью убрано';
       document.getElementById('rocket-capture-caption').textContent = label
         + (inspection ? ' · инспекционный ракурс' : '') + ' · запись с управляемым временем';
       if (capture) window.__rocketDraw();
@@ -103,7 +105,7 @@ try {
         nitro: state.nitro, aeroDeployment: world.player.userData.aeroDeployment,
         atlasReady: world.flightEffects.mesh.userData.atlasReady, calls: capture ? world.renderer.info.render.calls : null,
         triangles: capture ? world.renderer.info.render.triangles : null };
-    }, { frame, rate, capture });
+    }, { frame, rate, capture, landingDemo });
     samples.push(sample); assert.equal(sample.phase, 'playing'); assert.equal(sample.atlasReady, true);
     if (capture) await page.screenshot({ path: path.join(out, 'frames', String(frame).padStart(4, '0') + '.png') });
     if (frame % 30 === 0) console.log(`frame ${frame}/${frames}: altitude ${sample.altitude.toFixed(2)}, speed ${sample.speed.toFixed(2)}`);
@@ -112,10 +114,14 @@ try {
   assert.ok(samples.some(sample => Math.abs(sample.roll) > 3));
   assert.ok(samples.some(sample => sample.time > 7 && sample.altitude === 0));
   assert.ok(samples.some(sample => sample.boosting && sample.altitude === 0));
+  const touchdown = samples.find(sample => sample.time > 7 && sample.altitude === 0);
+  assert.ok(samples.some(sample => sample.time > touchdown.time + 1 && sample.aeroDeployment === 0));
+  for (const sample of samples.filter(sample => sample.time > touchdown.time + 1))
+    assert.equal(sample.aeroDeployment, 0, 'highway speed and boost must not prevent landing stow');
   assert.equal(errors.length, 0); assert.equal(consoleErrors.length, 0);
   await writeFile(path.join(out, 'capture.json'), JSON.stringify({ sha256, bytes: bytes.length,
-    assetLockedToCapturedBytes: true, method: '12 seconds / 30 fps controlled-time capture, not measured hardware FPS. One initial safe scenario; real W/F/E/Space input and production simulation thereafter. Front/rear inspection cameras are labelled; no model substitution or forced flight pose.',
-    rate, frames, probe, errors, consoleErrors, samples }, null, 2));
+    assetLockedToCapturedBytes: true, method: `${frames / rate} seconds / 30 fps controlled-time capture, not measured hardware FPS. One initial safe scenario; real W/F/E/Space input and production simulation thereafter. Front/rear inspection cameras are labelled; no model substitution or forced flight pose.`,
+    rate, frames, probe, landingDemo, errors, consoleErrors, samples }, null, 2));
   console.log('Verified capture', out);
 } finally {
   await browser.close(); await new Promise(resolve => server.close(resolve));

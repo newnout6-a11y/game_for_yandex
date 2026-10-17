@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as T from '../public/vendor/three.js';
 import { createCar, animatePlayerCar, animatePlayerHardware, setPlayerAeroPose } from '../src/car.js';
 import { tuneModelTextureSampling } from '../src/assets.js';
+import { createFlightState, updateFlight } from '../src/flight.js';
 
 /** Build a small authored-style player fixture with separate axle carriers and rotating brake discs. */
 function playerFixture({ metadata = true, legacy = false } = {}) {
@@ -153,5 +154,46 @@ test('authored wing sequencing uses a validated per-part deployment interval',()
     tip.userData.aeroDeployStart=values[0];tip.userData.aeroDeployEnd=values[1];
     const fallback=createCar(model);setPlayerAeroPose(fallback,.4);
     assert.ok(Math.abs(fallback.getObjectByName('late_tip').rotation.z-1.2)<1e-12);
+  }
+});
+
+test('ground contact stows the wing despite high speed, braking, boost and residual landing thrust',()=>{
+  const car=createCar(playerFixture());
+  setPlayerAeroPose(car,1);
+  const ground={phase:'playing',speed:65,altitude:0,flying:false,rolling:false,
+    braking:true,boosting:true,thrusterPower:.9,touchdownPulse:1};
+  animatePlayerHardware(car,ground,0);assert.equal(car.userData.aeroDeployment,1,'pause must not advance retraction');
+  let previous=1;
+  for(let frame=0;frame<60;frame++){
+    animatePlayerHardware(car,ground,1/60);
+    const amount=car.userData.aeroDeployment;
+    assert.ok(amount<=previous && previous-amount<=.025000001,'landing retraction must be bounded and monotonic');
+    previous=amount;
+  }
+  assert.equal(previous,0,'ground aero demand must not override landing stow');
+  animatePlayerHardware(car,{...ground,flying:true,altitude:.001},1/60);
+  assert.equal(car.userData.aeroDeployment,.025,'a new authorized takeoff raises the wing again');
+  animatePlayerHardware(car,{phase:'menu'},0);
+  assert.equal(car.userData.aeroDeployment,0,'menu/retry must not retain the prior flight pose');
+});
+
+test('real repeated lift and soft touchdown preserve the wing until contact, then fully stow',()=>{
+  const car=createCar(playerFixture()),dt=1/60;
+  for(let cycle=0;cycle<3;cycle++){
+    const state={...createFlightState(),phase:'playing',speed:58,nitro:100};
+    let landed=false,contactFrame=-1,airborneSeen=false;
+    for(let frame=0;frame<600;frame++){
+      updateFlight(state,dt,{flight:frame<150,brake:0,roll:0},event=>{if(event==='land'){landed=true;contactFrame=frame;}});
+      const before=car.userData.aeroDeployment;
+      animatePlayerHardware(car,state,dt);
+      if(state.altitude>0){
+        airborneSeen=true;
+        assert.ok(car.userData.aeroDeployment>=before,'no early folding during the final low flare');
+      }
+      if(landed && frame===contactFrame) assert.ok(state.thrusterPower>.12,'fixture must exercise residual touchdown thrust');
+      if(landed && frame>contactFrame+45) assert.equal(car.userData.aeroDeployment,0);
+    }
+    assert.ok(airborneSeen && landed,'each cycle must take off and genuinely land');
+    assert.equal(car.userData.aeroDeployment,0);
   }
 });

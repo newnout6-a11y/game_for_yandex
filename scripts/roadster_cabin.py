@@ -62,7 +62,7 @@ _GLYPHS = {
 'V':['10001','10001','10001','10001','10001','01010','00100'],
 'W':['10001','10001','10001','10101','10101','10101','01010'],
 'Y':['10001','10001','01010','00100','00100','00100','00100'],
-'0':['01110','10001','10011','10101','11001','10001','01110'],
+'0':['01110','10001','10001','10001','10001','10001','01110'],
 '1':['010','110','010','010','010','010','111'],
 '2':['01110','10001','00001','00010','00100','01000','11111'],
 '3':['11110','00001','00001','01110','00001','00001','11110'],
@@ -130,7 +130,7 @@ def _make_maps(directory):
 
 
 def _screen_art():
-    """Original dark cockpit UI, with a vector-drawn 3/4 Roadster diagram."""
+    """Original 16:10 cockpit UI with a consistent orthographic side-profile diagram; all layout positions are texture pixels, not perspective geometry."""
     w, h = 1024, 640
     canvas = np.zeros((h, w, 3), dtype=np.float32)
     gy = np.linspace(0, 1, h)[:, None, None]
@@ -179,35 +179,45 @@ def _screen_art():
     text(34,243,'P',3,red); text(75,243,'R N D',2,muted)
     text(34,306,'RANGE',2,muted); text(34,338,'620 KM',3,white)
     text(34,405,'READY',2,(.38,.62,.46))
-    # Floor/shadow and actual side-facing wheel proportions, not a screenshot.
-    ellipse(634,406,315,38,(.009,.012,.016))
-    for x,y,rx,ry in [(493,382,43,58),(813,321,30,43)]:
-        ellipse(x,y,rx,ry,(.008,.009,.011)); ellipse(x,y,rx*.70,ry*.72,(.27,.29,.32))
-        ellipse(x,y,rx*.50,ry*.55,(.055,.065,.078))
+    # One orthographic profile: both wheels share a baseline and radius, and
+    # every body/glazing edge belongs to that same projection. This intentionally
+    # avoids a fake perspective rendering with mismatched axles or sheared panels.
+    # The diagram is original status artwork, not a photographed dashboard UI.
+    rect(251,93,253,479,(.10,.115,.13))
+    ellipse(632,398,301,18,(.009,.012,.016))
+    wheel_y=366;wheel_r=39
+    for x in [440,823]:ellipse(x,wheel_y,wheel_r+4,wheel_r+4,(.007,.009,.012))
+    body=[(326,348),(355,327),(423,309),(511,301),(564,254),
+          (685,247),(748,270),(807,300),(878,312),(921,333),
+          (931,364),(897,383),(361,383),(327,367)]
+    poly(body,(.35,.38,.41))
+    poly([(327,349),(449,343),(551,332),(784,332),(923,345),
+          (931,364),(897,383),(361,383),(327,367)],(.20,.23,.26))
+    poly([(426,311),(515,305),(559,266),(574,257),(682,252),
+          (741,275),(783,302),(758,309),(540,313)],(.095,.12,.15))
+    poly([(533,302),(572,263),(619,260),(619,302)],(.032,.055,.075))
+    poly([(628,259),(680,257),(734,278),(770,300),(628,302)],(.022,.039,.054))
+    line([(353,328),(423,312),(514,305),(564,254),(685,247),
+          (748,270),(807,300),(878,312)],(.58,.62,.65),3)
+    line([(547,317),(543,365),(743,365),(761,317)],(.10,.13,.16),2)
+    line([(723,323),(748,323)],(.54,.58,.61),3)
+    line([(337,348),(382,344)],(.83,.91,.96),4)
+    line([(901,330),(920,336)],red,4)
+    line([(342,370),(397,370)],(.025,.035,.045),6)
+    line([(868,372),(911,365)],(.025,.035,.045),6)
+    line([(486,378),(778,378)],(.08,.10,.12),5)
+    # Grounded wheel silhouettes, circular spokes and consistent arch gaps.
+    for x in [440,823]:
+        ellipse(x,wheel_y,wheel_r+3,wheel_r+3,(.012,.016,.021))
+        ellipse(x,wheel_y,wheel_r,wheel_r,(.023,.030,.039))
+        ellipse(x,wheel_y,27,27,(.39,.43,.47))
+        ellipse(x,wheel_y,23,23,(.048,.063,.079))
         for a in np.linspace(0,2*pi,10,endpoint=False):
-            line([(x,y),(x+rx*.65*cos(a),y+ry*.66*sin(a))],(.41,.44,.48),3)
-    poly([(350,344),(396,282),(540,252),(603,194),(741,187),(817,236),(891,266),(918,321),(858,348),(573,419),(374,393)],(.26,.285,.31))
-    poly([(350,344),(574,367),(918,289),(918,321),(858,348),(573,419),(374,393)],(.13,.15,.175))
-    poly([(397,282),(544,267),(696,300),(576,365),(353,344)],(.40,.43,.47))
-    poly([(544,253),(605,198),(735,191),(802,239),(693,291)],(.055,.075,.095))
-    poly([(557,255),(611,205),(661,205),(648,269)],(.10,.15,.20))
-    poly([(671,205),(734,200),(786,238),(706,278),(659,268)],(.023,.035,.048))
-    line([(547,255),(694,292),(810,242)],(.55,.58,.62),3)
-    line([(353,345),(574,369),(915,291)],(.57,.59,.61),2)
-    line([(577,371),(570,408)],(.045,.055,.068),2)
-    line([(713,298),(720,361),(790,344)],(.04,.05,.06),2)
-    # Slim LED signature and diffuser; wheel arch cutline.
-    line([(371,330),(435,337),(461,332)],(.88,.95,1.0),5)
-    line([(493,346),(545,351),(558,343)],(.88,.95,1.0),4)
-    line([(371,370),(558,390)],(.015,.02,.03),6)
-    line([(887,278),(913,282)],red,4)
-    poly([(766,207),(852,226),(854,233),(774,215)],(.06,.07,.09))
-    line([(791,215),(788,239)],(.12,.14,.16),4)
-    for x,y,rx,ry in [(493,382,38,54),(813,321,27,40)]:
-        ellipse(x,y,rx,ry,(.007,.009,.012));ellipse(x,y,rx*.71,ry*.74,(.23,.26,.29));ellipse(x,y,rx*.51,ry*.57,(.035,.045,.058))
-        for a in np.linspace(0,2*pi,10,endpoint=False):
-            line([(x,y),(x+rx*.64*cos(a),y+ry*.67*sin(a))],(.40,.44,.48),3)
-        ellipse(x,y,rx*.12,ry*.14,(.42,.46,.50))
+            line([(x+8*cos(a),wheel_y+8*sin(a)),
+                  (x+25*cos(a+.12),wheel_y+25*sin(a+.12))],(.48,.53,.57),3)
+        ellipse(x,wheel_y,6,6,(.39,.44,.48))
+    text(350,177,'VEHICLE STATUS',2,muted)
+    text(350,212,'PARKED',3,white)
     text(370,460,'VEHICLE',2,white); text(550,460,'CHARGING',2,muted); text(760,460,'CONTROLS',2,muted)
     rect(369,482,477,485,red)
     rect(34,519,990,521,(.12,.13,.14))
@@ -581,22 +591,54 @@ def build_cabin(api):
     local_poly('RC_Yoke_Center_Top_Mark',[(-.016,.014),(.016,.014),(.011,.009),(-.011,.009)],.031,.032,'rc_black',.0005)
     local_poly('RC_Yoke_Center_Stem_Mark',[(-.003,.010),(.003,.010),(.002,-.012),(-.002,-.012)],.031,.032,'rc_black',.0004)
 
-    # Original floating landscape UI: independent thin bezel, rear housing, mount.
-    ang=math.radians(-7);screen_c=(.145,.841,-.343)
+    # Driver-readable floating display, revised for the single-seat/vessel bay.
+    # The old 1.72:1 face stretched a 16:10 UI and its low right-hand placement
+    # lost usable pixels behind the vessel. Use a true rigid plane, zero roll,
+    # exact texture aspect and a clear sight corridor above the yoke/right grip.
+    # Zero yaw aligns its top edge with the dash; a small true rake faces up
+    # toward the driver without shearing the image or intersecting the mirror.
+    yaw=0.0;rake=math.radians(7)
+    screen_c=Vector((.040,.925,-.300))
+    screen_right=Vector((cos(yaw),0,-sin(yaw)))
+    screen_up=Vector((-sin(yaw)*sin(rake),cos(rake),-cos(yaw)*sin(rake)))
+    screen_normal=screen_right.cross(screen_up).normalized()
     def display_transform(x,y,d):
-        """Map screen-local horizontal/vertical/depth metres to game XYZ with the tablet's yaw, slight rake, and fixed center; no scene mutation."""
-        return (screen_c[0]+x*cos(ang)+d*sin(ang),screen_c[1]+y,screen_c[2]-x*sin(ang)+d*cos(ang)-y*.075)
-    outer=rounded_rect(.210,.128,.012,7); inner=rounded_rect(.200,.117,.006,7)
-    ring('RC_Landscape_Tablet_Carbon_Housing',outer,inner,display_transform,-.022,'rc_black')
-    ring('RC_Landscape_Tablet_Satin_Edge',rounded_rect(.211,.129,.012,7),outer,lambda x,y,d:display_transform(x,y,d-.006),-.003,'rc_metal')
-    back=[display_transform(x,y,-.023) for x,y in outer]
+        """Return game XYZ metres for orthonormal screen-local horizontal, vertical and normal-depth coordinates; preserves lengths, right angles and the 16:10 UI aspect."""
+        return tuple(screen_c+screen_right*x+screen_up*y+screen_normal*d)
+    outer=rounded_rect(.186,.120,.011,7);inner=rounded_rect(.1775,.1115,.005,7)
+    ring('RC_Landscape_Tablet_Carbon_Housing',outer,inner,display_transform,-.020,'rc_black')
+    ring('RC_Landscape_Tablet_Satin_Edge',rounded_rect(.187,.121,.011,7),outer,lambda x,y,d:display_transform(x,y,d-.005),-.003,'rc_metal')
+    back=[display_transform(x,y,-.021) for x,y in outer]
     mesh('RC_Tablet_Closed_Back',back,[tuple(range(len(back)))],'rc_carbon')
-    # Two triangles with exact UVs, preserving UI as one texture and draw call.
-    pts=[display_transform(-.198,-.115,.001),display_transform(.198,-.115,.001),display_transform(.198,.115,.001),display_transform(-.198,.115,.001)]
+    # Exact 352 x 220 mm active area maps the complete 1024 x 640 texture once.
+    pts=[display_transform(-.176,-.110,.001),display_transform(.176,-.110,.001),
+         display_transform(.176,.110,.001),display_transform(-.176,.110,.001)]
     screen=mesh('RC_Original_Infotainment_Display',pts,[(0,1,2,3)],'rc_ui')
+    screen['display_role']='driver_readable_main_ui'
+    screen['active_aspect_ratio']=1.6
+    screen['orthonormal_plane']=True
     uv=screen.data.uv_layers.new(name='RC_UI_UV')
     for loop,co in zip(uv.data,[(0,0),(1,0),(1,1),(0,1)]):loop.uv=co
-    beam('RC_Tablet_Cantilever_Mount',(.145,.762,-.440),(.145,.787,-.369),.050,.028,'rc_black')
+    # Broad short deck mount touches the actual dash and the housing rear, rather
+    # than leaving a floating plate or a stalk pointed at the obsolete position.
+    box('RC_Tablet_Dash_Mount_Foot',(.040,.789,-.403),(.108,.012,.052),'rc_black',.007)
+    beam('RC_Tablet_Cantilever_Mount',(.040,.795,-.407),display_transform(0,-.074,-.024),.066,.027,'rc_black')
+    beam('RC_Tablet_Mount_Rear_Brace',display_transform(-.056,-.074,-.023),display_transform(.056,-.074,-.023),.018,.013,'rc_black')
+    display_metadata={
+        'center_game_m':list(screen_c),'right_game':list(screen_right),
+        'up_game':list(screen_up),'normal_game':list(screen_normal),
+        'active_dimensions_m':[.352,.220],'texture_dimensions_px':[1024,640],
+        'yaw_degrees':0,'rake_degrees':7,'roll_degrees':0,
+        'reference_eye_game_m':[-.43,1.04,.33],
+        'tested_eye_box_min_game_m':[-.48,1.00,.25],
+        'tested_eye_box_max_game_m':[-.32,1.08,.40],
+        'visibility_eye_grid':[5,5,5],'visibility_screen_grid':[9,7],
+        'inspection_eye_game_m':[-.32,1.08,.35],
+        'visibility_probe_count_per_steering_pose':7938,
+        'visibility_steering_angles_radians':[-1.2,0,1.2],
+        'visibility_probe_count':23814,
+        'ui_artwork':'Original orthographic side-profile status graphic; no factory software or live telemetry claim.'
+    }
 
     # The longer profile-matched windshield has a real closed interior cowl
     # between its base and the unchanged dashboard, not an empty gap.
@@ -781,7 +823,7 @@ def build_cabin(api):
         if not ob.get('approximate_packaging_reconstruction'):
             ob['reference_role']='reference-led editable cabin geometry'
     tri_count=sum(sum(len(p.vertices)-2 for p in ob.data.polygons) for ob in objects[first_object:] if ob.type=='MESH')
-    metadata={'steering_pivot':pivot.name,'steering_game_axis':'Z','triangles':tri_count,'materials':[k for k in M if k.startswith('rc_')],'texture_directory':os.path.join(root,'art','textures'),'seat_count':seat_count,'passenger_pressure_vessel':vessel_metadata,'layout_evidence':'Rocket single seat and passenger-space additional vessel are source-supported; vessel shape, mounts and exact dimensions are approximate packaging reconstruction, not factory CAD or certified engineering'}
+    metadata={'steering_pivot':pivot.name,'steering_game_axis':'Z','triangles':tri_count,'materials':[k for k in M if k.startswith('rc_')],'texture_directory':os.path.join(root,'art','textures'),'seat_count':seat_count,'passenger_pressure_vessel':vessel_metadata,'driver_display':display_metadata,'layout_evidence':'Rocket single seat and passenger-space additional vessel are source-supported; vessel shape, mounts and exact dimensions are approximate packaging reconstruction, not factory CAD or certified engineering'}
     pivot['cabin_triangle_count']=tri_count
     print('ROADSTER_CABIN_STATS',metadata)
     return metadata

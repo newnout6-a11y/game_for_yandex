@@ -145,7 +145,7 @@ Official images are inspection evidence only and are not redistributed as game
 artwork. Unknown details are not promoted to factory facts simply because they
 were modeled with more polygons.
 
-## Release verification
+## Original Rocket release verification
 
 Accepted asset SHA-256:
 `9c710df7a868ce6729ffac6696a05dd3361e99a193d3a2130189b46168665d4e`.
@@ -187,3 +187,71 @@ Inspection cameras are not advertised as selectable gameplay cameras. The
 controlled-time showcase uses real controls and physics after its disclosed
 initial fixture; neither screenshots nor its nominal 30 fps file certify
 real-time mobile performance.
+
+## Landing-wing and dashboard correction
+
+The earlier wing demand combined airborne state with road speed, braking and
+residual landing thrust. This could keep the wing raised after an otherwise
+correct touchdown. The revised game rule keeps it raised throughout descent,
+then smoothly stows it once altitude reaches zero. Ground boost, highway speed
+and the short touchdown plume no longer reopen it. A new takeoff deploys it
+again; pause preserves the pose, while menu/reset restores the stowed state.
+This implements the requested game behavior. Public endpoint images do not
+establish Tesla's complete speed-dependent aero or landing-control law.
+
+The dashboard correction changes actual Blender geometry, not the inspection
+camera. The tablet uses an orthonormal, zero-roll plane and a 352 × 220 mm active
+face matching its 1024 × 640 original artwork exactly. Its revised placement and
+connected dash bracket clear the unchanged vessel and steering yoke from a
+small tested driver-eye box. The distorted illustrative car graphic is replaced
+by a coherent original side profile. This remains an illustrative interface,
+not factory software or live game telemetry.
+
+Reproduce the extended landing capture with:
+
+```sh
+ROCKET_LANDING_DEMO=1 node scripts/record-rocket-showcase.mjs
+```
+
+It records 14 seconds at 30 controlled-time samples per second, including a
+rear inspection angle through touchdown, completed wing stow and ground boost.
+`ROCKET_VIDEO_PROBE=1` saves only inspection key frames first;
+`ROCKET_VIDEO_OUT` selects an output directory. The initial safe scenario and
+inspection cameras are disclosed. The nominal video frame rate is not measured
+real-time device performance.
+
+Correction verification on 2026-10-17:
+
+- **220/220 tests passed**, no skipped tests; source check reports 30 JavaScript
+  files and zero errors, and the build contains 65 files. The three Roadster
+  Python authoring modules parse successfully.
+- Independent decoded-GLB tests check the exact four UV vertices, physical
+  16:10 aspect and orthonormal screen basis. Another **6,237** first-hit triangle
+  rays cover a 27-position eye grid, 77 screen points and three yoke poses.
+  Blender's separate dense check covers **23,814** rays, including the original
+  inspection eye and exact screen corners. These are bounded visibility tests,
+  not a promise of visibility from arbitrary passenger or exterior viewpoints.
+- Actual desktop keyboard and mobile touch checks pass hover, roll, powered
+  descent, touchdown, complete wing stow and ground boost; all additional narrow
+  layouts have no horizontal overflow. The final accepted GLB bytes are locked
+  throughout each capture. No page or renderer errors were reported.
+- Repeated-flight tests verify no early folding during the final flare, smooth
+  monotonic post-contact movement, ground-speed/boost independence, pause and
+  menu reset. Existing actual-geometry wheel/wing clearance and cabin-enclosure
+  tests remain green. The finite swept-pose limitations described above still
+  apply; the correction does not turn them into a continuous certification.
+- Exact preservation checks found all **48 non-cabin mesh batches** and **62
+  wheel/fan/wing/nozzle nodes** unchanged, along with scale, wheel radius and
+  vessel metadata. Of 768 editable baseline meshes, only five tablet-related
+  parts changed and two mount-support parts were added.
+- Accepted GLB: **243,185 triangles, 66 mesh groups, 6,513,500 bytes**, SHA-256
+  `8bd33a39215813787635fb4cad0ba5671e97b257cc12383eb6de1e77a339da69`.
+  Editable Blender source: **14,024,104 bytes**, SHA-256
+  `224dbe3868ff441363987fa1c1cd2d5a873754f3c4bb56b12ea473addba1186d`.
+- Same-scene desktop/mobile rendering remains **329 complete draw submissions**.
+  Submitted triangles rise from **742,002 to 742,386**, about **0.052%**; the
+  player adds 192 source triangles. Eight unique player textures and their
+  dimensions remain unchanged. Observed resident texture counters are 27 on
+  desktop in both captures and 26 → 27 on mobile; these counters are not a
+  measured GPU-memory allocation. Render-pixel budgets are unchanged. Hardware
+  frame rate, thermal behavior and actual mobile-device performance are unmeasured.

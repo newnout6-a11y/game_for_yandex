@@ -359,6 +359,8 @@ asset_root['wheelHierarchy']='steer carrier wheel_fl/fr/rl/rr; rotating child wh
 asset_root['wingPose']='Deployed rest pose; reconstructed nested lift sleeves, blade pitch and folding tips use explicit aeroStow extras; reference-led endpoints'
 asset_root['mechanismBasis']='Visible proportions follow public images; hidden packaging and wing mechanism are inferred, not manufacturer CAD'
 asset_root['cabinLayoutEvidence']=cabin_metadata.get('layout_evidence','Reference-reconstructed cabin')
+if cabin_metadata.get('driver_display'):
+    asset_root['driverDisplay']=dict(cabin_metadata['driver_display'])
 if cabin_metadata.get('passenger_pressure_vessel'):
     vessel_info=dict(cabin_metadata['passenger_pressure_vessel'])
     vessel_info['measured_outer_mesh_volume_m3_scaled']=vessel_info['measured_outer_mesh_volume_m3']*asset_scale**3

@@ -88,7 +88,8 @@ try {
         });
         return { altitude: s.altitude, verticalSpeed: s.verticalSpeed, thrusterPower: s.thrusterPower, reserve: s.landingReserve,
           rolling: s.rolling, rollAngle: s.rollAngle, progress: s.rollProgress, cooldown: s.flightCooldown, speed: s.speed, throttle: s.throttle,
-          nitro: s.nitro, phase: s.phase, overflow: document.documentElement.scrollWidth > innerWidth,
+          nitro: s.nitro, phase: s.phase, aeroDeployment: w.player.userData.aeroDeployment,
+          overflow: document.documentElement.scrollWidth > innerWidth,
           calls: w.renderer.info.render.calls, triangles: w.renderer.info.render.triangles, textures: w.renderer.info.memory.textures,
           particleCount: w.scene.getObjectByName('cold-gas-thruster-vapor')?.userData.activeParticles,
           atlasReady: w.flightEffects.mesh.userData.atlasReady, controls };
@@ -132,6 +133,8 @@ try {
     await advance(.8); const descent = await capture('descent'); assert.ok(descent.thrusterPower > .3);
     await advance(1.3); const flare = await capture('flare'); assert.ok(flare.thrusterPower > .55); assert.ok(flare.altitude < .3);
     await advance(.8); const landed = await capture('landed'); assert.equal(landed.altitude, 0); assert.ok(landed.cooldown > 0);
+    await advance(.8); const stowed = await capture('stowed');
+    assert.equal(stowed.aeroDeployment, 0, 'wing must fully retract after touchdown despite highway speed');
     let boost;
     if (process.env.CAPTURE_ROCKET_BOOST) {
       await key('boost', true); await advance(.35);
@@ -142,6 +145,7 @@ try {
         c.position.set(4.6,2.2,7.8);c.lookAt(w.player.position.x,.65,0);
       });
       boost=await capture('boost-inspection');
+      assert.equal(boost.aeroDeployment, 0, 'ground boost must not reopen the flight wing');
       await page.evaluate(() => {const c=window.__w.camera;c.position.copy(window.__boostCamera.p);c.quaternion.copy(window.__boostCamera.q);});
       await key('boost',false);
     }
@@ -153,7 +157,7 @@ try {
       layouts.push({ ...size, ...layout });
     }
     assert.deepEqual(errors, []); assert.deepEqual(consoleErrors, []);
-    results.push({ name, ground, hover, roll, descent, flare, landed, boost, layouts, errors, consoleErrors }); await page.close();
+    results.push({ name, ground, hover, roll, descent, flare, landed, stowed, boost, layouts, errors, consoleErrors }); await page.close();
   }
   await writeFile(`${out}/results.json`, JSON.stringify({ playerSha256, assetLockedToCapturedBytes:true, method: 'Controlled-time real keyboard/touch simulation. No forced altitude/roll after the initial safe driving fixture; not an FPS benchmark.', results }, null, 2));
   console.log('PASS all desktop/touch flight, roll, landing and layouts');
