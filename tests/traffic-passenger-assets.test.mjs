@@ -125,6 +125,9 @@ for (const kind of kinds) {
         const wallHit=ray.intersectObject(cabin)[0],tireHit=ray.intersectObject(wheel,true)[0];
         assert.ok(wallHit && tireHit && wallHit.distance<tireHit.distance,'A closed inward wheel tub must hide the tire from the passenger cell');
       }
+      const cavityRay=new THREE.Raycaster(new THREE.Vector3(wheel.position.x,wheel.position.y+spec.wheelRadius*.80,wheel.position.z),new THREE.Vector3(-Math.sign(wheel.position.x),0,0));
+      const cavityWall=cavityRay.intersectObject(cabin)[0];
+      assert.ok(cavityWall && cavityWall.distance<.5 && cavityWall.face.normal.x*Math.sign(wheel.position.x)>.9,'Wheel-side liner surface must exist too; a backface-culled cap exposes sky through the arch');
       const eye=new THREE.Vector3(0,datum.belt-.08,datum.seat),tread=new THREE.Vector3(wheel.position.x,wheel.position.y+spec.wheelRadius*.90,wheel.position.z);
       const insideRay=new THREE.Raycaster(eye,tread.clone().sub(eye).normalize());
       const insideHit=insideRay.intersectObject(cabin)[0];

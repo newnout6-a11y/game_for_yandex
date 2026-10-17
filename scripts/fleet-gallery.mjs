@@ -14,9 +14,24 @@ try{
  await page.clock.install();await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>document.querySelector('#loadStatus').hidden,null,{timeout:120000});
  await page.evaluate(async()=>{const {RoadRenderer}=await import('./src/world.js');const original=RoadRenderer.prototype.render;RoadRenderer.prototype.render=function(s,o){window.__w=this;original.call(this,s,o);};});
  const now=await page.evaluate(()=>Date.now());await page.clock.pauseAt(new Date(now+10000));await page.clock.runFor(32);await page.waitForFunction(()=>window.__w);
+ if(process.env.GALLERY_RETRY_CHECK){
+  const retry=await page.evaluate(async()=>{
+   const {Game}=await import('./src/game.js'),g=new Game(),w=window.__w;
+   const render=(kind,color=0)=>{g.state.traffic=[{id:1,kind,color,lane:1,z:35,speed:0,travelDistance:0}];w.render(g.state,{dt:0});return w.traffic.get(1);};
+   const old=render('sedan');old.userData.motion.pitch=.02;
+   g.reset();const next=render('semi',1);
+   if(next===old||next.userData.kind!=='semi'||!next.userData.trailer||next.userData.wheels.length!==10)throw new Error('Retry reused the previous vehicle kind');
+   if(!w.trafficPool.get('sedan')?.includes(old))throw new Error('Previous car not pooled by its own kind');
+   next.userData.motion.pitch=.02;g.reset();const sameKind=render('semi',4);
+   if(sameKind.userData.motion.pitch!==0||sameKind.userData.paint.color.getHexString()!=='3f6050')throw new Error('Same-kind retry retained motion or paint');
+   const changed=render('firetruck');if(changed===sameKind||changed.userData.kind!=='firetruck'||changed.userData.wheels.length!==6)throw new Error('Same-ID kind replacement failed');
+   if(render('firetruck')!==changed)throw new Error('Ordinary frame unnecessarily recreated traffic');
+   return{immediateRetry:true,sameKindReset:true,kindReplacement:true};
+  });console.log('PASS actual renderer retry',JSON.stringify(retry));
+ }
  await page.addStyleTag({content:'#menu,.topbar,#hud,.scene-shade,#overlay{display:none!important} #fleet-label{position:fixed;top:30px;left:42px;color:#23313b;font-family:Arial,sans-serif;z-index:999;pointer-events:none;background:rgba(235,243,247,.88);padding:13px 18px;border-radius:12px} #fleet-label h1{font-size:30px;margin:0 0 8px} #fleet-label p{font-size:17px;margin:0;line-height:1.5} #fleet-note{position:fixed;bottom:24px;left:42px;color:#314650;font:14px Arial;z-index:999}'});
  await page.evaluate(async()=>{
-  const T=await import('./public/vendor/three.js'),{createTrafficCar,animateTrafficCar}=await import('./src/traffic.js');window.__T=T;window.__makeTraffic=createTrafficCar;window.__animateTraffic=animateTrafficCar;
+  const T=await import('./public/vendor/three.js'),{createTrafficCar,animateTrafficCar}=await import('./src/traffic.js');window.__limitSuspension=(await import('./src/traffic-motion.js')).limitTrafficSuspension;window.__T=T;window.__makeTraffic=createTrafficCar;window.__animateTraffic=animateTrafficCar;
   const w=window.__w,scene=new T.Scene();scene.background=new T.Color('#b8cbd3');scene.environment=w.scene.environment;scene.environmentIntensity=w.scene.environmentIntensity;
   const hemi=new T.HemisphereLight('#dcecff','#a6a393',1.55);scene.add(hemi);
   const sun=new T.DirectionalLight('#fff8ee',2.35);sun.position.set(-12,18,-10);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-18,right:18,top:18,bottom:-18,near:1,far:80});sun.shadow.normalBias=.025;scene.add(sun,sun.target);
@@ -47,6 +62,9 @@ try{
       for(let i=0;i<60;i++)window.__animateTraffic(car,{kind,speed:3.5,z:0,signal:sign,signalTime:1+i/60,laneCurvature:sign/12,lateralAcceleration:sign*3.5*3.5/12,travelDistance:i*3.5/60},-385,1/60);
       car.updateMatrixWorld(true);const p=car.getObjectByName('wheel_fr').getWorldPosition(new T.Vector3());camera.up.set(0,1,0);camera.position.copy(p).add(new T.Vector3(3.1,1.45,-2.75));camera.lookAt(p.x-.2,p.y+.15,p.z);camera.fov=34;camera.updateProjectionMatrix();
     }
+    if(view.startsWith('clearwheel-')){
+      const sign=view.endsWith('left')?1:-1,m={pitch:.05,roll:.06,pitchVelocity:0,rollVelocity:0};window.__limitSuspension(m,car.userData.suspensionWheels,car.userData.bodyRig.position,spec.bodyCompression);car.userData.bodyRig.rotation.set(m.pitch,0,m.roll);for(const w of car.userData.wheelRest)if(w.front)w.wheel.rotation.y=sign*.6;car.updateMatrixWorld(true);const p=car.getObjectByName('wheel_fr').getWorldPosition(new T.Vector3());camera.up.set(0,1,0);camera.position.copy(p).add(new T.Vector3(3.1,1.45,-2.75));camera.lookAt(p.x-.2,p.y+.15,p.z);camera.fov=34;camera.updateProjectionMatrix();
+    }
     if(view.startsWith('gap-')){
       const side=view.includes('left')?-1:1,angle=side*52.5*Math.PI/180;
       car.userData.bodyRig.rotation.set(.05,0,.06);car.userData.trailerRig.rotation.set(.015,0,.039);car.userData.trailer.rotation.y=angle;car.updateMatrixWorld(true);
@@ -55,9 +73,9 @@ try{
       else{camera.up.set(0,1,0);camera.position.set(-side*10,6.3,spec.hitchZ-1.6);camera.lookAt(joint);}
       camera.fov=view.endsWith('top')?34:39;camera.updateProjectionMatrix();
     }
-    document.getElementById('fleet-label').innerHTML=`<h1>${spec.label} · ${stage==='before'?'до':'новая модель'}</h1><p>${category} · ${size.z.toFixed(2)} × ${size.x.toFixed(2)} × ${size.y.toFixed(2)} м<br>${view.startsWith('steer-')?'Передняя ось: проверка поворота радиусом 12 м':view.startsWith('gap-')?'Проверка зазора: 52,5° сочленения + предельный наклон':view==='glance'?'Взгляд в зеркало перед манёвром':view==='driver'?'Водитель и рулевое управление':view==='gesture'?'Левая рука у переключателя поворотника':view==='footwell'?'Внутренний пол и колёсные кожухи':view==='mirror'?'Салон и отражающая поверхность зеркала':view==='cabin'?'Остекление, салон и зеркало':view==='wheel'?'Колесо и арка':view==='front'?'Передний ракурс':'Задний ракурс'}</p>`;
+    document.getElementById('fleet-label').innerHTML=`<h1>${spec.label} · ${stage==='before'?'до':'новая модель'}</h1><p>${category} · ${size.z.toFixed(2)} × ${size.x.toFixed(2)} × ${size.y.toFixed(2)} м<br>${view.startsWith('clearwheel-')?'Предельный зазор: 34,4° колеса, с ограничителями хода':view.startsWith('steer-')?'Передняя ось: проверка поворота радиусом 12 м':view.startsWith('gap-')?'Проверка зазора: 52,5° сочленения + предельный наклон':view==='glance'?'Взгляд в зеркало перед манёвром':view==='driver'?'Водитель и рулевое управление':view==='gesture'?'Левая рука у переключателя поворотника':view==='footwell'?'Внутренний пол и колёсные кожухи':view==='mirror'?'Салон и отражающая поверхность зеркала':view==='cabin'?'Остекление, салон и зеркало':view==='wheel'?'Колесо и арка':view==='front'?'Передний ракурс':'Задний ракурс'}</p>`;
     w.renderer.info.reset();w.renderer.render(scene,camera);let meshes=0,triangles=0;car.traverse(n=>{if(n.isMesh){meshes++;triangles+=(n.geometry.index?.count||n.geometry.attributes.position.count)/3;}});
-    return{kind,category,view,dimensions:{length:size.z,width:size.x,height:size.y},meshes,triangles,drawCalls:w.renderer.info.render.calls,submittedTriangles:w.renderer.info.render.triangles,wheels:car.userData.wheels.length};
+    return{kind,category,view,dimensions:{length:size.z,width:size.x,height:size.y},meshes,triangles,drawCalls:w.renderer.info.render.calls,submittedTriangles:w.renderer.info.render.triangles,wheels:car.userData.wheels.length,bodyPitch:car.userData.bodyRig.rotation.x,bodyRoll:car.userData.bodyRig.rotation.z};
    },{kind,spec,category,view,stage});
    await page.screenshot({path:`${out}/${kind}-${view}.png`});records.push(data);console.log(stage,kind,view,JSON.stringify(data));
   }

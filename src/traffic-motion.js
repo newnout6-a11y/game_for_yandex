@@ -35,3 +35,27 @@ export function updateTrafficMotion(motion,item,distance,wheelbase,dt){
  else motion.distance+=speed*Math.max(0,dt);
  return motion;
 }
+
+// A suspension bump stop limits combined corner compression, not wheel steer.
+// Use the complete wheel-adjacent spherical envelope, so pitch and roll cannot
+// independently consume the same small arch clearance twice.
+export function suspensionCompression(pitch,roll,wheels,pivot){
+ const cx=Math.cos(pitch),sx=Math.sin(pitch),cz=Math.cos(roll),sz=Math.sin(roll);
+ const a=sz*cx,b=cz*cx-1,c=-sx,gradient=Math.hypot(a,b,c);let compression=0;
+ for(const w of wheels){const q=w.center;
+  const drop=-(a*(q.x-pivot.x)+b*(q.y-pivot.y)+c*(q.z-pivot.z))+(w.radius+.08)*gradient;
+  compression=Math.max(compression,drop);
+ }
+ return compression;
+}
+export function limitTrafficSuspension(motion,wheels,pivot,allowance){
+ if(!(allowance>0))return 1;
+ if(suspensionCompression(motion.pitch,motion.roll,wheels,pivot)<=allowance)return 1;
+ let low=0,high=1;for(let i=0;i<24;i++){const scale=(low+high)/2;
+  if(suspensionCompression(motion.pitch*scale,motion.roll*scale,wheels,pivot)<=allowance)low=scale;else high=scale;
+ }
+ motion.pitch*=low;motion.roll*=low;
+ if(motion.pitchVelocity*motion.pitch>0)motion.pitchVelocity=0;
+ if(motion.rollVelocity*motion.roll>0)motion.rollVelocity=0;
+ return low;
+}

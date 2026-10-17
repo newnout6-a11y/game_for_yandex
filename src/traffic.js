@@ -1,5 +1,5 @@
 import * as T from '../public/vendor/three.js';
-import { createTrafficMotion, updateTrafficMotion, steeringForWheel } from './traffic-motion.js';
+import { createTrafficMotion, updateTrafficMotion, steeringForWheel, limitTrafficSuspension } from './traffic-motion.js';
 import { trafficPathCurvature } from './traffic-physics.js';
 import { prepareDriverRig, animateTrafficDriver, INDICATOR_TOUCH_TIME } from './traffic-driver.js';
 import { TRAFFIC_KINDS, normalizeTrafficKind, trafficDefinition } from './traffic-catalog.js';
@@ -62,6 +62,7 @@ function prepareTrafficRig(car){
   data.wheelRest=rest;
   data.groundY=.01-Math.min(...rest.map(w=>w.center.y-w.radius));
   const tractorWheels=rest.filter(w=>!data.trailer||!isWithin(w.wheel,data.trailer));
+  data.suspensionWheels=tractorWheels;
   const frontZ=Math.min(...tractorWheels.map(w=>w.center.z));
   const rearWheels=tractorWheels.filter(w=>!w.front),rearZ=rearWheels.reduce((sum,w)=>sum+w.center.z,0)/rearWheels.length;
   data.wheelbase=Math.max(1,rearZ-frontZ);
@@ -86,6 +87,7 @@ export function resetTrafficMotion(car){
 }
 export function animateTrafficCar(car,item,distance,dt){
   const data=car.userData,m=updateTrafficMotion(data.motion,item,distance,data.wheelbase,dt),k=trafficPathCurvature(item,distance);
+  limitTrafficSuspension(m,data.suspensionWheels,data.bodyRig.position,trafficDefinition(data.kind).bodyCompression);
   data.bodyRig.rotation.set(m.pitch,0,m.roll);
   if(data.trailerRig)data.trailerRig.rotation.set(m.pitch*.3,0,m.roll*.65);
   for(const [name,material] of Object.entries(data.indicators)){

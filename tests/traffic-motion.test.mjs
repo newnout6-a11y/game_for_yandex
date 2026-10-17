@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import * as T from '../public/vendor/three.js';
 import { Game } from '../src/game.js';
 import { TRAFFIC_KINDS,installTrafficTemplates,createTrafficCar,animateTrafficCar,resetTrafficMotion } from '../src/traffic.js';
-import { createTrafficMotion,updateTrafficMotion,steeringForWheel,trafficDynamics } from '../src/traffic-motion.js';
+import { createTrafficMotion,updateTrafficMotion,steeringForWheel,trafficDynamics,suspensionCompression,limitTrafficSuspension } from '../src/traffic-motion.js';
 import { trailerYaw,trafficCollisionParts } from '../src/traffic-physics.js';
 const models={};for(const kind of TRAFFIC_KINDS){const b=await readFile(`public/assets/traffic/${kind}.glb`);models[kind]=(await new T.GLTFLoader().parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'')).scene;}installTrafficTemplates(models);
 const make=()=>{const g=new Game();g.start();Object.assign(g.state,{traffic:[],nextSpawn:Infinity,nextEvent:Infinity});return g;};
@@ -81,7 +81,7 @@ test('planned lane changes drive heading, steering, load transfer and continuous
   maxRoll=Math.max(maxRoll,Math.abs(visual.userData.motion.roll));trailerMax=Math.max(trailerMax,Math.abs(semi.trailerAngle));
   if(t.laneChange?.phase==='moving'){moving++;assert.ok(t.x>=0&&t.x<=1);assert.ok(t.lateralSpeed<=0);assert.ok(t.heading<=0);assert.equal(t.signal,-1);}
  }
- assert.ok(moving>350);assert.ok(maxRoll>.015&&maxRoll<.06);assert.ok(trailerMax>.01&&trailerMax<=.12);
+ assert.ok(moving>350);assert.ok(maxRoll>.006&&maxRoll<.06);assert.ok(trailerMax>.01&&trailerMax<=.12);
  assert.equal(g.state.traffic.find(c=>c.id===901).x,0);assert.equal(g.state.traffic.find(c=>c.id===903).x,0);
 });
 
@@ -112,4 +112,15 @@ test('a new convoy preserves the free edge around committed overtaking traffic',
  const g=make();g.random=()=>.99;Object.assign(g.state,{x:2,lane:2,safeLane:2,traffic:[{id:1,kind:'sedan',lane:1,x:.8,z:37,speed:22,heading:-.05,laneChange:{from:1,to:0,phase:'moving',elapsed:.5,duration:3.4,signalDuration:.85}}]});
  assert.equal(g.startEvent('convoy'),true);assert.equal(g.state.safeLane,2);
  assert.ok(g.state.traffic.filter(c=>c.eventId).every(c=>c.lane!==2));
+});
+
+test('measured passenger bump stops bound combined compression without reducing steering',()=>{
+ for(const kind of ['sedan','hatch','suv','van']){const car=createTrafficCar(kind),d=car.userData,limit={sedan:.025,hatch:.024,suv:.031,van:.030}[kind];
+  for(const pitch of [-.06,0,.06])for(const roll of [-.07,0,.07]){Object.assign(d.motion,{pitch,roll,pitchVelocity:Math.sign(pitch),rollVelocity:Math.sign(roll)});limitTrafficSuspension(d.motion,d.suspensionWheels,d.bodyRig.position,limit);
+   assert.ok(suspensionCompression(d.motion.pitch,d.motion.roll,d.suspensionWheels,d.bodyRig.position)<=limit+1e-10,kind+' combined stop');
+  }
+  for(let i=0;i<120;i++)animateTrafficCar(car,{kind,speed:15,z:20,laneCurvature:1/12,acceleration:-6,travelDistance:i*.125},-385,1/120);
+  assert.ok(suspensionCompression(d.motion.pitch,d.motion.roll,d.suspensionWheels,d.bodyRig.position)<=limit+1e-10);
+  assert.ok(Math.abs(car.getObjectByName('wheel_fr').rotation.y)>.2,'steering is not reduced to hide collision');
+ }
 });

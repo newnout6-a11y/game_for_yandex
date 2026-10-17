@@ -1,6 +1,6 @@
 {
   "sedan": {
-    "triangles": 27654,
+    "triangles": 27514,
     "draw_groups": 31,
     "game_size": [
       1.9389584064483643,
@@ -11,7 +11,7 @@
     "glb": "public/assets/traffic/sedan.glb"
   },
   "hatch": {
-    "triangles": 27190,
+    "triangles": 27406,
     "draw_groups": 31,
     "game_size": [
       1.85895836353302,
@@ -22,7 +22,7 @@
     "glb": "public/assets/traffic/hatch.glb"
   },
   "suv": {
-    "triangles": 28443,
+    "triangles": 28751,
     "draw_groups": 31,
     "game_size": [
       2.0389585494995117,
@@ -33,7 +33,7 @@
     "glb": "public/assets/traffic/suv.glb"
   },
   "van": {
-    "triangles": 27866,
+    "triangles": 27826,
     "draw_groups": 31,
     "game_size": [
       2.1689584255218506,

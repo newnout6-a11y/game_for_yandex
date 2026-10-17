@@ -89,3 +89,6 @@ was used. Lightweight stylized characters, not photoreal human representations.
 
 Character and coupling refinement (2026-10-17)
 Original Blender-authored facial features, hair, clothing seams/cuffs and curled fingers for all eight adult traffic drivers; separate lightweight neck/head pivot. Semi nose clearance rebuilt in the editable original Blender source. No external character asset, scan, animation library or manufacturer CAD used.
+
+Swept wheel-house clearance refinement (2026-10-17)
+Original Blender-authored hollow liners, formed arch walls and sealed floor transitions sized against the animated wheel envelope. Passenger body travel is bounded by measured arch compression limits. No external geometry was used.

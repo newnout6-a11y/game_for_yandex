@@ -8,8 +8,10 @@ export const TRAFFIC_CATEGORIES = Object.freeze({
 });
 // Measured rear axle/bogie centres in the authored GLBs; the lane path runs here.
 const REAR_AXLE_Z = Object.freeze({sedan:1.39,hatch:1.22,suv:1.49,van:1.74,boxtruck:2.41,semi:-3.965,towtruck:1.99,firetruck:2.26});
+// Conservative measured arch-compression limits; full steering is unchanged.
+const BODY_COMPRESSION = Object.freeze({sedan:.025,hatch:.024,suv:.031,van:.030});
 const vehicle = (id, category, label, dimensions, axles, cruise, weight, tags, extra = {}) => Object.freeze({
-  id, category, label, ...dimensions, rearAxleZ:REAR_AXLE_Z[id], axles, cruise: Object.freeze(cruise), weight,
+  id, category, label, ...dimensions, rearAxleZ:REAR_AXLE_Z[id], bodyCompression:BODY_COMPRESSION[id]??null, axles, cruise: Object.freeze(cruise), weight,
   tags: Object.freeze(tags), ...extra,
 });
 export const TRAFFIC_CATALOG = Object.freeze({

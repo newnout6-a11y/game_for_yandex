@@ -74,7 +74,8 @@ for (const kind of ['towtruck', 'firetruck']) {
     assert.equal(equipment.length, 3);
     assert.ok(materials.has('lights_red'));
     assert.ok(materials.has(kind === 'towtruck' ? 'body' : 'fixed_rescue_red'));
-    assert.ok(draws <= 36); assert.ok(triangles <= 34000);
+    // Real hollow liners and cut-back arch/underbody surfaces add no draws.
+    assert.ok(draws <= 36); assert.ok(triangles <= 38000);
     const bounds = new T.Box3().setFromObject(model), size = bounds.getSize(new T.Vector3());
     assert.ok(size.x <= spec.width + .01 && Math.abs(size.z - spec.length) < .015);
     assert.ok(Math.abs(bounds.min.y - .004) < .0001, 'native Blender tires sit 4 mm above the road');
@@ -139,6 +140,11 @@ for (const kind of ['towtruck', 'firetruck']) {
     const bytes = await readFile(new URL(`../public/assets/traffic/${kind}.glb`, import.meta.url));
     const { scene } = await new T.GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
     scene.updateMatrixWorld(true);
+    const vehicle = scene.getObjectByName(kind);
+    assert.equal(vehicle.userData.frontWheelClearance.hollow, true);
+    assert.equal(vehicle.userData.frontWheelClearance.steer, .6);
+    assert.equal(vehicle.userData.frontWheelClearance.pitch, .05);
+    assert.equal(vehicle.userData.frontWheelClearance.roll, .06);
     const wheel = scene.getObjectByName('steering_wheel'), stalk = scene.getObjectByName('indicator_stalk');
     assert.ok(wheel && !wheel.isMesh && stalk && !stalk.isMesh);
     const head = scene.getObjectByName('driver_head');

@@ -41,3 +41,20 @@ test('settled paused scene does not submit a duplicate frame',()=>{
  const w=Object.create(RoadRenderer.prototype);Object.assign(w,{loaded:true,wasPaused:true,pausedFor:1,needsRender:false,particles:[],impact:0});
  assert.doesNotThrow(()=>w.render({}, {paused:true,dt:1/60}));
 });
+
+test('immediate retry recycles traffic even when a new run reuses the same numeric IDs',()=>{
+ const w=Object.create(RoadRenderer.prototype),oldState={traffic:[]},nextState={traffic:[]};
+ Object.assign(w,{scene:new T.Scene(),traffic:new Map(),trafficPool:new Map(),trafficState:oldState});
+ const sedan=new T.Group();sedan.userData.kind='sedan';w.scene.add(sedan);w.traffic.set(1,sedan);
+ w.syncTrafficState(oldState);assert.equal(w.traffic.get(1),sedan,'ordinary frames retain their mesh');
+ w.syncTrafficState(nextState);assert.equal(w.traffic.size,0);assert.equal(sedan.parent,null);assert.deepEqual(w.trafficPool.get('sedan'),[sedan]);
+ assert.equal(w.trafficForItem(1,'semi'),undefined,'new semi cannot inherit the old sedan');
+ w.syncTrafficState(nextState);assert.equal(w.trafficPool.get('sedan').length,1,'recycling happens once');
+});
+test('same-ID kind replacement returns the old model to its own pool before creating its successor',()=>{
+ const w=Object.create(RoadRenderer.prototype);Object.assign(w,{scene:new T.Scene(),traffic:new Map(),trafficPool:new Map()});
+ const truck=new T.Group();truck.userData.kind='boxtruck';w.scene.add(truck);w.traffic.set(2,truck);
+ assert.equal(w.trafficForItem(2,'boxtruck'),truck);
+ assert.equal(w.trafficForItem(2,'firetruck'),undefined);assert.equal(w.traffic.has(2),false);
+ assert.deepEqual(w.trafficPool.get('boxtruck'),[truck]);assert.equal(w.trafficPool.has('firetruck'),false);
+});
