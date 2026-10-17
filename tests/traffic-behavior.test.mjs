@@ -3,9 +3,26 @@ import assert from 'node:assert/strict';
 import { trafficLateral, occupiedTrafficLanes, updateTrafficManoeuvres } from '../src/traffic-behavior.js';
 
 const STEP = 1 / 120;
+/**
+ * Create a planner fixture eligible to make an immediate lane decision.
+ * Extra fields override every default, including speed, cooldown and identity.
+ * @param {number} id - Stable tie-break identity.
+ * @param {number} lane - Lane index (0, 1 or 2).
+ * @param {number} z - Longitudinal distance relative to the player, in metres.
+ * @param {number} [speed=22] - Current and default cruise speed in m/s.
+ * @param {string} [kind='sedan'] - Traffic catalog kind.
+ * @param {object} [extra={}] - State overrides.
+ * @returns {object} Fresh mutable traffic state.
+ */
 const car = (id, lane, z, speed = 22, kind = 'sedan', extra = {}) => ({
   id, lane, z, speed, cruiseSpeed: speed, kind, laneChangeCooldown: 0, laneDecisionIn: 0, ...extra,
 });
+/**
+ * Create a faster follower behind a slow leader with a clear left lane.
+ * A roadworks fixture closes lane 2, constraining the expected passing choice.
+ * @param {string} [kind='sedan'] - Follower catalog kind.
+ * @returns {object} Shared mutable state plus follower and leader references.
+ */
 function opportunity(kind = 'sedan') {
   const follower = car(1, 1, 220, 22, kind, { cruiseSpeed: 24 });
   const leader = car(2, 1, 250, 16);
@@ -13,6 +30,11 @@ function opportunity(kind = 'sedan') {
     obstacles: [], roadEvent: { type: 'roadworks', lane: 2 } };
   return { state, follower, leader };
 }
+/**
+ * Run only the lane planner at 120 Hz, without integrating forward travel.
+ * @param {object} state - Traffic state mutated in place by manoeuvre updates.
+ * @param {number} [count=1] - Number of 1/120-second planner steps.
+ */
 function step(state, count = 1) { for (let i = 0; i < count; i++) updateTrafficManoeuvres(state, STEP); }
 
 test('lateral coordinate uses finite x, and occupancy includes both reserved lanes and full rotated body', () => {
@@ -214,6 +236,13 @@ test('another changing truck reserves its source corridor even when almost in it
 });
 
 test('converging traffic claims one corridor deterministically regardless of array ordering', () => {
+  /**
+   * Assert one of two converging vehicles wins the center-lane reservation.
+   * Runs one simulated second with either traffic-array order and returns the
+   * winner for the outer equality check, isolating deterministic tie-breaking.
+   * @param {boolean} reverse - Reverse the newly created array before stepping.
+   * @returns {number} ID of the sole vehicle changing to lane 1.
+   */
   const run = reverse => {
     const left = car(10, 0, 220, 22, 'sedan', { cruiseSpeed: 24 });
     const right = car(11, 2, 222, 22, 'sedan', { cruiseSpeed: 24 });

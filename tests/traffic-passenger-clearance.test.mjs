@@ -8,11 +8,24 @@ import {limitTrafficSuspension} from '../src/traffic-motion.js';
 
 // Exact triangle/triangle intersections, not tire-centre or bounding-box tests.
 // The BVH only rejects disjoint pairs; the final predicate tests all six edges.
+/**
+ * Expand an indexed mesh into transformed triangles and their bounding boxes.
+ * Allocates independent vectors; geometry buffers and the supplied matrix stay unchanged.
+ * @param {T.Mesh} mesh - Indexed triangle mesh to inspect.
+ * @param {T.Matrix4} [matrix] - Transform into the comparison coordinate frame.
+ * @returns {object[]} Vertices, bounds, source mesh name and triangle index.
+ */
 function triangles(mesh,matrix=new T.Matrix4()){
  const g=mesh.geometry,p=g.attributes.position,ix=g.index,out=[];
  for(let i=0;i<ix.count;i+=3){const v=[0,1,2].map(j=>new T.Vector3().fromBufferAttribute(p,ix.getX(i+j)).applyMatrix4(matrix));out.push({v,box:new T.Box3().setFromPoints(v),mesh:mesh.name,index:i/3});}
  return out;
 }
+/**
+ * Build a binary bounding-volume tree, splitting on the widest bounds axis.
+ * Sorts the supplied array in place; child arrays contain the same triangle objects.
+ * @param {object[]} tris - Triangle records produced by triangles().
+ * @returns {object} Bounds and either a small leaf array or left/right children.
+ */
 function tree(tris){
  const box=new T.Box3();for(const t of tris)box.union(t.box);
  if(tris.length<10)return{box,tris};
@@ -21,6 +34,13 @@ function tree(tris){
  const n=tris.length>>1;return{box,left:tree(tris.slice(0,n)),right:tree(tris.slice(n))};
 }
 const ray=new T.Ray(),delta=new T.Vector3(),point=new T.Vector3();
+/**
+ * Find a finite edge of triangle a piercing triangle b, ignoring endpoints.
+ * Uses shared ray/vector scratch objects; this is not a coplanar-overlap test.
+ * @param {T.Vector3[]} a - Three edge endpoints in the comparison frame.
+ * @param {T.Vector3[]} b - Three target vertices in the same metre-based frame.
+ * @returns {number[]|null} Intersection point excluding 1e-6 m edge endpoints.
+ */
 function edgeHits(a,b){
  for(let i=0;i<3;i++){
   const start=a[i];delta.copy(a[(i+1)%3]).sub(start);const length=delta.length();if(length<1e-8)continue;
@@ -32,6 +52,15 @@ function edgeHits(a,b){
  }
  return null;
 }
+/**
+ * Search overlapping BVH leaves for a two-way triangle edge intersection.
+ * Bounds only prune candidates; the six edge tests determine each reported hit.
+ * Endpoint-only and coplanar contact are outside edgeHits() coverage, and callers
+ * sample suspension/steering poses rather than prove an unsampled continuum.
+ * @param {object} triangle - Wheel triangle in the cabin/body coordinate frame.
+ * @param {object} node - Tree of fixed cabin/body triangles.
+ * @returns {object|null} First hit with source indices and point, or null.
+ */
 function intersection(triangle,node){
  if(!triangle.box.intersectsBox(node.box))return null;
  if(node.tris){for(const other of node.tris){if(!triangle.box.intersectsBox(other.box))continue;const hit=edgeHits(triangle.v,other.v)||edgeHits(other.v,triangle.v);if(hit)return{point:hit,cabinTriangle:other.index,wheelTriangle:triangle.index,mesh:triangle.mesh};}return null;}

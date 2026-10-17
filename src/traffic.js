@@ -8,6 +8,15 @@ export { TRAFFIC_KINDS, normalizeTrafficKind } from './traffic-catalog.js';
 // Runtime vehicles are the reviewed Blender exports. Their authoring builders
 // are deliberately not imported here and are never a silent asset fallback.
 const templates = new Map();
+/**
+ * Validates and registers authored Blender templates for every catalogue kind.
+ * Requires two named wheel pivots per axle and a semi trailer pivot; also mutates
+ * shared glass/mirror materials for runtime rendering. Registration is sequential,
+ * so a later invalid model can throw after earlier templates were installed.
+ * @param {Object<string, T.Object3D>} models - Loaded roots keyed by traffic kind.
+ * @returns {void}
+ * @throws {Error} If a required model, wheel-pivot count or trailer pivot is invalid.
+ */
 export function installTrafficTemplates(models) {
   for (const kind of TRAFFIC_KINDS) {
     const model = models[kind];
@@ -22,6 +31,17 @@ export function installTrafficTemplates(models) {
     templates.set(kind,model);
   }
 }
+/**
+ * Clones an installed vehicle template and prepares independent animated state.
+ * Clones paint, indicator and brake materials that vary per instance while retaining
+ * shared geometry/other materials. Records catalogue dimensions and wheel/trailer
+ * nodes in userData, then builds suspension and driver rigs; no asset fallback is made.
+ * @param {string} [kind='sedan'] - Catalogue kind; unknown values normalize to sedan.
+ * @param {?string} [color=null] - Three.js-compatible paint colour; falsy values
+ * use the towtruck-specific ochre or the default blue-grey.
+ * @returns {T.Object3D} Ready-to-animate vehicle root with fresh per-instance rigs.
+ * @throws {Error} If its template is absent or the authored driver rig is incomplete.
+ */
 export function createTrafficCar(kind='sedan',color=null) {
   kind=normalizeTrafficKind(kind);
   color ||= kind==='towtruck'?'#b78338':'#8a98a2';
@@ -49,6 +69,14 @@ export function createTrafficCar(kind='sedan',color=null) {
 }
 
 // Runtime-only transform groups keep the authored GLB geometry and draw count.
+/**
+ * Measures authored wheel geometry and creates unsprung-wheel/sprung-body groups.
+ * Caches wheel radii/centres in root metres, ground offset and rear-bogie wheelbase;
+ * reparents existing body/driver nodes while preserving world transforms rather
+ * than rebuilding meshes. Excludes trailer wheels from tractor suspension limits.
+ * @param {T.Object3D} car - Fresh clone with wheel and optional trailer userData.
+ * @returns {void} Mutates the scene hierarchy and initializes userData.motion.
+ */
 function prepareTrafficRig(car){
   const data=car.userData,wheels=data.wheels,point=new T.Vector3(),matrix=new T.Matrix4();
   const driverRoots=['steering_wheel','driver_shoulder_l','driver_shoulder_r','indicator_stalk','driver_head'].map(name=>car.getObjectByName(name)).filter(Boolean);
@@ -66,6 +94,15 @@ function prepareTrafficRig(car){
   const frontZ=Math.min(...tractorWheels.map(w=>w.center.z));
   const rearWheels=tractorWheels.filter(w=>!w.front),rearZ=rearWheels.reduce((sum,w)=>sum+w.center.z,0)/rearWheels.length;
   data.wheelbase=Math.max(1,rearZ-frontZ);
+  /**
+   * Creates a suspension pivot and moves eligible body/driver nodes beneath it.
+   * Excludes wheel descendants and a separate trailer subtree, preserves attached
+   * world transforms and disables driver mesh shadows without creating new meshes.
+   * @param {T.Object3D} parent - Vehicle root or trailer group to receive the pivot.
+   * @param {string} name - Runtime rig group name.
+   * @param {number} z - Pivot's local longitudinal coordinate in metres; y is 0.62 m.
+   * @returns {T.Group} Newly installed sprung-body transform group.
+   */
   function makeRig(parent,name,z){
     const rig=new T.Group();rig.name=name;rig.position.set(0,.62,z);parent.add(rig);parent.updateMatrixWorld(true);
     const meshes=[];parent.traverse(node=>{if(!node.isMesh||wheels.some(w=>isWithin(node,w))||driverRoots.some(root=>isWithin(node,root))||parent!==data.trailer&&data.trailer&&isWithin(node,data.trailer))return;meshes.push(node);});
@@ -77,7 +114,20 @@ function prepareTrafficRig(car){
   if(data.trailer)data.trailerRig=makeRig(data.trailer,'sprung_trailer',4.5);
   data.motion=createTrafficMotion();
 }
+/**
+ * Tests ancestry inclusively, so a group counts as being within itself.
+ * @param {?T.Object3D} node - Scene node whose parent chain is inspected.
+ * @param {T.Object3D} parent - Ancestor or self to find.
+ * @returns {boolean} Whether the node is in the requested subtree.
+ */
 function isWithin(node,parent){for(let p=node;p;p=p.parent)if(p===parent)return true;return false;}
+/**
+ * Resets pooled-car suspension, driver head pose and wheel-distance history.
+ * Body/trailer suspension rotations become level; wheel spin/steering and other
+ * visual state are updated by the next animation sample, not reset here.
+ * @param {T.Object3D} car - Vehicle already prepared by createTrafficCar.
+ * @returns {void} Mutates only the runtime rig and animation caches.
+ */
 export function resetTrafficMotion(car){
   car.userData.motion=createTrafficMotion();
   const driver=car.userData.driver;if(driver?.head){driver.headYaw=0;driver.headPitch=0;driver.head.quaternion.copy(driver.headRest);}
@@ -85,6 +135,18 @@ export function resetTrafficMotion(car){
   car.userData.bodyRig.rotation.set(0,0,0);
   if(car.userData.trailerRig)car.userData.trailerRig.rotation.set(0,0,0);
 }
+/**
+ * Applies simulation-driven suspension, indicators, per-wheel travel and driver IK.
+ * Limits body arch compression without restricting steering. Front wheels use
+ * Ackermann yaw; wheel spin accounts for inner/outer path lengths and independent
+ * trailer travel. Indicator flashing starts only after the driver's stalk touch.
+ * Does not position the vehicle root or trailer yaw, nor mutate simulation state.
+ * @param {T.Object3D} car - Prepared vehicle, with reusable runtime motion caches.
+ * @param {Object} item - Matching traffic simulation entity with SI motion fields.
+ * @param {number} distance - Player's accumulated travel in metres.
+ * @param {number} dt - Elapsed animation interval in seconds.
+ * @returns {void}
+ */
 export function animateTrafficCar(car,item,distance,dt){
   const data=car.userData,m=updateTrafficMotion(data.motion,item,distance,data.wheelbase,dt),k=trafficPathCurvature(item,distance);
   limitTrafficSuspension(m,data.suspensionWheels,data.bodyRig.position,trafficDefinition(data.kind).bodyCompression);

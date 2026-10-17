@@ -12,11 +12,18 @@ const records=[];
 try{
  const page=await browser.newPage({viewport:{width:1280,height:720},deviceScaleFactor:1});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/WebGL|THREE|shader/.test(m.text()))errors.push(m.text());});
  await page.clock.install();await page.goto(`http://127.0.0.1:${server.address().port}`);await page.waitForFunction(()=>document.querySelector('#loadStatus').hidden,null,{timeout:120000});
- await page.evaluate(async()=>{const {RoadRenderer}=await import('./src/world.js');const original=RoadRenderer.prototype.render;RoadRenderer.prototype.render=function(s,o){window.__w=this;original.call(this,s,o);};});
+ await page.evaluate(async()=>{const {RoadRenderer}=await import('./src/world.js');const original=RoadRenderer.prototype.render;/** Capture the live renderer instance and forward its state/options for gallery setup. */ RoadRenderer.prototype.render=function(s,o){window.__w=this;original.call(this,s,o);};});
  const now=await page.evaluate(()=>Date.now());await page.clock.pauseAt(new Date(now+10000));await page.clock.runFor(32);await page.waitForFunction(()=>window.__w);
  if(process.env.GALLERY_RETRY_CHECK){
   const retry=await page.evaluate(async()=>{
    const {Game}=await import('./src/game.js'),g=new Game(),w=window.__w;
+   /**
+    * Replace the fixture traffic with ID 1, render without time advance and return it.
+    * Reusing the ID across kinds/resets exercises pool ownership, paint and motion reset.
+    * @param {string} kind - Requested catalog kind.
+    * @param {number} [color=0] - Palette index.
+    * @returns {object} Runtime model currently stored by the observed renderer.
+    */
    const render=(kind,color=0)=>{g.state.traffic=[{id:1,kind,color,lane:1,z:35,speed:0,travelDistance:0}];w.render(g.state,{dt:0});return w.traffic.get(1);};
    const old=render('sedan');old.userData.motion.pitch=.02;
    g.reset();const next=render('semi',1);
@@ -30,6 +37,11 @@ try{
   });console.log('PASS actual renderer retry',JSON.stringify(retry));
  }
  await page.addStyleTag({content:'#menu,.topbar,#hud,.scene-shade,#overlay{display:none!important} #fleet-label{position:fixed;top:30px;left:42px;color:#23313b;font-family:Arial,sans-serif;z-index:999;pointer-events:none;background:rgba(235,243,247,.88);padding:13px 18px;border-radius:12px} #fleet-label h1{font-size:30px;margin:0 0 8px} #fleet-label p{font-size:17px;margin:0;line-height:1.5} #fleet-note{position:fixed;bottom:24px;left:42px;color:#314650;font:14px Arial;z-index:999}'});
+ /**
+  * Create a separate lit studio scene using the loaded game's environment.
+  * Adds gallery labels and caches constructors for inspection views; it is neither
+  * a selectable gameplay camera nor a physical-device performance measurement.
+  */
  await page.evaluate(async()=>{
   const T=await import('./public/vendor/three.js'),{createTrafficCar,animateTrafficCar}=await import('./src/traffic.js');window.__limitSuspension=(await import('./src/traffic-motion.js')).limitTrafficSuspension;window.__T=T;window.__makeTraffic=createTrafficCar;window.__animateTraffic=animateTrafficCar;
   const w=window.__w,scene=new T.Scene();scene.background=new T.Color('#b8cbd3');scene.environment=w.scene.environment;scene.environmentIntensity=w.scene.environmentIntensity;
@@ -43,6 +55,12 @@ try{
  for(const kind of kinds){
   const spec=TRAFFIC_CATALOG[kind],category=TRAFFIC_CATEGORIES[spec.category].label;
   for(const view of (process.env.GALLERY_VIEWS||'front,rear').split(',')){
+   /**
+    * Create and pose one gallery vehicle, fit an inspection camera and draw it.
+    * Mutates the gallery scene, camera and labels; specialized views deliberately
+    * prescribe steering/suspension/articulation. Returned geometry sizes are metres,
+    * but fitted cameras mean vehicles are not photographed at a common scale.
+    */
    const data=await page.evaluate(({kind,spec,category,view,stage})=>{
     const T=window.__T,scene=window.__galleryScene,w=window.__w,camera=window.__galleryCamera;
     if(window.__galleryCar)scene.remove(window.__galleryCar);const car=window.__makeTraffic(kind,kind==='towtruck'?'#b78338':'#668ba2');window.__galleryCar=car;scene.add(car);car.updateMatrixWorld(true);

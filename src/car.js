@@ -4,6 +4,16 @@ const rims = new T.MeshStandardMaterial({ color:'#737b80',metalness:1,roughness:
 const rubber = new T.MeshStandardMaterial({ color:'#191b1c',roughness:.94 });
 
 // Artist model is shared; only the paint is unique per vehicle.
+/**
+ * Clone an authored player hierarchy, normalize its length to 4.7 metres and ground it at Y=0.
+ * The result is centered on X/Z and retains the source orientation. Geometry and untouched
+ * materials remain shared with the template; paint and brake materials are unique to this car.
+ * Wheel pivots, the 0.34-metre wheel radius and mutable materials are exposed through userData.
+ * @param {T.Object3D} template - Loaded scene with finite positive Z extent; never transformed in place.
+ * @param {T.ColorRepresentation} [color='#b62018'] - Initial per-car body paint.
+ * @returns {T.Group} New grounded vehicle hierarchy for animation.
+ * @throws {TypeError} If the template is absent or has no finite positive length.
+ */
 export function createCar(template, color = '#b62018') {
   if (!template?.isObject3D) throw new TypeError('A loaded car model is required');
   const car = new T.Group(), model = template.clone(true);

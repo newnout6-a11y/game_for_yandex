@@ -24,7 +24,7 @@ try {
     await page.evaluate(async()=>{
       const {RoadRenderer}=await import('./src/world.js');const original=RoadRenderer.prototype.render;
       window.__captureRender=original;
-      RoadRenderer.prototype.render=function(state,...args){window.__driveState=state;window.__testWorld=this;};
+      /** Observe state/world without rendering intermediate frames; explicit captures call the saved production renderer. */ RoadRenderer.prototype.render=function(state,...args){window.__driveState=state;window.__testWorld=this;};
     });
     const time=await page.evaluate(()=>Date.now());await page.clock.pauseAt(new Date(time+100));
     console.log(name,'loaded');

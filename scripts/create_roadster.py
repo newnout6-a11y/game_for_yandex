@@ -11,8 +11,19 @@ os.makedirs(PREVIEW,exist_ok=True)
 bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False)
 for d in list(bpy.data.materials): bpy.data.materials.remove(d)
 
-def v(p): return Vector((p[0],-p[2],p[1]))
+def v(p):
+    """Return a Blender vector from game-space coordinates without changing scale.
+
+    Map (X, Y, Z) to (X, -Z, Y): game +Y is up and -Z is forward.
+    Positions remain in metres; the same rotation also applies to directions.
+    """
+    return Vector((p[0],-p[2],p[1]))
 def material(name, color, metal=0, rough=.5, emission=0, alpha=1):
+    """Create and return a node-based roadster material in bpy.data.
+
+    Use normalized RGB/alpha and Principled metallic/roughness values; emission
+    is shader strength. Enable dithered alpha only for translucent finishes.
+    """
     m=bpy.data.materials.new(name); m.diffuse_color=(*color,alpha); m.use_nodes=True
     bs=m.node_tree.nodes.get('Principled BSDF'); bs.inputs['Base Color'].default_value=(*color,alpha)
     bs.inputs['Metallic'].default_value=metal; bs.inputs['Roughness'].default_value=rough
@@ -47,6 +58,12 @@ M['shield']=material('underbody_satin_cast_metal',(.075,.095,.112),.48,.60)
 objects=[]
 
 def mesh(name, verts, faces, mat, parent=None, bevel=0, smooth=False):
+    """Create, link and register a roadster mesh with its material-group tag.
+
+    Vertices are parent-local game coordinates in metres; convert them once to
+    Blender axes. Apply the optional metre-width bevel immediately, optionally
+    smooth all faces, and return the object for later material/pivot batching.
+    """
     me=bpy.data.meshes.new(name); me.from_pydata([v(p) for p in verts],[],faces); me.materials.append(M[mat]); me.update()
     ob=bpy.data.objects.new(name,me); bpy.context.collection.objects.link(ob)
     if parent: ob.parent=parent
@@ -59,6 +76,11 @@ def mesh(name, verts, faces, mat, parent=None, bevel=0, smooth=False):
     return ob
 
 def box(name, c, dims, mat, bevel=.01, parent=None):
+    """Return a closed box centered at c with full game-axis dimensions in metres.
+
+    Build six consistently wound faces through mesh(), retaining the optional
+    parent and applying its bevel width before later export batching.
+    """
     x,y,z=c; a,b,d=[q/2 for q in dims]
     ps=[(x-a,y-b,z-d),(x+a,y-b,z-d),(x+a,y+b,z-d),(x-a,y+b,z-d),
         (x-a,y-b,z+d),(x+a,y-b,z+d),(x+a,y+b,z+d),(x-a,y+b,z+d)]
@@ -66,12 +88,23 @@ def box(name, c, dims, mat, bevel=.01, parent=None):
 
 def beam(name,a,b,width,depth,mat,parent=None):
     # Rectangular section whose local length is aimed along the segment.
+    """Return a beveled rectangular beam joining game-space endpoints a and b.
+
+    Endpoint coordinates and cross-section width/depth are metres in the parent
+    frame. Orient the box's Blender -Y length axis along the converted segment.
+    """
     ob=box(name,(0,0,0),(width,depth,(v(b)-v(a)).length),mat,min(width,depth)*.18,parent)
     ob.location=(v(a)+v(b))/2
     ob.rotation_euler=(v(b)-v(a)).to_track_quat('-Y','Z').to_euler()
     return ob
 
 def tube(name,points,r,mat,parent=None,segments=8):
+    """Return a capped, smooth polygon tube swept along game-space points.
+
+    Points and radius r are parent-local metres. Construct perpendicular rings
+    in Blender space, then convert back before mesh() performs its sole axis
+    conversion; segments controls the radial polygon count.
+    """
     pts=[v(p) for p in points]; vs=[]; fs=[]
     for i,p in enumerate(pts):
         tangent=pts[min(i+1,len(pts)-1)]-pts[max(0,i-1)]; tangent.normalize()
@@ -85,11 +118,21 @@ def tube(name,points,r,mat,parent=None,segments=8):
     return mesh(name,[(p.x,p.z,-p.y) for p in vs],fs,mat,parent,smooth=True)
 
 def extrude_xy(name,poly,zfront,zback,mat,bevel=0,parent=None):
+    """Return a capped extrusion of a game-XY polygon between two Z planes.
+
+    Polygon vertices, zfront/zback and bevel use parent-local metres; negative
+    Z is forward. Preserve the supplied polygon order for the side-wall winding.
+    """
     n=len(poly); vs=[(x,y,z) for z in [zfront,zback] for x,y in poly]
     fs=[tuple(reversed(range(n))),tuple(range(n,n*2))]+[(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)]
     return mesh(name,vs,fs,mat,parent,bevel)
 
 def cylinder_x(name,c,r,depth,mat,parent=None,n=48):
+    """Return a capped n-sided cylinder along the game X wheel-axle direction.
+
+    Center, radius and full depth are parent-local metres. Smooth the generated
+    mesh without changing the wheel parent's transform or spin axis.
+    """
     x,y,z=c; vs=[]; fs=[]
     for xx in [x-depth/2,x+depth/2]:
         vs += [(xx,y+r*cos(2*pi*i/n),z+r*sin(2*pi*i/n)) for i in range(n)]
@@ -97,28 +140,53 @@ def cylinder_x(name,c,r,depth,mat,parent=None,n=48):
     return mesh(name,vs,fs,mat,parent,smooth=True)
 
 def cylinder_z(name,c,r,length,mat,n=32):
+    """Return a capped smooth cylinder along the game longitudinal Z axis.
+
+    Center, radius and full length are metres; n controls each circular ring.
+    The object is linked as an unparented roadster part for static batching.
+    """
     x,y,z=c; vs=[]
     for zz in [z-length/2,z+length/2]: vs += [(x+r*cos(2*pi*i/n),y+r*sin(2*pi*i/n),zz) for i in range(n)]
     fs=[tuple(reversed(range(n))),tuple(range(n,n*2))]+[(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)]
     return mesh(name,vs,fs,mat,smooth=True)
 
 def prism_xz(name,poly,ybottom,ytop,mat):
+    """Return a closed floor-style prism from a game-XZ footprint.
+
+    Extrude the ordered footprint between ybottom and ytop in metres, with
+    +Y upward; the resulting unparented mesh joins the static material batch.
+    """
     n=len(poly); vs=[(x,y,z) for y in [ybottom,ytop] for x,z in poly]
     fs=[tuple(reversed(range(n))),tuple(range(n,n*2))]+[(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)]
     return mesh(name,vs,fs,mat)
 
 def chamfer_panel(name,x,z,w,length,y,thickness,mat,corner=.045):
+    """Return an eight-corner horizontal panel with real vertical thickness.
+
+    Center x/z, full width/length, bottom y, thickness and corner setback are
+    metres. Clamp the setback to half of each half-extent before extrusion.
+    """
     a=w/2; b=length/2; c=min(corner,a*.5,b*.5)
     poly=[(x-a+c,z-b),(x+a-c,z-b),(x+a,z-b+c),(x+a,z+b-c),
           (x+a-c,z+b),(x-a+c,z+b),(x-a,z+b-c),(x-a,z-b+c)]
     return prism_xz(name,poly,y,y+thickness,mat)
 
 def bolt_y(name,x,y,z,r=.013,mat='alloy',n=8):
+    """Return a short n-sided fastener rising 9 mm along game +Y.
+
+    The supplied x/y/z and radius are metres; cap both ends and keep the
+    fastener as a static mesh in the selected material group.
+    """
     vs=[(x+r*cos(i*2*pi/n),yy,z+r*sin(i*2*pi/n)) for yy in [y,y+.009] for i in range(n)]
     fs=[tuple(reversed(range(n))),tuple(range(n,n*2))]+[(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)]
     return mesh(name,vs,fs,mat)
 
 def lerp(z,table):
+    """Return a linearly interpolated scalar from an ascending station table.
+
+    Clamp outside the table to its endpoint values. Body callers use metre
+    Z stations and metre widths/heights; the table itself is not modified.
+    """
     for (a,x),(b,y) in zip(table,table[1:]):
         if a<=z<=b:return x+(y-x)*(z-a)/(b-a)
     return table[0][1] if z<table[0][0] else table[-1][1]
@@ -486,6 +554,12 @@ for ob in objects:
 # Merge static components by material and wheel components within their pivot.
 # This preserves semantic mesh names while keeping material/draw-call overhead low.
 def join_group(obs,name):
+    """Join a nonempty object group, rename it, and return the surviving mesh.
+
+    The first object is active and supplies the retained parent/local frame;
+    callers therefore group by material and wheel pivot. Apply scale only,
+    change Blender selection, and return None when the group is empty.
+    """
     if not obs:return
     bpy.ops.object.select_all(action='DESELECT')
     for ob in obs:ob.select_set(True)
@@ -536,6 +610,12 @@ scene.view_settings.view_transform='AgX'
 scene.render.image_settings.file_format='PNG'
 # Opaque canopy previews keep the external silhouette legible but interior remains fully modeled.
 def area(name,loc,energy,color,size,target=(0,.5,0),shape='DISK',size_y=None):
+    """Add and return a preview-only area lamp aimed at a game-space target.
+
+    Location/target and emitter dimensions are metres; energy is Blender lamp
+    power in watts and color is RGB. Convert coordinates before aiming local
+    -Z at the target; these lamps are created after model save/export.
+    """
     dat=bpy.data.lights.new(name,'AREA');dat.energy=energy;dat.color=color;dat.shape=shape;dat.size=size
     if size_y:dat.size_y=size_y
     ob=bpy.data.objects.new(name,dat);bpy.context.collection.objects.link(ob);ob.location=v(loc);ob.rotation_euler=(v(target)-ob.location).to_track_quat('-Z','Y').to_euler();return ob
@@ -548,6 +628,12 @@ area('front_fill',(0,1.8,-5),250,(.7,.83,1),3)
 camdat=bpy.data.cameras.new('Preview camera');cam=bpy.data.objects.new('Preview camera',camdat);bpy.context.collection.objects.link(cam);scene.camera=cam
 
 def render(name,loc,target,lens=52,roll=0):
+    """Render one named preview PNG unless ROADSTER_VIEWS filters it out.
+
+    Set the shared camera from game-space metre coordinates, lens in mm and
+    optional local-Z roll in radians. Mutate camera/render state and write to
+    PREVIEW; return None without changing the already exported asset.
+    """
     wanted=os.environ.get('ROADSTER_VIEWS','')
     if wanted and name not in wanted.split(','): return
     cam.location=v(loc);cam.rotation_euler=(v(target)-cam.location).to_track_quat('-Z','Y').to_euler();camdat.lens=lens;camdat.clip_start=.02

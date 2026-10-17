@@ -4,7 +4,18 @@ import { Game } from '../src/game.js';
 import { TRAFFIC_CATALOG, TRAFFIC_CATEGORIES, TRAFFIC_KINDS, chooseTrafficKind, trafficDefinition, trafficCenterGap } from '../src/traffic-catalog.js';
 import { trafficHitsPlayer, playerBottom, playerTrafficDepth, trafficCollisionParts, trailerYaw } from '../src/traffic-physics.js';
 
+/**
+ * Start an isolated fleet-physics game and remove every initial hazard.
+ * Disables automatic waves/events so each test owns all collision participants.
+ * @returns {Game} Started, mutable fixture with the normal game physics.
+ */
 const make = () => { const g = new Game(); g.start(); Object.assign(g.state, { traffic: [], pickups: [], obstacles: [], nextEvent: Infinity, nextSpawn: Infinity }); return g; };
+/**
+ * Advance a fixture with neutral controls in fixed 1/120-second steps.
+ * Mutates game state; fractional step counts round up through the loop bound.
+ * @param {Game} g - Fixture to advance.
+ * @param {number} seconds - Requested simulated duration, not wall-clock time.
+ */
 const advance = (g, seconds) => { for (let i = 0; i < seconds * 120; i++) g.update(1 / 120); };
 
 test('pure fleet catalog separates eight immutable vehicle identities and four activity-neutral categories', () => {

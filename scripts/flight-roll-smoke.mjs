@@ -23,7 +23,7 @@ try {
       const { UI } = await import('./src/ui.js');
       window.__captureHud = UI.prototype.hud;
       window.__captureRender = RoadRenderer.prototype.render;
-      RoadRenderer.prototype.render = function (state) { window.__s = state; window.__w = this; };
+      /** Observe live state/world without drawing; the test explicitly advances the saved animation/render method. */ RoadRenderer.prototype.render = function (state) { window.__s = state; window.__w = this; };
     });
     const now = await page.evaluate(() => Date.now()); await page.clock.pauseAt(new Date(now + 100));
     await page.locator('#playBtn').click(); await page.clock.runFor(32);
@@ -34,6 +34,13 @@ try {
         traffic: [{ id: 51, lane: 0, z: 27, speed: 21, kind: 'suv', color: 1 }, { id: 52, lane: 2, z: 44, speed: 23, kind: 'van', color: 0 }, { id: 53, lane: 0, z: 95, speed: 24, kind: 'sedan', color: 5 }] });
       window.__w.view = {}; window.__w.renderer.info.autoReset = false;
       const renderer = window.__w.renderer, rawGpu = renderer.render.bind(renderer);
+      /**
+       * Draw using the saved GPU method while preserving nested renderer calls.
+       * Temporarily restores the real renderer entrypoint for lazy background uploads,
+       * and restores the prior method even when rendering throws.
+       * @param {...*} args - Arguments forwarded to the bound WebGL renderer.
+       * @returns {*} Original renderer return value.
+       */
       window.__drawGpu = (...args) => {
         // Lazy background-to-cubemap uploads call renderer.render internally.
         // Keep that entry point real while drawing, not the CPU-only stub.
@@ -42,8 +49,14 @@ try {
       };
       // Warm all lazy background/material GPU resources before CPU-only stepping.
       window.__captureRender.call(window.__w, window.__s, { menu: false, dt: 1 });
-      renderer.render = () => {}; // Simulate every frame, draw only requested snapshots.
+      /** Suppress intermediate GPU draws while leaving real game physics and CPU scene updates intact. */ renderer.render = () => {}; // Simulate every frame, draw only requested snapshots.
     });
+    /**
+     * Advance real input-driven simulation at approximately 30 capture steps/second.
+     * Rounded millisecond clock increments sum to the requested time; CPU animation
+     * uses seconds/frames while GPU draws remain suppressed between snapshots.
+     * @param {number} seconds - Simulated time, not a physical-device performance sample.
+     */
     const advance = async seconds => {
       const frames = Math.ceil(seconds * 30);
       for (let i = 0; i < frames; i++) {
@@ -51,6 +64,13 @@ try {
         await page.evaluate(dt => { window.__w.renderer.info.reset(); window.__captureRender.call(window.__w, window.__s, { menu: false, dt }); }, seconds / frames);
       }
     };
+    /**
+     * Draw the current scene/HUD and capture flight state, render counters and layout.
+     * Asserts playing state, no horizontal overflow and decoded smoke atlas before
+     * saving a profile-labelled PNG. Does not force altitude, roll or particle output.
+     * @param {string} label - Snapshot stage used in the output filename.
+     * @returns {Promise<object>} State/layout telemetry measured at the captured pose.
+     */
     const capture = async label => {
       const data = await page.evaluate(() => {
         const s = window.__s, w = window.__w;
@@ -70,6 +90,12 @@ try {
       assert.equal(data.atlasReady, true, 'Blender-rendered smoke asset decoded before gameplay');
       await page.screenshot({ path: `${out}/${name}-${label}.png` }); console.log(name, label, JSON.stringify(data)); return data;
     };
+    /**
+     * Hold or release gas, flight or right roll through real UI input handlers.
+     * Mobile uses one independent pointer ID per action; desktop uses W, F or E.
+     * @param {string} action - One of 'gas', 'flight' or 'roll'.
+     * @param {boolean} down - Whether to press rather than release the control.
+     */
     const key = async (action, down) => {
       if (mobile) {
         const ids = { gas: ['gasBtn', 1], flight: ['flightBtn', 2], roll: ['rollRightBtn', 3] };

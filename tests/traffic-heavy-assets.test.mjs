@@ -5,6 +5,12 @@ import * as T from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { TRAFFIC_CATALOG } from '../src/traffic-catalog.js';
 
+/**
+ * Parse a local traffic GLB and refresh every world matrix before inspection.
+ * Despite its name this loader accepts any catalog kind for shared template setup.
+ * @param {string} kind - Asset basename under public/assets/traffic.
+ * @returns {Promise<T.Group>} Parsed root scene with current world transforms.
+ */
 async function loadHeavy(kind) {
   const bytes = await readFile(new URL(`../public/assets/traffic/${kind}.glb`, import.meta.url));
   const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
@@ -63,6 +69,14 @@ for (const kind of ['boxtruck', 'semi']) {
     const pivot = root.getObjectByName('wheel_fr'), mesh = pivot.children[0];
     const center = pivot.getWorldPosition(new T.Vector3());
     const ray = new T.Raycaster(), axis = new T.Vector3(-1, 0, 0);
+    /**
+     * Cast toward the front-right wheel from its outer +X side.
+     * Mutates the shared raycaster; the first visible hit distinguishes rim webs
+     * from recessed vent interiors and exposes the surface normal for assertions.
+     * @param {number} angle - Angle around the wheel axis, in radians.
+     * @param {number} radial - Distance from the wheel center, in metres.
+     * @returns {object|undefined} Nearest wheel hit, or undefined if the ray misses.
+     */
     const sample = (angle, radial) => {
       const origin = center.clone().add(new T.Vector3(1, Math.cos(angle) * radial, Math.sin(angle) * radial));
       ray.set(origin, axis);
@@ -161,6 +175,13 @@ for (const kind of ['boxtruck', 'semi']) {
   test(`${kind}: floor, firewall and inner liners close wheel exposure without window backing`, async () => {
     const root = await loadHeavy(kind), spec=TRAFFIC_CATALOG[kind], front=-spec.length/2+.09;
     const ray=new T.Raycaster();
+    /**
+     * Assert the first opaque hit is a physical cabin-interior surface.
+     * Transparent glazing is skipped so missing floors/liners cannot pass on glass.
+     * @param {number[]} origin - World-space ray origin in metres.
+     * @param {number[]} direction - Direction normalized before raycasting.
+     * @param {string} label - Context included in assertion failures.
+     */
     const probe=(origin,direction,label)=>{
       ray.set(new T.Vector3(...origin),new T.Vector3(...direction).normalize());
       const hit=ray.intersectObject(root,true).find(h=>!h.object.material.transparent);
@@ -178,6 +199,12 @@ for (const kind of ['boxtruck', 'semi']) {
     // The raised side shell must blend into the central floor rather than
     // create an open vertical seam at the arch crown.
     const liner=root.getObjectByName('sealed_front_wheel_liners');
+    /**
+     * Raycast downward and assert the named liner seals the sampled floor join.
+     * @param {number} x - Lateral world coordinate in metres.
+     * @param {number} z - Longitudinal world coordinate in metres.
+     * @returns {number} First liner surface height in metres.
+     */
     const floorHeight=(x,z)=>{
       ray.set(new T.Vector3(x,2,z),new T.Vector3(0,-1,0));
       const hit=ray.intersectObject(liner,false)[0];
@@ -198,6 +225,11 @@ for (const kind of ['boxtruck', 'semi']) {
 // Testing actual liner triangles outside that sphere therefore covers the
 // complete steering ±.6 and spin sweep, including phases between samples.
 import { TRAFFIC_KINDS, installTrafficTemplates, createTrafficCar } from '../src/traffic.js';
+/**
+ * Load every catalog GLB once and install shared production traffic templates.
+ * Tests await this promise before constructing cars with runtime rig metadata;
+ * installation mutates the module-level template registry, not the asset files.
+ */
 const runtimeHeavyReady = (async () => {
   const models = Object.fromEntries(await Promise.all(TRAFFIC_KINDS.map(async kind => [kind, await loadHeavy(kind)])));
   installTrafficTemplates(models);

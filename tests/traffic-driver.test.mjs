@@ -7,6 +7,10 @@ import { animateTrafficDriver, stalkGesture, mirrorGlance, INDICATOR_TOUCH_TIME 
 const models={};
 for(const kind of TRAFFIC_KINDS){const b=await readFile(`public/assets/traffic/${kind}.glb`);models[kind]=(await new T.GLTFLoader().parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'')).scene;}
 installTrafficTemplates(models);
+/**
+ * Allocate a fresh world-position target so later reads cannot overwrite it.
+ * @returns {T.Vector3} Independent zero vector for rig reach assertions.
+ */
 const p=()=>new T.Vector3();
 test('all eight Blender driver rigs retain nested arms and moving steering under the sprung body',()=>{
  for(const kind of TRAFFIC_KINDS){const car=createTrafficCar(kind),r=car.userData.driver;assert.ok(r,kind);assert.equal(r.wheel.parent,r.body);

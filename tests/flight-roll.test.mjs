@@ -2,14 +2,30 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
 import { FLIGHT } from '../src/flight.js';
+/**
+ * Create a moving, fully charged game with no hazards or automatic spawns.
+ * The 26 m/s initial speed and 100 energy isolate flight/roll transitions.
+ * @returns {Game} Started game whose state the test may mutate.
+ */
 const make = () => {
   const g = new Game(); g.start();
   Object.assign(g.state, { traffic: [], pickups: [], obstacles: [], nextSpawn: Infinity, nextEvent: Infinity, speed: 26, nitro: 100 });
   return g;
 };
+/**
+ * Mutate the fixture through at most 1/120-second simulation steps.
+ * The final step is shortened to avoid exceeding the requested duration.
+ * @param {Game} g - Started fixture.
+ * @param {number} seconds - Simulated duration in seconds.
+ * @param {object} [controls={}] - Held controls reused for every update.
+ */
 const advance = (g, seconds, controls = {}) => {
   for (let t = 0; t < seconds - 1e-8; t += 1 / 120) g.update(Math.min(1 / 120, seconds - t), controls);
 };
+/**
+ * Hold throttle and flight for 1.6 simulated seconds to reach cruise altitude.
+ * @param {Game} g - Fixture mutated through the real flight state machine.
+ */
 const takeoff = g => advance(g, 1.6, { flight: true, throttle: 1 });
 
 test('flight preserves honest horizontal speed: held throttle accelerates, coasting slows', () => {

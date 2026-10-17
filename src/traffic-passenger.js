@@ -34,12 +34,27 @@ const PROPORTIONS = Object.freeze({
   },
 });
 
+/**
+ * Attach construction geometry to an assembly using the shared supplied material.
+ * @param {T.Group} group - Destination mutated by adding the mesh.
+ * @param {T.Material} material - Material retained by reference.
+ * @param {T.BufferGeometry} shape - Geometry whose ownership passes to the construction assembly.
+ * @returns {T.Mesh} New mesh for optional subsequent positioning or rotation.
+ */
 function addMesh(group, material, shape) {
   const mesh = new T.Mesh(shape, material);
   group.add(mesh);
   return mesh;
 }
 
+/**
+ * Add a coarse rounded detail suitable for door handles and small fittings.
+ * @param {T.Group} group - Destination assembly.
+ * @param {T.Material} material - Shared detail material.
+ * @param {number[]} size - XYZ radii in metres, not full diameters.
+ * @param {number[]} position - Local center XYZ in metres.
+ * @returns {T.Mesh} New scaled 8-by-4 sphere mesh.
+ */
 function ellipsoid(group,material,size,position) {
   const mesh=addMesh(group,material,new T.SphereGeometry(1,8,4));
   mesh.scale.set(...size);mesh.position.set(...position);return mesh;
@@ -47,6 +62,17 @@ function ellipsoid(group,material,size,position) {
 
 // Twelve perimeter vertices preserve rounded lamp corners without paying for
 // a general-purpose extruder (dozens of panels are visible on every vehicle).
+/**
+ * Add a lightweight rounded panel with twelve perimeter vertices and separate cap normals.
+ * @param {T.Group} group - Destination assembly.
+ * @param {T.Material} material - Shared panel material.
+ * @param {number} width - XY face width in metres.
+ * @param {number} height - XY face height in metres.
+ * @param {number} depth - Extrusion from the face toward positive Z in metres.
+ * @param {number[]} position - Face-center origin XYZ in metres.
+ * @param {number} [radius=.025] - Corner radius capped relative to panel size.
+ * @returns {T.Mesh} New panel avoiding general-purpose extruder overhead.
+ */
 function panel(group,material,width,height,depth,position,radius=.025) {
   const w=width*.5,h=height*.5,r=Math.min(radius,w*.45,h*.45),outline=[];
   for(const [cx,cy,start] of [[w-r,h-r,0],[-w+r,h-r,Math.PI*.5],[-w+r,-h+r,Math.PI],[w-r,-h+r,Math.PI*1.5]]) {
@@ -62,12 +88,30 @@ function panel(group,material,width,height,depth,position,radius=.025) {
   const mesh=addMesh(group,material,geometry(positions,indices));mesh.position.set(...position);return mesh;
 }
 
+/**
+ * Evaluate a two-dimensional cubic Bezier used to join roof and side-glass profiles.
+ * @param {number[]} a - Start XY point in metres.
+ * @param {number[]} b - First control XY point in metres.
+ * @param {number[]} c - Second control XY point in metres.
+ * @param {number[]} d - End XY point in metres.
+ * @param {number} t - Curve parameter, normally in [0,1].
+ * @returns {number[]} Fresh XY point without modifying control points.
+ */
 function cubic(a, b, c, d, t) {
   const s = 1 - t;
   return [s*s*s*a[0] + 3*s*s*t*b[0] + 3*s*t*t*c[0] + t*t*t*d[0],
     s*s*s*a[1] + 3*s*s*t*b[1] + 3*s*t*t*c[1] + t*t*t*d[1]];
 }
 
+/**
+ * Loft the passenger body while preserving real cabin openings and steered-wheel clearance.
+ * Adds exact arch and cabin boundary stations; skips hidden underside strips crossing wheel
+ * volumes and keeps separate end-cap normals. This is construction geometry, not collision data.
+ * @param {number[][]} sections - Ordered [z,width,bottom,shoulder,top] profiles in metres.
+ * @param {Object} spec - Metre dimensions and axle/cabin stations, including wheel radius and wheelWidth.
+ * @param {number} sill - Structural floor height in metres above the road.
+ * @returns {T.BufferGeometry} New body skin facing negative Z, with the intended open regions.
+ */
 function bodyShell(sections,spec,sill) {
   const positions=[],indices=[],l=spec.length*.5,radius=spec.wheel*1.10,wheelY=spec.wheel+.015;
   const stations=new Set(Array.from({length:31},(_,i)=>-l+spec.length*i/30));
@@ -111,6 +155,12 @@ function bodyShell(sections,spec,sill) {
 
 // A crowned roof, rounded cantrail, and near-planar convex door glass. Unlike
 // a sphere stretched into a cabin, the roof and side have distinct radii.
+/**
+ * Create a continuous crowned-roof and rounded-side cabin sampler.
+ * @param {number[][]} rows - Ordered [z,height,widthScale] roof profiles; scale is unitless.
+ * @param {Object} p - Archetype cabinBase, cabinWidth and roofWidth dimensions in metres.
+ * @returns {function(number, number): number[]} Pure sampler (u in [-1,1], z in metres) returning local XYZ metres.
+ */
 function greenhouse(rows, p) {
   return (u, z) => {
     const [height, widthScale = 1] = profileAt(rows, z);
@@ -126,6 +176,13 @@ function greenhouse(rows, p) {
   };
 }
 
+/**
+ * Select shape stations that distinguish sedan, hatch, SUV and van lower-body silhouettes.
+ * @param {string} kind - Passenger archetype; the final branch supplies the van profile.
+ * @param {number} l - Half-length in metres to the profile's end stations.
+ * @param {Object} p - Archetype bodyWidth, sill and belt dimensions in metres.
+ * @returns {number[][]} Fresh ordered [z,width,bottom,shoulder,top] metre stations.
+ */
 function bodyProfiles(kind, l, p) {
   const w = p.bodyWidth, s = p.sill, b = p.belt;
   if (kind === 'sedan') return [
@@ -155,6 +212,13 @@ function bodyProfiles(kind, l, p) {
   ];
 }
 
+/**
+ * Select roof-height and taper stations for the passenger cabin.
+ * @param {string} kind - Archetype controlling van, SUV and sedan-specific roof treatment.
+ * @param {Object} p - Cabin/roof longitudinal stations and cabinBase, in metres.
+ * @param {number} h - Catalog maximum vehicle height in metres.
+ * @returns {number[][]} Fresh [z,height,widthScale] profile rows for greenhouse sampling.
+ */
 function roofProfiles(kind, p, h) {
   if (kind === 'van') return [
     [p.cabinFront, p.cabinBase+.035, .92], [-1.86, 1.63, .97],
@@ -170,6 +234,11 @@ function roofProfiles(kind, p, h) {
   ];
 }
 
+/**
+ * Describe side-window longitudinal corners independently of cabin tessellation.
+ * @param {string} kind - Passenger archetype; van has one front-door window per side.
+ * @returns {number[][]} Fresh [bottomStart,topStart,bottomEnd,topEnd] Z coordinates in metres per pane.
+ */
 function windowLayout(kind) {
   if(kind==='sedan')return [[-.94,-.45,.08,.08],[.18,.18,1.16,.64]];
   if(kind==='hatch')return [[-.80,-.36,-.02,-.02],[.08,.08,1.32,.91]];
@@ -180,8 +249,25 @@ function windowLayout(kind) {
 // Subtract the exact pane outlines from the roof parameter domain. Merely
 // floating a window over a differently tessellated curved roof creates white
 // triangles through the glass. Real apertures remove the conflicting surface.
+/**
+ * Triangulate the painted cabin skin after subtracting the exact glazing apertures.
+ * Clips each parameter-space cell against convex window holes, welds UV vertices and samples
+ * continuous normals so painted triangles cannot remain visible through transparent panes.
+ * @param {function(number, number): number[]} skin - Maps signed lateral u and metre Z to local XYZ metres.
+ * @param {Object} p - Archetype cabin/roof Z bounds in metres.
+ * @param {string} kind - Passenger archetype selecting front, rear and side apertures.
+ * @returns {T.BufferGeometry} New indexed paint shell with actual window holes and analytic sampled normals.
+ */
 function glazedCabinGeometry(skin,p,kind) {
   const holes=[];
+  /**
+   * Describe a rectangular glazing hole in the cabin's mixed-unit parameter domain.
+   * @param {number} u0 - Lower signed lateral parameter.
+   * @param {number} u1 - Upper signed lateral parameter.
+   * @param {number} z0 - Forward longitudinal boundary in metres.
+   * @param {number} z1 - Rear longitudinal boundary in metres.
+   * @returns {number[][]} Counterclockwise [u,z] corners for convex subtraction.
+   */
   const rectangle=(u0,u1,z0,z1)=>[[u0,z0],[u1,z0],[u1,z1],[u0,z1]];
   const frontWidth=kind==='van'?.78:.79;
   holes.push(rectangle(-frontWidth+.012,frontWidth-.012,p.cabinFront+.085,p.roofFront-.025));
@@ -191,12 +277,37 @@ function glazedCabinGeometry(skin,p,kind) {
   }
   for(const side of [-1,1])for(const [bottomStart,topStart,bottomEnd,topEnd]of windowLayout(kind)){
     const low=.689,high=.981;
+    /**
+     * Interpolate a side pane's forward edge and inset it from the painted frame.
+     * @param {number} s - Unsigned cabin-side parameter between roof and belt edge.
+     * @returns {number} Forward pane Z in metres for the enclosing window layout.
+     */
     const start=s=>mix(topStart,bottomStart,(s-.685)/.30)+.007;
+    /**
+     * Interpolate a side pane's rear edge and inset it from the painted frame.
+     * @param {number} s - Unsigned cabin-side parameter between roof and belt edge.
+     * @returns {number} Rear pane Z in metres for the enclosing window layout.
+     */
     const end=s=>mix(topEnd,bottomEnd,(s-.685)/.30)-.007;
     const polygon=[[side*low,start(low)],[side*high,start(high)],[side*high,end(high)],[side*low,end(low)]];
     if(side<0)polygon.reverse();holes.push(polygon);
   }
+  /**
+   * Measure which side of a directed parameter-space edge contains a point.
+   * @param {number[]} a - Edge start [u,z].
+   * @param {number[]} b - Edge end [u,z].
+   * @param {number[]} p - Query [u,z].
+   * @returns {number} Signed 2D cross product; positive means left/inside a counterclockwise contour.
+   */
   const cross=(a,b,p)=>(b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]);
+  /**
+   * Clip a parameter polygon against one directed line, retaining the chosen half-plane.
+   * @param {number[][]} polygon - Ordered [u,z] vertices, not mutated.
+   * @param {number[]} a - Directed clipping-edge start [u,z].
+   * @param {number[]} b - Directed clipping-edge end [u,z].
+   * @param {boolean} inside - Keep the left side when true, right side otherwise, with edge tolerance.
+   * @returns {number[][]} New polygon containing reused original points and new intersection points.
+   */
   function halfPlane(polygon,a,b,inside){
     const result=[];
     for(let i=0;i<polygon.length;i++){
@@ -207,6 +318,12 @@ function glazedCabinGeometry(skin,p,kind) {
     }
     return result;
   }
+  /**
+   * Partition the portion of a polygon outside one convex counterclockwise window hole.
+   * @param {number[][]} polygon - Source [u,z] contour, left unchanged.
+   * @param {number[][]} hole - Convex aperture [u,z] contour used as successive clipping half-planes.
+   * @returns {number[][][]} New surviving polygons; empty when the source lies entirely in the hole.
+   */
   function subtract(polygon,hole){
     const outside=[];let rest=polygon;
     for(let i=0;i<hole.length&&rest.length>=3;i++){
@@ -217,6 +334,11 @@ function glazedCabinGeometry(skin,p,kind) {
     return outside;
   }
   const positions=[],normals=[],indices=[],vertices=new Map();
+  /**
+   * Reuse or append a cabin vertex and a finite-difference surface normal.
+   * @param {number[]} uv - [signed lateral u, longitudinal z in metres] parameter point.
+   * @returns {number} Vertex index; updates enclosing position/normal arrays and a seven-decimal weld map.
+   */
   function vertex(uv){
     const key=uv.map(n=>n.toFixed(7)).join(',');
     if(vertices.has(key))return vertices.get(key);
@@ -239,11 +361,43 @@ function glazedCabinGeometry(skin,p,kind) {
   shape.setAttribute('normal',new T.Float32BufferAttribute(normals,3));shape.setIndex(indices);return shape;
 }
 
+/**
+ * Add a tessellated, optionally offset rectangle following the continuous cabin surface.
+ * @param {T.Group} group - Destination construction assembly.
+ * @param {T.Material} material - Shared patch material.
+ * @param {function(number, number): number[]} skin - Signed-u/metre-Z to local-XYZ sampler.
+ * @param {number} u0 - Starting lateral parameter in [-1,1].
+ * @param {number} u1 - Ending lateral parameter in [-1,1].
+ * @param {number} z0 - Starting Z in metres.
+ * @param {number} z1 - Ending Z in metres.
+ * @param {number} [depth=.007] - Normal offset in metres to separate overlays.
+ * @param {number} [columns=8] - Lateral subdivisions.
+ * @param {number} [rows=4] - Longitudinal subdivisions.
+ * @returns {T.Mesh} Newly attached patch mesh.
+ */
 function roofPatch(group, material, skin, u0, u1, z0, z1, depth=.007, columns=8, rows=4) {
   return addMesh(group, material, surface((u,v) => skin(mix(u0,u1,u), mix(z0,z1,v)), columns, rows, depth));
 }
 
+/**
+ * Add transparent side glass and a narrow perimeter seal, never a solid backing sheet.
+ * @param {T.Group} group - Destination cabin assembly.
+ * @param {function(number, number): number[]} skin - Cabin sampler returning local XYZ metres.
+ * @param {number} side - -1 for left or +1 for right.
+ * @param {number} bottomStart - Lower forward pane Z in metres.
+ * @param {number} topStart - Upper forward pane Z in metres.
+ * @param {number} bottomEnd - Lower rear pane Z in metres.
+ * @param {number} topEnd - Upper rear pane Z in metres.
+ * @returns {void} New glass/seal geometries share the global materials.
+ */
 function sideWindow(group, skin, side, bottomStart, topStart, bottomEnd, topEnd) {
+  /**
+   * Sample a side pane while consistently insetting its sloping longitudinal borders.
+   * @param {number} border - Parametric inset; also contributes half as much metre inset along Z.
+   * @param {number} u - Across-pane parameter in [0,1], reversed for the opposite side.
+   * @param {number} v - Longitudinal pane parameter in [0,1].
+   * @returns {number[]} Cabin-local XYZ metres for glass or perimeter-seal tessellation.
+   */
   const point = (border,u,v) => {
     const s = mix(side > 0 ? .685+border : .985-border, side > 0 ? .985-border : .685+border, u);
     const t = (s-.685)/.30;
@@ -258,6 +412,16 @@ function sideWindow(group, skin, side, bottomStart, topStart, bottomEnd, topEnd)
   addMesh(group,glass,surface((u,v)=>point(.018,u,v),3,4,.023));
 }
 
+/**
+ * Attach a front/rear screen with perimeter gasket and a single surface-following wiper.
+ * @param {T.Group} group - Destination cabin assembly.
+ * @param {function(number, number): number[]} skin - Signed-u/metre-Z cabin sampler.
+ * @param {boolean} front - Choose the forward rather than rear wiper station.
+ * @param {number} from - Forward screen boundary in metres.
+ * @param {number} to - Rear screen boundary in metres.
+ * @param {number} [width=.78] - Half-width in cabin parameter units, not metres.
+ * @returns {void} Creates shared-material patches without restoring paint behind the aperture.
+ */
 function screen(group, skin, front, from, to, width=.78) {
   roofPatch(group,trim,skin,-width,-width+.045,from,to,.012,1,6);
   roofPatch(group,trim,skin,width-.045,width,from,to,.012,1,6);
@@ -269,6 +433,17 @@ function screen(group, skin, front, from, to, width=.78) {
   addMesh(group, trim, surface((u,v) => skin(mix(-.40,.30,u), z+v*.018), 7, 1, .017));
 }
 
+/**
+ * Extrude a thin side-facing ribbon along a door/pressing contour on the body surface.
+ * @param {T.Group} group - Destination static body assembly.
+ * @param {number} side - -1 for left or +1 for right; controls outward winding.
+ * @param {number[][]} points - Ordered local [z,y] metre contour.
+ * @param {function(number, number): number} xAt - Returns unsigned body X metres for requested z,y.
+ * @param {number} [thickness=.009] - Ribbon width in the YZ plane, in metres.
+ * @param {T.Material} [material=trim] - Shared seam/pressing material.
+ * @param {number} [offset=.006] - Outward X displacement in metres to avoid overlap.
+ * @returns {T.Mesh} New ribbon mesh with normals oriented to its vehicle side.
+ */
 function seam(group, side, points, xAt, thickness=.009, material=trim, offset=.006) {
   const vertices = [], indices = [];
   for (let i=0; i<points.length; i++) {
@@ -286,17 +461,48 @@ function seam(group, side, points, xAt, thickness=.009, material=trim, offset=.0
   return addMesh(group,material,shape);
 }
 
+/**
+ * Return a closed eight-corner clipped rectangle for inset panels and door seams.
+ * @param {number} z0 - Forward boundary in metres.
+ * @param {number} z1 - Rear boundary in metres.
+ * @param {number} y0 - Lower boundary in metres.
+ * @param {number} y1 - Upper boundary in metres.
+ * @param {number} [r=.06] - Corner setback in metres, expected to fit within the rectangle.
+ * @returns {number[][]} New [z,y] contour with the first point repeated at the end.
+ */
 function roundedOutline(z0, z1, y0, y1, r=.06) {
   return [[z0+r,y0],[z1-r,y0],[z1,y0+r],[z1,y1-r],[z1-r,y1],
     [z0+r,y1],[z0,y1-r],[z0,y0+r],[z0+r,y0]];
 }
 
+/**
+ * Add a recessed handle pocket and a small raised grip on one door.
+ * @param {T.Group} group - Destination body assembly.
+ * @param {number} side - -1 left or +1 right.
+ * @param {number} x - Unsigned lateral body position in metres.
+ * @param {number} y - Handle elevation in metres.
+ * @param {number} z - Handle longitudinal station in metres.
+ * @param {number} [length=.19] - Nominal grip length along Z in metres.
+ * @param {boolean} [dark=false] - Use trim rather than chrome for the raised grip.
+ * @returns {void} Adds ellipsoid geometries while sharing finish materials.
+ */
 function sideHandle(group, side, x, y, z, length=.19, dark=false) {
   const recess=ellipsoid(group,trim,[.012,.027,length*.61],[side*x,y,z]);
   recess.name='door_handle_recess';
   ellipsoid(group,dark?trim:chrome,[.019,.014,length*.45],[side*(x+.01),y+.006,z]);
 }
 
+/**
+ * Attach a stationary arch lip and inward return around one genuine wheel opening.
+ * @param {T.Group} group - Static body assembly, not a rotating wheel pivot.
+ * @param {number[][]} sections - Body profiles used to locate lateral skin width.
+ * @param {Object} p - Archetype sill elevation in metres.
+ * @param {number} radius - Tire radius in metres; arch clearance is larger.
+ * @param {number} side - -1 left or +1 right.
+ * @param {number} wheelZ - Axle center Z in metres.
+ * @param {boolean} wide - Select broad dark SUV cladding rather than a narrow painted lip.
+ * @returns {void} Omits the flat backing disk so a steered rim remains unobstructed.
+ */
 function arch(group, sections, p, radius, side, wheelZ, wide) {
   const r=radius*1.10,y=radius+.015,start=Math.asin((p.sill-y)/r);
   const band=wide?.067:.028;
@@ -314,6 +520,13 @@ function arch(group, sections, p, radius, side, wheelZ, wide) {
   // A flat disc behind the neutral wheel would intersect its steered rim.
 }
 
+/**
+ * Build and material-merge an archetype wheel with a detailed positive-X outer face.
+ * @param {number} radius - Tire radius in metres.
+ * @param {number} width - Tire width along X in metres.
+ * @param {string} style - steel, four-spoke, six-spoke or the default split-five layout.
+ * @returns {T.Group} New centered wheel assembly carrying style metadata; mirror X for left wheels.
+ */
 function buildWheel(radius,width,style) {
   const parts=new T.Group();
   const profile=[[.64,-.49],[.83,-.51],[.95,-.43],[1,-.25],[1,.25],[.95,.43],[.83,.51],[.64,.49],[.64,-.49]];
@@ -347,6 +560,15 @@ function buildWheel(radius,width,style) {
   return result;
 }
 
+/**
+ * Add the small body-side mirror mount retained in the procedural blockout.
+ * The final shaped housings and reflective panes are authored separately in Blender.
+ * @param {T.Group} group - Static body assembly receiving the mount.
+ * @param {Object} p - Archetype body width and cabin stations/heights in metres.
+ * @param {number} side - -1 left or +1 right.
+ * @param {boolean} isVan - Select the van's taller forward mounting point.
+ * @returns {void} Adds only the trim support, not a complete mirror assembly.
+ */
 function mirrors(group,p,side,isVan) {
   const x=p.bodyWidth/2, z=isVan?-1.73:p.cabinFront+.30, y=p.cabinBase+(isVan?.32:.14);
   box(group,trim,[.065,.028,.060],[side*(x-.014),y-.035,z-.035]);
@@ -354,6 +576,15 @@ function mirrors(group,p,side,isVan) {
   // authored in Blender, separate from the transparent cabin glazing.
 }
 
+/**
+ * Add rolled front/rear bumper skins and optional SUV skid-plate trim.
+ * @param {T.Group} group - Destination body assembly.
+ * @param {Object} p - Archetype bodyWidth and sill in metres.
+ * @param {number} l - Vehicle half-length in metres.
+ * @param {boolean} isVan - Use the taller van bumper profile.
+ * @param {boolean} isSUV - Add bright lower trim panels.
+ * @returns {void} Uses bounded surface tessellation and shared materials.
+ */
 function bumper(group,p,l,isVan,isSUV) {
   const w=p.bodyWidth, y=p.sill+.10;
   // Rolled bumper skins follow the front and back width, rather than bars.
@@ -370,6 +601,14 @@ function bumper(group,p,l,isVan,isSUV) {
   }
 }
 
+/**
+ * Add archetype-specific front/rear clusters and wraparound brake-light facets.
+ * @param {T.Group} group - Destination body assembly.
+ * @param {string} kind - Passenger archetype controlling cluster placement and shape.
+ * @param {Object} p - Archetype body proportions in metres.
+ * @param {number} l - Half-length in metres, with front at negative Z.
+ * @returns {void} Reuses headlight/brake materials so merged lamps remain identifiable.
+ */
 function lamps(group,kind,p,l) {
   const w=p.bodyWidth;
   if(kind==='van') {
@@ -409,6 +648,14 @@ function lamps(group,kind,p,l) {
   }
 }
 
+/**
+ * Add grille bars, front plate and sedan hood shut lines.
+ * @param {T.Group} group - Destination static assembly.
+ * @param {string} kind - Passenger archetype selecting grille height and proportions.
+ * @param {Object} p - Archetype bodyWidth and sill in metres.
+ * @param {number} l - Half-length in metres, placing details near Z=-l.
+ * @returns {void} Creates shared-material surface/box details for later merging.
+ */
 function frontDetail(group,kind,p,l) {
   const van=kind==='van', suv=kind==='suv', w=p.bodyWidth;
   const grillY=van?.91:suv?.87:.61;
@@ -424,6 +671,15 @@ function frontDetail(group,kind,p,l) {
   }
 }
 
+/**
+ * Add rear plate recess, cargo/trunk/liftgate details, optional spoiler and reflectors.
+ * @param {T.Group} group - Destination static body assembly.
+ * @param {string} kind - Passenger archetype determining rear-door versus trunk treatment.
+ * @param {Object} p - Archetype body/cabin/roof dimensions and stations in metres.
+ * @param {number} l - Half-length in metres, placing details near positive Z.
+ * @param {function(number, number): number[]} skin - Cabin sampler for spoiler and high brake-lamp placement.
+ * @returns {void} Adds no independently animated equipment.
+ */
 function rearDetail(group,kind,p,l,skin) {
   const isVan=kind==='van', w=p.bodyWidth;
   panel(group,trim,.51,.155,.020,[0,isVan?.83:kind==='sedan'?.59:.68,l-.025],.025);
@@ -467,8 +723,28 @@ function rearDetail(group,kind,p,l,skin) {
   for(const side of [-1,1]) panel(group,baseBrake,.17,.035,.016,[side*w*.35,p.sill+.075,l-.036],.012);
 }
 
+/**
+ * Place door outlines, handles, side pressings and mirror mounts on the actual curved skin.
+ * @param {T.Group} group - Static assembly receiving side details.
+ * @param {string} kind - Passenger archetype controlling door count and cargo-van treatments.
+ * @param {Object} p - Archetype body/cabin dimensions in metres.
+ * @param {function(number, number): number[]} skin - Cabin surface sampler for upper door placement.
+ * @param {number[][]} sections - Lower-body profiles for width sampling.
+ * @returns {void} Leaves input profiles and proportion records unchanged.
+ */
 function doors(group,kind,p,skin,sections) {
+  /**
+   * Sample the unsigned lower-body half-width for side detail placement.
+   * @param {number} z - Vehicle-local longitudinal station in metres.
+   * @returns {number} Positive lateral surface position in metres.
+   */
   const bodyX=(z)=>profileAt(sections,z)[0]*.5;
+  /**
+   * Locate the unsigned curved body/cabin side at a requested door contour point.
+   * @param {number} z - Local longitudinal station in metres.
+   * @param {number} y - Requested elevation in metres.
+   * @returns {number} Lateral X in metres; upper cabin inversion uses a fixed nine-step binary search.
+   */
   const xAt=(z,y)=>{
     if(y<=p.cabinBase || z<p.cabinFront || z>p.cabinRear) return bodyX(z);
     let lo=.64,hi=1;
@@ -504,6 +780,13 @@ function doors(group,kind,p,skin,sections) {
   }
 }
 
+/**
+ * Add the SUV's paired roof rails and four mounting feet.
+ * @param {T.Group} group - Destination static assembly.
+ * @param {Object} p - Archetype record accepted for call-site consistency; currently unused.
+ * @param {number} height - Vehicle roof height in metres positioning the rail curve.
+ * @returns {void} New bounded-segment tube geometry shares chrome/trim finishes.
+ */
 function roofRails(group,p,height) {
   for(const side of [-1,1]) {
     const points=[new T.Vector3(side*.64,height-.095,-.48),new T.Vector3(side*.64,height-.043,-.20),
@@ -513,6 +796,15 @@ function roofRails(group,p,height) {
   }
 }
 
+/**
+ * Assemble a distinct passenger archetype with opened glazing and independent wheel pivots.
+ * Static meshes are consumed into material batches; four wheel transform clones share the
+ * completed wheel's geometry/materials. Local ground is Y=0 and the front points toward -Z.
+ * @param {string} kind - sedan, hatch, suv or van.
+ * @param {Object} [definition] - Matching catalog length, height and wheelRadius in metres.
+ * @returns {T.Group} New model with named wheels and catalog/design metadata for export and animation.
+ * @throws {Error} If kind has no original passenger proportions.
+ */
 export function buildPassengerVehicle(kind, definition=trafficDefinition(kind)) {
   if(!Object.hasOwn(PROPORTIONS,kind)) throw new Error(`Unsupported passenger vehicle: ${kind}`);
   const p=PROPORTIONS[kind], g=new T.Group(), l=definition.length/2;

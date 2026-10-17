@@ -7,6 +7,12 @@ export const FLIGHT = Object.freeze({
   landingCooldown: 2, landingReserveCost: 2.5, landingReserveTime: 3.2,
 });
 
+/**
+ * Creates independent, grounded flight/roll state with all timers and effects off.
+ * Merge these fields into a run that also supplies speed (m/s) and nitro (0..100).
+ * @returns {Object} Fresh mutable flight state; altitude is metres, angular fields
+ * are radians or rad/s, and cooldown/reserve durations are seconds.
+ */
 export function createFlightState() {
   return {
     flying: false, altitude: 0, verticalSpeed: 0, flightReady: false,
@@ -16,6 +22,18 @@ export function createFlightState() {
   };
 }
 
+/**
+ * Advances arcade lift, reserved landing assistance and edge-triggered barrel rolls.
+ * Mutates flight fields and the shared nitro reserve. Upward altitude/speed are
+ * positive; roll sign follows controls.roll. A paid roll finishes upright even
+ * if lift input ends. Altitude stays within [0, maxAltitude], with land/roll
+ * notifications emitted synchronously on their respective transitions.
+ * @param {Object} s - Mutable run with createFlightState fields, speed and nitro.
+ * @param {number} dt - Positive fixed simulation interval in seconds.
+ * @param {Object} controls - Flight flag, brake input and signed roll input.
+ * @param {Function} [onEvent] - Receives 'roll' at initiation and 'land' at touchdown.
+ * @returns {void}
+ */
 export function updateFlight(s, dt, controls, onEvent = () => {}) {
   const previousAltitude = s.altitude || 0;
   s.flightCooldown = Math.max(0, (s.flightCooldown || 0) - dt);

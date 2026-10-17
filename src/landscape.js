@@ -5,8 +5,28 @@ import { seededRandom } from './util.js';
 // the same bend function as the road is applied only at the final transform.
 const PERIOD = 800;
 const TAU = Math.PI * 2;
+/**
+ * Constrain a scenery weight or coordinate to an inclusive interval.
+ * @param {number} x - Value to constrain.
+ * @param {number} [a=0] - Lower bound.
+ * @param {number} [b=1] - Upper bound.
+ * @returns {number} Bounded scalar; inputs are expected to be finite.
+ */
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+/**
+ * Ease a scalar between two thresholds with zero slope at both ends.
+ * @param {number} a - Lower threshold, distinct from b.
+ * @param {number} b - Upper threshold.
+ * @param {number} x - Sample in the same units as the thresholds.
+ * @returns {number} Cubic smoothstep weight in [0,1].
+ */
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+/**
+ * Recycle a fixed scenery seed into the 800-metre visible longitudinal interval.
+ * @param {number} z - Seed Z in unbent road-local metres.
+ * @param {number} distance - Accumulated player travel in metres.
+ * @returns {number} Scene Z in [-720,80), including correct wrapping for negative inputs.
+ */
 const wrap = (z, distance) => ((z + distance + 720) % PERIOD + PERIOD) % PERIOD - 720;
 const PALETTES = {
   ring: { land: '#b6ba88', grass: '#7d8f47', leaves: '#668153', water: '#368d9b', fog: '#b8d1d5', density: .77 },
@@ -14,7 +34,13 @@ const PALETTES = {
   dawn: { land: '#c4b78c', grass: '#aa9756', leaves: '#b2944a', water: '#3a9ba4', fog: '#c9d8d8', density: .37 },
 };
 
-/** Height in road-local coordinates. z is a world coordinate, not a recycled z. */
+/**
+ * Sample the periodic hillside, near lake bank and far shore before road bending.
+ * The height repeats every 800 metres, so recycled scenery keeps its cached elevation.
+ * @param {number} x - Lateral road-local offset in metres; negative is the forested slope.
+ * @param {number} z - Unrecycled world Z in metres, not the displayed scrolling coordinate.
+ * @returns {number} Terrain elevation in metres relative to the road's Y=0 plane.
+ */
 export function scenicTerrainHeight(x, z) {
   const edge = Math.max(0, Math.abs(x) - 8.2);
   const phase = z / PERIOD * TAU;
@@ -34,6 +60,12 @@ export function scenicTerrainHeight(x, z) {
 // The height function is a sum of three periodic harmonics. Factor all x-only
 // terms once so moving terrain needs six trig evaluations for the entire frame,
 // not thousands of height calls. Coefficients are [base, sin1, cos1, ...].
+/**
+ * Factor the terrain height harmonics at one lateral coordinate for reuse across rows.
+ * @param {number} x - Unbent lateral position in metres.
+ * @returns {Float64Array} New [base,sin1,cos1,sin2,cos2,sin3,cos3] metre coefficients;
+ *  the harmonic phase is z / PERIOD * TAU, avoiding repeated height/trigonometry calls per vertex.
+ */
 function terrainCoefficients(x) {
   const edge = Math.max(0, Math.abs(x) - 8.2), c = new Float64Array(7);
   let rolling;
@@ -54,12 +86,26 @@ function terrainCoefficients(x) {
   return c;
 }
 
+/**
+ * Wrap shared geometry/material references in a named mesh without attaching it.
+ * @param {T.BufferGeometry} geometry - Geometry retained by reference.
+ * @param {T.Material} material - Material retained by reference.
+ * @param {string} name - Diagnostic scene-object name.
+ * @returns {T.Mesh} New mesh; caller chooses ownership, transforms and scene membership.
+ */
 function mesh(geometry, material, name) {
   const result = new T.Mesh(geometry, material);
   result.name = name;
   return result;
 }
 
+/**
+ * Combine already-transformed primitives into one nonindexed vertex-colored geometry.
+ * Consumes and disposes every input geometry and conversion temporary; no materials are
+ * created, and only positions/normals plus the supplied per-part colors are preserved.
+ * @param {Object[]} parts - Records with geometry in local metres and a Three.js-compatible color.
+ * @returns {T.BufferGeometry} New merged geometry with computed bounds and RGB vertex colors.
+ */
 function coloredGeometry(parts) {
   const positions = [], normals = [], colors = [];
   const color = new T.Color();
@@ -84,12 +130,31 @@ function coloredGeometry(parts) {
   return geo;
 }
 
+/**
+ * Prepare a translated colored box for the consuming geometry merger.
+ * @param {number} w - X width in metres.
+ * @param {number} h - Y height in metres.
+ * @param {number} d - Z depth in metres.
+ * @param {number} x - Local center X in metres.
+ * @param {number} y - Local center Y in metres.
+ * @param {number} z - Local center Z in metres.
+ * @param {T.ColorRepresentation} color - Color to bake when merging.
+ * @returns {{geometry: T.BoxGeometry, color: *}} Owned geometry plus an unmodified color value.
+ */
 function box(w, h, d, x, y, z, color) {
   const geometry = new T.BoxGeometry(w, h, d);
   geometry.translate(x, y, z);
   return { geometry, color };
 }
 
+/**
+ * Create both nonuniform terrain banks and precompute their harmonic update caches.
+ * Allocates roughly 2,700 vertices once, with denser sampling near the road; position and
+ * normal attributes are dynamic, while coefficients and local coordinates remain reusable.
+ * @param {T.Scene} scene - Scene receiving both ground meshes.
+ * @param {Object} assets - Shared grass texture used without cloning.
+ * @returns {Object} Terrain entries, shared material and typed-array phase/bend/slope caches.
+ */
 function makeTerrain(scene, assets) {
   const material = new T.MeshStandardMaterial({
     color: PALETTES.ring.land, map: assets.grass, roughness: 1, vertexColors: true,
@@ -144,6 +209,11 @@ function makeTerrain(scene, assets) {
   return { terrain, material, rowPhases, framePhases, rowBends: new Float64Array(81), rowSlopes: new Float64Array(81) };
 }
 
+/**
+ * Bake a deterministic seamless mineral/seam field once for mountains and rocks.
+ * @returns {T.DataTexture} Owned 256-square linear RGBA detail texture with repeat wrapping
+ *  and mip filtering; contrast is deliberately subdued to avoid distance shimmer.
+ */
 function makeStoneDetailTexture() {
   // Original colour-only stone field. The coarsest scales describe mineral
   // patches and weathered seams; fine grain is deliberately low contrast.
@@ -155,6 +225,13 @@ function makeStoneDetailTexture() {
     for (let i = 0; i < values.length; i++) values[i] = random();
     grids.push({ n, values });
   }
+  /**
+   * Smoothly sample a periodic seeded scalar grid used to bake stone detail.
+   * @param {number} u - Normalized horizontal texture coordinate in [0,1).
+   * @param {number} v - Normalized vertical texture coordinate in [0,1).
+   * @param {Object} grid - n-by-n grid with row-major values.
+   * @returns {number} Interpolated grid intensity without mutating the grid.
+   */
   const sample = (u, v, grid) => {
     const { n, values } = grid, x = u * n, y = v * n;
     const ix = Math.floor(x), iy = Math.floor(y), fx = smooth(0, 1, x - ix), fy = smooth(0, 1, y - iy);
@@ -181,7 +258,18 @@ function makeStoneDetailTexture() {
   return map;
 }
 
+/**
+ * Install a shader patch blending mapped stone detail by a per-vertex mask.
+ * @param {T.Material} material - Material mutated in place; its geometry must supply surfaceDetail.
+ * @param {number} strength - Multiplicative detail blend weight, normally in [0,1].
+ * @returns {T.Material} The same material with compile hooks and a stable shader cache key.
+ */
 function stoneDetailMaterial(material, strength) {
+  /**
+   * Inject the stone mask attribute/varying and blend uniform into Three.js-generated GLSL.
+   * @param {Object} shader - Mutable shader sources and uniforms supplied during compilation.
+   * @returns {void} Changes shader source only; strength stays in a uniform rather than the cache key.
+   */
   material.onBeforeCompile = shader => {
     shader.uniforms.scenicStoneStrength = { value: strength };
     shader.vertexShader = 'attribute float surfaceDetail; varying float vSurfaceDetail;\n' + shader.vertexShader;
@@ -196,10 +284,23 @@ function stoneDetailMaterial(material, strength) {
       diffuseColor.rgb = mix(undecoratedStone, diffuseColor.rgb, scenicStoneStrength * vSurfaceDetail);
     `);
   };
+  /**
+   * Identify the stone GLSL patch independently of its per-material uniform strength.
+   * @returns {string} Stable program variant key for Three.js shader reuse.
+   */
   material.customProgramCacheKey = () => 'scenic-filtered-stone-detail-v1';
   return material;
 }
 
+/**
+ * Bake one complete distant ridge ring with seeded erosion, lighting and aerial perspective.
+ * Geometry and color detail are generated only at setup; the runtime update applies modest
+ * parallax rather than rebuilding hills or introducing an additional render pass.
+ * @param {T.Scene} scene - Scene receiving the ridge mesh.
+ * @param {number} index - Layer 0, 1 or 2, selecting radius, silhouette and atmosphere.
+ * @param {T.Texture} detailMap - Shared stone texture retained by the new material.
+ * @returns {T.Mesh} New unculled, double-sided background ring in scene-space metres.
+ */
 function makeMountain(scene, index, detailMap) {
   // Three complete curved ranges, not finite cardboard strips. The small
   // angular step preserves serrated silhouettes even in the lakeside view.
@@ -207,6 +308,13 @@ function makeMountain(scene, index, detailMap) {
   const positions = [], indices = [], metadata = [];
   const random = seededRandom(3791 + index * 611), erosion = new Float32Array(128 * 32);
   for (let i = 0; i < erosion.length; i++) erosion[i] = random();
+  /**
+   * Sample the seeded erosion lattice smoothly with periodic horizontal wrapping.
+   * @param {number} x - Horizontal grid-space coordinate.
+   * @param {number} y - Vertical grid-space coordinate, wrapped over 32 rows.
+   * @param {number} period - Horizontal wrap width, no greater than the 128-column allocation.
+   * @returns {number} Interpolated erosion weight.
+   */
   const field = (x, y, period) => {
     const ix = Math.floor(x), iy = Math.floor(y), fx = smooth(0, 1, x - ix), fy = smooth(0, 1, y - iy);
     const x0 = ((ix % period) + period) % period, x1 = (x0 + 1) % period;
@@ -220,6 +328,12 @@ function makeMountain(scene, index, detailMap) {
     [.30, 245, .21], [.63, 380, .28], [1.08, 310, .32],
     [1.56, 260, .26], [2.02, 330, .30], [2.53, 265, .25],
   ];
+  /**
+   * Find the shortest signed angular separation across the circular ridge seam.
+   * @param {number} a - Sample angle in radians.
+   * @param {number} b - Peak-center angle in radians.
+   * @returns {number} Signed a-minus-b angle in [-pi,pi].
+   */
   const angleDistance = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
   for (let row = 0; row <= rows; row++) {
     const f = row / rows;
@@ -310,6 +424,11 @@ function makeMountain(scene, index, detailMap) {
   return mountain;
 }
 
+/**
+ * Bake a seamless deterministic wave-slope field from integer periodic wave vectors.
+ * @returns {T.DataTexture} Owned 256-square mip-filtered repeat texture; RG encode slopes
+ *  around 0.5, B carries low-frequency shelf tint, and A is opaque.
+ */
 function makeLakeNormalMap() {
   // Original seamless wave field, made once. Integer wave vectors meet exactly
   // at the tile edges; mixed directions avoid regular, parallel sine bands.
@@ -344,6 +463,13 @@ function makeLakeNormalMap() {
   return texture;
 }
 
+/**
+ * Create the single-pass lake and caches for bent positions and analytic water depth.
+ * The surface is at Y=-5.05 metres; nonuniform X columns preserve shallow banks without a
+ * depth buffer or reflected-scene pass. Animation uses mutable shared uniform records.
+ * @param {T.Scene} scene - Scene receiving the water mesh.
+ * @returns {Object} Mesh, unbent local positions, uniforms, material, owned wave texture and depth coefficients.
+ */
 function makeLake(scene) {
   // Non-uniform samples preserve the natural shallow shelves along both banks.
   // Depth is evaluated from the existing terrain harmonics, not a depth render.
@@ -368,6 +494,11 @@ function makeLake(scene) {
   // Fresnel sky and a soft analytical far-bank reflection. No scene reflection
   // pass, screen-space noise, sharp sparkling specular, or external water assets.
   const time = { value: 0 }, distance = { value: 0 }, normalMap = makeLakeNormalMap();
+  /**
+   * Extend the lake shader with analytic depth, filtered wavelets and sky/far-bank reflection.
+   * @param {Object} shader - Mutable Three.js shader sources and uniforms.
+   * @returns {void} Binds shared time/distance uniform records, keeping animation single-pass.
+   */
   material.onBeforeCompile = shader => {
     shader.uniforms.scenicTime = time;
     shader.uniforms.scenicDistance = distance;
@@ -454,12 +585,28 @@ function makeLake(scene) {
       diffuseColor.rgb = waterColor;
     `);
   };
+  /**
+   * Identify the analytic lake shader variant for renderer program caching.
+   * @returns {string} Stable key; changing time and distance does not recompile the program.
+   */
   material.customProgramCacheKey = () => 'scenic-lake-depth-fresnel-v6';
   const lake = mesh(geo, material, 'mountain-lake');
   lake.frustumCulled = false; scene.add(lake);
   return { mesh: lake, local, time, distance, material, normalMap, columns: columns.length, depthCoefficients };
 }
 
+/**
+ * Register one instanced draw and cache invariant transforms for repeated scenery.
+ * Mutates seed records with periodic terrain heights, angle sine/cosine and lastScale; their
+ * coordinates/scales must match the supplied geometry and stay stable after registration.
+ * @param {Object} state - Mutable scenic subsystem with scene and batches collection.
+ * @param {T.BufferGeometry} geometry - Shared local geometry, retained rather than cloned.
+ * @param {T.Material} material - Shared batch material.
+ * @param {Object[]} seeds - x/z metre locations, sx/sy/sz scales, optional angle radians and flat/y flags.
+ * @param {string} kind - Batch category controlling later density, fading and shadow behavior.
+ * @param {boolean} [castShadow=false] - Whether instances cast into the existing shadow map.
+ * @returns {Object} Registered mesh/seeds/kind entry; GPU resources live with the scenery subsystem.
+ */
 function addBatch(state, geometry, material, seeds, kind, castShadow = false) {
   const batch = new T.InstancedMesh(geometry, material, seeds.length);
   batch.name = `scenery-${kind}`; batch.frustumCulled = false;
@@ -477,6 +624,11 @@ function addBatch(state, geometry, material, seeds, kind, castShadow = false) {
   return entry;
 }
 
+/**
+ * Draw a deterministic branch/leaf alpha cutout shared by all broadleaf crowns.
+ * @returns {T.CanvasTexture} Owned 512-square sRGB mipmapped texture; center texels stay
+ *  opaque white so trunk/branch geometry can use the same material and draw call.
+ */
 function makeLeafClusterTexture() {
   // An original small branch/leaf cutout, shared by every crown. Broad leaves,
   // padded transparent edges and mipmaps avoid a field of subpixel needles.
@@ -509,9 +661,23 @@ function makeLeafClusterTexture() {
   return map;
 }
 
+/**
+ * Build one vertex-colored tree with solid branches and crossed leaf-cluster quads.
+ * Consumes exactly 32 values from the shared generator to preserve later placement seeds;
+ * a separate fixed generator chooses plane rotations. Input primitives are disposed on merge.
+ * @param {function(): number} random - Shared seeded generator returning values in [0,1).
+ * @returns {T.BufferGeometry} New nonindexed tree in local metres, grounded at Y=0.
+ */
 function makeBroadleafGeometry(random) {
   const positions = [], normals = [], colors = [], uvs = [];
   const tint = new T.Color(), ownRandom = seededRandom(5732);
+  /**
+   * Consume a tree primitive and append its transformed attributes to the merged arrays.
+   * @param {T.BufferGeometry} geometry - Owned geometry disposed after copying, including any conversion.
+   * @param {T.ColorRepresentation} color - Uniform per-primitive vertex tint.
+   * @param {boolean} [leaves=false] - Preserve leaf UVs; otherwise address the opaque center texel.
+   * @returns {void} Mutates enclosing positions, normals, colors and UV arrays.
+   */
   const append = (geometry, color, leaves = false) => {
     const g = geometry.index ? geometry.toNonIndexed() : geometry;
     const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
@@ -564,6 +730,15 @@ function makeBroadleafGeometry(random) {
   return geometry;
 }
 
+/**
+ * Populate bounded instanced pine, broadleaf and grass batches with deterministic seeds.
+ * Leaves gaps toward the lake, confines verge vegetation outside the road and shares geometry
+ * within each category; alpha-to-coverage follows the actual context's MSAA capability.
+ * @param {Object} state - Scenery owner receiving batches, leaf texture/material and grass material.
+ * @param {Object} assets - Three preloaded tree cutout maps, retained by pine materials.
+ * @param {function(): number} random - Shared deterministic placement generator, advanced in place.
+ * @returns {void} Adds scene resources once, not during frame updates.
+ */
 function makeFoliage(state, assets, random) {
   const pineGeo = new T.PlaneGeometry(1, 1); pineGeo.translate(0, .5, 0);
   const seeds = [[], [], []];
@@ -618,6 +793,12 @@ function makeFoliage(state, assets, random) {
   addBatch(state, grassGeo, state.grassMaterial, grass, 'grass');
 }
 
+/**
+ * Create welded, smoothly shaded stone geometry and a single seeded instance batch.
+ * @param {Object} state - Scenery owner providing shared stoneTexture and receiving the rock batch.
+ * @param {function(): number} random - Placement/scale generator advanced for 82 rock seeds.
+ * @returns {void} Keeps stones outside the playable road and disposes the construction icosahedron.
+ */
 function makeRocks(state, random) {
   const source = new T.IcosahedronGeometry(1, 2), vertices = [], indices = [], colors = [], uvs = [], lookup = new Map();
   const p = source.attributes.position;
@@ -660,6 +841,11 @@ function makeRocks(state, random) {
   addBatch(state, geometry, material, rocks, 'rock', true);
 }
 
+/**
+ * Add instanced guardrail posts/segments, delineators and reflectors along both verges.
+ * @param {Object} state - Scenery subsystem receiving four batches, grounded relative to the road.
+ * @returns {void} Rail seeds request bend-aligned rotation; other fittings reuse fixed local rotations.
+ */
 function makeRoadFurniture(state) {
   const steel = new T.MeshStandardMaterial({ color: '#bec6c4', metalness: .72, roughness: .42 });
   const post = [], rail = [], marker = [], reflectors = [];
@@ -682,6 +868,10 @@ function makeRoadFurniture(state) {
   addBatch(state, new T.BoxGeometry(.17, .18, .025), new T.MeshStandardMaterial({ color: '#dd6e3f', emissive: '#5b1c0c', emissiveIntensity: .16, roughness: .45 }), reflectors, 'reflector');
 }
 
+/**
+ * Assemble a small original chalet with roof, windows and timber details in local metres.
+ * @returns {T.BufferGeometry} New vertex-colored merged geometry; temporary part geometries are consumed.
+ */
 function chaletGeometry() {
   const parts = [
     box(9, .8, 6, 0, .4, 0, '#969187'), box(8.5, 2.5, 5.6, 0, 1.95, 0, '#dfcba8'),
@@ -709,6 +899,11 @@ function chaletGeometry() {
   return coloredGeometry(parts);
 }
 
+/**
+ * Register three hillside chalets and one flat lakeside lookout as instanced landmarks.
+ * @param {Object} state - Scenery owner receiving geometry/material resources and placement seeds.
+ * @returns {void} Adds two reusable batches without per-frame construction.
+ */
 function makeLandmarks(state) {
   const material = new T.MeshStandardMaterial({ vertexColors: true, roughness: .88 });
   const seeds = [
@@ -726,6 +921,11 @@ function makeLandmarks(state) {
   addBatch(state, coloredGeometry(parts), material, [{ x: 12.5, z: -347, y: .08, sx: 1, sy: 1, sz: 1, flat: true }], 'lookout', true);
 }
 
+/**
+ * Draw two Russian directional signs and add their independent scene groups.
+ * @param {Object} state - Scenery owner whose objects list stores road-local placement records.
+ * @returns {void} Owns new canvas textures, boards and posts; updates later recycle only transforms.
+ */
 function makeSigns(state) {
   const items = [
     { x: -10.8, z: -105, title: 'СЕВЕРНЫЙ ПЕРЕВАЛ', sub: 'Р-21    12 км', color: '#28615c' },
@@ -751,6 +951,13 @@ function makeSigns(state) {
   }
 }
 
+/**
+ * Bake the deterministic alpine sky panorama once and install it as the scene background.
+ * Cloud lobes/noise are resolved into pixels rather than additional meshes or runtime shaders;
+ * the returned panorama is also suitable as a source for separately prepared reflections.
+ * @param {T.Scene} scene - Scene whose background, intensity and background rotation are replaced.
+ * @returns {T.DataTexture} Owned 2048-by-1024 sRGB equirectangular panorama, with north in row zero.
+ */
 function makeClearSky(scene) {
   // Original baked sky: a calm blue gradient, irregular cumulus groups and
   // high wisps. One texture replaces the previous sky, with no cloud pass or
@@ -762,6 +969,13 @@ function makeClearSky(scene) {
     for (let i = 0; i < values.length; i++) values[i] = random();
     grids.push({ size, values });
   }
+  /**
+   * Interpolate a periodic noise lattice for the baked cloud density, wrapping both axes.
+   * @param {number} x - Horizontal lattice-space coordinate.
+   * @param {number} y - Vertical lattice-space coordinate.
+   * @param {Object} grid - Square grid described by size and row-major values.
+   * @returns {number} Smooth deterministic intensity without changing stored values.
+   */
   const noise = (x, y, grid) => {
     const n = grid.size, ix = Math.floor(x), iy = Math.floor(y);
     const fx = x - ix, fy = y - iy, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
@@ -833,7 +1047,14 @@ function makeClearSky(scene) {
   return sky;
 }
 
-/** Build once after assets and road lighting are ready. */
+/**
+ * Construct the scenic subsystem once after asset maps and road lighting are available.
+ * Stores state on host.scenery, installs sky/fog, creates bounded instanced batches and performs
+ * the first transform update. Repeated invocation would add new resources, not replace/dispose old ones.
+ * @param {Object} host - Renderer owner with scene, assets, optional renderer, route and time.
+ * @param {function(number, number): number} bend - Scene-Z/travel-metre sampler returning lateral bend metres.
+ * @returns {Object} Mutable scenic state, also retained on the host.
+ */
 export function buildScenicLandscape(host, bend) {
   const state = {
     scene: host.scene, bend, batches: [], objects: [],
@@ -861,7 +1082,15 @@ export function buildScenicLandscape(host, bend) {
   return state;
 }
 
-/** No per-frame geometry/material allocation. One draw call per repeated type. */
+/**
+ * Scroll/bend scenery, update terrain normals and lake depths, and apply route palettes.
+ * Reuses typed arrays and GPU resources with no per-frame geometry/material allocation;
+ * unchanged travel/palette skips transform work but still advances the lake time uniform.
+ * @param {Object} host - Owner initialized by buildScenicLandscape; absent scenery is a no-op.
+ * @param {number} distance - Total route travel in metres, mapping scene Z to world Z minus distance.
+ * @param {string} [route='ring'] - Palette/density key; unknown keys use ring appearance.
+ * @returns {void} Mutates scene attributes, seed transform caches, uniforms and last-update markers.
+ */
 export function updateScenicLandscape(host, distance, route = 'ring') {
   const state = host.scenery;
   if (!state) return;

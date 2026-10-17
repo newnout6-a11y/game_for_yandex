@@ -5,6 +5,15 @@ import { TRAFFIC_KINDS, trafficDefinition } from '../src/traffic-catalog.js';
 import { occupiedTrafficLanes } from '../src/traffic-behavior.js';
 import { roadCurve, trafficPose, trafficYaw, trafficPathCurvature, trafficCollisionParts } from '../src/traffic-physics.js';
 
+/**
+ * Evaluate a quintic lane change and its analytic lateral derivatives.
+ * Uses a 20 m/s forward speed and a 3.5 m lane width; the semi takes 5 seconds
+ * while other fixtures take 3.4 seconds. No game state is mutated.
+ * @param {string} kind - Catalog kind whose rear-axle geometry will be tested.
+ * @param {number} t - Elapsed manoeuvre time in seconds.
+ * @param {number} direction - Signed lane change, normally -1 or 1.
+ * @returns {object} Traffic state with lane coordinates, metres, m/s and radians.
+ */
 function manoeuvre(kind, t, direction) {
   const duration = kind === 'semi' ? 5 : 3.4, u = t / duration, speed = 20;
   const lateralSpeed = direction * 3.5 * 30 * u ** 2 * (1 - u) ** 2 / duration;
@@ -14,6 +23,12 @@ function manoeuvre(kind, t, direction) {
     heading: Math.atan2(lateralSpeed, speed),
     laneCurvature: speed * lateralAcceleration / (speed ** 2 + lateralSpeed ** 2) ** 1.5 };
 }
+/**
+ * Recover the rear-axle world point from the production body pose.
+ * @param {object} car - Traffic state accepted by trafficPose().
+ * @param {number} distance - Travelled road distance in metres.
+ * @returns {{x:number,z:number}} Rear-axle coordinates in metres, without mutation.
+ */
 function axle(car, distance) {
   const pose = trafficPose(car, distance), rear = trafficDefinition(car.kind).rearAxleZ;
   return { x: pose.x + Math.sin(pose.yaw) * rear, z: pose.z + Math.cos(pose.yaw) * rear };
@@ -53,6 +68,13 @@ test('full-angle tangent composition preserves backward and sideways inspection-
   }
 });
 
+/**
+ * Project every collision-part corner back into continuous lane coordinates.
+ * Includes the articulated trailer, allowing tests to detect its lagging tail.
+ * @param {object} car - Traffic state, including articulation when present.
+ * @param {number} distance - Travelled road distance in metres.
+ * @returns {number[]} Minimum and maximum lane coordinates; 1.5 borders lanes 1/2.
+ */
 function occupiedBodyRange(car, distance) {
   let min = Infinity, max = -Infinity;
   for (const p of trafficCollisionParts(car, distance)) for (const side of [-1, 1]) for (const end of [-1, 1]) {

@@ -40,6 +40,12 @@ strength=n.new('ShaderNodeMath');strength.operation='MULTIPLY';strength.inputs[1
 bpy.ops.mesh.primitive_cube_add(size=2,location=(0,0,0));puff=bpy.context.object;puff.name='Original_noise_warped_volume';puff.data.materials.append(mat)
 # Soft broad key, sky fill and a restrained rim produce volume, never fire/glow.
 def light(name,location,power,size,color):
+    """Add an origin-facing disk area light to the procedural smoke scene.
+
+    Location and emitter size use native Blender scene units (+Z up), not the
+    vehicle game-axis conversion. Power is watts and color is normalized RGB;
+    link the lamp and set its orientation in place, returning None.
+    """
     data=bpy.data.lights.new(name,'AREA');data.energy=power;data.shape='DISK';data.size=size;data.color=color
     ob=bpy.data.objects.new(name,data);scene.collection.objects.link(ob);ob.location=location;ob.rotation_euler=(-ob.location).to_track_quat('-Z','Y').to_euler()
 light('Broad daylight key',(-3,-4,5),320,4,(1,.97,.91))

@@ -31,8 +31,8 @@ test('cached road bend preserves exact shape for changing and repeated distances
 test('resize reallocates only when the viewport render dimensions actually change',()=>{
  const names=['innerWidth','innerHeight','devicePixelRatio','matchMedia'];const old=Object.fromEntries(names.map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
  try{
- Object.assign(globalThis,{innerWidth:1440,innerHeight:900,devicePixelRatio:1,matchMedia:()=>({matches:false})});
- const w=Object.create(RoadRenderer.prototype);w.canvas={style:{},width:1280,height:1280};let changes=0;w.renderer={setSize:(width,height)=>{changes++;Object.assign(w.canvas,{width,height});}};w.camera={updateProjectionMatrix(){}};
+ Object.assign(globalThis,{innerWidth:1440,innerHeight:900,devicePixelRatio:1,/** Force the desktop media-query result for the resize regression fixture. */ matchMedia:()=>({matches:false})});
+ const w=Object.create(RoadRenderer.prototype);w.canvas={style:{},width:1280,height:1280};let changes=0;w.renderer={/** Count backing-surface resizes and copy requested pixel dimensions onto the fake canvas. */ setSize:(width,height)=>{changes++;Object.assign(w.canvas,{width,height});}};w.camera={/** Accept projection refreshes without WebGL; this test inspects camera aspect and resize count. */ updateProjectionMatrix(){}};
  w.resize();w.resize();assert.equal(changes,1);assert.equal(w.camera.aspect,1.6);assert.equal(w.canvas.width,1440);assert.equal(w.canvas.height,900);
  globalThis.innerWidth=900;globalThis.innerHeight=1440;w.resize();assert.equal(changes,2);assert.equal(w.camera.aspect,.625);assert.equal(w.canvas.width,900);assert.equal(w.canvas.height,1440);
  }finally{for(const k of names){if(old[k])Object.defineProperty(globalThis,k,old[k]);else delete globalThis[k];}}

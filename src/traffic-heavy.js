@@ -9,6 +9,17 @@ const amber = new T.MeshStandardMaterial({ color: '#eea02f', emissive: '#e18a19'
 const wheelMaterial = new T.MeshStandardMaterial({ vertexColors: true, metalness: .28, roughness: .64 });
 const wheelTemplates = new Map();
 
+/**
+ * Add a centered Y-axis cylinder to a freight construction assembly.
+ * @param {T.Group} group - Mutable destination assembly.
+ * @param {T.Material} material - Shared surface material.
+ * @param {number} radius - Cylinder radius in metres.
+ * @param {number} length - Full axial length in metres.
+ * @param {number[]} position - Local center XYZ in metres.
+ * @param {?number[]} [rotation=null] - Optional XYZ Euler angles in radians.
+ * @param {number} [segments=12] - Radial polygon count controlling construction cost.
+ * @returns {T.Mesh} New mesh with its own geometry.
+ */
 function cylinder(group, material, radius, length, position, rotation = null, segments = 12) {
   const mesh = new T.Mesh(new T.CylinderGeometry(radius, radius, length, segments), material);
   mesh.position.set(...position);
@@ -16,12 +27,31 @@ function cylinder(group, material, radius, length, position, rotation = null, se
   group.add(mesh);
   return mesh;
 }
+/**
+ * Connect two local points with an oriented cylindrical equipment/support beam.
+ * @param {T.Group} group - Destination assembly receiving the new mesh.
+ * @param {T.Material} material - Shared surface material.
+ * @param {number[]} start - First XYZ endpoint in metres.
+ * @param {number[]} end - Distinct second XYZ endpoint in metres.
+ * @param {number} [radius=.022] - Beam radius in metres.
+ * @param {number} [segments=6] - Radial subdivision count.
+ * @returns {T.Mesh} New cylinder centered between the endpoints.
+ */
 function beam(group, material, start, end, radius = .022, segments = 6) {
   const a = new T.Vector3(...start), b = new T.Vector3(...end), delta = b.clone().sub(a);
   const mesh = cylinder(group, material, radius, delta.length(), a.clone().add(b).multiplyScalar(.5).toArray(), null, segments);
   mesh.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), delta.normalize());
   return mesh;
 }
+/**
+ * Create a beveled equipment box centered on its local origin, then attach it.
+ * @param {T.Group} group - Mutable construction assembly.
+ * @param {T.Material} material - Shared material.
+ * @param {number[]} size - Full XYZ dimensions in metres.
+ * @param {number[]} position - Center XYZ in metres.
+ * @param {number} [radius=.06] - Bevel size, limited to 20 percent of the smallest dimension.
+ * @returns {T.Mesh} New extruded mesh; temporary shape is not shared.
+ */
 function roundedBox(group, material, size, position, radius = .06) {
   const [w, h, d] = size, r = Math.min(radius, w * .2, h * .2, d * .2);
   const x = w / 2 - r, y = h / 2 - r, shape = new T.Shape();
@@ -30,6 +60,15 @@ function roundedBox(group, material, size, position, radius = .06) {
   geom.translate(0, 0, -d / 2 + r);
   const mesh = new T.Mesh(geom, material); mesh.position.set(...position); group.add(mesh); return mesh;
 }
+/**
+ * Add a planar cab-side insert with outward winding except for double-sided glass.
+ * @param {T.Group} group - Assembly receiving the insert.
+ * @param {T.Material} material - Shared insert material.
+ * @param {number} side - -1 for left or +1 for right.
+ * @param {number} x - Unsigned lateral offset in metres.
+ * @param {number[][]} points - Ordered [z,y] contour in local metres, front toward negative Z.
+ * @returns {void} Creates new planar geometry without modifying the point list.
+ */
 function sidePolygon(group, material, side, x, points) {
   const shape = new T.Shape();
   points.forEach(([z, y], i) => i ? shape.lineTo(-z, y) : shape.moveTo(-z, y));
@@ -47,6 +86,19 @@ function sidePolygon(group, material, side, x, points) {
   }
   group.add(new T.Mesh(geom, material));
 }
+/**
+ * Build a hollow four-sided fender band rather than covering the wheel with a disk.
+ * @param {T.Group} group - Static body assembly receiving the mesh.
+ * @param {T.Material} material - Shared fender material.
+ * @param {number} side - -1 for left or +1 for right, selecting outward winding.
+ * @param {number} x - Unsigned lateral band center in metres.
+ * @param {number} wheelZ - Axle longitudinal center in metres.
+ * @param {number} radius - Inner arch radius in metres.
+ * @param {number} wheelY - Arch center elevation in metres.
+ * @param {number} [width=.095] - Radial band thickness in metres.
+ * @param {number} [depth=.11] - Band width along X in metres.
+ * @returns {void} Adds 14-segment stationary arch geometry.
+ */
 function arch(group, material, side, x, wheelZ, radius, wheelY, width = .095, depth = .11) {
   const positions = [], indices = [], count = 14;
   // A genuine hollow wheel arch, not a dark disk pasted over solid bodywork.
@@ -66,6 +118,13 @@ function arch(group, material, side, x, wheelZ, radius, wheelY, width = .095, de
 // One draw call per wheel, including tread shoulders, dual tires, steel dish,
 // hub, ventilation apertures and lug nuts. Vertex colors preserve each finish
 // without multiplying draw calls for every wheel of a five-axle combination.
+/**
+ * Bake a wheel's direct child transforms and material colors into a single mesh.
+ * Consumes/disposes input geometries and temporary copies but retains source materials;
+ * only positions, normals and baked colors survive, yielding one draw call per wheel.
+ * @param {T.Group} parts - Flat wheel construction assembly that must not be rendered afterward.
+ * @returns {T.Mesh} New shadow-enabled mesh using the shared vertex-color wheel material.
+ */
 function mergeWheelColors(parts) {
   parts.updateMatrixWorld(true);
   const positions = [], normals = [], colors = [];
@@ -88,6 +147,14 @@ function mergeWheelColors(parts) {
 }
 // Offline blockout only. create_traffic_heavy.py replaces these assemblies with
 // Blender-authored rounded tires, true vented steel webs and axle-specific hubs.
+/**
+ * Return a cached offline-blockout wheel clone with a detailed exposed positive-X face.
+ * The first radius/dual combination constructs and merges parts; later clones share geometry
+ * and material. Final exported wheel assemblies are replaced by the Blender authoring pipeline.
+ * @param {number} radius - Outer tire radius in metres.
+ * @param {boolean} dual - Whether to model paired rear tires instead of a single steer tire.
+ * @returns {T.Mesh} Independent transform node with shared cached GPU resources; mirror X on the left.
+ */
 function freightWheel(radius, dual) {
   const key = `${radius}:${dual}`;
   if (wheelTemplates.has(key)) return wheelTemplates.get(key).clone();
@@ -116,6 +183,20 @@ function freightWheel(radius, dual) {
   }
   const mesh = mergeWheelColors(parts); wheelTemplates.set(key, mesh); return mesh.clone();
 }
+/**
+ * Add static axle/suspension details plus separately animated left/right wheel pivots.
+ * @param {T.Group} model - Destination for wheel pivots, either vehicle root or trailer pivot.
+ * @param {T.Group} parts - Static assembly receiving axle hardware in vehicle coordinates.
+ * @param {Object} options - Axle layout and animation metadata.
+ * @param {number} options.z - Axle Z in whole-vehicle metres.
+ * @param {number} options.radius - Tire radius in metres.
+ * @param {number} options.width - Full axle packaging width in metres, used to derive tire track.
+ * @param {string} options.name - Wheel-name segment placed after wheel_ and before l/r.
+ * @param {boolean} [options.dual=true] - Use double tires on each side.
+ * @param {boolean} [options.steer=false] - Mark the wheel pivot as steerable.
+ * @param {number} [options.offsetZ=0] - Parent hitch offset subtracted from wheel positions in metres.
+ * @returns {void} Wheel geometry is cached/shared; named pivots and metadata are independent.
+ */
 function addAxle(model, parts, { z, radius, width, name, dual = true, steer = false, offsetZ = 0 }) {
   const centerY = radius + .012, track = width / 2 - (dual ? .25 : .175);
   cylinder(parts, trim, .10, track * 2, [0, centerY, z], [0, 0, Math.PI / 2], 10);
@@ -129,10 +210,29 @@ function addAxle(model, parts, { z, radius, width, name, dual = true, steer = fa
   }
 }
 
+/**
+ * Build a forward-control cab with open wheel arches, glazing and modeled fittings.
+ * @param {T.Group} parts - Static construction assembly receiving all cab meshes.
+ * @param {Object} options - Cab dimensions, in local metres with front toward negative Z.
+ * @param {number} options.front - Frontmost longitudinal station.
+ * @param {number} options.rear - Rear cab station.
+ * @param {number} options.width - Cab width excluding mirror protrusions.
+ * @param {number} options.height - Roof height above the Y=0 road plane.
+ * @param {number} options.wheelZ - Front axle longitudinal position.
+ * @param {number} options.radius - Tire radius used for arch clearance.
+ * @param {boolean} [options.sleeper=false] - Build the tall sleeper instead of a rigid-truck fairing.
+ * @returns {void} Uses shared materials and independent construction geometries for later merging.
+ */
 function addCab(parts, { front, rear, width, height, wheelZ, radius, sleeper = false }) {
   const floor = radius + .012, r = radius + .095, half = width / 2, bevel = .055;
   // A beveled, sculpted forward-control cab with an actual open front arch.
   const shape = new T.Shape();
+  /**
+   * Map a cab side-profile station into the extruder's two-dimensional shape plane.
+   * @param {number} z - Vehicle longitudinal coordinate in metres.
+   * @param {number} y - Height in metres.
+   * @returns {number[]} Shape point [-z,y], later rotated into the vehicle's YZ plane.
+   */
   const p = (z, y) => [-z, y];
   shape.moveTo(...p(front + .05, .58));
   shape.lineTo(...p(front, 1.48));
@@ -150,6 +250,11 @@ function addCab(parts, { front, rear, width, height, wheelZ, radius, sleeper = f
   const geom = new T.ExtrudeGeometry(shape, { depth: width - 2 * bevel, bevelEnabled: true, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 3, curveSegments: 5, steps: 1 });
   geom.rotateY(Math.PI / 2); geom.translate(-half + bevel, 0, 0); parts.add(new T.Mesh(geom, basePaint));
   const windLow = 1.91, windHigh = Math.min(height - .30, sleeper ? 2.94 : 2.58);
+  /**
+   * Evaluate the inclined cab-front station at a requested height.
+   * @param {number} y - Elevation in metres.
+   * @returns {number} Vehicle-local Z in metres, shared by windscreen and wiper placement.
+   */
   const frontZ = y => front + .035 + (y - 1.84) / (height - .16 - 1.84) * .185;
   // Both windscreen and gasket follow the cab's inclined, lightly wrapped face.
   for (const [material, margin] of [[trim, .035], [glass, 0]]) {
@@ -224,11 +329,32 @@ function addCab(parts, { front, rear, width, height, wheelZ, radius, sleeper = f
   }
 }
 
+/**
+ * Add open chassis rails and cross-members without hiding the underbody behind a slab.
+ * @param {T.Group} parts - Static assembly mutated by adding hardware.
+ * @param {number} front - Front rail station in metres.
+ * @param {number} rear - Rear rail station in metres, greater than front.
+ * @param {number} width - Vehicle width in metres for the front support plate.
+ * @param {number} [y=.81] - Rail center elevation in metres.
+ * @returns {void} New box geometry reuses trim material.
+ */
 function chassis(parts, front, rear, width, y = .81) {
   for (const side of [-1, 1]) box(parts, trim, [.14, .25, rear - front], [side * .56, y, (front + rear) / 2]);
   for (let z = front + .25; z < rear; z += .95) box(parts, trim, [1.18, .10, .12], [0, y + .015, z]);
   box(parts, trim, [width * .55, .12, .45], [0, y - .12, front + .6]);
 }
+/**
+ * Add an elevated freight body with rear doors, locks, lights and reflective trim.
+ * @param {T.Group} parts - Static assembly receiving cargo-body meshes.
+ * @param {Object} options - Local metre dimensions, front toward negative Z.
+ * @param {number} options.front - Front cargo station.
+ * @param {number} options.rear - Rear cargo station.
+ * @param {number} options.width - Full exterior cargo width.
+ * @param {number} options.top - Roof elevation above the road.
+ * @param {number} options.bottom - Floor elevation above the road.
+ * @param {boolean} [options.ribs=false] - Use trailer ribs rather than rigid-box panels/rivets.
+ * @returns {void} Shares finish materials; all generated geometries are later consumed by merging.
+ */
 function cargoBox(parts, { front, rear, width, top, bottom, ribs = false }) {
   const length = rear - front, middle = (front + rear) / 2, height = top - bottom;
   // The floor is elevated above open chassis, with distinct rear door leaves.
@@ -272,16 +398,38 @@ function cargoBox(parts, { front, rear, width, top, bottom, ribs = false }) {
   box(parts, chrome, [width * .91, .12, .13], [0, bottom - .51, rear + .005]);
   panel(parts, cargoSkin, .39, .10, .017, [0, bottom - .28, rear + .066], .008);
 }
+/**
+ * Add open side-impact rails and their vertical mounts on both sides.
+ * @param {T.Group} parts - Static assembly receiving guards.
+ * @param {number} width - Vehicle full width in metres.
+ * @param {number} start - Forward guard Z in metres.
+ * @param {number} end - Rear guard Z in metres.
+ * @param {number} y - Lower rail center elevation in metres.
+ * @returns {void} Leaves the under-chassis area visually open.
+ */
 function sideGuards(parts, width, start, end, y) {
   for (const side of [-1, 1]) {
     for (const yy of [y, y + .21]) box(parts, chrome, [.065, .055, end - start], [side * (width / 2 - .11), yy, (start + end) / 2]);
     for (const z of [start + .14, end - .14]) box(parts, trim, [.07, .47, .06], [side * (width / 2 - .14), y + .24, z]);
   }
 }
+/**
+ * Place a stationary flap behind each specified wheel pair.
+ * @param {T.Group} parts - Static assembly receiving flaps.
+ * @param {number} width - Vehicle full width in metres.
+ * @param {number} radius - Tire radius in metres determining rearward clearance.
+ * @param {number[]} axles - Axle Z coordinates in vehicle-local metres.
+ * @returns {void} Uses shared trim material and newly allocated boxes.
+ */
 function mudflaps(parts, width, radius, axles) {
   for (const z of axles) for (const side of [-1, 1]) box(parts, trim, [.42, .46, .045], [side * (width / 2 - .26), .42, z + radius + .09]);
 }
 
+/**
+ * Assemble a rigid two-axle freight truck with independent steer/rear wheel pivots.
+ * @param {Object} spec - Catalog length, width, height and wheelRadius in metres.
+ * @returns {T.Group} New grounded model facing -Z; static parts are merged by material.
+ */
 function buildBoxTruck(spec) {
   const model = new T.Group(), parts = new T.Group(), radius = spec.wheelRadius;
   const front = -spec.length / 2 + .09, rear = spec.length / 2 - .14;
@@ -302,6 +450,13 @@ function buildBoxTruck(spec) {
   const staticParts = mergeParts(parts); staticParts.name = 'rigid_truck_body'; model.add(staticParts);
   return model;
 }
+/**
+ * Assemble a tractor/semitrailer with a true hitch-centered movable trailer hierarchy.
+ * Static trailer geometry is shifted into hitch-local coordinates while wheel pivots subtract
+ * the same offset; metadata retains whole-vehicle front/rear extents for motion and shadows.
+ * @param {Object} spec - Catalog metre dimensions, wheelRadius, hitchZ and optional trailerFrontZ.
+ * @returns {T.Group} New five-axle articulated model facing -Z, with independently reusable wheel resources.
+ */
 function buildSemi(spec) {
   const model = new T.Group(), tractor = new T.Group(), trailerParts = new T.Group(), trailer = new T.Group();
   const radius = spec.wheelRadius, front = -spec.length / 2 + .09, rear = spec.length / 2 - .14;
@@ -358,6 +513,13 @@ function buildSemi(spec) {
   return model;
 }
 
+/**
+ * Build an original freight template and attach catalog metadata for export/runtime use.
+ * @param {string} kind - Supported model key: boxtruck or semi.
+ * @param {Object} [spec] - Matching catalog dimensions in metres; defaults to TRAFFIC_CATALOG[kind].
+ * @returns {T.Group} New model; shared material and cached wheel resources must not be disposed per clone.
+ * @throws {Error} If the catalog entry is absent or the kind is not a supported freight vehicle.
+ */
 export function buildHeavyVehicle(kind, spec = TRAFFIC_CATALOG[kind]) {
   if (!spec || (kind !== 'boxtruck' && kind !== 'semi')) throw new Error(`Unsupported heavy traffic kind: ${kind}`);
   const model = kind === 'semi' ? buildSemi(spec) : buildBoxTruck(spec);

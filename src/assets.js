@@ -4,6 +4,13 @@ import { TRAFFIC_KINDS } from './traffic-catalog.js';
 // PMREM's normal 256px cube budget needs only a 1024×512 panorama. Reuse the
 // original visible sky, but don't accidentally quadruple the reflection target
 // just because its background texture is 2048px wide.
+/**
+ * Copy a raw RGBA sky panorama into a bounded reflection input without changing the visible sky.
+ * The fresh pixel buffer limits PMREM input width to at most 1024 pixels; dispose the returned
+ * texture after PMREM conversion, independently of the original background.
+ * @param {T.DataTexture} sky - Equirectangular source with readable RGBA bytes and image dimensions.
+ * @returns {T.DataTexture} New linear-filtered panorama preserving source color space and vertical orientation.
+ */
 export function createSkyReflectionSource(sky) {
   const { data, width, height } = sky.image;
   const step = Math.max(1, Math.ceil(width / 1024));
@@ -20,12 +27,35 @@ export function createSkyReflectionSource(sky) {
   return source;
 }
 
+/**
+ * Load the player, catalog traffic templates and shared scenery maps concurrently.
+ * Loaded model geometry/materials and textures are returned for reuse; repeat wrapping applies
+ * only to ground maps. The temporary Draco decoder is disposed on success or failure.
+ * @param {function(number): void} [onProgress] - Receives rounded completed-request percentages, not byte progress.
+ * @param {Object} [options] - Texture sampling settings.
+ * @param {number} [options.anisotropy=4] - Anisotropy already capped to renderer support by the caller.
+ * @returns {Promise<Object>} Player scene, traffic scenes keyed by kind, ground maps and three tree maps.
+ * @throws {Error} Rejects if any required model or texture cannot be loaded.
+ */
 export async function loadAssets(onProgress = () => {}, { anisotropy = 4 } = {}) {
   const manager = new T.LoadingManager();
+  /**
+   * Translate Three.js completed-item counts into a rounded UI progress percentage.
+   * @param {string} _ - Completed resource URL, deliberately unused for aggregate progress.
+   * @param {number} loaded - Number of resource requests completed so far.
+   * @param {number} total - Positive number of requests currently tracked by the manager.
+   * @returns {void} Calls the supplied progress observer without retaining resource details.
+   */
   manager.onProgress = (_, loaded, total) => onProgress(Math.round(loaded / total * 100));
   const draco = new T.DRACOLoader(manager).setDecoderPath(new URL('../public/vendor/draco/', import.meta.url).href);
   const gltf = new T.GLTFLoader(manager).setDRACOLoader(draco);
   const textures = new T.TextureLoader(manager), base = new URL('../public/assets/', import.meta.url).href;
+  /**
+   * Load one asset texture and establish its color interpretation and mip sampling.
+   * @param {string} file - Filename relative to the public asset directory.
+   * @param {boolean} [color=false] - Whether texels represent sRGB color rather than linear data.
+   * @returns {Promise<T.Texture>} Newly loaded texture using the enclosing anisotropy setting.
+   */
   const texture = (file, color = false) => textures.loadAsync(base + file).then(map => {
     map.colorSpace = color ? T.SRGBColorSpace : T.NoColorSpace;
     map.anisotropy = anisotropy;

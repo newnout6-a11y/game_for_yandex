@@ -1,5 +1,14 @@
 export class GameAudio {
+  /**
+   * Create a silent, lazy audio controller; no AudioContext is allocated before a user gesture.
+   * @param {boolean} enabled - Persisted sound preference.
+   */
   constructor(enabled = false) { this.enabled = enabled; this.context = null; }
+  /**
+   * Lazily construct the engine graph and resume it after a user action.
+   * Unsupported or blocked browser audio is optional and never interrupts gameplay.
+   * @returns {Promise<void>} Resolves after the resume attempt, including unsupported browsers.
+   */
   async unlock() {
     try {
       if (!this.enabled) return;
@@ -21,6 +30,11 @@ export class GameAudio {
       await this.context.resume();
     } catch { /* Sound is optional on unsupported browsers. */ }
   }
+  /**
+   * Smooth engine pitch/filter from the current run and mute when sound or gameplay is inactive.
+   * @param {Object} state - Run state with speed in metres/second and a boosting flag.
+   * @param {boolean} active - Whether gameplay is currently audible; no context means a no-op.
+   */
   update(state, active) {
     if (!this.context) return;
     const now = this.context.currentTime;
@@ -28,6 +42,10 @@ export class GameAudio {
     this.engine.frequency.setTargetAtTime(35 + state.speed * 1.25, now, .1);
     this.filter.frequency.setTargetAtTime(state.boosting ? 650 : 230, now, .1);
   }
+  /**
+   * Play a short self-terminating feedback oscillator without affecting the engine graph.
+   * @param {string} kind - Crash uses a falling low tone; goal and other events use rising cues.
+   */
   tone(kind) {
     if (!this.enabled || !this.context) return;
     try {

@@ -5,6 +5,16 @@ import { createHash } from 'node:crypto';
 const assets = 'public/assets';
 await mkdir(assets, { recursive: true });
 const manifest = [];
+/**
+ * Reuse a readable local asset or fetch and write it when the read fails.
+ * Appends actual byte size and SHA-256 provenance to the shared manifest;
+ * an existing file is hashed as-is rather than revalidated against the URL.
+ * @param {string} url - Source download URL used only on a local read failure.
+ * @param {string} target - Repository-relative destination file path.
+ * @param {string} license - License identifier recorded with the bytes.
+ * @param {string} source - Attribution/source page recorded in the manifest.
+ * @returns {Promise<Buffer>} Local or downloaded bytes; rejects on HTTP/write failure.
+ */
 async function download(url, target, license, source) {
   await mkdir(path.dirname(target), { recursive: true });
   let data;

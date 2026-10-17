@@ -5,6 +5,13 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { once } from 'node:events';
 import { chromium } from 'playwright';
+/**
+ * Serve a loopback bake page, vendored JS and downloaded foliage sources.
+ * Resolves source assets below output/assets-source and rejects path escape;
+ * this temporary authoring server is not the release server.
+ * @param {http.IncomingMessage} req - Requested bake resource.
+ * @param {http.ServerResponse} res - Response receiving local bytes or 404.
+ */
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
@@ -22,6 +29,12 @@ try {
   const page = await browser.newPage();
   page.on('pageerror', e => console.error(e));
   await page.goto('http://127.0.0.1:' + server.address().port);
+  /**
+   * Bake each source-tree child into an independent 1024px transparent PNG.
+   * Recenters cloned geometry, fits an orthographic camera with 6% padding and
+   * uses daylight lighting. Returns data URLs; disposes the temporary renderer.
+   * This is a fixed lit impostor bake, not a runtime geometry or FPS test.
+   */
   const images = await page.evaluate(async () => {
     const T = await import('/public/vendor/three.js');
     const gltf = await new T.GLTFLoader().loadAsync('/public/fir/tree.gltf');

@@ -12,6 +12,14 @@ const mix = T.MathUtils.lerp;
 
 // Interpolate the silhouette itself, not just the lighting normals of a box.
 // Clamping the cubic to each pair of stations prevents overshooting bumpers.
+/**
+ * Interpolate ordered vehicle cross-sections with a clamped cubic Hermite profile.
+ * Each component is bounded by its adjacent station values so curved silhouettes cannot
+ * overshoot bumper widths/heights. The input must have at least two distinct ascending Zs.
+ * @param {number[][]} sections - Rows [z, ...profileValues], with positions and dimensions in metres.
+ * @param {number} z - Longitudinal sample coordinate in metres; negative Z is the vehicle front.
+ * @returns {number[]} Fresh interpolated profile values, excluding the station Z.
+ */
 function profileAt(sections, z) {
   let i = 0;
   while (i < sections.length - 2 && z > sections[i + 1][0]) i++;
@@ -24,12 +32,28 @@ function profileAt(sections, z) {
     return T.MathUtils.clamp((2*t3-3*t2+1)*value + (t3-2*t2+t)*m0 + (-2*t3+3*t2)*b[n] + (t3-t2)*m1, Math.min(value,b[n]), Math.max(value,b[n]));
   });
 }
+/**
+ * Build indexed model geometry and derive smooth normals from the supplied topology.
+ * @param {number[]} positions - Flat local-space XYZ coordinates in metres.
+ * @param {number[]} indices - Triangle vertex indices with the intended outward winding.
+ * @returns {T.BufferGeometry} New owned geometry; inputs are copied into buffer attributes.
+ */
 function geometry(positions, indices) {
   const result = new T.BufferGeometry();
   result.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
   result.setIndex(indices); result.computeVertexNormals();
   return result;
 }
+/**
+ * Tessellate a normalized parameter patch into a regular indexed surface.
+ * The winding is fixed to the sample's parameter orientation; optional offset follows computed
+ * normals without retessellating or recalculating them. Construction-only, not a frame helper.
+ * @param {function(number, number): number[]} sample - Maps u,v in [0,1] to local XYZ metres.
+ * @param {number} columns - Positive horizontal subdivision count.
+ * @param {number} rows - Positive vertical subdivision count.
+ * @param {number} [offset=0] - Signed normal displacement in metres, useful to separate overlays.
+ * @returns {T.BufferGeometry} Newly allocated patch geometry.
+ */
 function surface(sample, columns, rows, offset = 0) {
   const positions = [], indices = [];
   for (let j = 0; j <= rows; j++) for (let i = 0; i <= columns; i++) positions.push(...sample(i / columns, j / rows));
@@ -44,6 +68,14 @@ function surface(sample, columns, rows, offset = 0) {
   }
   return result;
 }
+/**
+ * Loft a symmetric vehicle body with crowned surfaces and real raised wheel cutouts.
+ * Adds exact arch sample stations and separate end-cap vertices to preserve bumper normals.
+ * @param {number[][]} sections - Ordered [z,width,bottom,shoulder,top] metre profiles.
+ * @param {Object} spec - length, width, wheel radius (wheel), frontWheel and rearWheel Z coordinates.
+ * @param {number} sill - Minimum underside height in metres above Y=0.
+ * @returns {T.BufferGeometry} Owned closed body shell, oriented front toward negative Z.
+ */
 function bodyShell(sections, spec, sill) {
   const positions = [], indices = [], l = spec.length / 2;
   // Extra stations at the exact arch tangencies preserve genuine wheel cutouts.
@@ -86,10 +118,26 @@ function bodyShell(sections, spec, sill) {
   }
   return geometry(positions, indices);
 }
+/**
+ * Evaluate a planar cubic Bezier segment for the cabin cross-section.
+ * @param {number[]} a - Start [x,y] in metres.
+ * @param {number[]} b - First control [x,y] in metres.
+ * @param {number[]} c - Second control [x,y] in metres.
+ * @param {number[]} d - End [x,y] in metres.
+ * @param {number} t - Segment parameter, normally in [0,1].
+ * @returns {number[]} New [x,y] point; control points are not changed.
+ */
 function bezier(a,b,c,d,t) {
   const s=1-t;
   return [s*s*s*a[0]+3*s*s*t*b[0]+3*s*t*t*c[0]+t*t*t*d[0], s*s*s*a[1]+3*s*s*t*b[1]+3*s*t*t*c[1]+t*t*t*d[1]];
 }
+/**
+ * Create a sampler for a crowned roof and curved cabin sides.
+ * @param {number[][]} sections - Ordered [z,topHeight] profiles in metres.
+ * @param {number} width - Full cabin width at the lower side edge in metres.
+ * @param {number} base - Lower cabin edge height in metres.
+ * @returns {function(number, number): number[]} Pure sampler (signed u in [-1,1], z in metres) returning XYZ metres.
+ */
 function cabinSurface(sections, width, base) {
   return (u,z) => {
     const [top] = profileAt(sections,z), h = top-base, w=width/2, t=Math.abs(u);
@@ -101,14 +149,42 @@ function cabinSurface(sections, width, base) {
     return [Math.sign(u)*point[0],point[1],z];
   };
 }
+/**
+ * Add a centered box primitive to a model assembly without cloning its material.
+ * @param {T.Group} group - Assembly mutated by adding the new mesh.
+ * @param {T.Material} material - Shared surface material.
+ * @param {number[]} size - [width,height,depth] in metres.
+ * @param {number[]} position - Local [x,y,z] center in metres.
+ * @param {?number[]} [rotation=null] - Optional XYZ Euler angles in radians.
+ * @returns {T.Mesh} New mesh with its own geometry.
+ */
 function box(group, material, size, position, rotation = null) {
   const mesh = new T.Mesh(new T.BoxGeometry(...size),material);
   mesh.position.set(...position); if(rotation) mesh.rotation.set(...rotation); group.add(mesh); return mesh;
 }
+/**
+ * Add a low-resolution scaled sphere as a small model detail.
+ * @param {T.Group} group - Assembly receiving the mesh.
+ * @param {T.Material} material - Shared surface material.
+ * @param {number[]} size - Ellipsoid radii along X/Y/Z in metres, not full diameters.
+ * @param {number[]} position - Local center [x,y,z] in metres.
+ * @returns {T.Mesh} New 12-by-6-segment sphere mesh.
+ */
 function ellipsoid(group, material, size, position) {
   const mesh=new T.Mesh(new T.SphereGeometry(1,12,6),material);
   mesh.scale.set(...size); mesh.position.set(...position); group.add(mesh); return mesh;
 }
+/**
+ * Extrude a rounded rectangular detail from its XY face toward positive local Z.
+ * @param {T.Group} group - Assembly receiving the panel.
+ * @param {T.Material} material - Shared surface material.
+ * @param {number} width - Face width in metres.
+ * @param {number} height - Face height in metres.
+ * @param {number} depth - Positive-Z extrusion depth in metres.
+ * @param {number[]} position - Face-center origin [x,y,z] in metres.
+ * @param {number} [radius=.025] - Corner radius, capped relative to face dimensions.
+ * @returns {T.Mesh} New panel whose geometry can be consumed by mergeParts.
+ */
 function panel(group, material, width, height, depth, position, radius=.025) {
   const w=width/2,h=height/2,r=Math.min(radius,w*.45,h*.45),shape=new T.Shape();
   shape.moveTo(-w+r,-h); shape.lineTo(w-r,-h); shape.quadraticCurveTo(w,-h,w,-h+r);
@@ -117,6 +193,13 @@ function panel(group, material, width, height, depth, position, radius=.025) {
   const mesh=new T.Mesh(new T.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:3}),material);
   mesh.position.set(...position); group.add(mesh); return mesh;
 }
+/**
+ * Bake direct child mesh transforms and merge by material identity to reduce draw calls.
+ * Consumes/disposes each child geometry and temporary copies, but retains shared materials;
+ * the input assembly must not be rendered again. Only position and normal attributes survive.
+ * @param {T.Group} group - Flat, unmerged construction assembly; the group's own transform is not baked.
+ * @returns {T.Group} New shadow-enabled meshes named body, lights_red or detail for later material replacement.
+ */
 function mergeParts(group) {
   group.updateMatrixWorld(true);
   const materials = new Map();
@@ -138,6 +221,12 @@ function mergeParts(group) {
   }
   return merged;
 }
+/**
+ * Build and material-merge a tire, brake disc and five-spoke wheel at the origin.
+ * @param {number} radius - Outer tire radius in metres.
+ * @param {number} width - Full tire width in metres along its X-axis axle.
+ * @returns {T.Group} New wheel with both outer faces detailed; rotate about X to roll.
+ */
 function wheel(radius, width) {
   const parts=new T.Group();
   // A full-width tire with a rounded shoulder and sidewalls, rather than a thin torus.
@@ -156,6 +245,16 @@ function wheel(radius, width) {
   }
   return mergeParts(parts);
 }
+/**
+ * Add a painted arch lip and dark stationary wheel-well disk around one axle end.
+ * @param {T.Group} group - Static body assembly receiving the meshes, not the rotating wheel.
+ * @param {number[][]} sections - Body profiles whose width determines lip X placement.
+ * @param {Object} spec - wheel radius and full width in metres.
+ * @param {number} side - -1 for left or +1 for right.
+ * @param {number} z - Axle longitudinal center in metres.
+ * @param {number} sill - Lowest arch height in metres; must intersect the arch circle.
+ * @returns {void} Adds new geometry while reusing paint and trim materials.
+ */
 function fender(group, sections, spec, side, z, sill) {
   const r=spec.wheel*1.10,y=spec.wheel+.015, start=Math.asin((sill-y)/r);
   const arch=surface((u,v)=>{

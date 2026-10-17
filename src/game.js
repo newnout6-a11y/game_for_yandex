@@ -5,9 +5,35 @@ import { trafficDefinition, chooseTrafficKind, trafficCenterGap } from './traffi
 import { playerBottom, playerTrafficDepth, playerTrafficWidth, trafficHitsPlayer, updateTrailerKinematics, LANE_WIDTH } from './traffic-physics.js';
 import { trafficLateral, occupiedTrafficLanes, updateTrafficManoeuvres } from './traffic-behavior.js';
 import { trafficDynamics } from './traffic-motion.js';
+/**
+ * Coerces an input axis to a finite number and clamps it to the accepted range.
+ * Non-finite input becomes zero, including when a negative minimum is allowed.
+ * @param {*} v - Raw control value, including numeric strings.
+ * @param {number} [min=0] - Lower bound; use -1 for steering and roll.
+ * @returns {number} Normalized axis value no greater than one.
+ */
 const axis = (v, min=0) => Number.isFinite(Number(v)) ? clamp(Number(v),min,1) : 0;
+/**
+ * Owns the deterministic, rendering-independent arcade simulation and event stream.
+ * Player x uses lane units (0 left, 1 centre, 2 right); traffic z is metres ahead
+ * of the player. Distances are metres, speeds m/s, angles radians and time seconds.
+ * State is mutable and is replaced by reset; injected randomness controls spawning.
+ */
 export class Game {
+  /**
+   * Creates a ready run and retains the injected random source and event sink.
+   * @param {Object} [options={}] - Simulation dependencies.
+   * @param {Function} [options.random] - Generator returning values in [0, 1).
+   * @param {Function} [options.onEvent] - Called synchronously with an event name
+   * and, where applicable, its combo or event-result payload.
+   */
   constructor({ random = seededRandom(), onEvent = () => {} } = {}) { this.random=random;this.onEvent=onEvent;this.reset(); }
+  /**
+   * Replaces run state and resets entity IDs and swipe pulses without reseeding RNG.
+   * Unknown difficulties fall back to flow; the returned state starts ready at rest.
+   * @param {string} [difficulty='flow'] - Key from DIFFICULTIES.
+   * @returns {Object} The new mutable state also stored on this instance.
+   */
   reset(difficulty='flow') {
     this.difficulty=Object.hasOwn(DIFFICULTIES,difficulty)?difficulty:'flow';
     this.state={
@@ -20,23 +46,61 @@ export class Game {
     };
     this.serial=0;this.pulse=0;this.pulseTime=0;return this.state;
   }
+  /**
+   * Reads the configured speed, spacing and scoring multipliers for this run.
+   * @returns {Object} The shared difficulty configuration; it is not copied.
+   */
   get rules(){return DIFFICULTIES[this.difficulty];}
+  /**
+   * Starts a ready run and attempts three dense opening traffic waves.
+   * Calls in any other phase are ignored; spawning still preserves a safe corridor.
+   * @returns {void}
+   */
   start(){
     if(this.state.phase!=='ready')return;
     this.state.phase='playing';for(const z of [85,145,205])this.spawnWave(z,true);
   }
   // A swipe gives a short steering input; it never selects or snaps to a lane.
+  /**
+   * Queues a 0.45-second signed steering pulse, without selecting a discrete lane.
+   * Only a finite, nonzero input during play is accepted; magnitude is discarded.
+   * @param {number} direction - Negative for left, positive for right.
+   * @returns {boolean} Whether the pulse was accepted.
+   */
   steer(direction){
     if(this.state.phase!=='playing'||!Number.isFinite(direction)||!direction)return false;
     this.pulse=Math.sign(direction);this.pulseTime=.45;return true;
   }
+  /**
+   * Cancels the remaining swipe-pulse duration without changing vehicle motion.
+   * Continuous controls supplied to update remain independent of this pulse.
+   * @returns {void}
+   */
   releaseControls(){this.pulseTime=0;}
+  /**
+   * Normalizes controls and advances at most 0.1 seconds in steps of at most 1/120 s.
+   * Invalid/nonpositive time and non-playing phases are ignored; a crash stops the
+   * remaining substeps. Excess elapsed time is discarded rather than accumulated.
+   * @param {number} dt - Requested elapsed time in seconds.
+   * @param {Object} [controls={}] - Throttle/brake in [0, 1], steer/roll in [-1, 1],
+   * and boost/flight flags; non-finite axes become zero.
+   * @returns {void}
+   */
   update(dt, controls={}){
     if(this.state.phase!=='playing'||!Number.isFinite(dt)||dt<=0)return;
     const c={throttle:axis(controls?.throttle),brake:axis(controls?.brake),steer:axis(controls?.steer,-1),boost:Boolean(controls?.boost),flight:Boolean(controls?.flight),roll:axis(controls?.roll,-1)};
     let remaining=Math.min(dt,.1);
     while(remaining>1e-9&&this.state.phase==='playing'){const step=Math.min(remaining,1/120);this.step(step,c);remaining-=step;}
   }
+  /**
+   * Advances one positive simulation substep, mutating the run and its entities.
+   * Applies flight, propulsion and continuous positive-right steering, then lane
+   * planning, traffic following, trailer motion, swept collisions and scoring.
+   * A collision emits crash and returns before later entities or goal checks run.
+   * @param {number} dt - Positive substep duration in seconds, normally <= 1/120.
+   * @param {Object} c - Already-normalized controls from update.
+   * @returns {void}
+   */
   step(dt,c){
     const s=this.state;s.elapsed+=dt;s.invincible=Math.max(0,s.invincible-dt);s.comboTime=Math.max(0,s.comboTime-dt);
     if(!s.comboTime)s.combo=1;
@@ -122,7 +186,22 @@ export class Game {
     s.traffic=s.traffic.filter(car=>car.z>-18-trafficDefinition(car.kind).length/2&&car.z<420+trafficDefinition(car.kind).length/2);s.pickups=s.pickups.filter(p=>!p.collected&&p.z>-5);s.obstacles=s.obstacles.filter(o=>!o.hit&&o.z>-8);
     if(!s.goalReached&&s.distance>=CONFIG.goal){s.goalReached=true;s.score+=1000;this.onEvent('goal');}
   }
+  /**
+   * Marks the run crashed, disables boost/flight and cancels swipe steering.
+   * Emits crash synchronously; speed, altitude and entities remain for the crash view.
+   * @returns {void}
+   */
   crash(){this.state.phase='crashed';this.state.boosting=false;this.state.flying=false;this.pulseTime=0;this.onEvent('crash');}
+  /**
+   * Attempts a randomized traffic wave while preserving an actually clear lane.
+   * Respects closures, committed lane changes and full vehicle headway; may spawn
+   * nothing if no safe corridor exists. Successful planning updates safeLane and
+   * can add a charge pickup, consuming RNG values and monotonically assigned IDs.
+   * @param {?number} [initialZ=null] - Base distance ahead in metres; null uses 205.
+   * A random offset below ten metres is added.
+   * @param {boolean} [dense=false] - Keep both eligible non-safe lanes when possible.
+   * @returns {void}
+   */
   spawnWave(initialZ=null,dense=false){
     const s=this.state,closed=s.roadEvent?.type==='roadworks'?s.roadEvent.lane:-1;
     let nextSafe=clamp(s.safeLane+Math.floor(this.random()*3)-1,0,2);
@@ -146,6 +225,14 @@ export class Game {
     }
     if(this.random()<.8)s.pickups.push({id:++this.serial,lane:nextSafe,z:z-24,collected:false});
   }
+  /**
+   * Starts a supported road event only when none is active and its lane is feasible.
+   * Creates cones/barriers or convoy cars as needed, reserving committed manoeuvres
+   * and avoiding existing vehicle envelopes. Emits event-start after installation.
+   * @param {string} [type] - Roadworks, checkpoint or convoy; defaults to the next
+   * entry in the run's repeating event sequence.
+   * @returns {boolean} Whether an event was created and the sequence advanced.
+   */
   startEvent(type=['roadworks','checkpoint','convoy'][this.state.eventIndex%3]){
     const s=this.state;if(s.roadEvent)return false;
     if(!['roadworks','checkpoint','convoy'].includes(type))return false;
@@ -181,6 +268,12 @@ export class Game {
     }
     s.eventIndex++;this.onEvent('event-start',s.roadEvent);return true;
   }
+  /**
+   * Starts due events and resolves the active event using current distance/time.
+   * Updates remaining metres, seconds and convoy count; checkpoint alignment,
+   * clean roadworks completion or passing every convoy target determines success.
+   * @returns {void}
+   */
   updateEvent(){
     const s=this.state;
     if(!s.roadEvent&&s.distance>=s.nextEvent)this.startEvent();
@@ -196,6 +289,13 @@ export class Game {
       else if(e.seconds<=0)this.finishEvent(false);
     }
   }
+  /**
+   * Resolves the active event, rewards success and schedules the next one 120 m on.
+   * Stores a four-second result message and emits event-clear. Without an active
+   * event this is a no-op; failed events award no score or nitro.
+   * @param {boolean} success - Whether to grant the event's difficulty-scaled reward.
+   * @returns {void}
+   */
   finishEvent(success){
     const s=this.state,e=s.roadEvent;if(!e)return;
     const points=success?e.points*this.rules.score:0;
@@ -203,6 +303,13 @@ export class Game {
     s.lastEvent={title:e.title,success,points,until:s.elapsed+4};s.roadEvent=null;s.nextEvent=s.distance+120;
     this.onEvent('event-clear',s.lastEvent);
   }
+  /**
+   * Resumes an eligible crashed run with nearby hazards removed and 2.5 s immunity.
+   * Preserves progress and lateral position, fails any active event, resets flight
+   * and steering, stops the car and restores at least 40 nitro while preserving
+   * any larger existing reserve. The configured per-run revive limit is enforced.
+   * @returns {boolean} Whether the run was revived.
+   */
   revive(){
     const s=this.state;if(s.phase!=='crashed'||s.revives>=CONFIG.maxRevives)return false;
     s.revives++;s.traffic=s.traffic.filter(c=>c.z>80);s.pickups=s.pickups.filter(p=>p.z>20);s.obstacles=[];

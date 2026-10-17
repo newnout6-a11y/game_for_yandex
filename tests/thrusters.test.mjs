@@ -4,6 +4,13 @@ import { readFile } from 'node:fs/promises';
 import * as T from '../public/vendor/three.js';
 import { createThrusterEffects } from '../src/thrusters.js';
 
+/**
+ * Build four named nozzle sockets and real vapor effects without WebGL.
+ * Starts the player at cruise height and supplies mutable flight-state fields;
+ * callers own disposal of the returned effect resources.
+ * @param {boolean} [compact=false] - Select the reduced particle-capacity profile.
+ * @returns {object} Scene, player, effects, state and a deterministic step helper.
+ */
 function fixture(compact = false) {
   const scene = new T.Scene(), player = new T.Group(); scene.add(player);
   player.position.set(0, 3.335, 0);
@@ -15,6 +22,12 @@ function fixture(compact = false) {
   const effects = createThrusterEffects(scene, player, { compact });
   const state = { phase: 'playing', altitude: 3.3, thrusterPower: .85, speed: 28, verticalSpeed: 0, distance: 0 };
   let time = 0;
+  /**
+   * Advance vapor, elapsed time and distance together for the requested frames.
+   * A zero dt deliberately tests paused effects without changing travelled metres.
+   * @param {number} frames - Number of update calls.
+   * @param {number} [dt=1/60] - Simulated seconds per update.
+   */
   const advance = (frames, dt = 1 / 60) => {
     for (let i = 0; i < frames; i++) {
       time += dt; state.distance += state.speed * dt;
@@ -112,6 +125,14 @@ test('Blender smoke atlas has eight shaded RGBA variants, transparent tile edges
   }
   const raw = inflateSync(Buffer.concat(chunks)), width = 1024, height = 512, stride = width * 4;
   const pixels = new Uint8Array(stride * height);
+  /**
+   * Choose the PNG Paeth predictor from already reconstructed neighbor bytes.
+   * Used only to decode the known 8-bit RGBA smoke atlas for alpha/color checks.
+   * @param {number} a - Left byte, or zero at the first pixel.
+   * @param {number} b - Above byte, or zero on the first row.
+   * @param {number} c - Upper-left byte, or zero at an image boundary.
+   * @returns {number} Selected neighboring byte before residual addition.
+   */
   const paeth = (a, b, c) => {
     const p = a + b - c, x = Math.abs(p - a), y = Math.abs(p - b), z = Math.abs(p - c);
     return x <= y && x <= z ? a : y <= z ? b : c;

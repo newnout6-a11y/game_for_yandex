@@ -1,9 +1,18 @@
 import { CONFIG, ROUTES } from './config.js';
 import { FLIGHT } from './flight.js';
 import { formatNumber, clamp } from './util.js';
+/**
+ * Resolve a known game DOM element from the static HTML shell.
+ * @param {string} id - Element identifier.
+ * @returns {HTMLElement|null} Matching element; callers rely on validated HTML assets.
+ */
 const byId = id => document.getElementById(id);
 const arrow = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>';
 export class UI {
+  /**
+   * Bind modal action delegation and keyboard focus containment without starting a run.
+   * @param {Function} onAction - Receives validated action names from dialog buttons or escape keys.
+   */
   constructor(onAction) {
     this.onAction = onAction;
     this.app = byId('app');
@@ -29,6 +38,10 @@ export class UI {
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
   }
+  /**
+   * Select menu/HUD/topbar visibility using the application screen state.
+   * @param {string} screen - menu, playing, paused or results.
+   */
   setScreen(screen) {
     this.app.dataset.screen = screen;
     byId('menu').hidden = screen !== 'menu';
@@ -36,6 +49,10 @@ export class UI {
     byId('pauseBtn').hidden = !['playing', 'paused'].includes(screen);
     byId('helpBtn').hidden = screen === 'results';
   }
+  /**
+   * Reflect sanitized route/difficulty, record and sound settings in menu labels and ARIA states.
+   * @param {Object} settings - Detached storage snapshot with valid route/difficulty identifiers.
+   */
   menu(settings) {
     for (const button of document.querySelectorAll('[data-route]')) button.setAttribute('aria-pressed', String(button.dataset.route === settings.route));
     for (const button of document.querySelectorAll('[data-difficulty]')) button.setAttribute('aria-pressed', String(button.dataset.difficulty === settings.difficulty));
@@ -44,6 +61,10 @@ export class UI {
     byId('routeLabel').textContent = route.name.toUpperCase();
     this.sound(settings.sound);
   }
+  /**
+   * Update the sound button icon, pressed state and action label.
+   * @param {boolean} enabled - Persisted sound preference, not AudioContext readiness.
+   */
   sound(enabled) {
     byId('soundBtn').setAttribute('aria-pressed', String(enabled));
     byId('soundBtn').setAttribute('aria-label', enabled ? 'Выключить звук' : 'Включить звук');
@@ -51,6 +72,11 @@ export class UI {
       ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11 5-6 5H2v4h3l6 5V5Zm5 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg>'
       : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11 5-6 5H2v4h3l6 5V5Zm5 4 5 6m0-6-5 6"/></svg>';
   }
+  /**
+   * Render a run snapshot without mutating the simulation.
+   * Converts metres/second to km/h, displays metres and percent energy, and announces ability mode changes only.
+   * @param {Object} s - Current Game state, including flight/roll telemetry and optional road event.
+   */
   hud(s) {
     byId('score').textContent = String(Math.floor(s.score)).padStart(5, '0');
     byId('speed').textContent = String(Math.round(s.speed * 3.6));
@@ -101,6 +127,11 @@ export class UI {
     byId('eventHint').textContent=e?.hint||(last?.success?'Бонус +'+last.points+' очков и +15% нитро.':'Следующее событие впереди.');
     byId('eventMeter').textContent=e?(e.type==='convoy'?e.carsLeft+' авто':(e.type==='checkpoint'?Math.ceil(e.seconds)+' с · ':'')+Math.max(0,Math.ceil(e.remaining))+' м'):'';
   }
+  /**
+   * Open a trusted application-authored modal, preserve return focus and make background controls inert.
+   * @param {string} type - Modal identity used for escape-key behavior.
+   * @param {string} html - Internal dialog markup; not arbitrary user-supplied HTML.
+   */
   open(type, html) {
     if (this.overlay.hidden) this.returnFocus = document.activeElement;
     this.modalType = type;
@@ -111,6 +142,9 @@ export class UI {
     this.dialog.scrollTop = 0;
     (this.dialog.querySelector('button:not(:disabled)') || this.dialog).focus({ preventScroll: true });
   }
+  /**
+   * Hide the modal, restore background interaction and return focus when the original control remains visible.
+   */
   close() {
     if (this.dialog.contains(document.activeElement)) document.activeElement.blur();
     this.overlay.hidden = true;
@@ -119,30 +153,53 @@ export class UI {
     for (const el of [document.querySelector('.topbar'), byId('menu'), byId('hud')]) el.inert = false;
     if (this.returnFocus?.isConnected && !this.returnFocus.closest('[hidden]')) this.returnFocus.focus({ preventScroll: true });
   }
+  /**
+   * Open the pause dialog with explicit resume/menu actions; does not itself change simulation lifecycle.
+   */
   pause() {
     this.open('pause', '<h2 id="dialogTitle">Пауза</h2><p>Заезд остановлен.</p><button class="button primary" data-action="resume">Продолжить заезд ' + arrow + '</button><button class="button secondary" data-action="menu">В главное меню</button><p class="dialog-note">Esc — продолжить</p>');
   }
+  /**
+   * Open control, ability-cost and asset-attribution help derived from shared flight constants.
+   */
   help() {
     const rollRules = FLIGHT.rollMinAltitude.toFixed(1).replace('.', ',') + ' м высоты и ' + FLIGHT.rollCost + '% энергии';
     this.open('help', '<h2 id="dialogTitle">Управление</h2><ol class="help-list"><li><strong>Обходи трафик.</strong> Удерживай A / D или ← →: руль поворачивается постепенно, положение между полосами свободное. На телефоне удерживай кнопки руля; свайп даёт короткий поворот.</li><li><strong>Газ и тормоз.</strong> W / ↑ — разгон, S / ↓ — торможение. Без газа машина катится и замедляется; в начале заезда она стоит. На телефоне удерживай педали справа.</li><li><strong>События на дороге.</strong> Обходи ограждения дорожных работ, проходи контрольные точки между флагами и реагируй на тормозящую колонну. Успех даёт очки и нитро.</li><li><strong>Собирай заряды.</strong> Золотистый баллон даёт +22% нитро и 50 очков.</li><li><strong>Добавь скорости.</strong> Удерживай газ вместе с пробелом или кнопкой НИТРО. Заряд заканчивается — ускорение тоже.</li><li><strong>Поднимись над дорогой.</strong> Разгонись минимум до 44 км/ч и удерживай F или кнопку ПОЛЁТ. Родстер плавно поднимется над трафиком. Полёт и нитро расходуют один запас энергии; нитро в воздухе не действует. Отпусти кнопку для посадки. При взлёте часть заряда резервируется для мягкой посадки на тормозных соплах. После касания земли — 2 секунды перезарядки. При взлёте и посадке по-прежнему избегай машин.</li><li><strong>Сделай боковой кувырок.</strong> В полёте дождись надписи «ГОТОВ» и нажми Q / E для вращения влево / вправо или кнопку ↶ / ↷ на телефоне. Нужны ' + rollRules + '. Удерживай газ, чтобы не терять скорость. Одно нажатие — один полный оборот; для следующего отпусти кнопку. Если отпустить полёт во время кувырка, машина сначала выровняется, затем начнёт посадку.</li><li><strong>Рискуй с умом.</strong> Близкий обгон даёт множитель до ×5. Следующий обгон за 5 секунд продлевает серию.</li><li><strong>Доберись до 1 500 м.</strong> За цель получишь 1 000 очков. Дальше — только твой рекорд.</li></ol><p class="dialog-note">Esc / P — пауза. Рекорды режимов «Поток» и «Час пик» сохраняются отдельно на этом устройстве.</p><p class="dialog-note">Родстер и режим полёта — игровая стилизация, а не симулятор реального автомобиля. Восемь моделей трафика созданы для проекта в Blender. Прежняя Ferrari 458 Italia сохранена в исходниках, но в игре не используется: <a href="https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6" target="_blank" rel="noopener">vicent091036</a>, CC BY 4.0. Материалы и деревья — Poly Haven, CC0. <a href="./public/assets/CREDITS.txt" target="_blank" rel="noopener">Источники и лицензии</a>.</p><button class="button primary" data-action="closeHelp">Всё понятно ' + arrow + '</button>');
   }
+  /**
+   * Build the end-of-run summary and expose at most the allowed revive action.
+   * @param {Object} s - Completed run snapshot; elapsed is seconds and distance is metres.
+   * @param {Object} options - Record/best-score display and rewarded-ad capability.
+   */
   results(s, { record = false, best = 0, adAvailable = false } = {}) {
     const canRevive = s.revives < CONFIG.maxRevives;
     const time = Math.floor(s.elapsed / 60) + ':' + String(Math.floor(s.elapsed % 60)).padStart(2, '0');
     this.open('results', '<div class="eyebrow">' + (record ? 'НОВЫЙ РЕКОРД' : 'ЗАЕЗД ЗАВЕРШЁН') + '</div><h2 id="dialogTitle">' + (s.goalReached ? 'Цель выполнена' : 'Столкновение') + '</h2><span class="result-score">' + formatNumber(s.score) + '</span><p class="dialog-note">очков · лучший результат ' + formatNumber(best) + '</p><div class="result-stats"><div>Дистанция<strong>' + formatNumber(s.distance) + ' м</strong></div><div>Время<strong>' + time + '</strong></div><div>Близкие обгоны<strong>' + s.nearMisses + '</strong></div><div>Собрано зарядов<strong>' + s.charges + '</strong></div><div>Обгоны<strong>' + s.overtakes + '</strong></div><div>События<strong>' + s.eventsCompleted + '</strong></div></div><button class="button primary" data-action="retry">Новый заезд ' + arrow + '</button>' + (canRevive ? '<button class="button secondary" data-action="revive">' + (adAvailable ? 'Второй шанс · за рекламу' : 'Второй шанс · бесплатно') + '</button>' : '') + '<button class="button secondary" data-action="menu">В главное меню</button><p id="adStatus" class="dialog-note" role="status">' + (canRevive ? 'Одно продолжение на заезд. После него — 2,5 секунды защиты.' : 'Второй шанс использован.') + '</p>');
   }
+  /**
+   * Disable dialog actions during an outstanding ad request and expose aria-busy feedback.
+   * @param {boolean} value - Whether an asynchronous modal action is pending.
+   */
   busy(value) {
     this.dialog.setAttribute('aria-busy', String(value));
     this.dialog.querySelectorAll('button').forEach(button => { button.disabled = value; });
     const status = byId('adStatus');
     if (status && value) status.textContent = 'Открываем рекламу…';
   }
+  /**
+   * Replace the general notification and restart its 3.5-second visibility timer.
+   * @param {string} message - Plain text assigned via textContent.
+   */
   notice(message) {
     const el = byId('notification');
     clearTimeout(this.noticeTimer);
     el.textContent = message; el.classList.add('visible');
     this.noticeTimer = setTimeout(() => el.classList.remove('visible'), 3500);
   }
+  /**
+   * Replace the short scoring/event toast and restart its 1.8-second visibility timer.
+   * @param {string} message - Plain text assigned via textContent.
+   */
   toast(message) {
     const el = byId('toast');
     clearTimeout(this.toastTimer);
@@ -152,6 +209,12 @@ export class UI {
 }
 
 // Keep rapidly changing altitude out of the live region; announce only mode changes.
+/**
+ * Derive localized flight text and a stable accessibility mode from a run snapshot.
+ * Mode priority is roll, powered landing, flight, residual descent, cooldown, energy, ready, then ground.
+ * @param {Object} s - Flight state; altitude is metres, cooldown is seconds and energy is percent.
+ * @returns {Object} mode, value, hint and announcement strings without changing the state.
+ */
 export function flightPresentation(s) {
   const altitude = Math.max(0, Number(s.altitude) || 0);
   const cooldown = Math.max(0, Number(s.flightCooldown) || 0);
@@ -167,6 +230,12 @@ export function flightPresentation(s) {
 }
 
 
+/**
+ * Derive localized roll progress/readiness independently from DOM updates.
+ * Uses actual roll angle when finite, with normalized progress only as a fixture fallback.
+ * @param {Object} s - Run state; angles are radians, cooldown seconds and energy percent.
+ * @returns {Object} mode, value, hint and announcement strings for HUD and assistive output.
+ */
 export function rollPresentation(s) {
   const angle = Number.isFinite(s.rollAngle) ? clamp(Math.abs(s.rollAngle) * 180 / Math.PI, 0, 360) : clamp(Number(s.rollProgress) || 0, 0, 1) * 360;
   if (s.rolling) return { mode: 'rolling', value: Math.round(angle) + '° / 360°', hint: 'Выполняется полный оборот. Перед посадкой машина выровняется.', announcement: 'Боковой кувырок начат' };

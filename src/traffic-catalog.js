@@ -10,6 +10,21 @@ export const TRAFFIC_CATEGORIES = Object.freeze({
 const REAR_AXLE_Z = Object.freeze({sedan:1.39,hatch:1.22,suv:1.49,van:1.74,boxtruck:2.41,semi:-3.965,towtruck:1.99,firetruck:2.26});
 // Conservative measured arch-compression limits; full steering is unchanged.
 const BODY_COMPRESSION = Object.freeze({sedan:.025,hatch:.024,suv:.031,van:.030});
+/**
+ * Builds a shallow-frozen simulation specification, adding measured axle/arch data.
+ * Freezes the supplied cruise and tags arrays in place; extra properties are
+ * spread last and can override defaults. Dimensions are independent of meshes.
+ * @param {string} id - Canonical vehicle kind.
+ * @param {string} category - Dynamics/category lookup key.
+ * @param {string} label - Human-readable vehicle label.
+ * @param {Object} dimensions - Length, width, height and wheel radius in metres.
+ * @param {number} axles - Number of axles, each requiring two wheel pivots.
+ * @param {number[]} cruise - Minimum/maximum cruise speed in m/s.
+ * @param {number} weight - Relative randomized spawn weight.
+ * @param {string[]} tags - Descriptive vehicle tags.
+ * @param {Object} [extra={}] - Articulation or other specification overrides.
+ * @returns {Readonly<Object>} Frozen vehicle definition.
+ */
 const vehicle = (id, category, label, dimensions, axles, cruise, weight, tags, extra = {}) => Object.freeze({
   id, category, label, ...dimensions, rearAxleZ:REAR_AXLE_Z[id], bodyCompression:BODY_COMPRESSION[id]??null, axles, cruise: Object.freeze(cruise), weight,
   tags: Object.freeze(tags), ...extra,
@@ -25,13 +40,38 @@ export const TRAFFIC_CATALOG = Object.freeze({
   firetruck: vehicle('firetruck', 'special', 'Пожарная машина', { length: 8.6, width: 2.5, height: 3.32, wheelRadius: .5 }, 3, [15, 20], 3, ['emergency', 'utility', 'tall']),
 });
 export const TRAFFIC_KINDS = Object.freeze(Object.keys(TRAFFIC_CATALOG));
+/**
+ * Accepts only own catalogue keys, falling back to sedan for unknown kinds.
+ * @param {*} kind - Requested traffic kind.
+ * @returns {string} A valid key in TRAFFIC_CATALOG.
+ */
 export function normalizeTrafficKind(kind) { return Object.hasOwn(TRAFFIC_CATALOG, kind) ? kind : 'sedan'; }
+/**
+ * Returns the shared immutable simulation definition, with sedan as fallback.
+ * @param {*} kind - Requested traffic kind.
+ * @returns {Readonly<Object>} Catalogue dimensions, cruise limits and rig metadata.
+ */
 export function trafficDefinition(kind) { return TRAFFIC_CATALOG[normalizeTrafficKind(kind)]; }
+/**
+ * Maps a normalized random sample to a kind using catalogue spawn weights.
+ * Coerces input numerically and clamps it below one; invalid values map to zero.
+ * Does not draw randomness itself, so callers retain deterministic RNG ownership.
+ * @param {*} value - Random sample, normally in [0, 1).
+ * @returns {string} Weighted traffic kind, with sedan as the defensive fallback.
+ */
 export function chooseTrafficKind(value) {
   let target = Math.max(0, Math.min(.999999999, Number(value) || 0)) * TRAFFIC_KINDS.reduce((sum, key) => sum + TRAFFIC_CATALOG[key].weight, 0);
   for (const kind of TRAFFIC_KINDS) { target -= TRAFFIC_CATALOG[kind].weight; if (target < 0) return kind; }
   return 'sedan';
 }
+/**
+ * Computes centre-to-centre spacing from two full body lengths and a free gap.
+ * Uses catalogue dimensions, so trailers require more room than passenger cars.
+ * @param {Object} a - First vehicle descriptor with a kind field.
+ * @param {Object} b - Second vehicle descriptor with a kind field.
+ * @param {number} [freeSpace=2] - Extra bumper-to-bumper clearance in metres.
+ * @returns {number} Required longitudinal centre separation in metres.
+ */
 export function trafficCenterGap(a, b, freeSpace = 2) {
   return (trafficDefinition(a.kind).length + trafficDefinition(b.kind).length) / 2 + freeSpace;
 }

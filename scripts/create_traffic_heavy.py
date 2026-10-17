@@ -18,9 +18,21 @@ PREVIEW = os.environ.get('TRAFFIC_HEAVY_PREVIEW', os.path.join(ROOT, 'output', '
 for directory in (OUT, ASSETS, PREVIEW): os.makedirs(directory, exist_ok=True)
 C = Matrix(((1,0,0,0),(0,0,-1,0),(0,1,0,0),(0,0,0,1)))
 
-def v(p): return Vector((p[0], -p[2], p[1]))
+def v(p):
+    """Return a game-to-Blender vector with unchanged metre scale.
+
+    Map game +Y up/-Z forward to Blender +Z up/+Y forward; use the same
+    rotation for positions, normals and direction vectors.
+    """
+    return Vector((p[0], -p[2], p[1]))
 
 def get_blockouts():
+    """Run the local Node bridge and return the decoded freight blockout data.
+
+    Read the boxtruck/semi catalog, mesh arrays, materials and local hierarchy
+    from the JS builders. Preserve game-space metres and column-major matrices
+    for import_node; no Blender geometry or asset files are created here.
+    """
     code = r"""
 import {buildHeavyVehicle} from './src/traffic-heavy.js';
 import {TRAFFIC_CATALOG} from './src/traffic-catalog.js';
@@ -38,6 +50,12 @@ process.stdout.write(JSON.stringify({materials:Array.from(materials.values()),mo
     return json.loads(subprocess.check_output(['node', '--input-type=module', '-e', code], cwd=ROOT, text=True))
 
 def make_material(source):
+    """Create and return a Blender material from one bridge material record.
+
+    Copy normalized PBR color, roughness, metalness, emission and coat settings;
+    wire optional Col vertex colors and retain traffic_role for export batches.
+    Backface culling follows the source double-sided flag.
+    """
     material = bpy.data.materials.new('body_paint' if source['name']=='body' else source['name']); material.use_nodes = True
     material.diffuse_color = (*source['color'], 1)
     bs = material.node_tree.nodes.get('Principled BSDF')
@@ -56,6 +74,12 @@ def make_material(source):
     return material
 
 def import_node(source, materials, parent=None):
+    """Recursively import a bridge node and return its Blender object.
+
+    Convert game-space metre vertices/normals and conjugate column-major local
+    matrices into Blender axes, preserving parent pivots. Copy primitive extras
+    and Col point colors, link mesh/empty nodes, and tag material batches.
+    """
     data = source.get('geometry')
     if data:
         flat = data['position']; vertices = [v(flat[i:i+3]) for i in range(0,len(flat),3)]
@@ -84,6 +108,12 @@ def import_node(source, materials, parent=None):
     return ob
 
 def mesh_part(name, points, faces, material, parent, bevel=0):
+    """Return a linked Blender-authored part from parent-local game geometry.
+
+    Points and optional bevel width are metres. Preserve face indices, assign
+    material-group metadata and retain bevel/weighted-normal modifiers so the
+    editable source is not destructively flattened before export.
+    """
     mesh = bpy.data.meshes.new(name + '_mesh'); mesh.from_pydata([v(p) for p in points], [], faces); mesh.update(); mesh.materials.append(material)
     ob = bpy.data.objects.new(name, mesh); bpy.context.collection.objects.link(ob); ob.parent = parent
     ob['material_group'] = material.get('traffic_role', 'detail'); ob['authored_in'] = 'Blender'
@@ -94,11 +124,21 @@ def mesh_part(name, points, faces, material, parent, bevel=0):
     return ob
 
 def box(name, center, dims, material, parent, bevel=.008):
+    """Return a closed six-face box using game-axis center and full dimensions.
+
+    All lengths, including bevel, are parent-local metres. Delegate coordinate
+    conversion and retained manufacturing modifiers to mesh_part().
+    """
     x,y,z=center; a,b,c=[n/2 for n in dims]
     points=[(x-a,y-b,z-c),(x+a,y-b,z-c),(x+a,y+b,z-c),(x-a,y+b,z-c),(x-a,y-b,z+c),(x+a,y-b,z+c),(x+a,y+b,z+c),(x-a,y+b,z+c)]
     return mesh_part(name, points, [(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)], material,parent,bevel)
 
 def beam(name, a, b, radius, material, parent):
+    """Return a six-sided cylinder joining two parent-local game-space points.
+
+    Endpoints and radius use metres. Aim native Blender local +Z along the
+    converted segment and tag the linked object for material-based batching.
+    """
     a,b=v(a),v(b); midpoint=(a+b)/2; length=(b-a).length
     bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=radius, depth=length, location=midpoint)
     ob=bpy.context.object; ob.name=name; ob.rotation_euler=(b-a).to_track_quat('Z','Y').to_euler(); ob.parent=parent
@@ -106,11 +146,13 @@ def beam(name, a, b, radius, material, parent):
     return ob
 
 def refine_freight_wheels(root, spec, material):
-    """Blender-authored commercial wheel revision: open steel webs, not decals.
+    """Replace freight wheel children with original vented commercial wheel meshes.
 
-    Each wheel remains one vertex-colored mesh and one draw call. The editable
-    source stores named vertex groups for tire, rim, hub and fastening islands.
-    Tires retain their catalog radius and wheel-center contact-plane clearance.
+    Use catalog radii and parent-local metre profiles around the game X axle;
+    mirror vertices and winding, not wheel pivots. Mutate the shared finish and
+    create one Col-colored mesh per wheel with editable named vertex groups,
+    retaining catalog tire radius, axle roles and contact-plane clearance.
+    Return None; the existing wheel hierarchy remains the animation contract.
     """
     bs=material.node_tree.nodes.get('Principled BSDF')
     bs.inputs['Metallic'].default_value=.18
@@ -124,10 +166,21 @@ def refine_freight_wheels(root, spec, material):
         dual=role!='steer'; side=1 if pivot.location.x>0 else -1
         verts=[]; faces=[]; face_colors=[]; groups={}
         def part(name, points, polygons, color):
+            """Append one named geometry island to this wheel's pending mesh buffers.
+
+            Points remain unconverted wheel-local game metres. Offset polygon indices,
+            record per-face RGBA colors and collect vertex-group indices; return None.
+            """
             start=len(verts); verts.extend(points); groups.setdefault(name,[]).extend(range(start,len(verts)))
             for face in polygons:
                 faces.append(tuple(start+i for i in face)); face_colors.append(color)
         def revolve(name, profile, color, segments=24):
+            """Append an uncapped lathed surface around wheel-local game X.
+
+            Each profile entry is (axle_x, radius) in metres. Join consecutive circular
+            rings with quads and pass the named/colorized island to part(); repeated
+            profile endpoints, rather than this helper, close a cross-section.
+            """
             points=[]; polygons=[]
             for x,r in profile:
                 points.extend([(x,r*math.cos(a*2*math.pi/segments),r*math.sin(a*2*math.pi/segments)) for a in range(segments)])
@@ -137,6 +190,11 @@ def refine_freight_wheels(root, spec, material):
                     polygons.append((j*segments+a,j*segments+b,(j+1)*segments+b,(j+1)*segments+a))
             part(name,points,polygons,color)
         def cylinder(name, x0,x1,r,center,color,segments=10):
+            """Append a capped wheel-local X cylinder to the pending mesh buffers.
+
+            x0/x1, radius and the YZ center are metres. Use the requested radial polygon
+            count and one RGBA face color without creating a separate Blender object.
+            """
             cy,cz=center; points=[]
             for x in [x0,x1]:points.extend([(x,cy+r*math.cos(i*2*math.pi/segments),cz+r*math.sin(i*2*math.pi/segments)) for i in range(segments)])
             polygons=[tuple(reversed(range(segments))),tuple(range(segments,segments*2))]
@@ -211,6 +269,12 @@ def smooth_manufactured_shell(root):
     # Imported flat extrusion facets are not acceptable as final cab finish.
     # Weld the painted shell in Blender, preserve real >32 degree creases, and
     # rebuild split normals so roof crowns and bevels shade continuously.
+    """Weld and resmooth painted body meshes without moving their object frames.
+
+    Mutate body-tagged descendants only: merge vertices within 0.00001 metres,
+    mark creases sharper than 32 degrees and reset imported split normals.
+    Leave wheels and non-body finishes untouched; return None.
+    """
     for ob in [root]+list(root.children_recursive):
         if ob.type!='MESH' or ob.get('material_group')!='body': continue
         mesh=ob.data; bm=bmesh.new(); bm.from_mesh(mesh)
@@ -222,6 +286,12 @@ def smooth_manufactured_shell(root):
         ob['Blender_surface_refinement']='Welded manufactured surfaces; smooth roof crown; 32 degree sharp-edge threshold'
 
 def refine_in_blender(kind, spec, root, palette):
+    """Add editable manufactured cab and cargo details to a freight blockout.
+
+    Use catalog dimensions in game-space metres. Attach semi cargo additions
+    to the existing compensated trailer body so hitch articulation is retained;
+    record root coordinate/asset metadata without exporting or returning a value.
+    """
     paint,trim,chrome=palette['body'],palette['trim'],palette['chrome']
     parent = next(ob for ob in root.children if ob.name.startswith('tractor' if kind=='semi' else 'rigid_truck_body'))
     front=-spec['length']/2+.09; rear=spec['length']/2-.14; width=spec['width']-.39
@@ -276,7 +346,13 @@ def refine_in_blender(kind, spec, root, palette):
     root['asset_kind']=kind
 
 def refine_visible_cabin(kind, spec, root, palette):
-    """Cut real openings and author the original cabin/mirrors in Blender."""
+    """Hollow the freight cab and author glazing, lining, mirrors and driver rig.
+
+    Measure openings in game-space metres, extracting only the largest cab
+    component so existing chassis and wheel parts survive. Mutate shell/trim
+    geometry and materials, then add sealed swept-clearance liners and named
+    rig nodes beneath their original parents; return None.
+    """
     front=-spec['length']/2+.09; width=spec['width']-.39; half=width/2
     height=3.68 if kind=='semi' else 2.83; rear=front+(2.48 if kind=='semi' else 2.23)
     wind_low=1.91; wind_high=2.94 if kind=='semi' else 2.58
@@ -299,6 +375,11 @@ def refine_visible_cabin(kind, spec, root, palette):
                 if j not in seen:seen.add(j);group.add(j);pending.append(j)
         components.append(group)
     def volume(group):
+        """Return a component's Blender-local axis-aligned bounding-box volume.
+
+        Read mesh vertex indices without mutation. Metre coordinates yield cubic
+        metres; this extent product identifies the cab, not its exact solid volume.
+        """
         points=[mesh.vertices[i].co for i in group]
         return math.prod(max(p[a] for p in points)-min(p[a] for p in points) for a in range(3))
     cab_vertices=max(components,key=volume)
@@ -314,6 +395,11 @@ def refine_visible_cabin(kind, spec, root, palette):
     for poly in mesh.polygons:poly.use_smooth=True
     mesh.set_sharp_from_angle(angle=math.radians(32))
     def cut(cutter):
+        """Subtract a linked cutter from the extracted cab shell with an exact Boolean.
+
+        Apply the modifier to shell immediately, then unlink/remove the temporary
+        cutter. Both objects must already use the compatible Blender frame; return None.
+        """
         modifier=shell.modifiers.new('Real cabin opening','BOOLEAN');modifier.operation='DIFFERENCE';modifier.solver='EXACT';modifier.object=cutter
         bpy.context.view_layer.objects.active=shell;bpy.ops.object.modifier_apply(modifier=modifier.name)
         bpy.data.objects.remove(cutter,do_unlink=True)
@@ -333,8 +419,18 @@ def refine_visible_cabin(kind, spec, root, palette):
     shell['cabin_shell_revision']=1
     # Remove the old filled black gasket patches, retaining wipers and door
     # hardware. New narrow seals frame the now genuinely open apertures.
-    def game_point(co):return (co.x,co.z,-co.y)
+    def game_point(co):
+        """Return a Blender-local vertex as a game (X, Y, Z) metre tuple.
+
+        Invert v() without applying an object transform, for cab-face predicates.
+        """
+        return (co.x,co.z,-co.y)
     def front_patch(point):
+        """Test whether a game-space point lies on the original filled windshield seal.
+
+        Use the cab's tapered width and sloped front plane with a 0.00002-metre
+        plane tolerance; return a boolean without modifying the geometry.
+        """
         x,y,z=point; vv=(y-(wind_low-.035))/(wind_high-wind_low+.07)
         if not -.0001<=vv<=1.0001:return False
         span=(width*.411+.035)*(1-.035*vv);u=x/span
@@ -342,9 +438,20 @@ def refine_visible_cabin(kind, spec, root, palette):
         expected=front+.035+(y-1.84)/(height-.16-1.84)*.185-.074+abs(u)**5*.019
         return abs(z-expected)<.00002
     def side_patch(point):
+        """Test whether a game-space point belongs to an old filled side-window seal.
+
+        Check the door's width plane within 0.00002 metres and its height/Z bounds;
+        return a boolean so only obsolete glazing backing faces are removed.
+        """
         x,y,z=point
         return abs(abs(x)-(half+.011))<.00002 and 1.84<y<wind_high+.07 and front+.12<z<window_rear+.05
     def remove_faces(ob,predicate):
+        """Delete faces whose every vertex satisfies a game-coordinate predicate.
+
+        Convert mesh-local Blender vertices back to game metres before testing.
+        Update the object's mesh in place via BMesh; leave other faces and the
+        object's parent/transform intact and return None.
+        """
         bm=bmesh.new();bm.from_mesh(ob.data)
         doomed=[face for face in bm.faces if all(predicate(game_point(vertex.co)) for vertex in face.verts)]
         bmesh.ops.delete(bm,geom=doomed,context='FACES');bm.to_mesh(ob.data);bm.free();ob.data.update()
@@ -367,7 +474,12 @@ def refine_visible_cabin(kind, spec, root, palette):
         for i in range(4):
             z0,y0=outline[i];z1,y1=outline[(i+1)%4]
             beam('Narrow door window rubber seal',(side*(half+.016),y0,z0),(side*(half+.016),y1,z1),.014,trim,parent)
-    def wz(y):return front+.035+(y-1.84)/(height-.16-1.84)*.185-.085
+    def wz(y):
+        """Return the game-Z windshield-seal plane at game height y, in metres.
+
+        Follow the cab's sloped windscreen with its authored forward seal offset.
+        """
+        return front+.035+(y-1.84)/(height-.16-1.84)*.185-.085
     front_outline=[(-a,wind_low),(a,wind_low),(a*.965,wind_high),(-a*.965,wind_high)]
     for i in range(4):
         x0,y0=front_outline[i];x1,y1=front_outline[(i+1)%4]
@@ -377,11 +489,28 @@ def refine_visible_cabin(kind, spec, root, palette):
     interior=make_material({'name':'cabin_interior','color':[1,1,1],'roughness':.82,'metalness':.02,'vertexColors':True})
     charcoal=(.025,.036,.045,1);dash_color=(.045,.063,.073,1);upholstery=(.27,.21,.145,1);inset=(.36,.29,.21,1);ceiling=(.20,.22,.22,1)
     def colorize(ob,color):
+        """Fill a mesh's new Col corner attribute with one RGBA interior finish.
+
+        Mutate the object data and return the same object; all colors still share
+        the cabin material rather than introducing additional runtime materials.
+        """
         attr=ob.data.color_attributes.new(name='Col',type='FLOAT_COLOR',domain='CORNER')
         for item in attr.data:item.color=color
         return ob
-    def ibox(name,center,dims,color,bevel=.025):return colorize(box(name,center,dims,interior,parent,bevel),color)
-    def ibeam(name,start,end,r,color):return colorize(beam(name,start,end,r,interior,parent),color)
+    def ibox(name,center,dims,color,bevel=.025):
+        """Return a tinted interior box in parent-local game metres.
+
+        Use full XYZ dimensions and the requested retained bevel width; attach to
+        the cab parent and store the RGBA finish in its Col corner attribute.
+        """
+        return colorize(box(name,center,dims,interior,parent,bevel),color)
+    def ibeam(name,start,end,r,color):
+        """Return a tinted six-sided interior beam between game-space endpoints.
+
+        Endpoints and radius r are cab-parent-local metres; share the interior
+        material and store its RGBA finish in Col for later batching.
+        """
+        return colorize(beam(name,start,end,r,interior,parent),color)
     # Continuous structural floor reaches the inside of every door sill and
     # bulkhead. Real inner tubs and a firewall hide the *outside* wheel wells
     # without placing any opaque backing in the glazed cabin.
@@ -441,34 +570,69 @@ def refine_visible_cabin(kind, spec, root, palette):
     root['visible_cabin_revision']=2
 
 def author_driver_and_steering(kind,spec,root,parent,material,front,colorize,ibox,ibeam):
-    """Original adult driver and low-cost articulated hands, authored in Blender.
+    """Add an original seated adult and a rigid runtime steering/arm hierarchy.
 
-    Empties export in the game's coordinates. Wheel local XY is the rim plane,
-    +Z points toward the driver. Arm bones point along local +Y; segment lengths
-    are recorded as extras so the runtime two-bone solver uses actual geometry.
+    Author geometry in parent-local game metres. Steering-wheel local XY is
+    the rim plane with +Z toward the driver; arm bones extend along local +Y.
+    Store actual metre segment lengths on shoulder extras for two-bone IK,
+    keep grip centers exact, and mutate root metadata without returning a value.
     """
     skin=(.43,.255,.15,1);skin_light=(.54,.34,.215,1)
     jacket=(.055,.115,.16,1);jacket_light=(.085,.16,.205,1)
     pants=(.055,.064,.075,1);boots=(.022,.028,.033,1)
     hair=(.035,.022,.016,1);dark=(.017,.023,.027,1)
     def empty(name,position,owner,rotation=None):
+        """Return a named rig empty under owner with a converted local transform.
+
+        Position is in game metres and rotation is a game-basis matrix. Conjugate
+        both into Blender axes, preserving exported steering, head and IK axes.
+        """
         ob=bpy.data.objects.new(name,None);bpy.context.collection.objects.link(ob);ob.parent=owner
         transform=Matrix.Translation(Vector(position))
         if rotation is not None:transform=transform@rotation.to_4x4()
         ob.matrix_local=C@transform@C.inverted();ob.empty_display_size=.04
         ob['authored_in']='Blender';return ob
     def ellipsoid(name,center,radii,color,owner=parent,segments=12,rings=8):
+        """Return a smooth, tinted UV ellipsoid beneath the chosen rig owner.
+
+        Center and XYZ radii use owner-local game metres. Convert location and
+        axis-order the object scale; retain the shared interior material/Col finish.
+        """
         bpy.ops.mesh.primitive_uv_sphere_add(segments=segments,ring_count=rings,radius=1,location=v(center))
         ob=bpy.context.object;ob.name=name;ob.parent=owner;ob.scale=(radii[0],radii[2],radii[1]);ob.data.materials.append(material)
         for poly in ob.data.polygons:poly.use_smooth=True
         ob['authored_in']='Blender';colorize(ob,color);return ob
     def capsule(name,start,end,radii,color,owner=parent):
+        """Return a stretched ellipsoid spanning two game-space limb endpoints.
+
+        Endpoints and radii are owner-local metres. Aim Blender local +Z along
+        the segment, extending each end by radii[1]; this is not a joined cylinder
+        and hemispheres. Return the tinted object with its scale unapplied.
+        """
         a,b=Vector(start),Vector(end);ob=ellipsoid(name,(a+b)/2,(radii[0],radii[1],(b-a).length/2+radii[1]),color,owner)
         # Blender sphere local Z is its long axis after replacing scale.
         ob.scale=(radii[0],radii[1],(b-a).length/2+radii[1]);ob.rotation_euler=v((b-a).normalized()).to_track_quat('Z','Y').to_euler();return ob
-    def local_box(name,center,dims,color,owner,bevel=.008):return colorize(box(name,center,dims,material,owner,bevel),color)
-    def local_beam(name,start,end,r,color,owner):return colorize(beam(name,start,end,r,material,owner),color)
+    def local_box(name,center,dims,color,owner,bevel=.008):
+        """Return a Col-tinted box in an explicit rig owner's local game frame.
+
+        Center, full dimensions and bevel width are metres; preserve the owner
+        pivot so the generated geometry follows steering or arm animation.
+        """
+        return colorize(box(name,center,dims,material,owner,bevel),color)
+    def local_beam(name,start,end,r,color,owner):
+        """Return a Col-tinted beam beneath an explicit animated rig owner.
+
+        Use owner-local game-space endpoints and metre radius without modifying
+        the parent's transform or the runtime pivot axes.
+        """
+        return colorize(beam(name,start,end,r,material,owner),color)
     def loft(name,profiles,color,owner=parent,segments=20,offset=(0,0,0)):
+        """Return a capped, smooth anatomical loft with recalculated face normals.
+
+        Profiles are (game_y, radius_x, radius_z, center_z) in owner-local metres,
+        plus a metre XYZ offset. The named skull gets a flatter forward profile;
+        assign the shared interior material and per-corner RGBA finish.
+        """
         points=[];faces=[];ox,oy,oz=offset
         for y,rx,rz,cz in profiles:
             for i in range(segments):
@@ -483,6 +647,12 @@ def author_driver_and_steering(kind,spec,root,parent,material,front,colorize,ibo
         for poly in ob.data.polygons:poly.use_smooth=True
         colorize(ob,color);return ob
     def tube(name,centers,radii,color,owner=parent,segments=8):
+        """Return a capped smooth tube through owner-local game-space centers.
+
+        Use one metre radius per center and perpendicular rings with a fallback
+        cross-product axis. Recalculate mesh normals and apply the shared Col tint;
+        this creates geometry without changing the owner's runtime transform.
+        """
         points=[];faces=[];centers=[Vector(p) for p in centers]
         for j,center in enumerate(centers):
             tangent=(centers[min(j+1,len(centers)-1)]-centers[max(0,j-1)]).normalized()
@@ -602,7 +772,12 @@ def author_driver_and_steering(kind,spec,root,parent,material,front,colorize,ibo
     root['driver_description']='Original seated adult driver, two-bone arms, wheel grip targets; no external assets'
 
 def split_directional_indicators(spec, root, palette):
-    """Separate only turn-signal lenses, preserving static amber markers."""
+    """Separate front/rear turn lenses into left/right material batches in place.
+
+    Match lens polygons using game-metre bounds, copy them under the original
+    parents, then delete only those faces from amber meshes. Static amber
+    markers keep their existing material; return None.
+    """
     front=-spec['length']/2+.09;rear=spec['length']/2-.14
     signal_materials={}
     for side,name in [(-1,'indicator_left'),(1,'indicator_right')]:
@@ -628,9 +803,20 @@ def split_directional_indicators(spec, root, palette):
             bmesh.ops.delete(bm,geom=doomed,context='FACES');bm.to_mesh(ob.data);bm.free();ob.data.update()
 
 def descendants(root):
+    """Return root followed by a snapshot list of all recursive child objects.
+
+    Do not change hierarchy or selection; include empties as well as meshes
+    so export selection preserves wheel, trailer and driver rig nodes.
+    """
     return [root]+list(root.children_recursive)
 
 def add_studio(kind,spec):
+    """Configure freight preview lights, floor and camera without rendering.
+
+    Studio positions use native Blender +Z-up metres; camera distance derives
+    from catalog metre dimensions. Set the output PNG path and scene render
+    state, returning None; later export selects only vehicle descendants.
+    """
     scene=bpy.context.scene; scene.render.engine='CYCLES'; scene.cycles.samples=int(os.environ.get('TRAFFIC_HEAVY_SAMPLES','24')); scene.cycles.use_denoising=False
     scene.render.resolution_x=1100;scene.render.resolution_y=680;scene.render.resolution_percentage=100
     scene.world.color=(.25,.25,.25);scene.view_settings.view_transform='AgX'
@@ -646,6 +832,13 @@ def add_studio(kind,spec):
 
 def batch_for_export(root):
     # Source has already been saved. Only the in-memory export copy is flattened.
+    """Flatten only the in-memory vehicle after its editable source was saved.
+
+    Apply mesh modifiers, join by identical parent/material slots, and bake
+    static local transforms into vertices for tight runtime bounds. Preserve
+    wheel children and all animation parents, select vehicle descendants for
+    GLB export, and return None without saving over the editable .blend.
+    """
     for ob in descendants(root):
         if ob.type=='MESH':
             bpy.context.view_layer.objects.active=ob

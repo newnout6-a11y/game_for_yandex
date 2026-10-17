@@ -29,7 +29,7 @@ try {
   await page.evaluate(async () => {
     const { RoadRenderer } = await import('./src/world.js');
     window.__captureRender = RoadRenderer.prototype.render;
-    RoadRenderer.prototype.render = function (state) { window.__driveState = state; window.__testWorld = this; };
+    /** Capture live state/world references without drawing; the harness invokes the saved renderer per snapshot. */ RoadRenderer.prototype.render = function (state) { window.__driveState = state; window.__testWorld = this; };
   });
   const now = await page.evaluate(() => Date.now());
   await page.clock.pauseAt(new Date(now + 10000));
@@ -54,7 +54,7 @@ try {
     window.__rawDraw=window.__testWorld.renderer.render.bind(window.__testWorld.renderer);
   });
   await page.evaluate(async()=>{
-    window.__testWorld.renderer.render=()=>{};
+    /** Suppress intermediate GPU submissions only; production simulation and CPU animation still advance. */ window.__testWorld.renderer.render=()=>{};
     const T=await import('./public/vendor/three.js'),traffic=await import('./src/traffic.js'),physics=await import('./src/traffic-physics.js');
     window.__T=T;window.__traffic=traffic;window.__physics=physics;
     const w=window.__testWorld,scene=new T.Scene();scene.background=new T.Color('#b8cbd3');scene.environment=w.scene.environment;scene.environmentIntensity=w.scene.environmentIntensity;
@@ -71,6 +71,13 @@ try {
     // 33/34 ms controlled increments average exactly 30 snapshots per second.
     const elapsed = Math.round((frame + 1) * 1000 / 30) - Math.round(frame * 1000 / 30);
     await page.clock.runFor(elapsed);
+    /**
+     * Update the production scene for one 1/30-second controlled-time sample.
+     * The first four seconds follow real gameplay; later frames use a prescribed
+     * semi inspection path with production steering and trailer solvers.
+     * The 12-second clip's nominal 30 fps is capture timing, not hardware throughput.
+     * @param {object} options - Zero-based frame and whether to submit the final draw.
+     */
     const state = await page.evaluate(({frame,capture}) => {
       const s = window.__driveState,w=window.__testWorld;
       window.__captureRender.call(w,s,{menu:false,dt:1/30});
@@ -88,6 +95,12 @@ try {
       }else{
         const turn=window.__turn,car=turn.car,item=turn.item,P=window.__physics;
         const side=frame<240?1:-1,R=12,v=3.5;
+        /**
+         * Integrate one 1/120-second inspection turn and update production trailer kinematics.
+         * Mutates the dedicated turn/item fixture at prescribed 3.5 m/s, ramping curvature
+         * from straight to ±1/12 per metre during its first second. This is a controlled
+         * rear-axle path, not the gameplay planner or a rigid-body dynamics simulation.
+         */
         const step=()=>{
           const t=turn.age,u=Math.min(1,t),ramp=u*u*(3-2*u),k=side*ramp/R,dt=1/120;
           turn.heading+=v*k*dt;turn.rearX+=v*Math.sin(turn.heading)*dt;turn.rearZ-=v*Math.cos(turn.heading)*dt;

@@ -1,17 +1,46 @@
 import * as T from '../public/vendor/three.js';
 
+/**
+ * Bound a scalar effect control without allocating temporary objects.
+ * @param {number} value - Scalar to constrain.
+ * @param {number} [low=0] - Inclusive lower limit.
+ * @param {number} [high=1] - Inclusive upper limit.
+ * @returns {number} Clamped value; callers sanitize nonfinite inputs separately.
+ */
 const clamp = (value, low = 0, high = 1) => Math.max(low, Math.min(high, value));
+/**
+ * Use an effect input only when it is a finite number.
+ * @param {*} value - Candidate state/timing value.
+ * @param {number} [fallback=0] - Safe value for missing, NaN or infinite input.
+ * @returns {number} The original finite number or fallback, without coercion.
+ */
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
 const TAU = Math.PI * 2;
 
 // Small original fallback used only while the Blender atlas is loading. Its feathered, irregular edge
 // stays invisible as a quad; the same tiny texture serves both vapor and road wash.
+/**
+ * Generate the small procedural condensation fallback used until the atlas loads.
+ * @returns {T.DataTexture} New 96-pixel-square RGBA texture with feathered alpha; the effects owner disposes it.
+ */
 function makeVaporTexture() {
   const size = 96, data = new Uint8Array(size * size * 4);
+  /**
+   * Hash a noise-grid coordinate into a repeatable fractional value.
+   * @param {number} x - Horizontal grid coordinate, not scene position.
+   * @param {number} y - Vertical grid coordinate.
+   * @returns {number} Deterministic value in [0, 1).
+   */
   const hash = (x, y) => {
     const n = Math.sin(x * 127.1 + y * 311.7 + 18.17) * 43758.5453;
     return n - Math.floor(n);
   };
+  /**
+   * Smoothly interpolate four deterministic lattice samples for the vapor mask.
+   * @param {number} x - Horizontal noise-space coordinate.
+   * @param {number} y - Vertical noise-space coordinate.
+   * @returns {number} Smooth scalar density in [0, 1).
+   */
   const noise = (x, y) => {
     const ix = Math.floor(x), iy = Math.floor(y);
     const fx = x - ix, fy = y - iy;
@@ -42,10 +71,16 @@ function makeVaporTexture() {
 }
 
 /**
- * One bounded instanced draw for all four cold-gas jets and road-level wash.
- * Call update after positioning the car. Particles are detached world-space
- * wakes: rolling changes the nozzle direction, never already-emitted vapor.
- * The flight controller owns thrusterPower, including assisted descent/contact.
+ * Attach one bounded instanced draw for four cold-gas jets and road-level wash.
+ * Call update after positioning the car. Emitted vapor is a detached world-space wake: rolling
+ * changes new nozzle directions, not existing particles. The flight controller owns power.
+ * The returned owner manages its geometry, shader, fallback/atlas textures and disposal race.
+ * @param {T.Scene} scene - Scene receiving the effect mesh, separate from the player hierarchy.
+ * @param {T.Object3D} player - Vehicle with optional named thruster sockets in local metre coordinates.
+ * @param {Object} [options] - Particle budget and accessibility controls.
+ * @param {boolean} [options.compact=false] - Use capacity 112 instead of 160, including eight reserved cores.
+ * @param {boolean} [options.reducedMotion=false] - Reduce turbulence and suppress core pulsation.
+ * @returns {Object} update, clear, dispose, mesh and ready; ready resolves whether the atlas became active.
  */
 export function createThrusterEffects(scene, player, { compact = false, reducedMotion = false } = {}) {
   const capacity = compact ? 112 : 160;
@@ -154,10 +189,26 @@ export function createThrusterEffects(scene, player, { compact = false, reducedM
   }));
   let cursor = 0, smoothedPower = 0, previousAltitude = 0, previousDistance = null, disposed = false;
   let randomSeed = 0x6d2b79f5;
+  /**
+   * Advance the effect-local xorshift generator used to vary recycled particles.
+   * @returns {number} Pseudorandom value in [0, 1), mutating only the enclosing randomSeed.
+   */
   const random = () => {
     randomSeed ^= randomSeed << 13; randomSeed ^= randomSeed >>> 17; randomSeed ^= randomSeed << 5;
     return (randomSeed >>> 0) / 4294967296;
   };
+  /**
+   * Overwrite the next fixed-pool slot with a jet puff or near-road wash particle.
+   * Uses the current world nozzle direction and ground-frame velocity; never allocates a mesh
+   * or expands the pool, so saturation deliberately replaces the oldest cursor slot.
+   * @param {Object} emitter - Socket record with its current world-space position in metres.
+   * @param {number} power - Normalized effective nozzle power controlling density and jet velocity.
+   * @param {number} speed - Vehicle forward speed in metres per second.
+   * @param {boolean} wash - Emit a low radial road cloud instead of a directed jet.
+   * @param {number} stagger - Seconds already elapsed since this emission within the current step.
+   * @param {boolean} [landing=false] - Increase spread/lifetime for landing support.
+   * @returns {void} Mutates the selected particle and ring cursor.
+   */
   function spawn(emitter, power, speed, wash, stagger, landing = false) {
     const p = pool[cursor]; cursor = (cursor + 1) % pool.length;
     p.seed = random() * TAU; p.size = .8 + random() * .4; p.frame = Math.floor(random() * 8);
@@ -191,6 +242,10 @@ export function createThrusterEffects(scene, player, { compact = false, reducedM
     p.x += p.vx * stagger; p.y += p.vy * stagger; p.z += (p.vz + speed) * stagger;
   }
 
+  /**
+   * Expire all pooled particles and reset accumulated emissions and scroll tracking.
+   * @returns {void} Hides the mesh and clears diagnostics without releasing reusable GPU resources.
+   */
   function clear() {
     for (const p of pool) p.age = p.life;
     for (const emitter of emitters) emitter.carry = emitter.washCarry = emitter.power = 0;
@@ -198,6 +253,17 @@ export function createThrusterEffects(scene, player, { compact = false, reducedM
     mesh.userData.activeParticles = 0; mesh.userData.thrusterPower = 0;
   }
 
+  /**
+   * Advance existing vapor and write the active instanced billboards after player placement.
+   * Clamps integration to 0..0.1 seconds, detects route discontinuities and applies exact distance
+   * scroll when supplied. Uses fixed buffers/pool and at most eight persistent jet cores; no
+   * particle meshes or per-particle objects are allocated. Disposed owners ignore future calls.
+   * @param {Object} [state] - Flight/game state with altitude/distance in metres, speeds in metres per second,
+   *  normalized thrusterPower/rollProgress, radian-per-second rollAngularSpeed and phase flags.
+   * @param {number} [dt=0] - Elapsed seconds; zero refreshes placement without integrating particles.
+   * @param {number} [time=0] - Animation clock in seconds for turbulence and core pulsation.
+   * @returns {void} Mutates effect particles, emitter carries, GPU attributes and mesh diagnostics.
+   */
   function update(state = {}, dt = 0, time = 0) {
     if (disposed) return;
     const step = clamp(finite(dt), 0, .1);
@@ -315,6 +381,10 @@ export function createThrusterEffects(scene, player, { compact = false, reducedM
     mesh.userData.thrusterPower = smoothedPower;
   }
 
+  /**
+   * Remove the effect and release its owned geometry, shader and active textures once.
+   * @returns {void} Idempotent; a later atlas completion is disposed instead of reviving the effect.
+   */
   function dispose() {
     if (disposed) return;
     disposed = true; scene.remove(mesh);

@@ -42,8 +42,19 @@ subprocess.run(['node', '--input-type=module', '-e', BRIDGE, bridge_path], cwd=R
 with open(bridge_path) as stream: SOURCE = json.load(stream)
 
 
-def cv(point): return Vector((point[0], -point[2], point[1]))
+def cv(point):
+    """Return a vector rotated from game axes into Blender axes.
+
+    Map (X, Y, Z) to (X, -Z, Y): game +Y up/-Z forward becomes Blender
+    +Z up/+Y forward. Keep metre scale for positions and unit scale for normals.
+    """
+    return Vector((point[0], -point[2], point[1]))
 def reset():
+    """Clear objects, collections, meshes and materials before one vehicle build.
+
+    Mutate Blender scene/data in place so names and editable parts cannot leak
+    from the previous kind; return None without touching saved asset files.
+    """
     bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False)
     for collection in list(bpy.data.collections): bpy.data.collections.remove(collection)
     for mesh in list(bpy.data.meshes): bpy.data.meshes.remove(mesh)
@@ -51,12 +62,23 @@ def reset():
 
 
 def empty(name, location=(0,0,0), parent=None, collection=None):
+    """Return a linked named empty with a parent-local game-space position.
+
+    Location uses metres and is converted to Blender axes; link into the
+    provided collection or scene root without altering the parent's transform.
+    """
     obj=bpy.data.objects.new(name,None); (collection or bpy.context.scene.collection).objects.link(obj)
     obj.location=cv(location); obj.parent=parent; obj.empty_display_type='PLAIN_AXES'; obj.empty_display_size=.2
     return obj
 
 
 def material(info):
+    """Return a cached semantic finish or create it from a bridge material record.
+
+    Resolve paint/lamp/indicator roles, copy normalized PBR/opacity settings,
+    and use alpha rather than transmission for glazing. Mutate bpy.data only
+    when creating a material; a same-name existing finish is reused unchanged.
+    """
     names={'8696a3':'body','922a22':'lights_red','b52423':'fixed_rescue_red','d99d28':'recovery_ochre',
       '6d7c83':'brushed_work_steel','a0a9ae':'bright_alloy','171d22':'dark_chassis',
       '121416':'tire_rubber','293f4d':'cab_glazing','93b2bc':'traffic_cab_glass','e6e8df':'rescue_white',
@@ -79,14 +101,29 @@ def material(info):
 
 
 def components(info):
-    """Find disconnected manufactured pieces, despite the flattened source normals."""
+    """Return triangle-index groups for disconnected manufactured source pieces.
+
+    Join triangle connectivity and vertices coincident after rounding game-metre
+    positions to five decimals, compensating for split-normal duplicates.
+    Mutate only temporary union-find state, not source vertices or indices.
+    """
     vertices=info['vertices']; count=len(vertices)//3
     indices=info['indices'] or list(range(count))
     parents=list(range(count)); locations={}
     def find(a):
+        """Return an index's union-find representative with in-place path compression.
+
+        Read and shorten the enclosing parents array; no source mesh is modified.
+        """
         while parents[a]!=a: parents[a]=parents[parents[a]]; a=parents[a]
         return a
-    def union(a,b): parents[find(a)]=find(b)
+    def union(a,b):
+        """Merge two source vertex sets in the temporary union-find forest.
+
+        Attach a's representative to b's after path compression and return None;
+        this changes connectivity bookkeeping, not exported vertex positions.
+        """
+        parents[find(a)]=find(b)
     for i in range(count):
         key=tuple(round(vertices[i*3+j],5) for j in range(3))
         if key in locations: union(i,locations[key])
@@ -98,13 +135,23 @@ def components(info):
 
 
 def piece_bounds(info, faces):
+    """Return a component's game-axis bounding-box center and full dimensions.
+
+    Read flat source vertices referenced by faces, retaining metre units and
+    original coordinates. Repeated face vertices do not affect the extrema.
+    """
     p=info['vertices']; points=[p[i*3:i*3+3] for face in faces for i in face]
     low=[min(p[a] for p in points) for a in range(3)]; high=[max(p[a] for p in points) for a in range(3)]
     return [(low[a]+high[a])*.5 for a in range(3)], [high[a]-low[a] for a in range(3)]
 
 
 def replaced_piece(kind, info, faces):
-    """Replace the important equipment rails in Blender, not merely re-export them."""
+    """Test whether a source component is superseded by authored equipment.
+
+    Use semantic material keys and game-metre bounds to identify tow booms or
+    long fire-engine ladder rails. Return a boolean only; import_mesh performs
+    the actual omission, leaving unrelated source parts intact.
+    """
     center,size=piece_bounds(info,faces); x,y,z=center
     if kind=='towtruck':
         if info['material']['key']=='d99d28' and abs(x)<.01 and abs(y-1.91)<.03 and abs(z-1.195)<.04: return True
@@ -115,6 +162,13 @@ def replaced_piece(kind, info, faces):
 
 
 def import_mesh(kind, info, root, wheel_groups, collection):
+    """Import retained source components and return their editable Blender mesh.
+
+    Omit equipment selected for replacement, remap triangle indices, and
+    convert game-metre vertices and normals. Preserve wheel-local geometry
+    under named wheel groups, creating pivots in wheel_groups when needed;
+    otherwise attach to root and link into collection.
+    """
     faces=[face for part in components(info) if not replaced_piece(kind,info,part) for face in part]
     raw=info['vertices']; original_normals=info['normals']
     indices=sorted({i for face in faces for i in face}); index={old:new for new,old in enumerate(indices)}
@@ -135,6 +189,12 @@ def import_mesh(kind, info, root, wheel_groups, collection):
 
 
 def beveled_box(name, center, size, material_name, collection, parent, bevel=.008):
+    """Return a linked manufactured box with retained edge/normal modifiers.
+
+    Center and full game-axis size are parent-local metres; convert axes and
+    apply scale before adding the metre-width bevel. Move the new object into
+    collection, assign the named material and preserve its parent pivot.
+    """
     bpy.ops.mesh.primitive_cube_add(size=1, location=cv(center)); obj=bpy.context.object; obj.name=name
     for c in list(obj.users_collection): c.objects.unlink(obj)
     collection.objects.link(obj); obj.dimensions=(size[0],size[2],size[1])
@@ -147,12 +207,24 @@ def beveled_box(name, center, size, material_name, collection, parent, bevel=.00
 
 
 def beveled_beam(name, start, end, width, depth, material_name, collection, parent):
+    """Return a rectangular manufactured beam between game-space endpoints.
+
+    Endpoints, width and depth are parent-local metres. Its game-Y length
+    becomes Blender local Z, which is aimed along the converted segment;
+    retain the box's bevel and weighted-normal modifiers.
+    """
     a,b=cv(start),cv(end); obj=beveled_box(name,(0,0,0),(width,(b-a).length,depth),material_name,collection,parent,.018)
     # beveled_box's game-Y length becomes Blender-Z.
     obj.location=(a+b)/2; obj.rotation_euler=(b-a).to_track_quat('Z','Y').to_euler(); return obj
 
 
 def refine(kind, root, collection):
+    """Add replacement recovery equipment or fire-engine ladder details in place.
+
+    Use game-space metre profiles and root parenting for editable beams and
+    hardware. Add named equipment attachment empties without implementing
+    behavior, and return None.
+    """
     if kind=='towtruck':
         beveled_beam('Recovery main boom', [0,1.48,.23], [0,2.34,2.16], .40,.35,'recovery_ochre',collection,root)
         beveled_beam('Telescopic steel boom', [0,2.34,2.06], [0,2.48,2.74], .26,.23,'brushed_work_steel',collection,root)
@@ -176,6 +248,11 @@ def refine(kind, root, collection):
 
 
 def wheel_material(name, color, metalness, roughness):
+    """Create or update a named opaque Principled finish and return it.
+
+    Use normalized RGB, metalness and roughness, enable backface culling,
+    and mutate the cached material if it already exists.
+    """
     mat=bpy.data.materials.get(name) or bpy.data.materials.new(name); mat.use_nodes=True
     p=mat.node_tree.nodes.get('Principled BSDF'); p.inputs['Base Color'].default_value=(*color,1)
     p.inputs['Metallic'].default_value=metalness; p.inputs['Roughness'].default_value=roughness
@@ -185,6 +262,12 @@ def wheel_material(name, color, metalness, roughness):
 
 def wheel_mesh(name, vertices, faces, mat, wheel, collection, side=1, smooth=True):
     # Mirror geometry, not the wheel pivot: local X remains the rolling axle.
+    """Return a linked wheel/rig-local mesh converted from game-space metres.
+
+    Mirror input X and reverse face winding for a left wheel, never the parent
+    pivot, so local X remains the spin axis. Assign the supplied material and
+    requested smooth shading without altering input buffers.
+    """
     mesh=bpy.data.meshes.new(name)
     points=[cv((side*p[0],p[1],p[2])) for p in vertices]
     mesh.from_pydata(points,[],[tuple(reversed(f)) if side<0 else f for f in faces]); mesh.update()
@@ -196,6 +279,12 @@ def wheel_mesh(name, vertices, faces, mat, wheel, collection, side=1, smooth=Tru
 
 def revolved_wheel_part(name, profile, mat, wheel, collection, side, segments=32, center=(0,0,0), close=False, smooth=True):
     # Profile is (radius, axle X). Winding faces out of the revolved volume.
+    """Return a wheel-local surface revolved around the game X axle.
+
+    Profile entries are (radius, axle_x), not (x, radius), in metres; center is
+    a metre XYZ offset. Join radial rings, collapse zero-radius transitions
+    to triangles, optionally wrap the profile, then apply side mirroring.
+    """
     vertices=[(x+center[0],r*math.cos(a*2*math.pi/segments)+center[1],r*math.sin(a*2*math.pi/segments)+center[2]) for r,x in profile for a in range(segments)]
     faces=[]; rings=len(profile)
     for j in range(rings if close else rings-1):
@@ -210,10 +299,12 @@ def revolved_wheel_part(name, profile, mat, wheel, collection, side, segments=32
 
 
 def authored_truck_wheels(kind, data, root, collection):
-    """Commercial wheel surfaces authored in Blender, replacing the block-in entirely.
+    """Add complete commercial wheel assemblies instead of importing blockout wheels.
 
-    A rounded two-groove carcass surrounds a recessed, actually perforated steel
-    dish. Hub/lug parts rotate with the wheel; no stationary caliper is included.
+    Use catalog metre radius and source wheel centers, retaining named pivots
+    with local-X spin and front steering metadata. Author rounded tires, real
+    ventilation holes, hubs and eight lugs; all brake hardware rotates with
+    the wheel and no stationary caliper is added. Return None.
     """
     tire_mat=wheel_material('tire_rubber',(.015,.018,.022),0,.82)
     metal=wheel_material('satin_wheel_steel',(.31,.36,.39),.78,.36)
@@ -260,19 +351,24 @@ def authored_truck_wheels(kind, data, root, collection):
 
 
 def cabin_tint(obj, color):
+    """Fill a mesh's CabinTint corner attribute with an opaque RGB finish.
+
+    Mutate the object data and return the same object so editable interior
+    parts can share one vertex-colored runtime material.
+    """
     attr=obj.data.color_attributes.new(name='CabinTint',type='FLOAT_COLOR',domain='CORNER')
     for corner in attr.data: corner.color=(*color,1)
     return obj
 
 
 def hollow_front_wheel_clearance(kind, root, collection, floor, inside, front, back, mat):
-    """Actual hollow liners, not a filled box crossing the unsprung road wheels.
+    """Carve sprung surfaces and add hollow liners around the front tire sweep.
 
-    Model the wheel's swept volume in the sprung cab's local frame.  The body
-    pivot and XYZ rotation order match createTrafficCar(); the extra envelope
-    deliberately covers more pitch/roll than normal road targets.  Cutting the
-    floor, sill and footwell as well as the old tub is essential: a raised cover
-    on an uncut flat floor would still intersect the tire underneath.
+    Use game-space metres and the runtime axle-midpoint body pivot. Sweep
+    +/-0.6-radian yaw with +/-0.05 pitch and +/-0.06 roll in the runtime XYZ
+    composition, then form convex clearance hulls. Weld imported seams, cut
+    cabin/chassis surfaces, and add 30-mm outward liner walls; remove temporary
+    cutters and store root clearance metadata. Return None without moving wheels.
     """
     fire=kind=='firetruck'; radius=.5 if fire else .45; half=.15 if fire else .14
     axle_z=-3.09 if fire else -2.53; track=1.0 if fire else .92
@@ -281,11 +377,23 @@ def hollow_front_wheel_clearance(kind, root, collection, floor, inside, front, b
     clearance_parts=[o for o in collection.objects if o.type=='MESH' and o.parent==root and
       not any('glass' in material.name or material.name in ['body','fixed_rescue_red'] for material in o.data.materials)]
     def apply_modifiers(obj):
+        """Bake an object's pending modifiers, removing zero-width bevels instead.
+
+        Set the active object for Blender operators and mutate its mesh/modifier
+        stack in place; retain parent/location and return None.
+        """
         bpy.context.view_layer.objects.active=obj
         for modifier in list(obj.modifiers):
             if modifier.type=='BEVEL' and modifier.width==0: obj.modifiers.remove(modifier)
             else: bpy.ops.object.modifier_apply(modifier=modifier.name)
     def hull(name,side,margin):
+        """Return a closed convex cutter enclosing a steered tire in the sprung frame.
+
+        side selects the track sign and margin pads axial/radial dimensions in
+        metres. Inverse-transform the sampled game-space tire through body
+        pitch/roll, convert points to Blender axes, recalculate hull normals and
+        link the temporary mesh under root.
+        """
         points=[]; center=Vector((side*track,radius+.004,axle_z))
         for pitch in [-.05,0,.05]:
             for roll in [-.06,0,.06]:
@@ -307,6 +415,12 @@ def hollow_front_wheel_clearance(kind, root, collection, floor, inside, front, b
         obj=bpy.data.objects.new(name,mesh); collection.objects.link(obj); obj.parent=root
         return obj
     def boolean(obj,cutter,operation):
+        """Apply an exact mesh Boolean, skipping disjoint difference operations.
+
+        Use object world-space bounding boxes in Blender metres only as a
+        broad-phase rejection. Keep the cutter linked for reuse; mutate obj's
+        geometry/modifier state and return None.
+        """
         if operation=='DIFFERENCE':
             a=[obj.matrix_world@Vector(p) for p in obj.bound_box]
             b=[cutter.matrix_world@Vector(p) for p in cutter.bound_box]
@@ -362,11 +476,23 @@ def hollow_front_wheel_clearance(kind, root, collection, floor, inside, front, b
 
 def authored_cab_interior(kind, root, collection):
     # Every interior finish shares one vertex-colored material and one runtime draw.
+    """Add a sealed visible cabin, driver rig and reflective mirror assemblies.
+
+    Use kind-specific game-metre dimensions and one shared CabinTint finish
+    for interior parts. Carve sprung wheel clearances before adding the driver;
+    use opaque environment-style mirrors rather than reflection cameras.
+    Mutate root metadata and scene objects, returning None.
+    """
     mat=bpy.data.materials.new('special_cabin_finish'); mat.use_nodes=True; mat.use_backface_culling=True
     shader=mat.node_tree.nodes.get('Principled BSDF'); shader.inputs['Roughness'].default_value=.72
     colors=mat.node_tree.nodes.new('ShaderNodeVertexColor'); colors.layer_name='CabinTint'
     mat.node_tree.links.new(colors.outputs['Color'],shader.inputs['Base Color'])
     def part(name,center,size,color,bevel=.018):
+        """Return a tinted cabin box under the current vehicle root.
+
+        Center, full game-axis size and bevel width are metres. Reuse the cabin
+        material/collection and keep the manufacturing modifiers editable.
+        """
         return cabin_tint(beveled_box(name,center,size,mat.name,collection,root,bevel),color)
     charcoal=(.035,.045,.052); fabric=(.20,.25,.25); bolster=(.29,.34,.32); lining=(.15,.18,.18)
     fire=kind=='firetruck'; floor=.96 if fire else .86; top=2.62 if fire else 2.25
@@ -387,6 +513,11 @@ def authored_cab_interior(kind, root, collection):
         part('Door armrest',(side*(inside/2-.04),floor+.55,roof_z),(.12,.08,.45),charcoal,.025)
         part('Door pull',(side*(inside/2-.108),floor+.70,roof_z-.12),(.018,.055,.14),(.36,.40,.39),.01)
     def seat(x,z,base,width=.47):
+        """Add a pedestal, cushion, backrest, bolsters, headrest and belt strip.
+
+        x/z, base cushion height and full width are game-space metres. Link tinted
+        editable cabin parts beneath root and return None.
+        """
         part('Seat pedestal',(x,base-.18,z),(width*.69,.28,.37),charcoal,.018)
         part('Seat cushion',(x,base,z),(width,.15,.50),fabric,.045)
         part('Seat back',(x,base+.37,z+.20),(width,.66,.13),fabric,.05)
@@ -428,15 +559,31 @@ def authored_cab_interior(kind, root, collection):
 
 
 def authored_driver(kind,root,collection,floor,mat):
-    """Original adult driver and rigid two-bone arm chains, no baked animation."""
+    """Add a seated adult and rigid steering/head/two-bone arm hierarchy.
+
+    Use game-space metre dimensions; upper/lower arms extend along local +Y
+    and the wheel turns about local Z. Derive elbows from actual grip positions,
+    store metre segment lengths/reach extras, and retain independent named
+    head/hand pivots. Mutate the scene without baking animation; return None.
+    """
     fire=kind=='firetruck'; x=-.53 if fire else -.48
     seat_y=1.29 if fire else 1.12; seat_z=-3.01 if fire else -1.19
     shoulder_y=1.96 if fire else 1.75; shoulder_z=-3.045 if fire else -1.25
     skin=(.36,.22,.15); shirt=(.035,.065,.085) if fire else (.26,.20,.095)
     trousers=(.025,.035,.045); dark=(.012,.016,.021); strip=(.45,.43,.25)
     def box(name,center,size,color,parent=root,bevel=.025):
+        """Return a cabin-tinted box in an explicit driver parent's local frame.
+
+        Center, full game-axis size and bevel width are metres; default to root
+        and preserve the named animation parent's transform.
+        """
         return cabin_tint(beveled_box(name,center,size,mat.name,collection,parent,bevel),color)
     def oval(name,center,size,color,parent=root,segments=10,rings=6):
+        """Return a smooth driver ellipsoid using full game-axis diameters in metres.
+
+        Convert center/axis order, apply the sphere scale to its mesh, move it into
+        collection and assign the shared cabin tint. The parent pivot remains unchanged.
+        """
         bpy.ops.mesh.primitive_uv_sphere_add(segments=segments,ring_count=rings,location=cv(center))
         obj=bpy.context.object; obj.name=name
         for c in list(obj.users_collection): c.objects.unlink(obj)
@@ -446,15 +593,35 @@ def authored_driver(kind,root,collection,floor,mat):
         for face in obj.data.polygons: face.use_smooth=True
         return cabin_tint(obj,color)
     def beam(name,a,b,width,depth,color,parent=root):
+        """Return a tinted rectangular driver detail between local game-space points.
+
+        Endpoints and cross-section dimensions use metres under parent; retain
+        manufacturing modifiers and share the cabin material.
+        """
         return cabin_tint(beveled_beam(name,a,b,width,depth,mat.name,collection,parent),color)
     C=Matrix(((1,0,0),(0,0,-1),(0,1,0)))
     def orient(obj,q):
+        """Assign a game-basis quaternion as an object's Blender-local orientation.
+
+        Conjugate q by the game-to-Blender matrix and switch rotation mode to
+        quaternion; mutate only object rotation state and return None.
+        """
         obj.rotation_mode='QUATERNION'; obj.rotation_quaternion=(C@q.to_matrix()@C.inverted()).to_quaternion()
     def mesh(name,vertices,faces,color,parent=root):
+        """Return a smooth, tinted driver mesh beneath the specified local parent.
+
+        Vertices are parent-local game metres and faces keep their supplied order;
+        reuse wheel_mesh's coordinate conversion without wheel-side mirroring.
+        """
         obj=wheel_mesh(name,vertices,faces,mat,parent,collection)
         return cabin_tint(obj,color)
     def loft(name,sections,color,parent=root,segments=12):
         # Sections: local +Y station, half-width X, front/back radius Z.
+        """Return a capped anatomical loft along parent-local game +Y.
+
+        Sections are (Y station, X half-width, Z radius) in metres. Connect elliptical
+        rings with consistent winding and tint them using the shared cabin material.
+        """
         vertices=[(rx*math.sin(i*2*math.pi/segments),y,-rz*math.cos(i*2*math.pi/segments)) for y,rx,rz in sections for i in range(segments)]
         faces=[]
         for j in range(len(sections)-1):
@@ -463,6 +630,12 @@ def authored_driver(kind,root,collection,floor,mat):
         faces.append(tuple(range(segments))); faces.append(tuple(reversed(range((len(sections)-1)*segments,len(sections)*segments))))
         return mesh(name,vertices,faces,color,parent)
     def tapered(name,a,b,profile,color,parent=root,segments=12):
+        """Return an oriented loft spanning two parent-local game-space endpoints.
+
+        Profile rows are (fraction_along_segment, X radius, Z radius), with radii
+        in metres. Scale stations by segment length, translate to a and rotate
+        local +Y toward b without moving the animation parent.
+        """
         A,B=Vector(a),Vector(b); length=(B-A).length
         obj=loft(name,[(t*length,rx,rz) for t,rx,rz in profile],color,parent,segments)
         obj.location=cv(A); orient(obj,Vector((0,1,0)).rotation_difference((B-A).normalized())); return obj
@@ -505,6 +678,11 @@ def authored_driver(kind,root,collection,floor,mat):
     faces += [tuple(range(count)),tuple(reversed(range((len(profile)-1)*count,len(profile)*count)))]
     mesh('Sculpted adult head',vertices,faces,skin,head_pivot)
     def skull(y):
+        """Return interpolated X/front/back skull radii for local height y in metres.
+
+        Read the surrounding profile without mutation; fall back to its final
+        section when y does not lie inside a sampled interval.
+        """
         for j in range(len(profile)-1):
             if profile[j][0]<=y<=profile[j+1][0]:
                 t=(y-profile[j][0])/(profile[j+1][0]-profile[j][0]);return tuple(profile[j][k]+t*(profile[j+1][k]-profile[j][k]) for k in [1,2,3])
@@ -595,7 +773,14 @@ def authored_driver(kind,root,collection,floor,mat):
 
 
 def export_runtime(root, kind, destination):
-    """Merge only the runtime copy, preserving all editable objects in the .blend."""
+    """Export a batched GLB copy and return mesh/triangle/pivot statistics.
+
+    Temporarily rename editable objects, clone wheel/driver pivots with their
+    local transforms/extras, and bake evaluated geometry into per-parent/material
+    batches. Preserve corner normals/colors and equipment positions, export
+    metre-scale +Y-up glTF without studio objects, then remove the runtime
+    collection and restore editable names on successful completion.
+    """
     saved_names={obj:obj.name for obj in bpy.data.objects}
     for obj,name in saved_names.items():
         obj['runtime_name']=name; obj.name='EDITABLE_'+name
@@ -604,9 +789,20 @@ def export_runtime(root, kind, destination):
     for key,value in root.items(): exported[key]=value
     groups={}; buckets=defaultdict(lambda:{'vertices':[],'normals':[],'faces':[],'colors':[],'material':None})
     def is_pivot(obj):
+        """Test whether an editable empty must survive in the runtime rig hierarchy.
+
+        Read the saved runtime_name, retaining wheel/driver/grip nodes plus the
+        steering wheel and indicator target; return a boolean without mutation.
+        """
         name=obj.get('runtime_name','')
         return obj.type=='EMPTY' and (name.startswith(('wheel_','driver_','grip_')) or name in ['steering_wheel','indicator_stalk'])
     def clone_pivots(parent):
+        """Recursively copy recognized rig empties into the runtime collection.
+
+        Preserve Blender-local matrices and extras under their matching cloned
+        parents, populate groups by original runtime name, and return None.
+        Only recognized pivot branches are traversed, not arbitrary scene empties.
+        """
         for original in parent.children:
             if not is_pivot(original): continue
             name=original['runtime_name']; parent_name=original.parent.get('runtime_name','')
@@ -668,6 +864,12 @@ def export_runtime(root, kind, destination):
 
 
 def studio(root, kind):
+    """Create a preview-only studio collection and return its orthographic camera.
+
+    Use native Blender +Z-up metre coordinates for floor/lights and a
+    kind-specific metre orthographic span. Mutate scene lighting/render state
+    without rendering; caller positions the camera and export has already run.
+    """
     scene=bpy.context.scene; scene.render.engine='CYCLES'; scene.cycles.samples=32
     scene.cycles.use_denoising=False; scene.render.resolution_x=1280; scene.render.resolution_y=800; scene.render.resolution_percentage=100
     scene.world.color=(.25,.25,.25); scene.view_settings.view_transform='AgX'

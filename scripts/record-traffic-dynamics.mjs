@@ -29,7 +29,7 @@ try {
   await page.evaluate(async () => {
     const { RoadRenderer } = await import('./src/world.js');
     window.__captureRender = RoadRenderer.prototype.render;
-    RoadRenderer.prototype.render = function (state) { window.__driveState = state; window.__testWorld = this; };
+    /** Capture live state/world references without drawing; the harness invokes the saved renderer per snapshot. */ RoadRenderer.prototype.render = function (state) { window.__driveState = state; window.__testWorld = this; };
   });
   const now = await page.evaluate(() => Date.now());
   await page.clock.pauseAt(new Date(now + 10000));
@@ -53,13 +53,20 @@ try {
     window.__captureRender.call(window.__testWorld, s, { menu: false, dt: 1 });
     window.__rawDraw=window.__testWorld.renderer.render.bind(window.__testWorld.renderer);
   });
-  await page.evaluate(()=>{window.__testWorld.renderer.render=()=>{};});
+  await page.evaluate(()=>{/** Suppress intermediate GPU submissions only; production simulation and CPU animation still advance. */ window.__testWorld.renderer.render=()=>{};});
   for (let frame = 0; frame < 420; frame++) {
     const event = keyEvents.get(frame);
     if (event) await page.keyboard[event[0]](event[1]);
     // 33/34 ms controlled increments average exactly 30 snapshots per second.
     const elapsed = Math.round((frame + 1) * 1000 / 30) - Math.round(frame * 1000 / 30);
     await page.clock.runFor(elapsed);
+    /**
+     * Update the production scene for one 1/30-second controlled-time sample.
+     * Changes only the inspection camera/label after the initial safe traffic fixture;
+     * lane changes are chosen by the production planner, not injected here.
+     * The 14-second clip's nominal 30 fps is capture timing, not hardware throughput.
+     * @param {object} options - Zero-based frame and whether to submit the final draw.
+     */
     const state = await page.evaluate(({frame,capture}) => {
       const s = window.__driveState,w=window.__testWorld;
       window.__captureRender.call(w,s,{menu:false,dt:1/30});

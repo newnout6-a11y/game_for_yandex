@@ -1,7 +1,21 @@
 import test from 'node:test';import assert from 'node:assert/strict';import{readFile}from'node:fs/promises';import*as T from '../public/vendor/three.js';
 import{TRAFFIC_KINDS,installTrafficTemplates,createTrafficCar}from'../src/traffic.js';import{trafficDefinition}from'../src/traffic-catalog.js';
 const models={};for(const k of TRAFFIC_KINDS){const file=k==='semi'&&process.env.SEMI_CLEARANCE_ASSET?process.env.SEMI_CLEARANCE_ASSET:`public/assets/traffic/${k}.glb`;const b=await readFile(file);models[k]=(await new T.GLTFLoader().parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'')).scene;}installTrafficTemplates(models);
+/**
+ * Check whether a scene node is the given ancestor or one of its descendants.
+ * @param {T.Object3D|null} n - Node to walk upward without mutation.
+ * @param {T.Object3D} p - Candidate ancestor.
+ * @returns {boolean} Whether the parent chain reaches p.
+ */
 function within(n,p){for(;n;n=n.parent)if(n===p)return true;return false;}
+/**
+ * Collect unique cab and trailer vertices in their moving rig coordinates.
+ * Updates world matrices, excludes low coupled tractor structure from the cab,
+ * and keeps the high cab/sleeper/air-line triangles used by the clearance proof.
+ * Vertices are deduplicated at six decimal places while retaining their rig.
+ * @param {T.Object3D} car - Instantiated semi with runtime rig metadata.
+ * @returns {object} Cab and trailer point arrays in metres, each with its group.
+ */
 function collect(car){const d=car.userData,cab=new Map(),trailer=new Map();car.updateMatrixWorld(true);
  car.traverse(n=>{if(!n.isMesh)return;const a=n.geometry.attributes.position,idx=n.geometry.index,out=within(n,d.trailer)?trailer:cab,group=within(n,d.trailerRig)?d.trailerRig:within(n,d.trailer)?d.trailer:d.bodyRig;
   if(out===cab&&!within(n,d.bodyRig))return;const inverse=group.matrixWorld.clone().invert().multiply(n.matrixWorld);
@@ -13,6 +27,14 @@ function collect(car){const d=car.userData,cab=new Map(),trailer=new Map();car.u
   }
  });return{cab:[...cab.values()],trailer:[...trailer.values()]};
 }
+/**
+ * Find the minimum z of a point over a symmetric articulation-angle interval.
+ * Checks arc endpoints and the interior extremum analytically, not by sampling.
+ * @param {number} x - Point lateral offset from the kingpin, in metres.
+ * @param {number} z - Point longitudinal offset from the kingpin, in metres.
+ * @param {number} limit - Maximum absolute rotation in radians.
+ * @returns {number} Minimum rotated longitudinal offset in metres.
+ */
 function minArc(x,z,limit){let result=z*Math.cos(limit)-Math.abs(x)*Math.sin(limit);let a=Math.atan2(-x,z)+Math.PI;if(a>Math.PI)a-=2*Math.PI;if(Math.abs(a)<=limit)result=Math.min(result,-Math.hypot(x,z));return result;}
 test('actual semi geometry clears the cab and air lines through the entire articulation and suspension envelope',()=>{
  const car=createTrafficCar('semi'),d=car.userData,spec=trafficDefinition('semi'),points=collect(car);assert.ok(points.cab.length>5000&&points.trailer.length>5000);

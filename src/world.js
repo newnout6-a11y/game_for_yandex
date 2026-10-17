@@ -11,11 +11,30 @@ import { createThrusterEffects } from './thrusters.js';
 import { buildScenicLandscape, updateScenicLandscape, scenicTerrainHeight } from './landscape.js';
 
 let bendDistance = NaN, bendCoefficient = 0;
+/**
+ * Evaluate the road centerline's lateral offset in the scrolling scene.
+ * Only negative Z (ahead of the player) curves; the distance-dependent coefficient is cached
+ * across calls so every strip, prop and vehicle uses the same bend during a frame.
+ * @param {number} z - Player-relative longitudinal position in metres; forward is negative.
+ * @param {number} [distance=0] - Total route travel in metres controlling the gradual curvature.
+ * @returns {number} Centerline X offset in metres.
+ */
 export function roadBend(z, distance = 0) {
   if(distance!==bendDistance){bendDistance=distance;bendCoefficient=Math.sin(distance/1100+.35)*.00055;}
   return bendCoefficient*Math.min(z,0)**2;
 }
+/**
+ * Own the Three.js scene, asset-backed vehicle pools, scenery and camera for one game canvas.
+ * Gameplay state remains external; rendering updates visual resources and animation caches.
+ */
 export class RoadRenderer {
+  /**
+   * Allocate the renderer and scene and start asynchronous asset initialization.
+   * Detects reduced-motion/device budgets once initially and exposes completion through ready;
+   * callers must await that promise before relying on player/scenery resources.
+   * @param {HTMLCanvasElement} canvas - Canvas owned by this renderer for WebGL output.
+   * @param {function(number): void} onProgress - Asset request-completion percentage callback.
+   */
   constructor(canvas, onProgress) {
     this.canvas = canvas; this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -32,6 +51,13 @@ export class RoadRenderer {
     this.view = {}; this.hazards = new Map(); this.hazardPools = { cone:[], barrier:[] };
     this.ready = this.initialize(onProgress); this.resize();
   }
+  /**
+   * Load assets, install reusable traffic templates and construct all scene subsystems.
+   * Builds sky-derived PMREM once and disposes its temporary source/generator; keeps the target
+   * for scene lighting. Marks loaded only after the flight atlas attempt and event setup finish.
+   * @param {function(number): void} onProgress - Forwarded asset loading percentage callback.
+   * @returns {Promise<void>} Resolves when render can safely access all scene resources.
+   */
   async initialize(onProgress) {
     this.assets = await loadAssets(onProgress, { anisotropy: textureAnisotropy(this.renderer.capabilities.getMaxAnisotropy(), this.compact) });
     const a = this.assets, r = this.renderer;
@@ -70,15 +96,33 @@ export class RoadRenderer {
     this.buildEventObjects();
     this.loaded = true; this.needsRender = true; this.resize();
   }
+  /**
+   * Attach a planar soft contact shadow and expose it on the vehicle userData.
+   * @param {T.Object3D} car - Mutable vehicle receiving the new local-space shadow at Y=0.025 metres.
+   * @returns {void} Uses the shared contact material; callers clone it before changing per-car opacity.
+   */
   addContact(car) {
     const shadow = new T.Mesh(new T.PlaneGeometry(2.8, 5.6), this.contactMaterial);
     shadow.rotation.x = -Math.PI/2; shadow.position.y = .025; car.add(shadow);
     car.userData.contactShadow=shadow;
   }
+  /**
+   * Create the player's pooled world-space vapor effects and reusable roll-pivot vector.
+   * @returns {void} Stores both resources on this renderer; requires an initialized player and scene.
+   */
   buildFlightEffects() {
     this.flightEffects = createThrusterEffects(this.scene, this.player, { compact: this.compact, reducedMotion: this.reducedMotion });
     this.rollPivot = new T.Vector3();
   }
+  /**
+   * Add a longitudinal road strip with immutable base vertices for repeated bending.
+   * The mesh spans scene Z=-650..50 metres and uses a conservative fixed sphere to avoid
+   * per-frame bounds scans. The supplied material remains shared, not cloned.
+   * @param {number} width - Strip width in metres along X.
+   * @param {T.Material} material - Surface material to reuse.
+   * @param {number} [start=0] - Lateral center offset from the unbent road in metres.
+   * @returns {T.Mesh} New scene mesh also appended to this.strips.
+   */
   strip(width, material, start = 0) {
     const geometry = new T.PlaneGeometry(width, 700, 1, 140);
     geometry.rotateX(-Math.PI/2); geometry.translate(start, .01, -300);
@@ -89,6 +133,10 @@ export class RoadRenderer {
     this.scene.add(mesh);
     this.strips.push(mesh); return mesh;
   }
+  /**
+   * Build textured road/shoulder strips and a single instanced lane-dash batch.
+   * @returns {void} Initializes mutable strip and dash caches using already loaded asset maps.
+   */
   buildRoad() {
     const a = this.assets; this.strips = [];
     const road = new T.MeshStandardMaterial({ map:a.asphalt, normalMap:a.asphaltNormal, roughness:1, normalScale:new T.Vector2(.28,.28), color:'#bababa' });
@@ -111,9 +159,28 @@ export class RoadRenderer {
     this.dashTransform=new T.Object3D(); this.scene.add(this.dashes);
 
   }
+  /**
+   * Sample the deterministic unbent landscape height for renderer consumers.
+   * @param {number} x - Lateral road-local coordinate in metres.
+   * @param {number} z - Unrecycled world longitudinal coordinate in metres.
+   * @returns {number} Terrain elevation in metres above the road reference plane.
+   */
   terrainHeight(x,z) { return scenicTerrainHeight(x,z); }
+  /**
+   * Construct scenic resources once, sharing the renderer's assets, scene and road bend.
+   * @returns {void} Stores the returned subsystem indirectly in this.scenery.
+   */
   buildLandscape() { buildScenicLandscape(this,roadBend); }
+  /**
+   * Select the scenic route palette and invalidate otherwise skippable rendering.
+   * @param {string} route - Route identifier; unknown palettes fall back to the ring colors.
+   * @returns {void} Does not reset gameplay distance or rebuild geometry.
+   */
   setRoute(route) { this.route=route;this.needsRender=true; }
+  /**
+   * Create reusable cone/barrier templates and the hidden checkpoint gate.
+   * @returns {void} Owns new materials/geometries; obstacle clones later share template resources.
+   */
   buildEventObjects() {
     const orange=new T.MeshStandardMaterial({color:'#c56c24',roughness:.72});
     const white=new T.MeshStandardMaterial({color:'#e7e3d4',roughness:.8});
@@ -139,6 +206,14 @@ export class RoadRenderer {
     const line=new T.Mesh(new T.PlaneGeometry(4.1,.3),white);line.rotation.x=-Math.PI/2;line.position.y=.03;this.gate.add(line);
     this.gate.visible=false;this.scene.add(this.gate);
   }
+  /**
+   * Reconcile obstacle IDs with pooled scene objects and position the checkpoint gate.
+   * Obstacle/event distances are positive ahead, converted to negative scene Z; lateral lane
+   * coordinates use 3.5-metre spacing. Retired meshes are pooled rather than disposed.
+   * @param {Object} state - Gameplay snapshot with distance, obstacles and optional roadEvent.
+   * @param {boolean} menu - Suppress hazards and checkpoints for the menu scene.
+   * @returns {void} Mutates hazard maps, pools and scene transforms, not the gameplay snapshot.
+   */
   renderEvents(state, menu) {
     const active=new Set();
     for(const obstacle of menu?[]:(state.obstacles||[])){
@@ -151,12 +226,23 @@ export class RoadRenderer {
     const event=state.roadEvent;this.gate.visible=!menu&&event?.type==='checkpoint';
     if(this.gate.visible)this.gate.position.set((event.lane-1)*3.5+roadBend(-event.remaining,state.distance),.03,-event.remaining);
   }
+  /**
+   * Translate a gameplay effect notification into sparks and optional impact shake.
+   * @param {string} kind - Supported keys are crash, near, charge and cone; others do nothing.
+   * @returns {void} Updates visual effect state without changing gameplay outcomes.
+   */
   effect(kind) {
     if(kind==='crash') {this.impact=1; this.spawnParticles(34,'#e8b96a');}
     if(kind==='near') this.spawnParticles(5,'#b7a890');
     if(kind==='charge') this.spawnParticles(12,'#d9d5b0');
     if(kind==='cone') this.spawnParticles(8,'#b7a890');
   }
+  /**
+   * Emit short-lived spark meshes near the player using shared geometry/materials.
+   * @param {number} count - Number of spark particles to create when loading is complete.
+   * @param {T.ColorRepresentation} color - Spark color and cache key for a reused basic material.
+   * @returns {void} Appends mutable positions, metre-per-second velocities and second-based lifetimes.
+   */
   spawnParticles(count,color) {
     if(!this.loaded)return;
     if(!this.sparkMaterials.has(color))this.sparkMaterials.set(color,new T.MeshBasicMaterial({color}));
@@ -167,6 +253,10 @@ export class RoadRenderer {
       this.particles.push({mesh,v:new T.Vector3((Math.random()-.5)*7,Math.random()*4,Math.random()*7-2),life:.6+Math.random()*.5});
     }
   }
+  /**
+   * Synchronize CSS viewport sizing, bounded drawing-buffer resolution and camera aspect.
+   * @returns {void} Reads current browser dimensions/DPR, updates compact mode and requests a redraw.
+   */
   resize() {
     const w=innerWidth,h=innerHeight;
     this.canvas.style.width=w+'px';this.canvas.style.height=h+'px';
@@ -175,12 +265,26 @@ export class RoadRenderer {
     if(this.canvas.width!==size.width||this.canvas.height!==size.height)this.renderer.setSize(size.width,size.height,false);
     this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.needsRender=true;
   }
+  /**
+   * Remove one live traffic vehicle and retain it in its kind-specific reuse pool.
+   * @param {string|number} id - Live traffic map key to delete.
+   * @param {T.Object3D} car - Vehicle whose userData.kind selects the pool; GPU resources remain alive.
+   * @returns {void} Changes scene membership and renderer-owned maps only.
+   */
   recycleTraffic(id,car) {
     this.scene.remove(car);
     const kind=car.userData.kind;
     if(!this.trafficPool.has(kind))this.trafficPool.set(kind,[]);
     this.trafficPool.get(kind).push(car);this.traffic.delete(id);
   }
+  /**
+   * Discard live ID associations when a new gameplay state starts a run.
+   * A retry can reuse numeric IDs, so pooled models must be rebound and their motion reset;
+   * menu rendering and repeated calls with the same state object do not invalidate the mapping.
+   * @param {Object} state - Gameplay state identity, not a freshly cloned per-frame snapshot.
+   * @param {boolean} [menu=false] - Whether this is the independent menu presentation.
+   * @returns {void} Recycles the previous run's live vehicles when identity changes.
+   */
   syncTrafficState(state,menu=false) {
     // A retry creates a new state and restarts numeric IDs. Never carry an old
     // model, paint or suspension history into that new run under the same ID.
@@ -188,11 +292,29 @@ export class RoadRenderer {
     for(const [id,car]of this.traffic)this.recycleTraffic(id,car);
     this.trafficState=state;
   }
+  /**
+   * Find an existing vehicle only if its model kind still matches the traffic item.
+   * @param {string|number} id - Live traffic identifier.
+   * @param {string} kind - Normalized catalog model key expected by the caller.
+   * @returns {T.Object3D|undefined} Matching car, or undefined after recycling a mismatched car.
+   */
   trafficForItem(id,kind) {
     const car=this.traffic.get(id);
     if(car&&car.userData.kind!==kind){this.recycleTraffic(id,car);return undefined;}
     return car;
   }
+  /**
+   * Render one visual frame from external gameplay state, or a low-cost menu scene.
+   * Keeps the player near Z=0 while distance scrolls road, terrain and detached effects; manages
+   * vehicle/pickup pools, wheel and trailer motion, camera chase and transient sparks. Skips
+   * unneeded settled pause/reduced-motion menu frames and returns while assets are loading.
+   * @param {Object} state - Gameplay state; distances/positions are metres and speeds metres per second.
+   * @param {Object} [options] - Presentation controls, independent of gameplay simulation.
+   * @param {boolean} [options.menu=false] - Use decorative menu traffic and camera behavior.
+   * @param {number} [options.dt=0] - Frame elapsed time in seconds.
+   * @param {boolean} [options.paused=false] - Freeze simulation-driven visual clocks/motion where supported.
+   * @returns {void} Mutates renderer-owned scene, caches and effects, not the gameplay state.
+   */
   render(state,{menu=false,dt=0,paused=false}={}) {
     if(!this.loaded)return;
     if(menu&&this.reducedMotion&&!this.needsRender&&this.wasMenu)return;

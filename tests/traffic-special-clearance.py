@@ -9,6 +9,12 @@ from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def verts_faces(o):
+    """Return world-space game vertices and triangle indices for a mesh object.
+
+    Refresh Blender's loop-triangle cache without changing source geometry.
+    Apply matrix_world, then map Blender (X, Y, Z) to game (X, Z, -Y), retaining
+    metre scale for the steering/suspension BVH intersection sweep.
+    """
     me=o.data; me.calc_loop_triangles()
     vs=[]
     for v in me.vertices:

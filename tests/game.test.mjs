@@ -4,7 +4,20 @@ import {Game} from '../src/game.js';
 import {CONFIG} from '../src/config.js';
 import {seededRandom} from '../src/util.js';
 import {playerTrafficDepth} from '../src/traffic-physics.js';
+/**
+ * Create a seed-42 game, then remove traffic/pickups and disable new events.
+ * Explicit options override the default random source for individual tests.
+ * @param {object} [options={}] - Options forwarded to the Game constructor.
+ * @returns {Game} Started, mutable fixture with an initially clear road.
+ */
 const make=(options={})=>{const g=new Game({random:seededRandom(42),...options});g.start();g.state.traffic=[];g.state.pickups=[];g.state.nextSpawn=Infinity;g.state.nextEvent=Infinity;return g;};
+/**
+ * Run real physics in 1/60-second steps, shortening the final step as needed.
+ * Mutates the game; omitted controls hold throttle, while an explicit {} coasts.
+ * @param {Game} g - Fixture to update.
+ * @param {number} seconds - Simulated duration in seconds.
+ * @param {object} [controls] - Held inputs applied to every update.
+ */
 function advance(g,seconds,controls={throttle:1}){for(let t=0;t<seconds-1e-8;t+=1/60)g.update(Math.min(1/60,seconds-t),controls);}
 
 test('start leaves the car stationary until gas is held',()=>{
@@ -49,7 +62,7 @@ test('reset clears control, event and run state and validates difficulty',()=>{
   g.reset('toString');assert.equal(g.difficulty,'flow');
 });
 test('swept collision catches fast traffic crossing and stops simulation after a crash',()=>{
-  const events=[],g=make({onEvent:e=>events.push(e)});g.state.speed=100;g.state.traffic=[{lane:1,z:8,speed:8}];g.update(.1);
+  const events=[],g=make({/** Record event names so the swept-collision fixture can assert a single crash notification. */ onEvent:e=>events.push(e)});g.state.speed=100;g.state.traffic=[{lane:1,z:8,speed:8}];g.update(.1);
   assert.equal(g.state.phase,'crashed');assert.deepEqual(events,['crash']);const d=g.state.distance;g.update(.1,{throttle:1});assert.equal(g.state.distance,d);assert.equal(g.steer(1),false);
 });
 test('matching traffic speed does not pull cars backwards toward the player',()=>{

@@ -7,6 +7,11 @@ import { TRAFFIC_KINDS,installTrafficTemplates,createTrafficCar,animateTrafficCa
 import { createTrafficMotion,updateTrafficMotion,steeringForWheel,trafficDynamics,suspensionCompression,limitTrafficSuspension } from '../src/traffic-motion.js';
 import { trailerYaw,trafficCollisionParts } from '../src/traffic-physics.js';
 const models={};for(const kind of TRAFFIC_KINDS){const b=await readFile(`public/assets/traffic/${kind}.glb`);models[kind]=(await new T.GLTFLoader().parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'')).scene;}installTrafficTemplates(models);
+/**
+ * Start a game with traffic removed and automatic waves/events disabled.
+ * Other starting state, including pickups, is left intact for motion regressions.
+ * @returns {Game} Mutable fixture using production motion updates.
+ */
 const make=()=>{const g=new Game();g.start();Object.assign(g.state,{traffic:[],nextSpawn:Infinity,nextEvent:Infinity});return g;};
 test('wheel distance integrates actual movement and braking never rewinds accumulated spin',()=>{
  const g=make(),car={id:1,kind:'sedan',lane:0,z:50,speed:20,cruiseSpeed:20};g.state.traffic=[car];let previous=0;
@@ -86,7 +91,7 @@ test('planned lane changes drive heading, steering, load transfer and continuous
 });
 
 test('new waves cannot designate a committed lane-change corridor as the safe lane',()=>{
- const g=make();g.random=()=>0;Object.assign(g.state,{safeLane:1,distance:400,traffic:[{id:1,kind:'sedan',lane:1,x:.7,z:6.4,speed:20,heading:-.05,laneChange:{from:1,to:0,phase:'moving',elapsed:1,duration:3.4,signalDuration:.85}}]});
+ const g=make();/** Force the lowest random choice to verify safe-lane reservation overrides the spawn preference. */ g.random=()=>0;Object.assign(g.state,{safeLane:1,distance:400,traffic:[{id:1,kind:'sedan',lane:1,x:.7,z:6.4,speed:20,heading:-.05,laneChange:{from:1,to:0,phase:'moving',elapsed:1,duration:3.4,signalDuration:.85}}]});
  g.spawnWave(205,true);assert.equal(g.state.safeLane,2);
  assert.ok(g.state.traffic.filter(c=>c.id!==1).every(c=>c.lane!==2));
 });
@@ -102,14 +107,14 @@ test('following gap remains protected when the leader moves backward relative to
 });
 
 test('roadworks never materialize across a committed manoeuvre and defer when both edges are occupied',()=>{
- const g=make();g.random=()=>0;g.state.traffic=[{id:1,kind:'sedan',lane:1,x:.8,z:150,speed:22,heading:-.05,laneChange:{from:1,to:0,phase:'moving',elapsed:.5,duration:3.4,signalDuration:.85}}];
+ const g=make();/** Prefer the first roadworks edge so committed-corridor exclusion and deferral are deterministic. */ g.random=()=>0;g.state.traffic=[{id:1,kind:'sedan',lane:1,x:.8,z:150,speed:22,heading:-.05,laneChange:{from:1,to:0,phase:'moving',elapsed:.5,duration:3.4,signalDuration:.85}}];
  assert.equal(g.startEvent('roadworks'),true);assert.equal(g.state.roadEvent.lane,2);
  g.state.roadEvent=null;g.state.traffic.push({id:2,kind:'suv',lane:1,x:1.2,z:180,speed:20,heading:.05,laneChange:{from:1,to:2,phase:'moving',elapsed:.5,duration:3.4,signalDuration:.85}});
  const index=g.state.eventIndex;assert.equal(g.startEvent('roadworks'),false);assert.equal(g.state.eventIndex,index);
 });
 
 test('a new convoy preserves the free edge around committed overtaking traffic',()=>{
- const g=make();g.random=()=>.99;Object.assign(g.state,{x:2,lane:2,safeLane:2,traffic:[{id:1,kind:'sedan',lane:1,x:.8,z:37,speed:22,heading:-.05,laneChange:{from:1,to:0,phase:'moving',elapsed:.5,duration:3.4,signalDuration:.85}}]});
+ const g=make();/** Force the high random choice while checking convoy generation preserves the remaining safe edge. */ g.random=()=>.99;Object.assign(g.state,{x:2,lane:2,safeLane:2,traffic:[{id:1,kind:'sedan',lane:1,x:.8,z:37,speed:22,heading:-.05,laneChange:{from:1,to:0,phase:'moving',elapsed:.5,duration:3.4,signalDuration:.85}}]});
  assert.equal(g.startEvent('convoy'),true);assert.equal(g.state.safeLane,2);
  assert.ok(g.state.traffic.filter(c=>c.eventId).every(c=>c.lane!==2));
 });

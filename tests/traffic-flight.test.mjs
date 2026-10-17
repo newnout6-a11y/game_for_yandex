@@ -10,7 +10,19 @@ const models={};
 for(const kind of TRAFFIC_KINDS){const b=await readFile(`public/assets/traffic/${kind}.glb`);models[kind]=(await new T.GLTFLoader().parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'')).scene;}
 installTrafficTemplates(models);
 
+/**
+ * Start a clear-road game and disable automatic waves/events.
+ * The fixture retains normal starting speed and energy for flight-gate tests.
+ * @returns {Game} Mutable game with no initial traffic or pickups.
+ */
 const make=()=>{const g=new Game();g.start();g.state.traffic=[];g.state.pickups=[];g.state.nextSpawn=Infinity;g.state.nextEvent=Infinity;return g;};
+/**
+ * Advance real flight/driving physics with a maximum 1/120-second step.
+ * Shortens the last update to the remaining simulated duration.
+ * @param {Game} g - Fixture mutated by updates.
+ * @param {number} seconds - Simulated seconds to advance.
+ * @param {object} [controls={}] - Held inputs reused for every step.
+ */
 const advance=(g,seconds,controls={})=>{for(let t=0;t<seconds-1e-8;t+=1/120)g.update(Math.min(1/120,seconds-t),controls);};
 
 test('eight Blender traffic models have catalog-sized bodies, shared geometry and isolated paint/brakes',()=>{
