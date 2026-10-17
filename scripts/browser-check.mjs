@@ -18,7 +18,7 @@ const errors = [], results = [];
 let completed = false;
 const seed = 1792022400000;
 const fixture = new Game({ random: seededRandom(seed) }); fixture.start();
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const browser = await chromium.launch({ ...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{channel:'chrome'}), headless: true });
 let safari;
 const pass = name => { results.push({ name, status: 'PASS' }); console.log('PASS ' + name); };
 
@@ -143,7 +143,7 @@ try {
   const loadingPage = await loadingContext.newPage();
   let releaseCar;
   const heldCar = new Promise(resolve => { releaseCar = resolve; });
-  await loadingPage.route('**/public/assets/car.glb', async route => { await heldCar; await route.continue(); });
+  await loadingPage.route('**/public/assets/roadster.glb', async route => { await heldCar; await route.continue(); });
   await loadingPage.goto(url);
   await loadingPage.waitForFunction(() => document.querySelector('#playBtn').textContent.includes('Загрузка'));
   assert.equal(await loadingPage.locator('#playBtn').isDisabled(), true);
@@ -243,9 +243,9 @@ try {
     renderBatch(0); world.effect('crash');
     for (let i = 1; i < 15; i++) renderBatch(i);
     const before = world.renderer.info.memory.geometries;
-    const beforeCars=world.traffic.size+world.trafficPool.length,beforePickups=world.pickups.size+world.pickupPool.length;
+    const beforeCars=world.traffic.size+[...world.trafficPool.values()].reduce((sum,pool)=>sum+pool.length,0),beforePickups=world.pickups.size+world.pickupPool.length;
     for (let i = 15; i < 40; i++) renderBatch(i);
-    return { before, after: world.renderer.info.memory.geometries, beforeCars, beforePickups, cars: world.traffic.size + world.trafficPool.length, pickups: world.pickups.size + world.pickupPool.length, particles: world.particles.length };
+    return { before, after: world.renderer.info.memory.geometries, beforeCars, beforePickups, cars: world.traffic.size + [...world.trafficPool.values()].reduce((sum,pool)=>sum+pool.length,0), pickups: world.pickups.size + world.pickupPool.length, particles: world.particles.length };
   }, structuredClone(fixture.state));
   assert.equal(resources.after, resources.before);
   assert.equal(resources.cars,resources.beforeCars);assert.equal(resources.pickups,resources.beforePickups);assert.equal(resources.particles, 0);

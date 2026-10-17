@@ -10,7 +10,7 @@ test('keyboard aliases, opposite steering and simultaneous pedals remain indepen
 test('multitouch releases only its own input; cancellation clears every held control',()=>{
   const input=new DrivingInput();input.set('gas','pointer-1',true);input.set('left','pointer-2',true);input.set('boost','pointer-3',true);
   input.set('left','pointer-2',false);assert.equal(input.read().throttle,1);assert.equal(input.read().boost,true);assert.equal(input.read().steer,0);
-  input.clear();assert.deepEqual(input.read(),{steer:0,throttle:0,brake:0,boost:false});
+  input.clear();assert.deepEqual(input.read(),{steer:0,throttle:0,brake:0,boost:false,flight:false,roll:0});
 });
 test('chase camera is independent of steering, lane and lateral position',()=>{
   const left={},right={};for(let i=0;i<60;i++){updateChase(left,{speed:30,x:0,heading:-.2,steerAngle:-.3},{dt:1/60});updateChase(right,{speed:30,x:2,heading:.2,steerAngle:.3},{dt:1/60});}assert.deepEqual(left,right);assert.equal(left.x,0);assert.equal(left.lookX,0);

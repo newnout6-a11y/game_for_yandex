@@ -3,3 +3,12 @@ dist/
 output/
 .playwright-cli/
 .codebase-memory/
+
+# Blender backups and generated authoring previews
+*.blend1
+*.blend2
+__pycache__/
+*.pyc
+art/traffic/previews/
+art/smoke/puff-*.png
+art/smoke/smoke-atlas-preview.jpg

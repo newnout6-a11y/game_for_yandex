@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {Game} from '../src/game.js';
 import {CONFIG} from '../src/config.js';
 import {seededRandom} from '../src/util.js';
+import {playerTrafficDepth} from '../src/traffic-physics.js';
 const make=(options={})=>{const g=new Game({random:seededRandom(42),...options});g.start();g.state.traffic=[];g.state.pickups=[];g.state.nextSpawn=Infinity;g.state.nextEvent=Infinity;return g;};
 function advance(g,seconds,controls={throttle:1}){for(let t=0;t<seconds-1e-8;t+=1/60)g.update(Math.min(1/60,seconds-t),controls);}
 
@@ -60,7 +61,7 @@ test('following traffic brakes behind a parked player rather than rear-ending th
 });
 test('close passes reward once, cap the combo, and the series expires',()=>{
   const g=make();g.state.speed=30;g.state.traffic=[{lane:0,z:3.5,speed:8}];advance(g,.5);assert.equal(g.state.nearMisses,1);assert.equal(g.state.combo,2);advance(g,1);assert.equal(g.state.nearMisses,1);
-  for(let i=0;i<8;i++){g.state.traffic.push({lane:0,z:-3.2,speed:8});g.update(.02,{throttle:1});}assert.equal(g.state.combo,5);advance(g,5);assert.equal(g.state.combo,1);
+  for(let i=0;i<8;i++){g.state.traffic.push({lane:0,z:-playerTrafficDepth({kind:'sedan'})+.1,speed:8});g.update(.02,{throttle:1});}assert.equal(g.state.combo,5);advance(g,5);assert.equal(g.state.combo,1);
 });
 test('nitro needs moving gas, boosts acceleration, respects braking and cannot go negative',()=>{
   const g=make(),normal=make();advance(g,1,{boost:true});assert.equal(g.state.nitro,60);

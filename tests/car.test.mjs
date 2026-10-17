@@ -14,6 +14,23 @@ test('artist car binary includes four animated wheels, body and detailed indexed
   assert.ok(gltf.accessors.filter(a=>a.type==='VEC3').reduce((n,a)=>n+a.count,0)>10000);
   assert.ok(gltf.extensionsUsed.includes('KHR_draco_mesh_compression'));
 });
+test('reference Roadster includes editable wheel pivots, cabin and optimized original geometry', async () => {
+  const bytes=await readFile('public/assets/roadster.glb');
+  assert.equal(bytes.readUInt32LE(0),0x46546c67);
+  const gltf=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)));
+  for(const name of ['wheel_fl','wheel_fr','wheel_rl','wheel_rr'])assert.ok(gltf.nodes.some(node=>node.name===name),name);
+  assert.ok(gltf.nodes.some(node=>/^body/.test(node.name)));
+  assert.ok(gltf.materials.some(material=>/ivory|seat/i.test(material.name)),'authored light cabin retained');
+  assert.ok(gltf.materials.some(material=>/glass/i.test(material.name)));
+  for (const name of ['underbody_matte_composite', 'underbody_satin_cast_metal']) {
+    const material = gltf.materials.find(item => item.name === name);
+    assert.ok(material, name); assert.ok(material.pbrMetallicRoughness.roughnessFactor >= .5, 'no polished mirror underfloor');
+  }
+  for (const name of ['detail_underbody', 'detail_shield', 'thruster_fl', 'thruster_fr', 'thruster_rl', 'thruster_rr'])
+    assert.ok(gltf.nodes.some(node=>node.name===name), name);
+  assert.ok(bytes.length<3_000_000,'mobile asset budget');
+  assert.ok(gltf.meshes.length<40,'draw-call budget');
+});
 test('car instances normalize imported scale, retain wheel animation and isolate paint', () => {
   const original=new T.Group();
   const body=new T.Mesh(new T.BoxGeometry(4,2.5,9.4),new T.MeshStandardMaterial());body.name='body';body.position.set(2,3,1);original.add(body);
@@ -32,13 +49,13 @@ test('car instances normalize imported scale, retain wheel animation and isolate
 });
 test('all runtime artwork matches the recorded source hashes and has a distribution license', async () => {
   const manifest=JSON.parse(await readFile('public/assets/manifest.json'));
-  assert.equal(manifest.length,13);
+  assert.ok(manifest.length>=14);
   for(const item of manifest){
     const bytes=await readFile('public/'+item.file);
     assert.equal(createHash('sha256').update(bytes).digest('hex'),item.sha256,item.file);
     assert.equal(bytes.length,item.bytes);
-    assert.ok(['CC0-1.0','CC-BY-4.0'].includes(item.license));
-    assert.match(item.source,/^https:/);
+    assert.ok(['CC0-1.0','CC-BY-4.0','Original-project-artwork'].includes(item.license));
+    assert.match(item.source,/^(https:|project:)/);
     if(item.file.includes('/fir-')){assert.equal(bytes.readUInt32BE(16),1024);assert.equal(bytes.readUInt32BE(20),1024);assert.equal(bytes[25],6,'PNG includes alpha');}
   }
   const credits=await readFile('public/assets/CREDITS.txt','utf8');

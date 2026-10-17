@@ -196,22 +196,28 @@ document.addEventListener('keydown', event => {
   if (!event.repeat && ['Escape', 'KeyP'].includes(event.code)) { event.preventDefault(); pauseRun(); }
 });
 document.addEventListener('keyup', event => { input.key(event.code,false); });
-const controlBindings = [['leftBtn','left'],['rightBtn','right'],['gasBtn','gas'],['brakeBtn','brake'],['boostBtn','boost']];
+const controlBindings = [['leftBtn','left'],['rightBtn','right'],['gasBtn','gas'],['brakeBtn','brake'],['boostBtn','boost'],['flightBtn','flight'],['rollLeftBtn','rollLeft'],['rollRightBtn','rollRight']];
 for (const [id,action] of controlBindings) {
   const button=byId(id);
   button.addEventListener('pointerdown',event=>{
-    event.preventDefault();if(screen!=='playing'||lifecycle.paused)return;
+    event.preventDefault();if(screen!=='playing'||lifecycle.paused||event.button>0||button.disabled||button.getAttribute('aria-disabled')==='true')return;
     input.set(action,'pointer-'+event.pointerId,true);
     try { button.setPointerCapture(event.pointerId); } catch { /* Synthetic pointer events have no active capture. */ }
   });
   for(const name of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(name,event=>input.set(action,'pointer-'+event.pointerId,false));
   button.addEventListener('keydown',event=>{
     if(!['Enter','Space'].includes(event.code)||screen!=='playing'||lifecycle.paused)return;
-    event.preventDefault();event.stopPropagation();input.set(action,'button-'+event.code,true);
+    event.preventDefault();event.stopPropagation();
+    if(button.disabled||button.getAttribute('aria-disabled')==='true')return;
+    input.set(action,id+'-'+event.code,true);
   });
-  button.addEventListener('keyup',event=>{ if(['Enter','Space'].includes(event.code)){event.preventDefault();event.stopPropagation();input.set(action,'button-'+event.code,false);} });
-  button.addEventListener('blur',()=>{input.set(action,'button-Enter',false);input.set(action,'button-Space',false);});
+  button.addEventListener('keyup',event=>{ if(['Enter','Space'].includes(event.code)){event.preventDefault();event.stopPropagation();input.set(action,id+'-'+event.code,false);} });
+  button.addEventListener('blur',()=>{input.set(action,id+'-Enter',false);input.set(action,id+'-Space',false);});
 }
+for (const name of ['pointerup', 'pointercancel']) window.addEventListener(name, event => {
+  // Each pointer owns one source; releasing it must not cancel other fingers.
+  input.release('pointer-' + event.pointerId);
+});
 let gesture = null;
 byId('scene').addEventListener('pointerdown', event => {
   if (screen !== 'playing') return;
@@ -226,10 +232,10 @@ byId('scene').addEventListener('pointerup', event => {
 });
 byId('scene').addEventListener('pointercancel', () => { gesture = null; });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) pauseRun('hidden');
+  if (document.hidden) { clearInput(); gesture = null; pauseRun('hidden'); }
   else lifecycle.resume('hidden');
 });
-window.addEventListener('blur', () => pauseRun('blur'));
+window.addEventListener('blur', () => { clearInput(); gesture = null; pauseRun('blur'); });
 window.addEventListener('focus', () => lifecycle.resume('blur'));
 sdk.on('game_api_pause', () => pauseRun('platform'));
 sdk.on('game_api_resume', () => lifecycle.resume('platform'));
@@ -252,7 +258,12 @@ function tick(time) {
     }
   }
   if (screen !== 'menu') ui.hud(game.state);
-  for(const[id,action]of controlBindings)byId(id).dataset.held=String(input.active(action));
+  for (const [id, action] of controlBindings) {
+    const held = String(input.active(action));
+    const button = byId(id);
+    if (button.dataset.held !== held) button.dataset.held = held;
+    if (button.getAttribute('aria-pressed') !== held) button.setAttribute('aria-pressed', held);
+  }
   renderer.render(game.state, { menu: screen === 'menu', dt, paused: screen !== 'playing' });
   audio.update(game.state, screen === 'playing' && !lifecycle.paused);
   requestAnimationFrame(tick);
