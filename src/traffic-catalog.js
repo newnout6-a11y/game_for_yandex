@@ -6,8 +6,10 @@ export const TRAFFIC_CATEGORIES = Object.freeze({
   freight: Object.freeze({ label: 'Грузовые', description: 'Грузовики и автопоезда' }),
   special: Object.freeze({ label: 'Спецтехника', description: 'Эвакуаторы и пожарные машины' }),
 });
+// Measured rear axle/bogie centres in the authored GLBs; the lane path runs here.
+const REAR_AXLE_Z = Object.freeze({sedan:1.39,hatch:1.22,suv:1.49,van:1.74,boxtruck:2.41,semi:-3.965,towtruck:1.99,firetruck:2.26});
 const vehicle = (id, category, label, dimensions, axles, cruise, weight, tags, extra = {}) => Object.freeze({
-  id, category, label, ...dimensions, axles, cruise: Object.freeze(cruise), weight,
+  id, category, label, ...dimensions, rearAxleZ:REAR_AXLE_Z[id], axles, cruise: Object.freeze(cruise), weight,
   tags: Object.freeze(tags), ...extra,
 });
 export const TRAFFIC_CATALOG = Object.freeze({
@@ -16,7 +18,7 @@ export const TRAFFIC_CATALOG = Object.freeze({
   suv: vehicle('suv', 'passenger', 'Внедорожник', { length: 4.82, width: 2.04, height: 1.88, wheelRadius: .39 }, 2, [17, 22], 18, ['passenger', 'utility']),
   van: vehicle('van', 'commercial', 'Развозной фургон', { length: 5.62, width: 2.18, height: 2.58, wheelRadius: .39 }, 2, [16, 21], 15, ['cargo', 'light-commercial']),
   boxtruck: vehicle('boxtruck', 'freight', 'Грузовик-фургон', { length: 8.2, width: 2.48, height: 3.48, wheelRadius: .49 }, 2, [15, 19], 9, ['cargo', 'rigid-truck', 'tall']),
-  semi: vehicle('semi', 'freight', 'Седельный автопоезд', { length: 16.4, width: 2.5, height: 3.98, wheelRadius: .51 }, 5, [15, 19], 6, ['cargo', 'articulated', 'long', 'tall'], { articulated: true, hitchZ: -3.2, trailerAxleDistance: 8.995 }),
+  semi: vehicle('semi', 'freight', 'Седельный автопоезд', { length: 16.4, width: 2.5, height: 3.98, wheelRadius: .51 }, 5, [15, 19], 6, ['cargo', 'articulated', 'long', 'tall'], { articulated: true, hitchZ: -3.2, trailerAxleDistance: 8.995, trailerFrontZ:-4.30, trailerRearZ:8.20, maxArticulation:Math.PI*5/12 }),
   towtruck: vehicle('towtruck', 'special', 'Эвакуатор', { length: 7.25, width: 2.4, height: 2.82, wheelRadius: .45 }, 2, [14, 19], 5, ['recovery', 'utility']),
   firetruck: vehicle('firetruck', 'special', 'Пожарная машина', { length: 8.6, width: 2.5, height: 3.32, wheelRadius: .5 }, 3, [15, 20], 3, ['emergency', 'utility', 'tall']),
 });

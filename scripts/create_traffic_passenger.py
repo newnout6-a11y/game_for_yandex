@@ -310,6 +310,120 @@ def driver_segment(name,start,end,radius_start,radius_end,color,parent=None):
     faces += [tuple(reversed(range(10))),tuple(30+i for i in range(10))]
     return cabin_tint(model_mesh(name,verts,faces,'cabin_interior',parent=parent,smooth=True),color)
 
+def driver_loft(name,sections,color,parent=None,segments=16):
+    """Tailored/anatomical horizontal sections: (y, width, front, back, z)."""
+    verts=[]
+    for y,width,front,back,z in sections:
+        for i in range(segments):
+            a=math.tau*i/segments;s=math.sin(a)
+            # Flatter anterior planes retain jaw, cheek and chest structure.
+            depth=front*(-s)**.55 if s<0 else -back*s
+            verts.append((math.cos(a)*width,y,z-depth))
+    faces=[]
+    for j in range(len(sections)-1):
+        for i in range(segments):
+            k=(i+1)%segments;faces.append((j*segments+i,(j+1)*segments+i,(j+1)*segments+k,j*segments+k))
+    faces += [tuple(range(segments)),tuple(reversed([(len(sections)-1)*segments+i for i in range(segments)]))]
+    return cabin_tint(model_mesh(name,verts,faces,'cabin_interior',parent=parent,smooth=True),color)
+
+def driver_curve(name,points,radii,color,parent=None,sides=6):
+    """Swept rounded anatomical detail, with a radius at each authored point."""
+    verts=[]
+    for index,point in enumerate(points):
+        center=Vector(point);axis=(Vector(points[min(index+1,len(points)-1)])-Vector(points[max(0,index-1)])).normalized()
+        u=axis.cross(Vector((0,0,1)))
+        if u.length<.01:u=axis.cross(Vector((1,0,0)))
+        u.normalize();v=axis.cross(u).normalized()
+        for i in range(sides):
+            a=i*math.tau/sides;verts.append(tuple(center+(u*math.cos(a)+v*math.sin(a))*radii[index]))
+    faces=[]
+    for j in range(len(points)-1):
+        for i in range(sides):
+            k=(i+1)%sides;faces.append((j*sides+i,j*sides+k,(j+1)*sides+k,(j+1)*sides+i))
+    faces += [tuple(reversed(range(sides))),tuple((len(points)-1)*sides+i for i in range(sides))]
+    return cabin_tint(model_mesh(name,verts,faces,'cabin_interior',parent=parent,smooth=True),color)
+
+def author_driver_head(position,head_offset,skin,hair):
+    """One mobile draw group, sculpted profile and separate editable facial parts."""
+    head=rig_empty('driver_head',position)
+    head['rotation_axis']='local +Y';head['recommended_yaw_limit']=.35
+    head['pivot_definition']='Neck joint; +Y up, -Z forward; restrained mirror check only'
+    hy,hz=head_offset
+    profile=[(-.110,.020,.048,.035),(-.099,.043,.070,.047),(-.078,.059,.074,.061),
+             (-.052,.072,.077,.074),(-.022,.080,.080,.084),(.005,.082,.083,.089),
+             (.026,.078,.081,.091),(.054,.078,.078,.092),(.081,.069,.069,.085),
+             (.105,.049,.046,.060),(.118,.014,.014,.025)]
+    face=driver_loft('Driver sculpted jaw cheeks and forehead',[(hy+y,w,f,b,hz) for y,w,f,b in profile],skin,parent=head,segments=20)
+    # Low-contrast vertex tones clarify the temples/jaw without image textures.
+    colors=face.data.color_attributes['CabinColor'].data
+    for loop in face.data.loops:
+        vertex=face.data.vertices[loop.vertex_index].co;local_y=vertex.z-hy
+        tone=.91 if local_y<-.06 else 1.025 if -.04<local_y<.04 else .98
+        colors[loop.index].color=(*(min(1,v*tone) for v in skin),1)
+    # Hair follows the skull and has a lower nape, temples and natural forehead line.
+    def skull(y):
+        for a,b in zip(profile,profile[1:]):
+            if a[0]<=y<=b[0]:
+                t=(y-a[0])/(b[0]-a[0]);return tuple(a[k]+(b[k]-a[k])*t for k in range(1,4))
+        return profile[-1][1:]
+    verts=[];n=24
+    for j in range(7):
+        t=j/6
+        for i in range(n):
+            a=math.tau*i/n;s=math.sin(a)
+            boundary=.025+(-s)*(.039 if s<0 else .050)
+            y=boundary+(.119-boundary)*t;w,f,b=skull(min(.118,y));scale=1.025
+            depth=f*(-s)**.55 if s<0 else -b*s
+            verts.append((math.cos(a)*w*scale,hy+y+.002,hz-depth*scale))
+    faces=[]
+    for j in range(6):
+        for i in range(n):
+            k=(i+1)%n;faces.append((j*n+i,(j+1)*n+i,(j+1)*n+k,j*n+k))
+    faces.append(tuple(reversed([6*n+i for i in range(n)])))
+    cabin_tint(model_mesh('Driver fitted short hairline',verts,faces,'cabin_interior',parent=head,smooth=True),hair)
+    for side in [-1,1]:
+        driver_ellipsoid('Driver ear helix '+str(side),(side*.081,hy-.011,hz+.003),(.016,.028,.019),skin,parent=head,segments=10,rings=6)
+        driver_ellipsoid('Driver ear concha '+str(side),(side*.093,hy-.010,hz-.003),(.004,.015,.010),tuple(v*.69 for v in skin),parent=head,segments=8,rings=5)
+        ex=side*.031
+        driver_ellipsoid('Driver almond eye '+str(side),(ex,hy+.020,hz-.083),(.014,.0057,.0038),(.62,.60,.54),parent=head,segments=10,rings=5)
+        driver_ellipsoid('Driver iris '+str(side),(ex,hy+.020,hz-.0865),(.0048,.0048,.0018),(.048,.061,.061),parent=head,segments=8,rings=4)
+        driver_ellipsoid('Driver pupil '+str(side),(ex,hy+.020,hz-.088),(.0024,.0030,.001),(.012,.016,.019),parent=head,segments=8,rings=4)
+        driver_curve('Driver upper eyelid '+str(side),[(ex-.014,hy+.020,hz-.0835),(ex-.006,hy+.026,hz-.085),(ex+.007,hy+.025,hz-.085),(ex+.014,hy+.020,hz-.0835)],[.0023,.0027,.0027,.0018],tuple(v*.83 for v in skin),parent=head)
+        driver_curve('Driver eyebrow '+str(side),[(ex-.015,hy+.035,hz-.080),(ex-.005,hy+.039,hz-.082),(ex+.009,hy+.038,hz-.081),(ex+.016,hy+.034,hz-.079)],[.0018,.0031,.0028,.0011],hair,parent=head)
+    # Continuous bridge, tip and alar wings instead of a sphere stuck on the face.
+    verts=[(-.010,hy+.031,hz-.079),(.010,hy+.031,hz-.079),(-.008,hy+.010,hz-.094),(.008,hy+.010,hz-.094),
+           (-.011,hy-.018,hz-.111),(.011,hy-.018,hz-.111),(-.018,hy-.026,hz-.085),(.018,hy-.026,hz-.085),(0,hy-.033,hz-.094)]
+    faces=[(0,2,3,1),(2,4,5,3),(4,8,5),(0,6,4,2),(1,3,5,7),(6,8,4),(7,5,8),(6,7,8)]
+    cabin_tint(model_mesh('Driver nose bridge and alar wings',verts,[tuple(reversed(face)) for face in faces],'cabin_interior',parent=head,smooth=True),skin)
+    for side in [-1,1]:
+        driver_ellipsoid('Driver nostril '+str(side),(side*.010,hy-.028,hz-.094),(.0035,.0019,.0023),tuple(v*.43 for v in skin),parent=head,segments=8,rings=4)
+    driver_curve('Driver closed mouth', [(-.021,hy-.058,hz-.074),(0,hy-.060,hz-.079),(.021,hy-.058,hz-.074)],[.0013,.0016,.0013],(.18,.085,.058),parent=head)
+    driver_curve('Driver lower lip', [(-.015,hy-.062,hz-.076),(0,hy-.064,hz-.079),(.015,hy-.062,hz-.076)],[.0017,.0023,.0017],(.36,.18,.12),parent=head)
+    return head
+
+def author_driver_hand(parent,side,label,skin,hand_to_wheel):
+    """Palm and four curled fingers wrap the existing rim; its grip stays exact."""
+    before=set(bpy.context.scene.objects)
+    palm=driver_loft('Driver shaped palm '+label,[(-.031,.011,.009,.010,.021),(-.021,.018,.011,.013,.021),
+        (.013,.019,.012,.013,.021),(.031,.013,.009,.010,.021)],skin,parent=parent,segments=12)
+    for v in palm.data.vertices:v.co.x+=.025
+    for finger in range(4):
+        along=(finger-1.5)*.015;radius=.0073 if finger<3 else .0067
+        points=[]
+        for j in range(8):
+            a=.72-(3.80 if finger<3 else 3.60)*j/7
+            points.append((.005+.029*math.cos(a),along,-.012+.029*math.sin(a)))
+        driver_curve('Driver curled finger '+label+' '+str(finger),points,[radius*(1-.18*j/7) for j in range(8)],skin,parent=parent,sides=6)
+        # A shallow knuckle crease remains part of the same shared-color mesh.
+        driver_curve('Driver finger crease '+label+' '+str(finger),[(.025,along-.004,-.032),(.025,along+.004,-.032)],[.0008,.0008],tuple(v*.80 for v in skin),parent=parent,sides=4)
+    thumb_side=-1 if side<0 else 1
+    driver_curve('Driver articulated thumb '+label,[(.011,thumb_side*.028,.019),(-.007,thumb_side*.025,.021),(-.018,thumb_side*.010,.013),(-.016,thumb_side*.001,.006)],[.012,.011,.009,.0075],skin,parent=parent,sides=8)
+    radial=Vector((side*.132,.047,0)).normalized();tangent=Vector((-radial.y,radial.x,0))
+    basis=Matrix((radial,tangent,Vector((0,0,1)))).transposed()
+    transform=GAME_TO_BLENDER@hand_to_wheel.to_matrix()@basis@GAME_TO_BLENDER.transposed()
+    for ob in set(bpy.context.scene.objects)-before:
+        if ob.type=='MESH':ob.data.transform(transform.to_4x4())
+
 def author_driver(kind):
     p=CABINS[kind];seat=p['seat'];z=p['seat_z'];x=-.45 if kind=='van' else -p['width']*.235
     head_y=seat+({'sedan':.59,'hatch':.59,'suv':.65,'van':.69}[kind]);shoulder_y=head_y-.17
@@ -317,29 +431,35 @@ def author_driver(kind):
     trousers=(.035,.044,.054);skin=(.38,.235,.15);hair=(.025,.018,.015);shoe=(.018,.023,.029)
     pelvis_y=seat+.12;torso_z=z+.055
     cabin_box('Driver seated pelvis',(x,pelvis_y,z-.005),(.27,.17,.22),trousers,.045)
-    # Tapered torso with separate waist/chest/shoulder rings, not a mannequin box.
-    verts=[]
-    for yy,ww,depth,zz in [(pelvis_y-.01,.115,.10,torso_z-.025),(pelvis_y+.10,.13,.105,torso_z),
-                            (shoulder_y-.07,.165,.108,torso_z+.01),(shoulder_y+.015,.155,.09,torso_z+.015)]:
-        for i in range(12):
-            a=math.tau*i/12;verts.append((x+math.cos(a)*ww,yy,zz+math.sin(a)*depth))
-    faces=[]
-    for j in range(3):
-        for i in range(12):
-            k=(i+1)%12;faces.append((j*12+i,j*12+k,(j+1)*12+k,(j+1)*12+i))
-    faces += [tuple(reversed(range(12))),tuple(36+i for i in range(12))]
-    cabin_tint(model_mesh('Driver clothed adult torso',verts,[tuple(reversed(face)) for face in faces],'cabin_interior',smooth=True),jacket)
-    driver_segment('Driver neck',(x,shoulder_y,torso_z),(x,head_y-.07,torso_z),.041,.039,skin)
-    driver_ellipsoid('Driver adult head',(x,head_y,torso_z-.017),(.087,.115,.093),skin)
-    driver_ellipsoid('Driver short hair',(x,head_y+.006,torso_z-.011),(.089,.116,.094),hair,rings=5,theta_max=math.pi*.47)
-    driver_ellipsoid('Driver nose',(x,head_y-.013,torso_z-.112),(.022,.031,.026),skin,segments=8,rings=5)
+    # Seated jacket has a waist, abdominal fold, chest, shoulder slope and neck.
+    torso=driver_loft('Driver tailored jacket torso',[(pelvis_y-.01,.113,.097,.091,-.025),
+        (pelvis_y+.05,.124,.110,.098,-.012),(pelvis_y+.09,.132,.105,.101,0),
+        (shoulder_y-.105,.151,.107,.104,.008),(shoulder_y-.045,.159,.107,.098,.012),
+        (shoulder_y+.004,.150,.087,.086,.014),(shoulder_y+.035,.090,.061,.068,.008),
+        (shoulder_y+.043,.045,.042,.047,0)],jacket)
+    torso.location=xyz((x,0,torso_z))
+    shirt=tuple(min(1,v*1.70+.025) for v in jacket)
+    cabin_tint(model_mesh('Driver visible shirt neckline',[(x-.043,shoulder_y+.030,torso_z-.049),(x+.043,shoulder_y+.030,torso_z-.049),
+        (x+.020,shoulder_y-.073,torso_z-.108),(x-.020,shoulder_y-.073,torso_z-.108)],[(0,1,2,3)],'cabin_interior',bevel=.002),shirt)
     for side in [-1,1]:
-        driver_ellipsoid('Driver ear '+str(side),(x+side*.085,head_y-.009,torso_z-.008),(.018,.032,.020),skin,segments=8,rings=5)
-        driver_ellipsoid('Driver eye '+str(side),(x+side*.033,head_y+.019,torso_z-.101),(.009,.006,.004),(.018,.023,.027),segments=8,rings=4)
+        cabin_tint(model_mesh('Driver folded collar '+str(side),[(x+side*.036,shoulder_y+.037,torso_z-.045),
+            (x+side*.082,shoulder_y+.014,torso_z-.071),(x+side*.044,shoulder_y-.067,torso_z-.113),
+            (x+side*.019,shoulder_y-.024,torso_z-.095)],[(0,1,2,3) if side>0 else (3,2,1,0)],'cabin_interior',bevel=.003),tuple(v*1.16 for v in jacket))
+    driver_curve('Driver jacket central seam',[(x,pelvis_y+.07,torso_z-.119),(x,shoulder_y-.12,torso_z-.108),(x,shoulder_y-.073,torso_z-.110)],
+        [.002,.002,.002],tuple(v*.55 for v in jacket))
+    for side in [-1,1]:
+        driver_curve('Driver jacket waist fold '+str(side),[(x+side*.018,pelvis_y+.08,torso_z-.113),(x+side*.065,pelvis_y+.065,torso_z-.107),(x+side*.104,pelvis_y+.08,torso_z-.089)],
+            [.0015,.0025,.0012],tuple(v*.76 for v in jacket))
+    driver_segment('Driver neck',(x,shoulder_y+.025,torso_z),(x,head_y-.081,torso_z-.003),.037,.035,skin)
+    neck_y=shoulder_y+.045
+    author_driver_head((x,neck_y,torso_z),(head_y-neck_y,-.017),skin,hair)
+    for side in [-1,1]:
         knee=(x+side*.082,seat+.025,z-.28);hip=(x+side*.083,pelvis_y,z-.03);ankle=(x+side*.082,p['floor']+.095,z-.43)
         driver_segment('Driver trouser thigh '+str(side),hip,knee,.070,.060,trousers)
         driver_segment('Driver trouser shin '+str(side),knee,ankle,.057,.042,trousers)
+        driver_ellipsoid('Driver folded trouser knee '+str(side),knee,(.057,.052,.057),trousers,segments=10,rings=6)
         cabin_box('Driver shoe '+str(side),(ankle[0],p['floor']+.058,ankle[2]-.035),(.10,.085,.18),shoe,.026)
+        cabin_box('Driver shoe welt '+str(side),(ankle[0],p['floor']+.024,ankle[2]-.041),(.103,.018,.183),(.030,.034,.038),.009)
     # A visible restraint runs from the outer shoulder to the inner hip.
     driver_segment('Driver diagonal seat belt',(x-.145,shoulder_y+.018,torso_z-.105),(x+.11,pelvis_y-.015,torso_z-.132),.018,.018,(.012,.016,.021))
     driver_segment('Driver lap seat belt',(x-.125,pelvis_y+.035,torso_z-.128),(x+.125,pelvis_y+.035,torso_z-.128),.018,.018,(.012,.016,.021))
@@ -369,15 +489,23 @@ def author_driver(kind):
         upper_rotation=Vector((0,1,0)).rotation_difference(upper_direction)
         shoulder_ob=rig_empty('driver_shoulder_'+label,shoulder,rotation=upper_rotation)
         shoulder_ob['upper_length']=upper_length;shoulder_ob['forearm_length']=fore_length
-        driver_segment('Driver upper sleeve '+label,(0,0,0),(0,upper_length,0),.060,.047,jacket,parent=shoulder_ob)
+        driver_loft('Driver tailored upper sleeve '+label,[(-.025,.037,.039,.039,0),(.008,.059,.052,.052,0),
+            (upper_length*.23,.056,.052,.050,0),(upper_length*.62,.049,.046,.047,0),
+            (upper_length*.84,.047,.043,.042,0),(upper_length+.012,.041,.039,.039,0)],jacket,parent=shoulder_ob,segments=12)
         fore_direction=upper_rotation.inverted()@(hand_target-elbow_world).normalized()
         elbow_rotation=Vector((0,1,0)).rotation_difference(fore_direction)
         elbow_ob=rig_empty('driver_elbow_'+label,(0,upper_length,0),parent=shoulder_ob,rotation=elbow_rotation)
-        driver_segment('Driver forearm sleeve '+label,(0,0,0),(0,fore_length,0),.046,.031,jacket,parent=elbow_ob)
+        driver_loft('Driver tailored forearm sleeve '+label,[(-.012,.036,.035,.036,0),(.014,.047,.044,.043,0),
+            (fore_length*.27,.045,.041,.041,0),(fore_length*.65,.036,.035,.034,0),
+            (fore_length*.84,.034,.032,.032,0),(fore_length-.014,.029,.028,.027,0)],jacket,parent=elbow_ob,segments=12)
+        driver_loft('Driver ribbed sleeve cuff '+label,[(fore_length-.040,.033,.032,.032,0),
+            (fore_length-.032,.034,.033,.033,0),(fore_length-.011,.031,.030,.030,0)],tuple(v*.70 for v in jacket),parent=elbow_ob,segments=12)
+        driver_curve('Driver elbow fabric fold '+label,[(-.031,.038,-.030),(0,.047,-.043),(.032,.039,-.030)],
+            [.0015,.0025,.0015],tuple(v*1.18 for v in jacket),parent=elbow_ob)
         hand_ob=rig_empty('driver_hand_'+label,(0,fore_length,0),parent=elbow_ob)
         hand_ob['pivot_definition']='Palm grip center, coincident with grip_'+label
-        driver_ellipsoid('Driver palm '+label,(0,0,0),(.035,.047,.028),skin,parent=hand_ob,segments=10,rings=6)
-        driver_ellipsoid('Driver gripping thumb '+label,(side*.028,.002,.020),(.017,.026,.016),skin,parent=hand_ob,segments=8,rings=5)
+        hand_to_wheel=(upper_rotation@elbow_rotation).inverted()@steering_rotation
+        author_driver_hand(hand_ob,side,label,skin,hand_to_wheel)
 
 def author_cabin(kind,spec):
     p=CABINS[kind];w=p['width'];front=p['front'];rear=p['rear'];floor=p['floor'];belt=p['belt']

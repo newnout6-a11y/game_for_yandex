@@ -7,7 +7,7 @@ import { TRAFFIC_CATALOG, TRAFFIC_CATEGORIES } from '../src/traffic-catalog.js';
 const stage=process.argv[2]||'after',root=process.env.GALLERY_ROOT?path.resolve(process.env.GALLERY_ROOT):stage==='before'?path.resolve('output/fleet-baseline-source'):process.cwd();
 const out=process.env.GALLERY_OUT||`output/fleet-${stage}`; await mkdir(out,{recursive:true});
 const server=startServer({port:0,root});await once(server,'listening');
-const browser=await chromium.launch({executablePath:process.env.CHROME_BIN||'/usr/bin/chromium',headless:true,args:process.env.SOFTWARE_WEBGL?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
+const browser=await chromium.launch({...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{channel:'chrome'}),headless:true,args:process.env.SOFTWARE_WEBGL?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
 const records=[];
 try{
  const page=await browser.newPage({viewport:{width:1280,height:720},deviceScaleFactor:1});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/WebGL|THREE|shader/.test(m.text()))errors.push(m.text());});
@@ -37,12 +37,25 @@ try{
     if(view==='wheel'){const wheel=car.getObjectByName('wheel_fr'),p=wheel.getWorldPosition(new T.Vector3());camera.position.copy(p).add(new T.Vector3(2.25,1.05,-1.9));camera.lookAt(p.x,p.y+.09,p.z);}
     if(view==='cabin'){const front=-spec.length/2;camera.position.set(2.8,spec.height*.7+.35,front-2.3);camera.lookAt(0,spec.height*.58,front+1.25);}
     if(view==='mirror'){const front=-spec.length/2;camera.position.set(spec.width/2+2.1,spec.height*.59+.16,front+3.5);camera.lookAt(spec.width*.44,spec.height*.58,front+1.4);}
-    if(['driver','gesture','footwell'].includes(view)){const wheel=car.getObjectByName('steering_wheel'),p=wheel?wheel.getWorldPosition(new T.Vector3()):new T.Vector3(-.5,spec.height*.58,-spec.length/2+1);
+    if(['driver','gesture','glance','footwell'].includes(view)){const wheel=car.getObjectByName('steering_wheel'),p=wheel?wheel.getWorldPosition(new T.Vector3()):new T.Vector3(-.5,spec.height*.58,-spec.length/2+1);
       if(view==='footwell'){camera.position.set(p.x+.95,p.y+.32,p.z+.35);camera.lookAt(p.x,p.y-.62,p.z-.08);}
       else{camera.position.set(p.x+.25,p.y+.45,p.z-1.65);camera.lookAt(p.x,p.y+.18,p.z+.35);}
-      if(view==='gesture')window.__animateTraffic(car,{kind,speed:12,z:20,signal:-1,signalTime:.25,laneCurvature:-.009,acceleration:0,travelDistance:0},0,1/60);
+      if(view==='gesture'||view==='glance')for(let step=0;step<21;step++)window.__animateTraffic(car,{kind,speed:12,z:20,signal:-1,signalTime:step/60,laneCurvature:-.009,acceleration:0,travelDistance:step*.2},-385,1/60);
     }
-    document.getElementById('fleet-label').innerHTML=`<h1>${spec.label} · ${stage==='before'?'до':'новая модель'}</h1><p>${category} · ${size.z.toFixed(2)} × ${size.x.toFixed(2)} × ${size.y.toFixed(2)} м<br>${view==='driver'?'Водитель и рулевое управление':view==='gesture'?'Левая рука у переключателя поворотника':view==='footwell'?'Внутренний пол и колёсные кожухи':view==='mirror'?'Салон и отражающая поверхность зеркала':view==='cabin'?'Остекление, салон и зеркало':view==='wheel'?'Колесо и арка':view==='front'?'Передний ракурс':'Задний ракурс'}</p>`;
+    if(view.startsWith('steer-')){
+      const sign=view.endsWith('left')?-1:1;
+      for(let i=0;i<60;i++)window.__animateTraffic(car,{kind,speed:3.5,z:0,signal:sign,signalTime:1+i/60,laneCurvature:sign/12,lateralAcceleration:sign*3.5*3.5/12,travelDistance:i*3.5/60},-385,1/60);
+      car.updateMatrixWorld(true);const p=car.getObjectByName('wheel_fr').getWorldPosition(new T.Vector3());camera.up.set(0,1,0);camera.position.copy(p).add(new T.Vector3(3.1,1.45,-2.75));camera.lookAt(p.x-.2,p.y+.15,p.z);camera.fov=34;camera.updateProjectionMatrix();
+    }
+    if(view.startsWith('gap-')){
+      const side=view.includes('left')?-1:1,angle=side*52.5*Math.PI/180;
+      car.userData.bodyRig.rotation.set(.05,0,.06);car.userData.trailerRig.rotation.set(.015,0,.039);car.userData.trailer.rotation.y=angle;car.updateMatrixWorld(true);
+      const joint=new T.Vector3(0,1.8,spec.hitchZ-.65);
+      if(view.endsWith('top')){camera.up.set(0,0,-1);camera.position.set(joint.x,17,joint.z);camera.lookAt(joint);}
+      else{camera.up.set(0,1,0);camera.position.set(-side*10,6.3,spec.hitchZ-1.6);camera.lookAt(joint);}
+      camera.fov=view.endsWith('top')?34:39;camera.updateProjectionMatrix();
+    }
+    document.getElementById('fleet-label').innerHTML=`<h1>${spec.label} · ${stage==='before'?'до':'новая модель'}</h1><p>${category} · ${size.z.toFixed(2)} × ${size.x.toFixed(2)} × ${size.y.toFixed(2)} м<br>${view.startsWith('steer-')?'Передняя ось: проверка поворота радиусом 12 м':view.startsWith('gap-')?'Проверка зазора: 52,5° сочленения + предельный наклон':view==='glance'?'Взгляд в зеркало перед манёвром':view==='driver'?'Водитель и рулевое управление':view==='gesture'?'Левая рука у переключателя поворотника':view==='footwell'?'Внутренний пол и колёсные кожухи':view==='mirror'?'Салон и отражающая поверхность зеркала':view==='cabin'?'Остекление, салон и зеркало':view==='wheel'?'Колесо и арка':view==='front'?'Передний ракурс':'Задний ракурс'}</p>`;
     w.renderer.info.reset();w.renderer.render(scene,camera);let meshes=0,triangles=0;car.traverse(n=>{if(n.isMesh){meshes++;triangles+=(n.geometry.index?.count||n.geometry.attributes.position.count)/3;}});
     return{kind,category,view,dimensions:{length:size.z,width:size.x,height:size.y},meshes,triangles,drawCalls:w.renderer.info.render.calls,submittedTriangles:w.renderer.info.render.triangles,wheels:car.userData.wheels.length};
    },{kind,spec,category,view,stage});

@@ -306,7 +306,9 @@ function buildSemi(spec) {
   const model = new T.Group(), tractor = new T.Group(), trailerParts = new T.Group(), trailer = new T.Group();
   const radius = spec.wheelRadius, front = -spec.length / 2 + .09, rear = spec.length / 2 - .14;
   const cabRear = front + 2.48, frontAxle = front + 1.22, rearAxles = [spec.hitchZ - 1.40, spec.hitchZ - .13];
-  const trailerFront = cabRear + .34, trailerAxles = [rear - 2.91, rear - 1.62];
+  // Short front overhang leaves the complete trailer corner sweep clear of
+  // the cab air guides and service coils, not just the straight-line pose.
+  const trailerFront = spec.trailerFrontZ ?? cabRear + 1.33, trailerAxles = [rear - 2.91, rear - 1.62];
   const cabWidth = spec.width - .39;
   chassis(tractor, front + .2, spec.hitchZ + .61, spec.width, .82);
   addCab(tractor, { front, rear: cabRear, width: cabWidth, height: 3.68, wheelZ: frontAxle, radius, sleeper: true });
@@ -352,6 +354,7 @@ function buildSemi(spec) {
   const trailerStatic = mergeParts(trailerParts); trailerStatic.position.z = -spec.hitchZ; trailerStatic.name = 'trailer_body'; trailer.add(trailerStatic);
   trailer.name = 'trailer'; trailer.position.z = spec.hitchZ; trailer.userData.hitchZ = spec.hitchZ; model.add(trailer);
   model.userData.articulated = true; model.userData.hitchZ = spec.hitchZ;
+  model.userData.trailerFrontZ = trailerFront; model.userData.trailerRearZ = rear + .14;
   return model;
 }
 

@@ -17,7 +17,7 @@ test('a trailer axle follows a circular hitch path with geometric offtracking, n
 test('changing tractor heading around a fixed kingpin does not drag trailer heading with it',()=>{
  const distance=-385,car={kind:'semi',lane:1,x:1,z:50,speed:1,heading:0};
  updateTrailerKinematics(car,distance,1/120);const old={...car.trailerState},yaw=.2,hitchZ=trafficDefinition('semi').hitchZ;
- car.heading=-yaw;car.z=-(old.hitchZ-Math.cos(yaw)*hitchZ);car.x=1+(old.hitchX-Math.sin(yaw)*hitchZ)/3.5;
+ const rear=trafficDefinition('semi').rearAxleZ;car.heading=-yaw;car.z=rear-(old.hitchZ+Math.cos(yaw)*(rear-hitchZ));car.x=1+(old.hitchX+Math.sin(yaw)*(rear-hitchZ))/3.5;
  updateTrailerKinematics(car,distance,1/120);
  assert.ok(Math.abs(car.trailerState.yaw-old.yaw)<1e-10);
  assert.ok(Math.abs(trailerYaw(car,distance)+yaw)<1e-10);
@@ -32,9 +32,9 @@ test('straight travel keeps correct axle distance and independent wheel odometry
 test('articulated collision follows the same kingpin and trailer yaw as the axle solver',()=>{
  const car={kind:'semi',lane:1,x:.6,z:80,speed:15,heading:-.12},d=800;updateTrailerKinematics(car,d,1/120);
  for(let i=0;i<240;i++){car.z+=15/120;car.x-=.0004;updateTrailerKinematics(car,d,1/120);}
- const h=trafficHitch(car,d),yaw=trafficYaw(car,d)+trailerYaw(car,d),parts=trafficCollisionParts(car,d),p=parts[1];
- assert.ok(Math.abs(p.x-(h.x+Math.sin(yaw)*p.halfLength))<1e-10);
- assert.ok(Math.abs(p.z-(h.z+Math.cos(yaw)*p.halfLength))<1e-10);
+ const spec=trafficDefinition('semi'),local=(spec.trailerFrontZ+spec.trailerRearZ)/2-spec.hitchZ;const h=trafficHitch(car,d),yaw=trafficYaw(car,d)+trailerYaw(car,d),parts=trafficCollisionParts(car,d),p=parts[1];
+ assert.ok(Math.abs(p.x-(h.x+Math.sin(yaw)*local))<1e-10);
+ assert.ok(Math.abs(p.z-(h.z+Math.cos(yaw)*local))<1e-10);
  assert.ok(Math.abs(car.trailerState.axleX-(h.x+Math.sin(yaw)*L))<1e-10);
  assert.ok(Math.abs(car.trailerState.axleZ-(h.z+Math.cos(yaw)*L))<1e-10);
 });

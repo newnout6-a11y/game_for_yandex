@@ -6,7 +6,7 @@ import { updateChase } from './motion.js';
 import { createTrafficCar, normalizeTrafficKind, installTrafficTemplates, resetTrafficMotion, animateTrafficCar } from './traffic.js';
 import { trafficDefinition } from './traffic-catalog.js';
 import { trafficLateral } from './traffic-behavior.js';
-import { trafficYaw, trailerYaw } from './traffic-physics.js';
+import { trafficPose, trailerYaw } from './traffic-physics.js';
 import { createThrusterEffects } from './thrusters.js';
 import { buildScenicLandscape, updateScenicLandscape, scenicTerrainHeight } from './landscape.js';
 
@@ -234,15 +234,15 @@ export class RoadRenderer {
           if(car.userData.trailer){
             // The contact patch follows each chassis, not a single rigid 16 m slab.
             contact.scale.y=5.8/4.7;contact.position.z=-5.3;
-            const trailerContact=contact.clone();trailerContact.scale.y=11.4/4.7;trailerContact.position.z=5.65;
+            const trailerContact=contact.clone();trailerContact.scale.y=(spec.trailerRearZ-spec.trailerFrontZ)/4.7;trailerContact.position.z=(spec.trailerRearZ+spec.trailerFrontZ)/2-spec.hitchZ;
             car.userData.trailer.add(trailerContact);car.userData.trailerContact=trailerContact;
           }
         }
         if(car.userData.paint && car.userData.category!=='special')car.userData.paint.color.set(['#d5d4ce','#294f6a','#697b87','#ae8e58','#3f6050','#8d342c','#dce6e6'][item.color%7||0]);
         resetTrafficMotion(car);this.traffic.set(item.id,car);this.scene.add(car);
       }
-      car.visible=true;car.position.set((trafficLateral(item)-1)*3.5+roadBend(-item.z,distance),car.userData.groundY,-item.z);
-      car.rotation.y=trafficYaw(item,distance);
+      const pose=trafficPose(item,distance);car.visible=true;car.position.set(pose.x,car.userData.groundY,pose.z);
+      car.rotation.y=pose.yaw;
       if(car.userData.trailer)car.userData.trailer.rotation.y=trailerYaw(item,distance);
       animateTrafficCar(car,menu?{...item,speed:4,travelDistance:distance}:item,distance,paused?0:dt);
       car.userData.contactShadow.position.y=.025-car.userData.groundY;

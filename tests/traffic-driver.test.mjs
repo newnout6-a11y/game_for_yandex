@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as T from '../public/vendor/three.js';
-import { TRAFFIC_KINDS, installTrafficTemplates, createTrafficCar, animateTrafficCar } from '../src/traffic.js';
-import { animateTrafficDriver, stalkGesture, INDICATOR_TOUCH_TIME } from '../src/traffic-driver.js';
+import { TRAFFIC_KINDS, installTrafficTemplates, createTrafficCar, animateTrafficCar, resetTrafficMotion } from '../src/traffic.js';
+import { animateTrafficDriver, stalkGesture, mirrorGlance, INDICATOR_TOUCH_TIME } from '../src/traffic-driver.js';
 const models={};
 for(const kind of TRAFFIC_KINDS){const b=await readFile(`public/assets/traffic/${kind}.glb`);models[kind]=(await new T.GLTFLoader().parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'')).scene;}
 installTrafficTemplates(models);
@@ -37,4 +37,17 @@ test('driver rigs and their transforms are independent between pooled vehicle cl
  const a=createTrafficCar('sedan'),b=createTrafficCar('sedan');animateTrafficDriver(a,{signal:-1,signalTime:.25},.04);animateTrafficDriver(b,{signal:0},0);
  assert.notEqual(a.userData.driver.wheel,b.userData.driver.wheel);assert.notEqual(a.userData.driver.wheel.userData.angle,b.userData.driver.wheel.userData.angle);
  assert.ok(b.userData.driver.arms[0].hand.getWorldPosition(p()).distanceTo(b.userData.driver.arms[0].grip.getWorldPosition(p()))<1e-4);
+});
+
+test('mirror glance is a bounded pre-manoeuvre response, not an idle animation',()=>{
+ assert.equal(mirrorGlance(0,.3),0);assert.equal(mirrorGlance(-1,0),0);assert.equal(mirrorGlance(-1,1),0);
+ assert.equal(mirrorGlance(-1,.3),.32);assert.equal(mirrorGlance(1,.3),-.32);
+ for(const kind of TRAFFIC_KINDS){const car=createTrafficCar(kind),r=car.userData.driver;assert.ok(r.head,kind+' authored head');assert.equal(r.head.parent,r.body);
+  for(let i=0;i<24;i++)animateTrafficDriver(car,{signal:-1,signalTime:i/60,acceleration:-3},.03,1/60);
+  assert.ok(r.headYaw>.27&&r.headYaw<=.32,kind+' glance');assert.ok(r.headPitch<-.02,kind+' braking response');
+  for(let i=0;i<180;i++)animateTrafficDriver(car,{signal:0,acceleration:0},0,1/60);
+  assert.ok(Math.abs(r.headYaw)<1e-8&&Math.abs(r.headPitch)<1e-8,kind+' settled');
+  animateTrafficDriver(car,{signal:1,signalTime:.3},0,1);resetTrafficMotion(car);
+  assert.equal(r.headYaw,0);assert.equal(r.headPitch,0);assert.ok(r.head.quaternion.angleTo(r.headRest)<1e-7);
+ }
 });

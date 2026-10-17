@@ -47,6 +47,22 @@ for (const kind of kinds) {
     assert.ok(steering && !steering.isMesh && stalk && !stalk.isMesh,'Runtime needs real steering and signal control pivots');
     const wheelAxis=new THREE.Vector3(0,0,1).applyQuaternion(steering.getWorldQuaternion(new THREE.Quaternion()));
     assert.ok(wheelAxis.z>.8 && wheelAxis.y>.1,'Steering local XY is its wheel plane; +Z must point toward the driver');
+    const head=scene.getObjectByName('driver_head');
+    assert.ok(head && !head.isMesh && head.parent===steering.parent,'Head glance pivot must remain a separate sprung-body root');
+    assert.ok(head.scale.distanceTo(new THREE.Vector3(1,1,1))<.00001 && head.quaternion.angleTo(new THREE.Quaternion())<.00001,'Head starts upright with unit scale and local +Y yaw');
+    assert.equal(head.children.length,1,'All sculpted head parts must be one vertex-colored draw group');
+    const headMesh=head.children[0];
+    assert.ok(headMesh.isMesh && headMesh.material===cabin.material && headMesh.geometry.attributes.color,'Head reuses the cabin material without textures');
+    const headOrigin=head.getWorldPosition(new THREE.Vector3());
+    const faceRay=new THREE.Raycaster(headOrigin.clone().add(new THREE.Vector3(0,.105,-1)),new THREE.Vector3(0,0,1));
+    const faceHit=faceRay.intersectObject(headMesh)[0];
+    assert.ok(faceHit && faceHit.point.z<headOrigin.z-.115 && faceHit.face.normal.z<-.5,'Sculpted nose must face outward instead of disappearing into the cheek mesh');
+    for(const yaw of [-.35,0,.35]){
+      head.rotation.y=yaw;scene.updateMatrixWorld(true);
+      const headBounds=new THREE.Box3().setFromObject(head);
+      assert.ok(headBounds.max.y<spec.height-.04 && headBounds.min.x>-spec.width*.35,'Restrained mirror glance must keep the head inside the roof and side aperture');
+    }
+    head.rotation.y=0;scene.updateMatrixWorld(true);
     for(const side of ['l','r']){
       const shoulder=scene.getObjectByName('driver_shoulder_'+side),elbow=scene.getObjectByName('driver_elbow_'+side),hand=scene.getObjectByName('driver_hand_'+side),grip=scene.getObjectByName('grip_'+side);
       assert.ok(shoulder && elbow?.parent===shoulder && hand?.parent===elbow && grip?.parent===steering,'Two-bone driver hierarchy must survive GLB export');
@@ -54,6 +70,15 @@ for (const kind of kinds) {
       assert.ok(Math.abs(elbow.position.x)+Math.abs(elbow.position.z)<.00001 && elbow.position.y>.2,'Upper arm local +Y ends at its elbow');
       assert.ok(Math.abs(hand.position.x)+Math.abs(hand.position.z)<.00001 && hand.position.y>.2,'Forearm local +Y ends at its palm pivot');
       assert.ok(hand.getWorldPosition(new THREE.Vector3()).distanceTo(grip.getWorldPosition(new THREE.Vector3()))<.00001,'Palm and grip markers must coincide at rest');
+      assert.equal(hand.children.length,1,'Palm, thumb and four fingers must batch into one moving group');
+      const handMesh=hand.children[0],handPosition=handMesh.geometry.attributes.position;
+      assert.ok((handMesh.geometry.index?.count??handPosition.count)/3>550,'Hand must retain its shaped palm and distinct curled fingers');
+      for(let i=0;i<handPosition.count;i++){
+        const point=new THREE.Vector3().fromBufferAttribute(handPosition,i).applyMatrix4(handMesh.matrixWorld);
+        steering.worldToLocal(point);
+        const rimDistance=Math.hypot(Math.hypot(point.x,point.y)-.145,point.z);
+        assert.ok(rimDistance>.019,'Finger/palm surfaces must wrap outside the steering rim, not intersect it');
+      }
       for(const angle of [-1.2,-.6,0,.6,1.2]){
         const target=grip.position.clone().applyAxisAngle(new THREE.Vector3(0,0,1),angle).applyMatrix4(steering.matrixWorld);
         assert.ok(shoulder.getWorldPosition(new THREE.Vector3()).distanceTo(target)<elbow.position.y+hand.position.y-.004,'Driver arms must retain grip across the full visual steering range');
@@ -136,7 +161,7 @@ for (const kind of kinds) {
         assert.ok(attribute.array.every(Number.isFinite), `${kind} has non-finite vertex data`);
       }
     });
-    assert.equal(draws, 30, `${kind} adds only six articulated arm parts and one steering wheel group`);
-    assert.ok(triangles >= 21000 && triangles <= 27000, `${kind}: unexpected ${triangles} triangles`);
+    assert.equal(draws, 31, `${kind} adds only one independently rotating head to the accepted driver rig`);
+    assert.ok(triangles >= 26000 && triangles <= 30000, `${kind}: unexpected ${triangles} triangles`);
   });
 }

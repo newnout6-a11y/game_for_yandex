@@ -251,7 +251,7 @@ def refine_in_blender(kind, spec, root, palette):
     if kind=='semi':
         trailer=next(ob for ob in root.children if ob.name=='trailer')
         cargo_parent=next(ob for ob in trailer.children if ob.name.startswith('trailer_body'))
-        cargo_front=cab_rear+.34
+        cargo_front=spec.get('trailerFrontZ',cab_rear+1.33)
         # Mesh coordinates here match the existing trailer static batch. Its
         # local +Z compensation cancels the parent hitch translation exactly.
         for side in [-1,1]:
@@ -459,22 +459,85 @@ def author_driver_and_steering(kind,spec,root,parent,material,front,colorize,ibo
         ob.scale=(radii[0],radii[1],(b-a).length/2+radii[1]);ob.rotation_euler=v((b-a).normalized()).to_track_quat('Z','Y').to_euler();return ob
     def local_box(name,center,dims,color,owner,bevel=.008):return colorize(box(name,center,dims,material,owner,bevel),color)
     def local_beam(name,start,end,r,color,owner):return colorize(beam(name,start,end,r,material,owner),color)
-    # Broad shoulders, shaped torso, neck and original low-poly facial features
-    # make an adult silhouette; there is no downloaded human or branded uniform.
+    def loft(name,profiles,color,owner=parent,segments=20,offset=(0,0,0)):
+        points=[];faces=[];ox,oy,oz=offset
+        for y,rx,rz,cz in profiles:
+            for i in range(segments):
+                angle=i*math.tau/segments;depth=math.sin(angle)
+                if name=='Sculpted adult jaw cheek and skull' and depth<0:depth=-math.sqrt(-depth)
+                points.append((ox+rx*math.cos(angle),oy+y,oz+cz+rz*depth))
+        for row in range(len(profiles)-1):
+            for i in range(segments):faces.append((row*segments+i,row*segments+(i+1)%segments,(row+1)*segments+(i+1)%segments,(row+1)*segments+i))
+        faces.extend([tuple(reversed(range(segments))),tuple(range((len(profiles)-1)*segments,len(profiles)*segments))])
+        ob=mesh_part(name,points,faces,material,owner)
+        bm=bmesh.new();bm.from_mesh(ob.data);bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces));bm.to_mesh(ob.data);bm.free()
+        for poly in ob.data.polygons:poly.use_smooth=True
+        colorize(ob,color);return ob
+    def tube(name,centers,radii,color,owner=parent,segments=8):
+        points=[];faces=[];centers=[Vector(p) for p in centers]
+        for j,center in enumerate(centers):
+            tangent=(centers[min(j+1,len(centers)-1)]-centers[max(0,j-1)]).normalized()
+            across=tangent.cross(Vector((1,0,0)))
+            if across.length<.1:across=tangent.cross(Vector((0,1,0)))
+            across.normalize();up=tangent.cross(across).normalized()
+            for i in range(segments):points.append(center+radii[j]*(across*math.cos(i*math.tau/segments)+up*math.sin(i*math.tau/segments)))
+        for j in range(len(centers)-1):
+            for i in range(segments):faces.append((j*segments+i,j*segments+(i+1)%segments,(j+1)*segments+(i+1)%segments,(j+1)*segments+i))
+        faces.extend([tuple(reversed(range(segments))),tuple(range((len(centers)-1)*segments,len(centers)*segments))])
+        ob=mesh_part(name,points,faces,material,owner)
+        bm=bmesh.new();bm.from_mesh(ob.data);bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces));bm.to_mesh(ob.data);bm.free()
+        for poly in ob.data.polygons:poly.use_smooth=True
+        return colorize(ob,color)
     ellipsoid('Adult driver pelvis',(-.50,1.65,front+1.28),(.19,.145,.16),pants)
-    ellipsoid('Adult driver jacket torso',(-.50,1.91,front+1.31),(.235,.30,.155),jacket)
-    ibox('Driver jacket zipper',(-.50,1.93,front+1.151),(.012,.37,.012),(.18,.22,.24,1),.003)
-    ibox('Driver jacket chest pocket',(-.385,2.02,front+1.16),(.10,.08,.018),jacket_light,.008)
-    capsule('Driver neck',(-.50,2.16,front+1.30),(-.50,2.24,front+1.30),(.061,.05),skin)
-    ellipsoid('Adult driver head',(-.50,2.365,front+1.30),(.112,.148,.110),skin_light,segments=16,rings=10)
-    ellipsoid('Driver short original hair',(-.50,2.466,front+1.314),(.113,.062,.105),hair)
-    ellipsoid('Driver ear left',(-.614,2.37,front+1.30),(.024,.039,.022),skin)
-    ellipsoid('Driver ear right',(-.386,2.37,front+1.30),(.024,.039,.022),skin)
-    ellipsoid('Driver nose',(-.50,2.363,front+1.185),(.023,.036,.027),skin_light)
-    for x in [-.540,-.460]:
-        ellipsoid('Driver eye',(x,2.399,front+1.200),(.012,.009,.006),dark,segments=8,rings=6)
-        ibox('Driver eyebrow',(x,2.421,front+1.203),(.031,.008,.008),hair,.002)
-    ibox('Driver neutral mouth',(-.50,2.319,front+1.196),(.038,.006,.005),(.19,.085,.055,1),.002)
+    loft('Tailored driver jacket torso',[(1.60,.16,.12,0),(1.69,.184,.142,0),(1.87,.218,.148,0),(2.04,.235,.132,0),(2.13,.183,.096,0),(2.18,.074,.056,0)],jacket,offset=(-.50,0,front+1.31))
+    ibox('Driver jacket zipper',(-.50,1.85,front+1.158),(.009,.36,.009),(.18,.22,.24,1),.002)
+    ibox('Driver zipper pull',(-.50,2.019,front+1.150),(.018,.027,.012),(.28,.31,.31,1),.004)
+    ibox('Driver jacket chest pocket',(-.385,1.98,front+1.167),(.10,.08,.013),jacket_light,.008)
+    for side in [-1,1]:
+        points=[(-.50+side*.06,2.18,front+1.247),(-.50+side*.15,2.09,front+1.201),(-.50+side*.077,2.04,front+1.166),(-.50+side*.035,2.135,front+1.206)]
+        collar=mesh_part('Folded jacket collar',points,[(0,1,2,3),(3,2,1,0)],material,parent);colorize(collar,jacket_light)
+        tube('Jacket stitched side seam',[(-.50+side*.179,1.70,front+1.26),(-.50+side*.210,1.87,front+1.25),(-.50+side*.215,2.03,front+1.24)],[.003,.003,.003],jacket_light)
+    capsule('Driver neck',(-.50,2.16,front+1.30),(-.50,2.24,front+1.30),(.055,.045),skin)
+    # All face/hair/ear parts share one independently yawable head batch. Its
+    # unscaled neck anchor keeps local +Y up and -Z forward after glTF export.
+    head=empty('driver_head',(-.50,2.20,front+1.30),root);head['rig_role']='contextual_head';head['forward_axis']='local -Z';head['driver_detail_revision']=2
+    loft('Sculpted adult jaw cheek and skull',[(.018,.050,.047,-.006),(.045,.064,.059,-.020),(.073,.087,.075,-.018),(.115,.102,.087,-.009),(.16,.113,.094,0),(.205,.110,.095,.008),(.25,.102,.090,.016),(.29,.075,.072,.019),(.31,.024,.027,.019)],skin_light,head,24)
+    # Sculpted bridge, alar wings and tip replace the earlier spherical nose.
+    nose=[(-.010,.223,-.083),(.010,.223,-.083),(-.014,.158,-.111),(.014,.158,-.111),(-.008,.149,-.127),(.008,.149,-.127),(-.019,.140,-.107),(.019,.140,-.107),(0,.137,-.112)]
+    ob=mesh_part('Sculpted nose bridge and tip',nose,[(0,2,4,5,3,1),(2,6,8,4),(3,5,8,7),(4,8,5),(0,1,3,7,8,6,2)],material,head,.003);colorize(ob,skin_light)
+    for side in [-1,1]:
+        ellipsoid('Subtle nostril',(side*.012,.145,-.114),(.006,.0035,.004),(.15,.063,.034,1),head,8,6)
+        x=side*.043
+        ellipsoid('Sculpted eye socket',(x,.201,-.080),(.026,.015,.006),skin,head,12,6)
+        ellipsoid('Driver eye white',(x,.202,-.087),(.018,.008,.005),(.63,.64,.58,1),head,12,6)
+        ellipsoid('Driver iris',(x,.202,-.093),(.0065,.0065,.0024),(.075,.105,.095,1),head,10,6)
+        ellipsoid('Driver pupil',(x,.202,-.095),(.003,.004,.0015),dark,head,8,6)
+        tube('Upper eyelid',[(x-.019,.202,-.086),(x-.010,.209,-.091),(x+.006,.211,-.091),(x+.019,.204,-.085)],[.0025,.003,.003,.0025],skin,head,6)
+        tube('Natural shaped eyebrow',[(x-.026,.225,-.084),(x-.011,.231,-.088),(x+.012,.230,-.087),(x+.027,.223,-.081)],[.003,.005,.004,.002],hair,head,6)
+        ellipsoid('Anatomical outer ear',(side*.115,.167,.010),(.020,.036,.025),skin_light,head,12,8)
+        ellipsoid('Inset ear concha',(side*.129,.167,.004),(.004,.022,.014),skin,head,10,6)
+        tube('Ear helix fold',[(side*.128,.143,.018),(side*.135,.162,.027),(side*.133,.190,.021),(side*.128,.194,-.002)],[.004,.004,.004,.003],skin_light,head,6)
+    tube('Shaped upper lip',[(-.027,.108,-.092),(-.011,.112,-.099),(0,.109,-.101),(.011,.112,-.099),(.027,.108,-.092)],[.003,.004,.003,.004,.003],(.32,.145,.095,1),head,6)
+    tube('Lower lip',[(-.023,.103,-.094),(0,.098,-.101),(.023,.103,-.094)],[.0025,.004,.0025],(.40,.21,.14,1),head,6)
+    # Hairline follows forehead/temples; crown is no longer a separate ball.
+    hair_points=[];hair_faces=[];segments=24
+    for row in range(4):
+        for i in range(segments):
+            angle=i*math.tau/segments;frontness=max(0,-math.sin(angle))
+            y=[.183+.060*frontness,.267,.304,.318][row]
+            rx=[.113,.103,.069,.015][row];rz=[.099,.092,.063,.018][row]
+            depth=math.sin(angle);depth=-math.sqrt(-depth) if depth<0 else depth
+            hair_points.append((rx*math.cos(angle),y,.017+rz*depth))
+    for row in range(3):
+        for i in range(segments):hair_faces.append((row*segments+i,row*segments+(i+1)%segments,(row+1)*segments+(i+1)%segments,(row+1)*segments+i))
+    hair_faces.append(tuple(range(72,96)))
+    ob=mesh_part('Original shaped short hair and hairline',hair_points,hair_faces,material,head)
+    bm=bmesh.new();bm.from_mesh(ob.data);bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces));bm.to_mesh(ob.data);bm.free();colorize(ob,hair)
+    for poly in ob.data.polygons:poly.use_smooth=True
+    for i in range(7):
+        x=-.075+i*.024
+        f0=math.sqrt(1-(x/.113)**2);x1=x*.90;f1=math.sqrt(1-(x1/.103)**2);x2=x*.60;f2=math.sqrt(1-(x2/.069)**2)
+        tube('Swept scalp-fitted short hair lock',[(x,.183+.060*f0+.001,.017-.099*math.sqrt(f0)-.001),(x1,.268,.017-.092*math.sqrt(f1)-.001),(x2,.305,.017-.063*math.sqrt(f2)-.001)],[.0015,.002,.0012],(.055,.036,.025,1),head,6)
     # Physical seated legs terminate above the lined floor, clear of the dash.
     for side in [-1,1]:
         x=-.50+side*.105
@@ -514,17 +577,19 @@ def author_driver_and_steering(kind,spec,root,parent,material,front,colorize,ibo
         shoulder_ob['upperLength']=upper_length;shoulder_ob['forearmLength']=forearm_length;shoulder_ob['rig_role']='two_bone_arm';shoulder_ob['driver_side']=label
         elbow_ob=empty('driver_elbow_'+label,(0,upper_length,0),shoulder_ob,upper_rotation.inverted()@forearm_world)
         hand_ob=empty('driver_hand_'+label,(0,forearm_length,0),elbow_ob,forearm_world.inverted()@rotation)
-        capsule('Driver upper jacket sleeve',(0,.045,0),(0,upper_length-.035,0),(.074,.068),jacket,shoulder_ob)
-        capsule('Driver forearm jacket sleeve',(0,.025,0),(0,forearm_length-.085,0),(.057,.053),jacket_light,elbow_ob)
-        capsule('Driver exposed wrist',(0,forearm_length-.085,0),(0,forearm_length-.015,0),(.039,.036),skin,elbow_ob)
+        loft('Tapered upper jacket sleeve',[(0,.064,.064,0),(.045,.075,.070,0),(.16,.064,.060,0),(.27,.051,.050,0),(.30,.047,.047,0)],jacket,shoulder_ob,12)
+        loft('Tapered forearm jacket sleeve',[(0,.050,.049,0),(.055,.057,.053,0),(.16,.047,.045,0),(.213,.041,.041,0)],jacket_light,elbow_ob,12)
+        loft('Ribbed driver cuff',[(.195,.043,.043,0),(.211,.044,.043,0),(.225,.037,.038,0)],jacket,elbow_ob,12)
+        capsule('Driver exposed wrist',(0,.221,0),(0,forearm_length-.015,0),(.035,.031),skin,elbow_ob)
         # Compact palm plus four curled fingers straddle the wheel rim. The hand
         # origin is the actual hold, not a wrist offset that would spoil IK.
         ellipsoid('Driver gripping palm',(0,0,0),(.045,.052,.025),skin_light,hand_ob)
         for i in range(4):
-            xx=-.025+i*.017
-            capsule('Driver curled grip finger',(xx,.016,-.033),(xx,-.022,-.035),(.008,.010),skin,hand_ob)
-        capsule('Driver wrapped thumb',(-side*.025,-.025,.004),(-side*.039,.006,-.013),(.013,.013),skin_light,hand_ob)
-    root['driver_rig_revision']=1;root['interior_liner_revision']=2
+            xx=-.027+i*.018;shorten=.005 if i in [0,3] else 0
+            tube('Curved finger with three phalanges',[(xx,.037-shorten,.010),(xx,.026-shorten,-.013),(xx,.007,-.033),(xx,-.014,-.033),(xx,-.027+shorten,-.018)],[.009,.010,.0095,.0085,.007],skin_light,hand_ob,8)
+            ellipsoid('Short natural fingernail',(xx,-.016,-.039),(.005,.007,.0018),(.54,.36,.26,1),hand_ob,8,6)
+        tube('Curved opposing thumb',[(-side*.027,-.023,.013),(-side*.045,-.004,.014),(-side*.041,.020,-.005),(-side*.019,.023,-.018)],[.014,.013,.011,.009],skin_light,hand_ob,8)
+    root['driver_rig_revision']=2;root['interior_liner_revision']=2
     root['driver_description']='Original seated adult driver, two-bone arms, wheel grip targets; no external assets'
 
 def split_directional_indicators(spec, root, palette):
@@ -596,7 +661,9 @@ def batch_for_export(root):
     for ob in descendants(root):ob.select_set(True)
 
 source=get_blockouts();report=[]
-for kind in ['boxtruck','semi']:
+selected_models=os.environ.get('TRAFFIC_HEAVY_MODELS','boxtruck,semi').split(',')
+assert selected_models and all(kind in ['boxtruck','semi'] for kind in selected_models)
+for kind in selected_models:
     bpy.ops.object.select_all(action='SELECT');bpy.ops.object.delete(use_global=False)
     for material in list(bpy.data.materials):bpy.data.materials.remove(material)
     materials={m['id']:make_material(m) for m in source['materials']}
@@ -605,7 +672,14 @@ for kind in ['boxtruck','semi']:
     smooth_manufactured_shell(root);refine_in_blender(kind,spec,root,palette);refine_freight_wheels(root,spec,palette['wheel_vertex_finish']);refine_visible_cabin(kind,spec,root,palette);split_directional_indicators(spec,root,palette);add_studio(kind,spec)
     bpy.ops.object.select_all(action='DESELECT');root.select_set(True);bpy.context.view_layer.objects.active=root
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT,kind+'.blend'))
-    bpy.ops.render.render(write_still=True)
+    if os.environ.get('TRAFFIC_HEAVY_RENDER','1')!='0':bpy.ops.render.render(write_still=True)
+    if kind=='semi' and os.environ.get('TRAFFIC_HEAVY_SWEEP_PREVIEW')=='1':
+        trailer=next(ob for ob in root.children if ob.name=='trailer')
+        camera=bpy.context.scene.camera;target=v((0,1.9,-3.7));camera.location=target+Vector((9,7,8));camera.rotation_euler=(target-camera.location).to_track_quat('-Z','Y').to_euler();camera.data.lens=47
+        for degrees in [-75,75]:
+            trailer.rotation_euler.z=math.radians(degrees);bpy.context.view_layer.update()
+            bpy.context.scene.render.filepath=os.path.join(PREVIEW,'semi-clearance-'+str(degrees)+'.png');bpy.ops.render.render(write_still=True)
+        trailer.rotation_euler.z=0;bpy.context.view_layer.update()
     if os.environ.get('TRAFFIC_HEAVY_DETAIL_PREVIEW')=='1':
         target_pivot=next(ob for ob in root.children_recursive if ob.name==('wheel_fr' if kind=='boxtruck' else 'wheel_tractor2_r'))
         target=target_pivot.matrix_world.translation.copy(); camera=bpy.context.scene.camera

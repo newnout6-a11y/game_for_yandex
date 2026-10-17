@@ -341,8 +341,8 @@ def authored_driver(kind,root,collection,floor,mat):
     trousers=(.025,.035,.045); dark=(.012,.016,.021); strip=(.45,.43,.25)
     def box(name,center,size,color,parent=root,bevel=.025):
         return cabin_tint(beveled_box(name,center,size,mat.name,collection,parent,bevel),color)
-    def oval(name,center,size,color,parent=root):
-        bpy.ops.mesh.primitive_uv_sphere_add(segments=12,ring_count=8,location=cv(center))
+    def oval(name,center,size,color,parent=root,segments=10,rings=6):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=segments,ring_count=rings,location=cv(center))
         obj=bpy.context.object; obj.name=name
         for c in list(obj.users_collection): c.objects.unlink(obj)
         collection.objects.link(obj); obj.parent=parent; obj.scale=(size[0]/2,size[2]/2,size[1]/2)
@@ -352,24 +352,98 @@ def authored_driver(kind,root,collection,floor,mat):
         return cabin_tint(obj,color)
     def beam(name,a,b,width,depth,color,parent=root):
         return cabin_tint(beveled_beam(name,a,b,width,depth,mat.name,collection,parent),color)
-    # Adult proportions, work clothes, modest facial detail, no branding.
-    hip=(x,seat_y+.13,seat_z+.005); chest=(x,shoulder_y-.20,shoulder_z+.035)
-    beam('Driver jacket torso',hip,(x,shoulder_y-.065,shoulder_z),.36,.235,shirt)
-    box('Driver jacket hem',(x,seat_y+.17,seat_z-.015),(.37,.075,.25),shirt)
+    C=Matrix(((1,0,0),(0,0,-1),(0,1,0)))
+    def orient(obj,q):
+        obj.rotation_mode='QUATERNION'; obj.rotation_quaternion=(C@q.to_matrix()@C.inverted()).to_quaternion()
+    def mesh(name,vertices,faces,color,parent=root):
+        obj=wheel_mesh(name,vertices,faces,mat,parent,collection)
+        return cabin_tint(obj,color)
+    def loft(name,sections,color,parent=root,segments=12):
+        # Sections: local +Y station, half-width X, front/back radius Z.
+        vertices=[(rx*math.sin(i*2*math.pi/segments),y,-rz*math.cos(i*2*math.pi/segments)) for y,rx,rz in sections for i in range(segments)]
+        faces=[]
+        for j in range(len(sections)-1):
+            for i in range(segments):
+                b=(i+1)%segments; faces.append((j*segments+i,(j+1)*segments+i,(j+1)*segments+b,j*segments+b))
+        faces.append(tuple(range(segments))); faces.append(tuple(reversed(range((len(sections)-1)*segments,len(sections)*segments))))
+        return mesh(name,vertices,faces,color,parent)
+    def tapered(name,a,b,profile,color,parent=root,segments=12):
+        A,B=Vector(a),Vector(b); length=(B-A).length
+        obj=loft(name,[(t*length,rx,rz) for t,rx,rz in profile],color,parent,segments)
+        obj.location=cv(A); orient(obj,Vector((0,1,0)).rotation_difference((B-A).normalized())); return obj
+    # Tailored curved clothing, rather than a cube torso and straight block legs.
+    hip=(x,seat_y+.13,seat_z+.005)
+    tapered('Tapered work jacket',hip,(x,shoulder_y-.055,shoulder_z),[(0,.165,.095),(.16,.176,.118),(.55,.188,.123),(.86,.202,.108),(1,.185,.082)],shirt)
+    box('Jacket lower binding',(x,seat_y+.17,seat_z-.015),(.35,.045,.245),shirt,bevel=.018)
+    beam('Jacket zipper',(x,seat_y+.23,seat_z-.132),(x,shoulder_y-.10,shoulder_z-.112),.010,.012,(.18,.19,.17))
     for sx in [-1,1]:
-        beam('Jacket reflective strip',(x+sx*.12,seat_y+.24,seat_z-.14),(x+sx*.12,shoulder_y-.075,shoulder_z-.12),.026,.012,strip)
+        beam('Jacket reflective piping',(x+sx*.13,seat_y+.24,seat_z-.134),(x+sx*.13,shoulder_y-.10,shoulder_z-.105),.018,.012,strip)
+        collar=box('Folded jacket collar',(x+sx*.06,shoulder_y-.045,shoulder_z-.080),(.09,.075,.026),(.075,.095,.10) if fire else (.17,.15,.10),bevel=.012)
+        collar.rotation_euler.y=sx*.28
         leg_x=x+sx*.095
-        beam('Seated driver thigh',(leg_x,seat_y+.09,seat_z-.035),(leg_x,seat_y+.01,seat_z-.36),.145,.14,trousers)
-        beam('Driver lower leg',(leg_x,seat_y+.01,seat_z-.36),(leg_x,floor+.15,seat_z-.54),.115,.105,trousers)
+        knee=(leg_x,seat_y+.01,seat_z-.36)
+        tapered('Curved trouser thigh',(leg_x,seat_y+.09,seat_z-.035),knee,[(0,.081,.077),(.25,.080,.078),(.70,.071,.069),(1,.064,.066)],trousers)
+        tapered('Tapered trouser calf',knee,(leg_x,floor+.15,seat_z-.54),[(0,.065,.066),(.25,.066,.066),(.72,.054,.056),(1,.050,.05)],trousers)
+        oval('Trouser knee fold',knee,(.127,.12,.13),trousers)
         box('Driver work shoe',(leg_x,floor+.10,seat_z-.61),(.135,.095,.25),dark,bevel=.025)
-    oval('Driver neck',(x,shoulder_y+.015,shoulder_z),(.105,.14,.105),skin)
-    head=(x,shoulder_y+.17,shoulder_z-.015)
-    oval('Original adult head',head,(.178,.245,.195),skin)
-    oval('Short hair',(x,head[1]+.077,head[2]+.012),(.185,.115,.194),(.025,.018,.015))
-    oval('Driver nose',(x,head[1]-.006,head[2]-.105),(.038,.045,.04),skin)
+        box('Work shoe sole',(leg_x,floor+.057,seat_z-.61),(.141,.018,.255),(.008,.01,.013),bevel=.009)
+        for zi in [-.035,.01]: box('Boot instep seam',(leg_x,floor+.146,seat_z-.58+zi),(.086,.006,.008),(.065,.07,.073),bevel=.002)
+    box('Work jacket chest pocket',(x+.085,shoulder_y-.205,shoulder_z-.126),(.115,.09,.012),shirt,bevel=.008)
+    box('Pocket folded flap',(x+.085,shoulder_y-.168,shoulder_z-.136),(.12,.023,.012),(.055,.085,.10) if fire else (.20,.16,.08),bevel=.006)
+    oval('Driver neck',(x,shoulder_y+.02,shoulder_z),(.090,.125,.095),skin)
+    # One additional rigid pivot/draw for restrained mirror glances.
+    head_pivot=empty('driver_head',(x,shoulder_y+.015,shoulder_z),root,collection)
+    head_pivot['forwardAxis']='local -Z'; head_pivot['yawAxis']='local Y'; head_pivot['suggestedYawLimit']=.22
+    # An original adult jaw, cheeks, temples and cranium, all in pivot-local space.
+    center=(0,.177,-.010)
+    profile=[(-.120,.035,.045,.049),(-.100,.060,.063,.064),(-.055,.079,.080,.078),
+             (0,.084,.086,.086),(.050,.080,.080,.083),(.095,.061,.061,.064),(.112,.041,.041,.044),(.122,.023,.024,.027),(.127,.006,.008,.010)]
+    count=16; vertices=[]
+    for y,rx,front,back in profile:
+        for i in range(count):
+            a=i*math.pi*2/count; c=math.cos(a)
+            vertices.append((center[0]+rx*math.sin(a),center[1]+y,center[2]-(front if c>=0 else back)*c))
+    faces=[]
+    for j in range(len(profile)-1):
+        for i in range(count):
+            k=(i+1)%count; faces.append((j*count+i,(j+1)*count+i,(j+1)*count+k,j*count+k))
+    faces += [tuple(range(count)),tuple(reversed(range((len(profile)-1)*count,len(profile)*count)))]
+    mesh('Sculpted adult head',vertices,faces,skin,head_pivot)
+    def skull(y):
+        for j in range(len(profile)-1):
+            if profile[j][0]<=y<=profile[j+1][0]:
+                t=(y-profile[j][0])/(profile[j+1][0]-profile[j][0]);return tuple(profile[j][k]+t*(profile[j+1][k]-profile[j][k]) for k in [1,2,3])
+        return profile[-1][1:]
+    # Follow the cranial silhouette with a non-flat, receding short hairline.
+    hair_vertices=[]
+    for j in range(6):
+        for i in range(count):
+            a=i*math.pi*2/count; c=math.cos(a); base=.025+.052*c+.006*math.sin(a*2)
+            y=base+(.127-base)*j/5; rx,front,back=skull(y)
+            hair_vertices.append((rx*math.sin(a)*1.035,center[1]+y+.003,center[2]-(front if c>=0 else back)*c*1.035))
+    hair_faces=[]
+    for j in range(5):
+        for i in range(count):
+            k=(i+1)%count;hair_faces.append((j*count+i,(j+1)*count+i,(j+1)*count+k,j*count+k))
+    hair_faces.append(tuple(reversed(range(5*count,6*count))))
+    mesh('Contoured short hair',hair_vertices,hair_faces,(.028,.021,.017),head_pivot)
     for sx in [-1,1]:
-        oval('Driver ear',(x+sx*.086,head[1]-.01,head[2]),(.025,.065,.035),skin)
-        oval('Driver eye',(x+sx*.037,head[1]+.015,head[2]-.092),(.014,.009,.009),dark)
+        oval('Ear helix',(sx*.083,center[1]-.012,center[2]+.004),(.030,.060,.036),skin,head_pivot,8,6)
+        oval('Ear concha',(sx*.097,center[1]-.012,center[2]-.001),(.008,.034,.022),(.24,.14,.10),head_pivot,8,6)
+        # Fine lids and brow planes surround the small eye, not a round button eye.
+        eye_x=sx*.035; eye_y=center[1]+.016; eye_z=center[2]-.078
+        oval('Eye socket',(eye_x,eye_y,eye_z),(.034,.020,.014),(.28,.175,.125),head_pivot,8,6)
+        oval('Eye white',(eye_x,eye_y,eye_z-.007),(.024,.009,.007),(.62,.60,.53),head_pivot,8,6)
+        oval('Dark iris',(eye_x,eye_y,eye_z-.011),(.009,.009,.004),(.025,.027,.024),head_pivot,8,6)
+        beam('Upper eyelid',(eye_x-.012,eye_y+.004,eye_z-.010),(eye_x+.012,eye_y+.004,eye_z-.010),.004,.004,(.25,.15,.11),head_pivot)
+        beam('Eyebrow',(eye_x-.014,eye_y+.020,eye_z+.001),(eye_x+.014,eye_y+.018,eye_z+.001),.006,.009,(.045,.030,.020),head_pivot)
+    beam('Defined nose bridge',(0,center[1]+.027,center[2]-.083),(0,center[1]-.010,center[2]-.111),.022,.022,skin,head_pivot)
+    oval('Nose tip',(0,center[1]-.014,center[2]-.112),(.027,.021,.027),skin,head_pivot,8,6)
+    for sx in [-1,1]:
+        oval('Nose wing',(sx*.014,center[1]-.024,center[2]-.102),(.017,.012,.019),skin,head_pivot,8,6)
+        oval('Nostril recess',(sx*.012,center[1]-.029,center[2]-.108),(.007,.004,.005),(.12,.065,.045),head_pivot,6,4)
+    beam('Upper lip',(-.023,center[1]-.055,center[2]-.082),(.023,center[1]-.055,center[2]-.082),.006,.009,(.27,.145,.115),head_pivot)
+    beam('Lower lip',(-.020,center[1]-.063,center[2]-.079),(.020,center[1]-.063,center[2]-.079),.008,.010,(.34,.21,.17),head_pivot)
     # Steering pivot's game-local XY is the wheel plane; +Z points at the driver.
     steering=(x,1.92 if fire else 1.70,-3.39 if fire else -1.68)
     wheel=empty('steering_wheel',steering,root,collection); wheel.rotation_euler.x=-.30
@@ -391,10 +465,6 @@ def authored_driver(kind,root,collection,floor,mat):
         grips[side]=grip
     stalk=empty('indicator_stalk',(x-.30,steering[1]-.035,steering[2]-.025),root,collection)
     beam('Indicator lever',(x-.045,steering[1]-.04,steering[2]-.07),(x-.30,steering[1]-.035,steering[2]-.025),.022,.024,dark)
-    # C maps game coordinates to Blender; convert each rigid-joint rotation too.
-    C=Matrix(((1,0,0),(0,0,-1),(0,1,0)))
-    def orient(obj,q):
-        obj.rotation_mode='QUATERNION'; obj.rotation_quaternion=(C@q.to_matrix()@C.inverted()).to_quaternion()
     bpy.context.view_layer.update()
     upper=.30; lower=.28
     reach={}
@@ -411,12 +481,19 @@ def authored_driver(kind,root,collection,floor,mat):
         elbow=empty('driver_elbow_'+side,(0,upper,0),shoulder,collection)
         q_lower=Vector((0,1,0)).rotation_difference((G-E).normalized()); orient(elbow,q_upper.inverted()@q_lower)
         hand=empty('driver_hand_'+side,(0,lower,0),elbow,collection)
-        oval('Driver upper sleeve',(0,upper*.49,0),(.12,upper+.035,.115),shirt,shoulder)
-        oval('Driver forearm',(0,lower*.47,0),(.095,lower+.02,.09),skin,elbow)
-        oval('Driver sleeve cuff',(0,.038,0),(.106,.10,.10),shirt,elbow)
-        oval('Driver palm',(0,.005,0),(.08,.10,.047),skin,hand)
-        oval('Driver wrapped fingers',(0,.035,-.012),(.077,.05,.046),skin,hand)
-        oval('Driver thumb',(sign*.04,.006,-.016),(.028,.055,.031),skin,hand)
+        tapered('Tailored upper sleeve',(0,-.012,0),(0,upper+.012,0),[(0,.052,.051),(.23,.064,.058),(.65,.057,.052),(1,.045,.044)],shirt,shoulder)
+        tapered('Anatomical forearm',(0,-.008,0),(0,lower+.008,0),[(0,.044,.043),(.22,.050,.047),(.65,.037,.035),(1,.031,.030)],skin,elbow)
+        tapered('Sleeve cuff',(0,0,0),(0,.065,0),[(0,.048,.047),(.70,.049,.047),(1,.048,.047)],shirt,elbow)
+        box('Cuff edge',(0,.064,0),(.099,.012,.096),(.07,.095,.11) if fire else (.18,.15,.09),elbow,.005)
+        box('Palm metacarpals',(0,0,0),(.071,.073,.036),skin,hand,.014)
+        for finger,offset in enumerate([-.026,-.009,.009,.026]):
+            length=[.034,.043,.040,.031][finger]
+            A=(offset,.028,-.004); B=(offset,.028+length,-.012); D=(offset,.025+length,-.038)
+            tapered('Finger proximal phalanx',A,B,[(0,.0085,.008),(.55,.009,.0085),(1,.008,.008)],skin,hand,8)
+            tapered('Curled fingertip',B,D,[(0,.008,.008),(.65,.0075,.008),(1,.0055,.006)],skin,hand,8)
+        thumb=-sign
+        tapered('Thumb base',(thumb*.027,-.015,0),(thumb*.046,.012,-.016),[(0,.012,.011),(.55,.012,.011),(1,.010,.009)],skin,hand,8)
+        tapered('Opposed thumb',(thumb*.046,.012,-.016),(thumb*.027,.025,-.035),[(0,.010,.009),(.65,.010,.009),(1,.007,.007)],skin,hand,8)
         reach[side]=round(distance,4)
     root['driverRig']='Two-bone rigid arms; local +Y bones, local Z steering wheel'
     root['driverGripReach']=json.dumps(reach); root['driverAdult']=True

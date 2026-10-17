@@ -26,8 +26,8 @@ for (const kind of ['boxtruck', 'semi']) {
       }
     });
     assert.equal(wheels.length, spec.axles * 2);
-    assert.equal(meshes, kind === 'boxtruck' ? 24 : 36);
-    assert(triangles < (kind === 'boxtruck' ? 29000 : 46000));
+    assert.equal(meshes, kind === 'boxtruck' ? 25 : 37);
+    assert(triangles < (kind === 'boxtruck' ? 32000 : 49000));
     assert(bounds.min.y >= 0 && bounds.min.y < .013);
     assert(bounds.min.x >= -spec.width / 2 && bounds.max.x <= spec.width / 2);
     assert(bounds.min.z >= -spec.length / 2 && bounds.max.z <= spec.length / 2);
@@ -119,6 +119,14 @@ for (const kind of ['boxtruck', 'semi']) {
     const root = await loadHeavy(kind), spec = TRAFFIC_CATALOG[kind];
     const wheel = root.getObjectByName('steering_wheel'), stalk = root.getObjectByName('indicator_stalk');
     assert(wheel && !wheel.isMesh && stalk && !stalk.isMesh);
+    const head=root.getObjectByName('driver_head');
+    assert(head && !head.isMesh && head.scale.distanceTo(new T.Vector3(1,1,1))<1e-6);
+    assert.equal(head.children.filter(n=>n.isMesh).length,1);
+    assert.equal(head.children[0].material.name,'cabin_interior');
+    assert(head.children[0].geometry.attributes.color);
+    assert(new T.Vector3(0,0,-1).applyQuaternion(head.quaternion).distanceTo(new T.Vector3(0,0,-1))<1e-6);
+    assert(new T.Vector3(0,1,0).applyQuaternion(head.quaternion).distanceTo(new T.Vector3(0,1,0))<1e-6);
+
     assert.equal(wheel.children.filter(n => n.isMesh).length, 1);
     const facing = new T.Vector3(0,0,1).applyQuaternion(wheel.getWorldQuaternion(new T.Quaternion()));
     assert(facing.y > .4 && facing.z > .8, 'Steering wheel local +Z must face back toward driver');

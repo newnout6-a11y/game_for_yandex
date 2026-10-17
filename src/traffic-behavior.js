@@ -22,12 +22,32 @@ export function occupiedTrafficLanes(car) {
     if (validLane(car.laneChange.from)) lanes.add(car.laneChange.from);
     if (validLane(car.laneChange.to)) lanes.add(car.laneChange.to);
   }
-  // Account for an already displaced/rotated body, including a long trailer.
-  const spec = trafficDefinition(car.kind), yaw = finite(car.heading);
-  const halfWidth = (spec.width * Math.abs(Math.cos(yaw)) + spec.length * Math.abs(Math.sin(yaw))) / (2 * LANE_WIDTH);
-  const x = trafficLateral(car);
+  // The lane coordinate is the rear-axle datum, not the model origin. Keep the
+  // yawed tractor AND independently lagging trailer reserved after the tractor
+  // reaches its target lane; clearing laneChange alone does not clear its tail.
+  // Work in local road coordinates to avoid a physics/behaviour import cycle.
+  const spec = trafficDefinition(car.kind), yaw = -finite(car.heading);
+  const anchor = trafficLateral(car) * LANE_WIDTH;
+  const root = anchor - Math.sin(yaw) * finite(spec.rearAxleZ);
+  let left = Infinity, right = -Infinity;
+  const include = (center, half) => { left = Math.min(left, center - half); right = Math.max(right, center + half); };
+  if (spec.articulated) {
+    const tractorLength = 6.2, tractorCenter = -spec.length / 2 + tractorLength / 2;
+    include(root + Math.sin(yaw) * tractorCenter,
+      (spec.width * Math.abs(Math.cos(yaw)) + tractorLength * Math.abs(Math.sin(yaw))) / 2);
+    const trailerAngle = yaw + finite(car.trailerAngle), hitch = root + Math.sin(yaw) * spec.hitchZ;
+    const halfWidth = spec.width * Math.abs(Math.cos(trailerAngle)) / 2;
+    include(hitch + Math.sin(trailerAngle) * (spec.trailerFrontZ - spec.hitchZ), halfWidth);
+    include(hitch + Math.sin(trailerAngle) * (spec.trailerRearZ - spec.hitchZ), halfWidth);
+    // Conservative road-bend/chord and horizontal-lane projection allowance at
+    // the game's maximum visible road slope. Does not reserve adjacent lanes
+    // for an ordinary straight semi, but retains a tail that has not cleared.
+    left -= .35; right += .35;
+  } else {
+    include(root, (spec.width * Math.abs(Math.cos(yaw)) + spec.length * Math.abs(Math.sin(yaw))) / 2);
+  }
   for (let lane = 0; lane < 3; lane++) {
-    if (x + halfWidth > lane - .5 && x - halfWidth < lane + .5) lanes.add(lane);
+    if (right > (lane - .5) * LANE_WIDTH && left < (lane + .5) * LANE_WIDTH) lanes.add(lane);
   }
   return [...lanes].sort((a, b) => a - b);
 }

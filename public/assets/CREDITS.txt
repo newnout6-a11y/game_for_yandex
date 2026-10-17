@@ -86,3 +86,6 @@ articulated shoulder/elbow/hand groups. Created for this project in the editable
 art/traffic/*.blend sources by scripts/create_traffic_{passenger,heavy,special}.py.
 No third-party human mesh, character texture, manufacturer CAD or motion capture
 was used. Lightweight stylized characters, not photoreal human representations.
+
+Character and coupling refinement (2026-10-17)
+Original Blender-authored facial features, hair, clothing seams/cuffs and curled fingers for all eight adult traffic drivers; separate lightweight neck/head pivot. Semi nose clearance rebuilt in the editable original Blender source. No external character asset, scan, animation library or manufacturer CAD used.

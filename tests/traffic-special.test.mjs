@@ -74,7 +74,7 @@ for (const kind of ['towtruck', 'firetruck']) {
     assert.equal(equipment.length, 3);
     assert.ok(materials.has('lights_red'));
     assert.ok(materials.has(kind === 'towtruck' ? 'body' : 'fixed_rescue_red'));
-    assert.ok(draws <= 35); assert.ok(triangles <= 33000);
+    assert.ok(draws <= 36); assert.ok(triangles <= 34000);
     const bounds = new T.Box3().setFromObject(model), size = bounds.getSize(new T.Vector3());
     assert.ok(size.x <= spec.width + .01 && Math.abs(size.z - spec.length) < .015);
     assert.ok(Math.abs(bounds.min.y - .004) < .0001, 'native Blender tires sit 4 mm above the road');
@@ -141,6 +141,21 @@ for (const kind of ['towtruck', 'firetruck']) {
     scene.updateMatrixWorld(true);
     const wheel = scene.getObjectByName('steering_wheel'), stalk = scene.getObjectByName('indicator_stalk');
     assert.ok(wheel && !wheel.isMesh && stalk && !stalk.isMesh);
+    const head = scene.getObjectByName('driver_head');
+    assert.ok(head && !head.isMesh, 'independent neck pivot for restrained mirror glances');
+    assert.deepEqual(head.scale.toArray(), [1, 1, 1]);
+    assert.deepEqual(head.quaternion.toArray(), [0, 0, 0, 1]);
+    assert.equal(head.children.filter(n => n.isMesh).length, 1, 'one vertex-colored head/face/hair draw');
+    const headMesh = head.children.find(n => n.isMesh);
+    assert.equal(headMesh.material.name, 'special_cabin_finish');
+    assert.ok(headMesh.geometry.attributes.color);
+    const shoulder = scene.getObjectByName('driver_shoulder_l'), restShoulder = shoulder.getWorldPosition(new T.Vector3());
+    for (const yaw of [-.22, .22]) {
+      head.rotation.y = yaw; scene.updateMatrixWorld(true);
+      assert.ok(shoulder.getWorldPosition(new T.Vector3()).distanceTo(restShoulder) < 1e-8, 'head glances never move the arm rig');
+      assert.ok(new T.Vector3(0, 0, -1).applyQuaternion(head.getWorldQuaternion(new T.Quaternion())).z < -.97);
+    }
+    head.rotation.y = 0; scene.updateMatrixWorld(true);
     const neutral = wheel.quaternion.clone();
     assert.equal(wheel.children.filter(n => n.isMesh).length, 1, 'one merged rotating steering draw');
     assert.ok(new T.Vector3(0, 0, 1).applyQuaternion(wheel.getWorldQuaternion(new T.Quaternion())).z > .9, '+Z points back toward driver');

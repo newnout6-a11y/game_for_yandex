@@ -1,5 +1,6 @@
 import * as T from '../public/vendor/three.js';
-import { createTrafficMotion, updateTrafficMotion, curvatureAt, steeringForWheel } from './traffic-motion.js';
+import { createTrafficMotion, updateTrafficMotion, steeringForWheel } from './traffic-motion.js';
+import { trafficPathCurvature } from './traffic-physics.js';
 import { prepareDriverRig, animateTrafficDriver, INDICATOR_TOUCH_TIME } from './traffic-driver.js';
 import { TRAFFIC_KINDS, normalizeTrafficKind, trafficDefinition } from './traffic-catalog.js';
 export { TRAFFIC_KINDS, normalizeTrafficKind } from './traffic-catalog.js';
@@ -50,7 +51,7 @@ export function createTrafficCar(kind='sedan',color=null) {
 // Runtime-only transform groups keep the authored GLB geometry and draw count.
 function prepareTrafficRig(car){
   const data=car.userData,wheels=data.wheels,point=new T.Vector3(),matrix=new T.Matrix4();
-  const driverRoots=['steering_wheel','driver_shoulder_l','driver_shoulder_r','indicator_stalk'].map(name=>car.getObjectByName(name)).filter(Boolean);
+  const driverRoots=['steering_wheel','driver_shoulder_l','driver_shoulder_r','indicator_stalk','driver_head'].map(name=>car.getObjectByName(name)).filter(Boolean);
   car.updateMatrixWorld(true);
   const rest=wheels.map(wheel=>{
     const inverse=wheel.matrixWorld.clone().invert();let radius=0;
@@ -78,21 +79,27 @@ function prepareTrafficRig(car){
 function isWithin(node,parent){for(let p=node;p;p=p.parent)if(p===parent)return true;return false;}
 export function resetTrafficMotion(car){
   car.userData.motion=createTrafficMotion();
+  const driver=car.userData.driver;if(driver?.head){driver.headYaw=0;driver.headPitch=0;driver.head.quaternion.copy(driver.headRest);}
+  for(const rest of car.userData.wheelRest){rest.previousDistance=NaN;rest.spinDistance=0;}
   car.userData.bodyRig.rotation.set(0,0,0);
   if(car.userData.trailerRig)car.userData.trailerRig.rotation.set(0,0,0);
 }
 export function animateTrafficCar(car,item,distance,dt){
-  const data=car.userData,m=updateTrafficMotion(data.motion,item,distance,data.wheelbase,dt),k=curvatureAt(-item.z,distance)+(item.laneCurvature||0);
+  const data=car.userData,m=updateTrafficMotion(data.motion,item,distance,data.wheelbase,dt),k=trafficPathCurvature(item,distance);
   data.bodyRig.rotation.set(m.pitch,0,m.roll);
   if(data.trailerRig)data.trailerRig.rotation.set(m.pitch*.3,0,m.roll*.65);
   for(const [name,material] of Object.entries(data.indicators)){
     const side=name==='indicator_left'?-1:1,on=item.signal===side&&(item.signalTime||0)>=INDICATOR_TOUCH_TIME&&Math.floor(((item.signalTime||0)-INDICATOR_TOUCH_TIME)*2.8)%2===0;
     material.emissive.set('#ff870a');material.emissiveIntensity=on?3.2:.02;
   }
-  for(const {wheel,radius,center,front} of data.wheelRest){
+  for(const rest of data.wheelRest){
+    const {wheel,radius,center,front}=rest;
     const wheelDistance=data.trailer&&isWithin(wheel,data.trailer)&&Number.isFinite(item.trailerTravelDistance)?item.trailerTravelDistance:m.distance;
-    wheel.rotation.x=(wheelDistance/radius)%(Math.PI*2);
+    const trailerWheel=data.trailer&&isWithin(wheel,data.trailer),wheelK=trailerWheel?(item.trailerCurvature||0):k;
+    if(!Number.isFinite(rest.previousDistance)){rest.spinDistance=wheelDistance;}
+    else {const step=Math.max(0,wheelDistance-rest.previousDistance);rest.spinDistance+=step*Math.hypot(1-center.x*wheelK,front?data.wheelbase*wheelK:0);}
+    rest.previousDistance=wheelDistance;wheel.rotation.x=(rest.spinDistance/radius)%(Math.PI*2);
     wheel.rotation.y=front?steeringForWheel(k,data.wheelbase,center.x):0;
   }
-  animateTrafficDriver(car,item,steeringForWheel(k,data.wheelbase,0));
+  animateTrafficDriver(car,item,steeringForWheel(k,data.wheelbase,0),dt);
 }

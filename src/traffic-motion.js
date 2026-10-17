@@ -1,3 +1,4 @@
+import { trafficPathCurvature } from './traffic-physics.js';
 import { trafficDefinition } from './traffic-catalog.js';
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 // Response to actual acceleration/curvature, never a time-driven idle wobble.
@@ -9,7 +10,7 @@ export const TRAFFIC_DYNAMICS=Object.freeze({
 });
 export const trafficDynamics=kind=>TRAFFIC_DYNAMICS[trafficDefinition(kind).category];
 export function curvatureAt(z,distance){const a=Math.sin(distance/1100+.35)*.00055;return 2*a/(1+(2*a*Math.min(0,z))**2)**1.5;}
-export function steeringForWheel(curvature,wheelbase,lateral){return clamp(-Math.atan(wheelbase*curvature/(1-lateral*curvature)),-.4,.4);}
+export function steeringForWheel(curvature,wheelbase,lateral){return clamp(-Math.atan(wheelbase*curvature/(1-lateral*curvature)),-.6,.6);}
 export function dampedSpring(value,velocity,target,frequency,dt){
  if(!(dt>0))return[value,velocity];
  const y=value-target,c=velocity+frequency*y,e=Math.exp(-frequency*dt);
@@ -26,7 +27,8 @@ export function updateTrafficMotion(motion,item,distance,wheelbase,dt){
  const profile=trafficDynamics(item.kind),k=curvatureAt(-item.z,distance),speed=Math.max(0,item.speed||0);
  // Bound suspension travel rather than allowing long trucks to pitch through asphalt.
  const targetPitch=clamp((item.acceleration||0)*profile.pitch,-.13/wheelbase,.13/wheelbase);
- const targetRoll=clamp((speed*speed*k+(item.lateralAcceleration||0))*profile.roll,-.052,.052);
+ const lateral=Number.isFinite(item.laneCurvature)?speed*speed*trafficPathCurvature(item,distance):speed*speed*k+(item.lateralAcceleration||0);
+ const targetRoll=clamp(lateral*profile.roll,-.052,.052);
  [motion.pitch,motion.pitchVelocity]=suspensionSpring(motion.pitch,motion.pitchVelocity,targetPitch,profile.frequency,profile.damping,dt);
  [motion.roll,motion.rollVelocity]=suspensionSpring(motion.roll,motion.rollVelocity,targetRoll,profile.frequency,profile.damping,dt);
  if(Number.isFinite(item.travelDistance))motion.distance=item.travelDistance;

@@ -6,6 +6,11 @@ export function stalkGesture(signal,time){
  if(!signal||time<0||time>=.75)return 0;
  return time<.18?smooth(time/.18):time<.40?1:1-smooth((time-.40)/.35);
 }
+export function mirrorGlance(signal,time){
+ if(!signal||time<0||time>=.9)return 0;
+ const amount=time<.16?smooth(time/.16):time<.45?1:1-smooth((time-.45)/.45);
+ return -Math.sign(signal)*.32*amount;
+}
 export function prepareDriverRig(car){
  const wheel=car.getObjectByName('steering_wheel'),body=car.userData.bodyRig;
  if(!wheel)return null;
@@ -17,7 +22,8 @@ export function prepareDriverRig(car){
   const gripQ=grip.getWorldQuaternion(new T.Quaternion()),handQ=hand.getWorldQuaternion(new T.Quaternion());
   arms.push({side,shoulder,elbow,hand,grip,pole,upper:elbow.position.length(),lower:hand.position.length(),handOffset:gripQ.invert().multiply(handQ)});
  }
- const rig={wheel,body,arms,stalk:car.getObjectByName('indicator_stalk'),rest:wheel.quaternion.clone(),turn:new T.Quaternion(),axis:new T.Vector3(0,0,1),point:new T.Vector3(),shoulder:new T.Vector3(),elbow:new T.Vector3(),end:new T.Vector3(),pole:new T.Vector3(),direction:new T.Vector3(),bend:new T.Vector3(),local:new T.Vector3(),q:new T.Quaternion(),q2:new T.Quaternion(),maxGripError:0};
+ const head=car.getObjectByName('driver_head');
+ const rig={head,headRest:head?.quaternion.clone(),headYaw:0,headPitch:0,wheel,body,arms,stalk:car.getObjectByName('indicator_stalk'),rest:wheel.quaternion.clone(),turn:new T.Quaternion(),axis:new T.Vector3(0,0,1),point:new T.Vector3(),shoulder:new T.Vector3(),elbow:new T.Vector3(),end:new T.Vector3(),pole:new T.Vector3(),direction:new T.Vector3(),bend:new T.Vector3(),local:new T.Vector3(),q:new T.Quaternion(),q2:new T.Quaternion(),maxGripError:0};
  car.userData.driver=rig;return rig;
 }
 function aimJoint(joint,target,rig){
@@ -25,11 +31,19 @@ function aimJoint(joint,target,rig){
  joint.parent.getWorldQuaternion(rig.q).invert();rig.local.applyQuaternion(rig.q);
  joint.quaternion.setFromUnitVectors(UP,rig.local);joint.updateMatrixWorld(true);
 }
-export function animateTrafficDriver(car,item,roadWheelAngle){
+export function animateTrafficDriver(car,item,roadWheelAngle,dt=1/60){
  const r=car.userData.driver;if(!r)return;
  const ratio=car.userData.category==='passenger'?14:18;
  const angle=clamp(roadWheelAngle*ratio,-1.2,1.2);
  r.wheel.quaternion.copy(r.rest).multiply(r.turn.setFromAxisAngle(r.axis,angle));
+ if(r.head){
+  const blend=1-Math.exp(-12*Math.max(0,dt));
+  r.headYaw+=(mirrorGlance(item.signal,item.signalTime||0)-r.headYaw)*blend;
+  r.headPitch+=(clamp((item.acceleration||0)*.008,-.045,.025)-r.headPitch)*blend;
+  r.q.setFromAxisAngle(UP,r.headYaw);r.local.set(1,0,0);r.q2.setFromAxisAngle(r.local,r.headPitch);
+  r.head.quaternion.copy(r.headRest).multiply(r.q).multiply(r.q2);
+  r.head.userData.glance=r.headYaw;r.head.userData.nod=r.headPitch;
+ }
  car.updateMatrixWorld(true);r.maxGripError=0;
  for(const arm of r.arms){
   arm.shoulder.getWorldPosition(r.shoulder);arm.grip.getWorldPosition(r.end);
