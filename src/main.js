@@ -27,6 +27,7 @@ const settings={...storage.get(),...profileStore.get().settings};
 const sdk=createSdk(),audio=new GameAudio(settings.sound),input=new DrivingInput();
 let otherGames=[],inspection='overview',orientationBlocked=false,thumbDrive=null;
 let screen='loading',tab='fleet',busy=false,assetsReady=false,assetsFailed=false,garageScene=null,platform=null;
+let startingRun=false;
 let run=null,telemetry=null,runResult=null,runBest=0,continuedBest=0,savedDistance=0,runCounted=false,crashElapsed=0,helpFromGame=false;
 let appliedSettingsKey='',appliedSelectedId=profileStore.get().selectedVehicleId;
 let appliedProfileId=profileStore.get().profileId,observedNextSequence=profileStore.get().ledger.nextSequence;
@@ -142,19 +143,23 @@ async function transitionAd(action='continue'){
 }
 /** Begin an owned car with bounded research and a durable monotonic run identity; free stock mode ignores tuning. */
 async function startRun(){
-  if(orientationBlocked||busy||!assetsReady||assetsFailed)return;
-  await transitionAd();if(orientationBlocked)return;finalizeRun();
-  const profile=profileStore.get(),id=profile.selectedVehicleId;previewId=id;
-  const opened=profileStore.beginRun({vehicleId:id,mode:profile.mode,difficulty:settings.difficulty,route:settings.route});
-  if(!opened.ok){garageUI.notice('Не удалось открыть заезд. Проверь сохранение.');return;}
-  run=opened.run;telemetry=new RunTelemetry();runResult=null;
-  // The previous phase is closed before reconfiguration; no live car can change dimensions mid-run.
-  game.state.phase='ready';game.configureVehicle(id,getEngineeringModifiers(profile,id,profile.mode));game.reset(settings.difficulty);
-  renderer.selectOwnedVehicle(id,profile.loadouts[id]?.cosmetics);renderer.setRoute(settings.route);renderer.setCameraMode(settings.cameraMode);
-  game.start();runBest=profile.records[profile.mode]?.[`${id}:${settings.difficulty}`]?.score||0;continuedBest=profile.records.continued?.[`${id}:${settings.difficulty}`]?.score||0;savedDistance=0;runCounted=false;crashElapsed=0;
-  ui.close();clearInput();lifecycle.resume('user');screen='playing';applyScreen();ui.hud(game.state);void audio.unlock();
-  if(lifecycle.paused){screen='paused';applyScreen();lifecycle.pause('user');ui.pause();}
-  syncGameplay();renderer.resize();void platform.queueSave(profileStore.get());
+  if(orientationBlocked||busy||startingRun||!assetsReady||assetsFailed)return;
+  // Reserve before even a no-ad await; the ad's busy owner cannot release this operation.
+  startingRun=true;
+  try{
+    await transitionAd();if(orientationBlocked)return;finalizeRun();
+    const profile=profileStore.get(),id=profile.selectedVehicleId;previewId=id;
+    const opened=profileStore.beginRun({vehicleId:id,mode:profile.mode,difficulty:settings.difficulty,route:settings.route});
+    if(!opened.ok){garageUI.notice('Не удалось открыть заезд. Проверь сохранение.');return;}
+    run=opened.run;telemetry=new RunTelemetry();runResult=null;
+    // The previous phase is closed before reconfiguration; no live car can change dimensions mid-run.
+    game.state.phase='ready';game.configureVehicle(id,getEngineeringModifiers(profile,id,profile.mode));game.reset(settings.difficulty);
+    renderer.selectOwnedVehicle(id,profile.loadouts[id]?.cosmetics);renderer.setRoute(settings.route);renderer.setCameraMode(settings.cameraMode);
+    game.start();runBest=profile.records[profile.mode]?.[`${id}:${settings.difficulty}`]?.score||0;continuedBest=profile.records.continued?.[`${id}:${settings.difficulty}`]?.score||0;savedDistance=0;runCounted=false;crashElapsed=0;
+    ui.close();clearInput();lifecycle.resume('user');screen='playing';applyScreen();ui.hud(game.state);void audio.unlock();
+    if(lifecycle.paused){screen='paused';applyScreen();lifecycle.pause('user');ui.pause();}
+    syncGameplay();renderer.resize();void platform.queueSave(profileStore.get());
+  }finally{startingRun=false;}
 }
 /** Save only the production telemetry delta; revive reuses both its run ID and counters. */
 function saveRun(){

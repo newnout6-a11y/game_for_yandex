@@ -14,7 +14,7 @@ import { loadOwnGames, openOwnGame } from '../src/own-games.js';
 import { createAds } from '../src/ads.js';
 
 /** Run the actual browser controller against deterministic UI/GPU/platform boundaries. */
-async function controller({ cloudProfile = null, initialProfile = null, failUpgrade = false, portrait=false } = {}) {
+async function controller({ cloudProfile = null, initialProfile = null, failUpgrade = false, portrait=false, sdkApi=null } = {}) {
   let orientationHandler=()=>{},readyCalls=0;
   const saved = new Map(), listeners = new Map(), nodes = new Map(), requests = [];
   const localStorage = { getItem:key=>saved.get(key)||null, setItem:(key,value)=>saved.set(key,value) };
@@ -62,7 +62,7 @@ async function controller({ cloudProfile = null, initialProfile = null, failUpgr
   class DrivingInput { clear() {} key() {} read() { return {}; } active() {return false;} set() {} release() {} }
   class CockpitGlanceControls { constructor(){this.direction=0;} clear() {} setEnabled(value) {this.enabled=value;} release() {} }
   class GameAudio { constructor(enabled){this.enabled=enabled;} update() {} tone() {} async unlock() {} }
-  const sdk={get:()=>null,on(){},ready(){readyCalls++;},gameplay(){}};
+  const sdk={get:()=>sdkApi,on(){},ready(){readyCalls++;},gameplay(){}};
   const context=vm.createContext({console,structuredClone,TextEncoder,Promise,Map,Set,Math,Number,Object,JSON,
     document:{getElementById:node,querySelector:node,querySelectorAll:()=>[],addEventListener(name,callback){listeners.set(`document:${name}`,callback);},hidden:false,documentElement:{}},
     window:{addEventListener(name,callback){listeners.set(`window:${name}`,callback);}},
@@ -76,7 +76,7 @@ async function controller({ cloudProfile = null, initialProfile = null, failUpgr
     cameraShortcutAllowed:()=>false,glanceShortcutAllowed:()=>false,normalizeRenderQuality:value=>value,observeRenderPixelRatio() {},
   });
   const source=(await readFile(new URL('../src/main.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
-  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,get state(){return {adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,lifecycle,garageDirty}}};',context,{filename:'src/main.js'});
+  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,lifecycle,garageDirty}}};',context,{filename:'src/main.js'});
   for(let i=0;i<5;i++)await Promise.resolve();
   return {api:context.controller,profileStore,requests,listeners,nodes,setOrientation:value=>orientationHandler(value),get readyCalls(){return readyCalls;}};
 }
@@ -93,6 +93,63 @@ test('controller initializes an immediately playable local starter with one work
   const h=await controller();assert.equal(h.api.state.screen,'hub');assert.deepEqual(h.requests,[1]);
   await h.api.startRun();assert.equal(h.api.state.screen,'playing');assert.equal(h.api.state.game.state.vehicleId,'rocket');
   assert.equal(h.api.state.run.sequence,1);
+});
+
+test('same-turn no-ad start intents create one identity without an empty finalized run',async()=>{
+  const h=await controller();
+  // Both intents arrive before the no-ad transition's promise continuation runs.
+  await Promise.all([h.api.handleGarageAction({type:'startDrive'}),h.api.handleGarageAction({type:'startDrive'})]);
+  const profile=h.profileStore.get();
+  assert.equal(h.api.state.screen,'playing');assert.equal(h.api.state.run.sequence,1);
+  assert.equal(profile.ledger.nextSequence,2);assert.equal(profile.ledger.finalizedThrough,0);
+  assert.equal(profile.ledger.recent.length,0);assert.equal(profile.stats.runs,0);
+});
+
+test('same-turn no-ad retries finalize only the previous run',async()=>{
+  const h=await controller();await h.api.startRun();h.api.state.game.crash();h.api.showResults();
+  await Promise.all([h.api.handleGarageAction({type:'startDrive'}),h.api.handleGarageAction({type:'startDrive'})]);
+  const profile=h.profileStore.get();
+  assert.equal(h.api.state.run.sequence,2);assert.equal(profile.ledger.nextSequence,3);
+  assert.equal(profile.ledger.finalizedThrough,1);assert.equal(profile.ledger.recent.length,1);
+  assert.equal(profile.ledger.recent[0].sequence,1);
+});
+
+test('an orientation abort releases the start-operation lock for the next attempt',async()=>{
+  const h=await controller();const start=h.api.startRun();h.setOrientation(true);await start;
+  assert.equal(h.api.state.run,null);h.setOrientation(false);await h.api.startRun();
+  assert.equal(h.api.state.run.sequence,1);assert.equal(h.api.state.screen,'playing');
+});
+
+test('a configuration exception releases the start-operation lock for the next attempt',async()=>{
+  const h=await controller();const select=h.api.state.renderer.selectOwnedVehicle;
+  h.api.state.renderer.selectOwnedVehicle=()=>{throw new Error('test-only renderer fault');};
+  await assert.rejects(h.api.startRun(),/test-only renderer fault/);
+  h.api.state.renderer.selectOwnedVehicle=select;await h.api.startRun();
+  assert.equal(h.api.state.screen,'playing');assert.equal(h.api.state.run.sequence,2);
+});
+
+test('an eligible ad keeps duplicate starts blocked through timeout-pending recovery',async t=>{
+  let callbacks,adRequests=0;
+  const h=await controller({sdkApi:{adv:{showFullscreenAdv(options){adRequests++;callbacks=options.callbacks;}}}});
+  for(let sequence=1;sequence<=3;sequence++){
+    await h.api.startRun();assert.equal(h.api.state.run.sequence,sequence);
+    // Seed qualified session receipts; the controller and SDK adapter remain real.
+    h.api.state.adCadence.completeRun(sequence,{activeSeconds:60,distanceM:600},{reason:'crash'});
+    h.api.state.game.crash();h.api.showResults();
+  }
+  t.mock.timers.enable({apis:['setTimeout']});t.after(()=>callbacks?.onError());
+  const start=h.api.startRun();assert.equal(adRequests,1);assert.equal(h.api.state.busy,true);
+  await h.api.startRun();assert.equal(h.api.state.run.sequence,3);
+  t.mock.timers.tick(90000);await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.api.state.loading.adPending,true);assert.equal(h.api.state.busy,true);
+  assert.equal(h.api.state.lifecycle.has('ad'),true);
+  await h.api.handleGarageAction({type:'startDrive'});
+  assert.equal(h.api.state.run.sequence,3);assert.equal(h.api.state.screen,'results');
+  callbacks.onClose(false);await start;
+  assert.equal(h.api.state.run.sequence,4);assert.equal(h.api.state.screen,'playing');
+  assert.equal(h.profileStore.get().ledger.finalizedThrough,3);assert.equal(adRequests,1);
+  assert.equal(h.api.state.busy,false);assert.equal(h.api.state.loading.adPending,false);
+  assert.equal(h.api.state.lifecycle.has('ad'),false);
 });
 
 test('startup cloud restore drives and previews the same selected vehicle and settings',async()=>{
