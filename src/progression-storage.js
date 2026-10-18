@@ -60,7 +60,7 @@ export function createProgressionStorage({provider=()=>globalThis.localStorage,n
     /** Allocate and persist a monotonic sequence before a simulation begins, finalizing any prior run. */
     beginRun(options={}){return dispatch({...options,type:'BEGIN_RUN',runId:newId()});},
     /** Commit only positive cumulative reward/stat differences for the currently active run receipt. */
-    settleRun(run,telemetry,{finalized=false}={}){return dispatch({type:'SETTLE_RUN',run,telemetry,finalized});},
+    settleRun(run,telemetry,{finalized=false,resultPending=false}={}){return dispatch({type:'SETTLE_RUN',run,telemetry,finalized,resultPending});},
     /** Finalize without awarding unobserved metrics; repeat settlement of this sequence is thereafter rejected. */
     finalizeRun(run){return dispatch({type:'FINALIZE_RUN',runId:run?.id,runSequence:run?.sequence});},
     /**

@@ -34,6 +34,45 @@ test('horn state is deterministic across update frame rates and freezes outside 
  assert.equal(updatePlayerHorn({phase:'ready'},true,1/60),false);
 });
 
+for(const [label,stepsBeforeCrash] of [['active horn',12],['cooldown tail',84]]){
+ test(`revive following ${label} resets cooldown without bypassing normal press and phase rules`,()=>{
+  const horns=[],game=new Game({onEvent:(event,serial)=>{if(event==='horn')horns.push(serial);}});
+  game.start();const s=game.state,dt=1/120;
+  s.traffic=[];s.nextSpawn=Infinity;s.nextEvent=Infinity;
+  for(let i=0;i<stepsBeforeCrash;i++)game.update(dt,{horn:true});
+  assert.deepEqual(horns,[1]);assert.ok(s.hornCooldown>0);
+  assert.equal(s.hornTime>0,label==='active horn');
+  const cooldown=s.hornCooldown;
+  assert.equal(game.revive(),false,'an ineligible revive must not clear cooldown');
+  assert.equal(s.hornCooldown,cooldown);
+
+  s.obstacles=[{kind:'barrier',x:s.x,z:0}];game.update(dt,{horn:true});
+  assert.equal(s.phase,'crashed');assert.equal(s.hornHeld,true);
+  const frozen={time:s.hornTime,cooldown:s.hornCooldown};
+  game.update(2,{horn:false});
+  assert.deepEqual({time:s.hornTime,cooldown:s.hornCooldown},frozen);
+  assert.equal(game.revive(),true);
+  assert.equal(s.hornTime,0);assert.equal(s.hornCooldown,0);assert.equal(s.hornHeld,false);
+  assert.equal(s.hornSerial,1,'revive preserves monotonically increasing request IDs');
+
+  s.phase='paused';game.update(2,{horn:true});
+  assert.equal(s.hornCooldown,0);assert.equal(s.hornHeld,false);assert.deepEqual(horns,[1]);
+  s.phase='playing';game.update(dt,{horn:true});
+  assert.deepEqual(horns,[1,2],'the first valid post-revive press emits exactly once');
+  assert.equal(s.hornTime,HORN.duration);assert.equal(s.hornCooldown,HORN.cooldown);
+  assert.equal(playerHighBeam(s),1);
+  s.phase='paused';game.update(2,{horn:false});
+  assert.equal(s.hornTime,HORN.duration);assert.equal(s.hornCooldown,HORN.cooldown);
+  s.phase='playing';game.update(dt,{horn:false});game.update(dt,{horn:true});
+  assert.deepEqual(horns,[1,2],'a second press during the new cooldown is rejected');
+  for(let i=0;i<240;i++)game.update(dt,{horn:true});
+  assert.equal(s.hornTime,0);assert.equal(s.hornCooldown,0);
+  assert.deepEqual(horns,[1,2],'a rejected held press is not queued after cooldown');
+  game.update(dt,{horn:false});game.update(dt,{horn:true});
+  assert.deepEqual(horns,[1,2,3],'a fresh press after cooldown still works');
+ });
+}
+
 test('horn input retains independent keyboard/touch ownership and clears at lifecycle boundaries',()=>{
  const input=new DrivingInput();assert.equal(input.key('KeyH',true),true);assert.equal(input.read().horn,true);
  input.set('horn','finger',true);input.key('KeyH',false);assert.equal(input.read().horn,true);

@@ -362,7 +362,7 @@ export class Game {
     const s=this.state;if(s.phase!=='crashed'||s.revives>=CONFIG.maxRevives)return false;
     s.revives++;s.traffic=s.traffic.filter(c=>c.z>80);s.pickups=s.pickups.filter(p=>p.z>20);s.obstacles=[];
     if(s.roadEvent)this.finishEvent(false);
-    s.safeCorridor=null;s.hornTime=0;s.hornHeld=false;s.speed=0;Object.assign(s,createFlightState(),{heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,acceleration:0,
+    s.safeCorridor=null;s.hornTime=0;s.hornCooldown=0;s.hornHeld=false;s.speed=0;Object.assign(s,createFlightState(),{heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,acceleration:0,
       bodyPitch:0,bodyPitchVelocity:0,bodyRoll:0,bodyRollVelocity:0,bodyHeave:0,bodyHeaveVelocity:0});s.throttle=0;s.braking=false;this.pulseTime=0;
     s.nitro=Math.max(40,s.nitro);s.invincible=2.5;s.combo=1;s.comboTime=0;s.phase='playing';return true;
   }

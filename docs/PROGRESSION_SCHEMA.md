@@ -18,7 +18,7 @@ const run = started.run;
 const telemetry = new RunTelemetry();
 // Observe after simulation updates; forward existing Game events too.
 telemetry.observe(game.state, dt);
-store.settleRun(run, telemetry.snapshot()); // result screen, still eligible for revive
+store.settleRun(run, telemetry.snapshot(), {resultPending:true}); // a known crash result, still eligible for live revive
 // Keep the same run and telemetry instance across a revive.
 store.settleRun(run, telemetry.snapshot(), {finalized:true}); // leaving results permanently
 // Or store.finalizeRun(run) when already settled.
@@ -41,7 +41,7 @@ The new primary key is `aerokrai.profile.v2`; the backup is `aerokrai.profile.v2
 - Season: `season.id`, `xp` capped at 9,000, `claims`, `badges`, `equippedBadge`. The 20 permanent levels each require 450 XP. Badges, banners and trophy have real catalog IDs, Russian names and display symbols. There is no expiry clock or artificial daily XP cap.
 - Telemetry totals: `stats` uses metres, seconds, m/s, counts and actual raw simulation score. `maxRunDistanceM`, `maxCleanGroundSegmentM`, `engineeringPurchases`, `runs` support contracts.
 - Records: `records.standard`, `records.tuned`, `records.continued`, each keyed by `vehicleId:difficulty`. Legacy records remain separately attributable at `legacy.best`; old non-specific records are not mislabeled as a new car class.
-- Settlement: `ledger.nextSequence`, `finalizedThrough`, `activeRun`, `recent` (last 24 finalized receipts).
+- Settlement: `ledger.nextSequence`, `finalizedThrough`, `activeRun`, `recent` (last 24 finalized receipts). The optional receipt boolean `resultPending` marks an actually displayed crash result. Ordinary autosaves and legacy receipts default to false. Continuing or finalizing clears it; marking a result persists even when no new metric or reward delta is due.
 - Settings: original route keys `ring/neon/dawn`, difficulty `flow/rush`, sound, render quality `auto/high/ultra`, and chase/cockpit camera mode.
 
 Caps, fixed catalog allowlists and bounded 24-run history keep the JSON payload comfortably below the 190,000-byte write ceiling, leaving margin under the platform's documented 200 KB cloud limit. Tests check actual UTF-8 bytes. Unknown maps, catalog IDs and prototype keys are not copied. Invalid/nonfinite wallet values do not become free currency.
@@ -112,3 +112,9 @@ node --test tests/progression*.test.mjs tests/run-telemetry.test.mjs
 ```
 
 Tests include prices/caps, atomic purchases, stage ownership, per-car selection, standard/tuned/continued records, authored locks, real season identifiers, duplicate claims, precision anti-farming, production Game flight, pauses/jitter/revive, NaN/prototype payloads, legacy/v1 migration, previous-valid backup recovery, unknown future versions, quota failure/retry, cumulative receipts after reopen, bounded history replay barriers, cloud replacement and the 200 KB margin.
+
+## Reloaded results
+
+`recoverPendingRunResult` projects the accepted profile receipt without settlement, new sequence, awards, records or ad calls. A known pending result restores its free finish and existing eligible ×2 quote. A legacy/interrupted driving receipt restores only already-earned totals and free finish, not a fabricated crash or bonus. Finished/doubled, invalid and empty receipts do not reopen. No physical vehicle/road state is persisted, so continuation is explicitly unavailable after reload. Accepted cloud replacement restores only that profile’s receipt; existing identity/generation guards reject late callbacks from the replaced result.
+
+Local write failures remain visible. A reload can restore only the last successful durable snapshot; it cannot promise recovery of an unpersisted session. Unconfirmed ads do not become grants after reload. This does not implement a server-authoritative ad-receipt ledger.

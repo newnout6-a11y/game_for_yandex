@@ -1108,7 +1108,7 @@
 .garage-shell .gs-result-intro .gs-result-retry { max-width: 300px; background: transparent; padding: 0; border: 0; }
 @media (max-height: 500px) and (min-width: 600px) {
   .garage-shell .gs-result-free-choice { padding: 8px 12px; }
-  .garage-shell .gs-result-free-choice > .gs-small-note { display: none; }
+  .garage-shell .gs-result-free-choice > .gs-small-note:not(.gs-recovery-note) { display: none; }
   .garage-shell .gs-result-optional { margin: 0; padding: 7px 12px; }
   .garage-shell .gs-result-optional > .gs-kicker { display: none; }
   .garage-shell .gs-result-optional .gs-button { min-height: 44px; margin: 0; padding: 8px 10px; font-size: 11px; }

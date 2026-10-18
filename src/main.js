@@ -1,3 +1,4 @@
+import { recoverPendingRunResult } from './pending-run-result.js';
 import { createThumbDrive } from './thumb-drive.js';
 import { createOrientationGate } from './orientation-gate.js';
 import { Game } from './game.js';
@@ -76,7 +77,15 @@ function reconcileProfileLineage(){
   appliedProfileId=profile.profileId;observedNextSequence=profile.ledger.nextSequence;appliedReplacementEpoch=profileStore.getReplacementEpoch();
   if(!replaced)return;
   adCadence=createAdCadence(ADS.interstitial);run=null;telemetry=null;runResult=null;clearInput();
-  if(assetsReady){ui.close();game.state.phase='ready';screen='hub';lifecycle.resume('user');applyScreen();syncGameplay();}
+  if(assetsReady){ui.close();game.state.phase='ready';screen='hub';lifecycle.resume('user');restorePendingResult();applyScreen();syncGameplay();}
+}
+/** Restore only persisted results from the accepted profile, never a fabricated road simulation or fresh award. */
+function restorePendingResult(){
+  if(!assetsReady||run||['playing','paused'].includes(screen))return false;
+  const recovered=recoverPendingRunResult(profileStore.get(),{localSaved:profileStore.status().localSaved});
+  if(!recovered)return false;
+  run=recovered.run;runResult=recovered.result;telemetry=null;previewId=run.vehicleId;
+  game.state.phase='ready';screen='results';clearInput();ui.close();return true;
 }
 /** Apply accepted local/cloud preferences once without overwriting an intentional unowned-car preview on ordinary save emissions. */
 function hydrateStoredSettings(){
@@ -105,12 +114,13 @@ function applyScreen(){
 /** Reflect authored capabilities, exact prices and honest platform persistence without computing awards in the UI. */
 function refreshGarage(){
   const profile=profileStore.get(),state=platform?.getState?.()||{};
-  const view=deriveGarageView(profile,{capabilities:profileStore.getCapabilities(),vehicleId:previewId});
-  garageUI.render({...view,catalog:CATALOG,screen,tab,inspection,cloud:state.cloud,selectedVehicle:previewId,settings:{...settings,runMode:profile.mode},loading,runResult,otherGames,
+  const displayVehicleId=screen==='results'?(runResult?.vehicleId||run?.vehicleId||previewId):previewId;
+  const view=deriveGarageView(profile,{capabilities:profileStore.getCapabilities(),vehicleId:displayVehicleId});
+  garageUI.render({...view,catalog:CATALOG,screen,tab,inspection,cloud:state.cloud,selectedVehicle:displayVehicleId,settings:{...settings,runMode:profile.mode},loading,runResult,otherGames,
     platform:{...state,sdk:!!sdk.get(),cloud:state.cloud?.available===true,cloudConnected:['durable','loaded'].includes(state.cloud?.status),cloudStatus:state.cloud?.status,local:profileStore.status(),rewarded:ads?.available===true,payments:false,authenticated:state.auth==='authorized'}});
   garageUI.setBusy(busy);garageDirty=true;
   if(garageScene&&assetsReady&&!['playing','paused'].includes(screen)){
-    const id=previewId||profile.selectedVehicleId,cosmetics=profile.loadouts[id]?.cosmetics||{};
+    const id=displayVehicleId||profile.selectedVehicleId,cosmetics=profile.loadouts[id]?.cosmetics||{};
     garageScene.setVehicle(id,cosmetics);garageScene.setParking?.(profile.ownedVehicles.filter(owned=>owned!==id).map(owned=>({id:owned,appearance:profile.loadouts[owned]?.cosmetics||{}})));
     if(garageScene.tier!==profile.garage.level&&garageScene.failedTier!==profile.garage.level&&garageScene.loadingTier!==profile.garage.level)void garageScene.setTier(profile.garage.level).then(()=>{garageDirty=true;});
   }
@@ -142,7 +152,13 @@ function captureResultContext(){
   const profile=profileStore.get(),state=platform.getState();
   const identity=run?{id:run.id,sequence:run.sequence}:runResult?.runIdentity;
   return {profileId:profile.profileId,replacementEpoch:profileStore.getReplacementEpoch(),generation:state.generation,accountId:state.identity?.id,
-    run,result:runResult,identity:identity?{...identity}:null,cadence:adCadence};
+    screen,run,result:runResult,identity:identity?{...identity}:null,cadence:adCadence};
+}
+/** A delayed navigation/start belongs to the exact screen and accepted profile that requested it. */
+function transitionContextCurrent(owner){
+  const profile=profileStore.get(),state=platform.getState();
+  return screen===owner.screen&&run===owner.run&&runResult===owner.result&&profile.profileId===owner.profileId&&
+    profileStore.getReplacementEpoch()===owner.replacementEpoch&&state.generation===owner.generation&&state.identity?.id===owner.accountId;
 }
 /** Reject stale callbacks before settlement; IDs alone cannot distinguish a same-profile cloud rollback or account transition. */
 function resultContextCurrent(owner){
@@ -173,19 +189,20 @@ async function requestAd(kind){
 async function transitionAd(action='continue'){
   if(orientationBlocked||screen!=='results'||platform.getState().commerce?.busy)return;
   const sequence=run?.sequence||runResult?.runIdentity?.sequence;
-  const decision=adCadence.beginTransition({sequence,screen,action,sdkAvailable:ads.interstitialAvailable===true});
+  const cadence=adCadence;
+  const decision=cadence.beginTransition({sequence,screen,action,sdkAvailable:ads.interstitialAvailable===true});
   if(!decision.eligible)return;
   busy=true;garageUI.setBusy(true,'Реклама платформы…');
-  try{const result=await requestAd('interstitial');adCadence.settleInterstitial(result,sequence);}
+  try{const result=await requestAd('interstitial');cadence.settleInterstitial(result,sequence);}
   finally{busy=false;garageUI.setBusy(false);}
 }
 /** Begin an owned car with bounded research and a durable monotonic run identity; free stock mode ignores tuning. */
 async function startRun(){
   if(orientationBlocked||busy||startingRun||!assetsReady||assetsFailed)return;
   // Reserve before even a no-ad await; the ad's busy owner cannot release this operation.
-  startingRun=true;
+  startingRun=true;const owner=captureResultContext();
   try{
-    await transitionAd();if(orientationBlocked)return;finalizeRun();
+    await transitionAd();if(orientationBlocked||!transitionContextCurrent(owner))return;finalizeRun();
     const profile=profileStore.get(),id=profile.selectedVehicleId;previewId=id;
     const opened=profileStore.beginRun({vehicleId:id,mode:profile.mode,difficulty:settings.difficulty,route:settings.route});
     if(!opened.ok){garageUI.notice('Не удалось открыть заезд. Проверь сохранение.');return;}
@@ -200,18 +217,18 @@ async function startRun(){
   }finally{startingRun=false;}
 }
 /** Save only the production telemetry delta; revive reuses both its run ID and counters. */
-function saveRun(){
+function saveRun({resultPending=false}={}){
   if(!run||!telemetry)return null;
-  telemetry.observe(game.state,0);adCadence.observeRun(run.sequence,telemetry.snapshot());const result=profileStore.settleRun(run,telemetry.snapshot());
+  telemetry.observe(game.state,0);adCadence.observeRun(run.sequence,telemetry.snapshot());const result=profileStore.settleRun(run,telemetry.snapshot(),{resultPending});
   if(game.state.elapsed>0){storage.finish(game.state.score,game.state.distance-savedDistance,game.difficulty,!runCounted);savedDistance=game.state.distance;runCounted=true;}
   void platform.queueSave(profileStore.get());return result;
 }
 /** Show earned cumulative credits/XP and optional, separately idempotent ad actions after crash. */
 function showResults(){
-  const result=saveRun(),metrics=telemetry?.snapshot()||{},receipt=result?.receipt||{};
+  const result=saveRun({resultPending:true}),metrics=telemetry?.snapshot()||{},receipt=result?.receipt||{};
   const offer=getRunDoubleOffer(profileStore.get(),receipt);
   if(run)adCadence.completeRun(run.sequence,metrics,{reason:'crash'});
-  runResult={runIdentity:run?{id:run.id,sequence:run.sequence}:null,score:game.state.score,distance:metrics.distanceM,flightTime:metrics.airSeconds,metrics:{...metrics},newRecord:game.state.score>(game.state.revives>0?continuedBest:runBest),modified:run?.mode==='tuned',continued:game.state.revives>0,
+  runResult={vehicleId:run?.vehicleId,runIdentity:run?{id:run.id,sequence:run.sequence}:null,score:game.state.score,distance:metrics.distanceM,flightTime:metrics.airSeconds,metrics:{...metrics},newRecord:game.state.score>(game.state.revives>0?continuedBest:runBest),modified:run?.mode==='tuned',continued:game.state.revives>0,
     settled:result?.ok===true,receipt:{credits:(receipt.creditsGranted||0)+(receipt.onboardingGranted||0),baseCredits:receipt.creditsGranted||0,xp:receipt.xpGranted||0},onboarding:receipt.onboardingGranted||0,
     canRevive:result?.ok===true&&game.state.revives<1&&!receipt.finishChoice,reviveLabel:ads.available?'Видео → продолжить заезд':'Тренировочное продолжение',trainingContinue:!ads.available,
     bonusEligible:result?.ok===true&&offer.eligible,bonusCredits:offer.credits,bonusReason:offer.reason,bonusClaimed:false,finalized:false,
@@ -269,8 +286,8 @@ async function handleGarageAction(action){
     refreshGarage();return;
   }
   if(action.type==='navigate'){
-    const keepPreview=screen==='garage'&&action.screen==='garage';startingRun=true;
-    try{await transitionAd('menu');finalizeRun();screen=action.screen==='garage'?'garage':'hub';tab=action.tab||tab;if(screen==='hub'||tab!=='style'){inspection='overview';garageScene?.setInspection?.('overview');}if(!keepPreview)previewId=profileStore.get().selectedVehicleId;applyScreen();refreshGarage();}
+    const keepPreview=screen==='garage'&&action.screen==='garage',owner=captureResultContext();startingRun=true;
+    try{await transitionAd('menu');if(!transitionContextCurrent(owner))return;finalizeRun();screen=action.screen==='garage'?'garage':'hub';tab=action.tab||tab;if(screen==='hub'||tab!=='style'){inspection='overview';garageScene?.setInspection?.('overview');}if(!keepPreview)previewId=profileStore.get().selectedVehicleId;applyScreen();refreshGarage();}
     finally{startingRun=false;}return;
   }
   if(action.type==='inspectVehicle'){inspection=garageScene?.setInspection?.(action.view)||'overview';refreshGarage();return;}
@@ -464,7 +481,7 @@ async function initialize(){
     loading={progress:90,message:'Открываем бокс…'};refreshGarage();
     garageScene.setVehicle(previewId,profileStore.get().loadouts[previewId]?.cosmetics||{});
     if(!await garageScene.setTier(profileStore.get().garage.level))throw new Error('Garage asset unavailable');
-    assetsReady=true;void loadOwnGames(sdk).then(games=>{otherGames=games;if(!['playing','paused'].includes(screen))refreshGarage();});playButton.disabled=false;loading={progress:100,message:'Готово'};screen='hub';applyScreen();refreshGarage();signalReady();syncGameplay();
+    assetsReady=true;void loadOwnGames(sdk).then(games=>{otherGames=games;if(!['playing','paused'].includes(screen))refreshGarage();});playButton.disabled=false;loading={progress:100,message:'Готово'};screen='hub';restorePendingResult();applyScreen();refreshGarage();signalReady();syncGameplay();
   }catch(error){console.error('Interactive startup failed:',error);assetsFailed=true;loading={...loading,error:'Не удалось загрузить игру. Проверь соединение и повтори.'};refreshGarage();}
 }
 void initialize();

@@ -41,3 +41,11 @@ The existing 500 m minimum stays. Zero actual base earnings never produce an ad 
 - `tests/garage-integration.test.mjs`: production controller + game/storage/ad adapter; account generation/replacement races, async duplicate clicks, no-fill/error/offline paths, training fallback, continued run identity, free finish, interstitial cadence, fresh-run transition, local-save failure.
 - `tests/garage-ui.test.mjs`: free-action hierarchy and separate scroll region, actual ×2 copy, exclusions, no-SDK/no-reward states, finalized state, disabled controls while pending.
 - `scripts/result-choices-qa.mjs`: real Chromium layout/click verification at 1440×900, 844×390 and 667×375; screenshots and JSON report under `output/result-choices-qa/`. Uses an isolated local profile and explicit mock SDK transport, not live ads, purchases or account state.
+
+## Reload and account changes
+
+A crash result now persists `resultPending` with its existing cumulative receipt, even if the latest observation has no additional metric delta. On reload, the accepted profile's receipt is projected back into results without settling it again, increasing run counters, allocating a sequence or requesting an ad. Existing earned credits and XP remain accounted exactly once. Eligible known crash results retain their optional exact-base ×2; interrupted/legacy driving saves expose only already-earned totals and free finish.
+
+Physical road/vehicle state is not persisted. The interface therefore explicitly explains that continuation is unavailable after reload rather than inventing a safe road state. A chosen continuation clears the marker, and its receipt cannot later gain ×2. Finished and doubled receipts stay closed. An unconfirmed ad callback is not a saved grant; reloading never pretends that a video succeeded. Local write failure can recover only the last successfully written snapshot, with honest session-only status for unpersisted state.
+
+Profile/account replacement invalidates both rewarded and interstitial transition ownership, including a no-ad promise yield. An old navigation/start cannot consume the new profile's restored receipt; only a new explicit choice can do so. Callback cadence belongs to the original profile instance. The displayed vehicle comes from the result receipt, even if the accepted profile currently selects another car.

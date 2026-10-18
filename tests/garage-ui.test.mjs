@@ -885,3 +885,16 @@ test('compact result hierarchy keeps both optional choices before expandable rew
   assert.ok(details.contains(h.root.querySelector('.gs-settlement-rewards')));assert.equal(details.contains(h.button('revive')),false);assert.equal(details.contains(h.button('rewardedBonus')),false);
   assert.match(choices.textContent,/279 → 558 ₵ за вождение/);assert.match(choices.textContent,/Без XP/);
 });
+
+for(const recoveryKind of ['result','interrupted'])test(`recovered ${recoveryKind} explains unavailable continuation without claiming a failed save is durable`,()=>{
+ const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{recovered:true,recoveryKind,settled:true,canRevive:false,bonusEligible:recoveryKind==='result',bonusCredits:60,receipt:{credits:260,baseCredits:60,xp:12},saveMessage:'Награда учтена в этой сессии. Локальное сохранение недоступно.'}});
+ assert.equal(h.root.querySelector('[data-gs-heading]').textContent,recoveryKind==='result'?'Сохранённый результат':'Прерванный заезд');
+ const free=h.root.querySelector('.gs-result-free-choice');assert.match(free.textContent,/После перезагрузки продолжение недоступно/);assert.doesNotMatch(free.textContent,/Награда сохранена/);
+ assert.match(h.root.querySelector('.gs-settlement-scroll').textContent,/Локальное сохранение недоступно/);
+ assert.equal(h.button('revive'),undefined);assert.equal(!!h.button('rewardedBonus'),recoveryKind==='result');assert.ok(h.button('finishRun'));
+});
+
+test('recovered result without SDK has no empty video-choice heading or fabricated training continuation',()=>{
+ const h=harness();h.render({screen:'results',platform:{rewarded:false},runResult:{recovered:true,recoveryKind:'result',settled:true,canRevive:false,bonusEligible:true,bonusCredits:60,receipt:{credits:60,baseCredits:60}}});
+ assert.equal(h.root.querySelector('.gs-result-optional'),null);assert.equal(h.button('revive'),undefined);assert.equal(h.button('rewardedBonus'),undefined);assert.ok(h.button('finishRun'));
+});

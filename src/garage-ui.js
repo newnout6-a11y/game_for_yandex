@@ -866,7 +866,7 @@ export class GarageUI {
     const result = this.view.runResult || {}; const receipt = result.receipt || result.settlement || result;
     const main = element(this.doc, 'main', 'gs-results');
     const intro = element(this.doc, 'section', 'gs-result-intro'); intro.tabIndex = 0; intro.setAttribute('aria-label', 'Результат текущего заезда');
-    const title = element(this.doc, 'h1', '', result.newRecord ? 'Новый рекорд' : 'Результат заезда'); title.dataset.gsHeading = 'true'; title.tabIndex = -1; intro.append(title);
+    const title = element(this.doc, 'h1', '', result.recovered ? (result.recoveryKind==='result'?'Сохранённый результат':'Прерванный заезд') : result.newRecord ? 'Новый рекорд' : 'Результат заезда'); title.dataset.gsHeading = 'true'; title.tabIndex = -1; intro.append(title);
     intro.append(element(this.doc, 'p', 'gs-result-vehicle', `${this.view.selected.name} / ${result.mode === 'continued' || result.continued ? 'С продолжением' : result.mode === 'tuned' || result.modified ? 'Настроенная' : 'Заводская'} сборка`));
     const stats = element(this.doc, 'div', 'gs-result-stats'); stats.append(stat(this.doc, 'СЧЁТ', garageNumber(result.score)), stat(this.doc, 'ДИСТАНЦИЯ', garageNumber(result.distance), 'м'));
     const metrics = result.metrics || {};
@@ -891,7 +891,7 @@ export class GarageUI {
     const freeChoice=element(this.doc,'div','gs-result-free-choice');
     freeChoice.append(element(this.doc,'p','gs-result-earned',result.settled===true?`Твои +${garageNumber(earned)} ₵${result.bonusClaimed?' · удвоение получено':' · уже начислены'}`:'Обычная награда не требует видео'));
     freeChoice.append(this.button(result.finalized?'В гараж':'Завершить и забрать',result.finalized?{type:'navigate',screen:'garage',tab:'fleet'}:{type:'finishRun'},{primary:true,iconName:'garage',className:'gs-full gs-finish-free'}));
-    freeChoice.append(element(this.doc,'p','gs-small-note',result.finalized?'Заезд завершён. Заработанное остаётся у тебя.':'Завершить заезд без бонусного видео.'));
+    freeChoice.append(element(this.doc,'p',result.recovered?'gs-small-note gs-recovery-note':'gs-small-note',result.finalized?'Заезд завершён. Заработанное остаётся у тебя.':result.recovered?'После перезагрузки продолжение недоступно. Заработанное остаётся у тебя.':'Завершить заезд без бонусного видео.'));
     const scroll = element(this.doc, 'div', 'gs-settlement-scroll'); scroll.tabIndex = 0; scroll.setAttribute('aria-label', 'Подробности наград и условий после заезда');
     const details=element(this.doc,'details','gs-result-details');details.append(element(this.doc,'summary','','Награды и условия ↓'));
     const detailBody=element(this.doc,'div','gs-result-detail-body');details.append(detailBody);scroll.append(details);
@@ -900,7 +900,7 @@ export class GarageUI {
     if (number(result.onboarding) > 0) detailBody.append(element(this.doc, 'p', 'gs-result-contract', `В том числе первый рубеж · +${garageNumber(result.onboarding)} ₵ (не удваивается)`));
     if (result.settled !== true && receipt.finalized !== true || receipt.pending === true) detailBody.append(element(this.doc, 'p', 'gs-small-note', 'Результат ещё не подтверждён. Награды появятся после сохранения.'));
     else detailBody.append(element(this.doc, 'p', 'gs-small-note', result.saveMessage || 'Результат заезда учтён.'));
-    if (!result.finalized && !result.bonusClaimed && (result.canRevive===true || result.bonusEligible===true)) {
+    if (!result.finalized && !result.bonusClaimed && (result.canRevive===true || this.view.platform.rewarded&&result.bonusEligible===true)) {
       choices.append(element(this.doc,'p','gs-kicker','ИЛИ ВЫБЕРИ ОДИН БОНУС'));
       if (result.canRevive === true) {
         choices.append(this.button(result.reviveLabel || 'Видео → продолжить заезд', { type: 'revive' }, { iconName: this.view.platform.rewarded?'play':'arrow', className: 'gs-full' }));
