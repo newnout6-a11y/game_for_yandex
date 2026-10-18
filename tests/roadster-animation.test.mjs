@@ -65,6 +65,22 @@ test('rotated merged hardware cannot inflate the normalization envelope or lift 
   for(const wheel of car.userData.wheelRest)assert.ok(Math.abs(wheel.radius-.38)<1e-6);
 });
 
+test('an asymmetric full-size mirror cannot recenter the chassis, driver or wheel contacts',()=>{
+  const base=playerFixture(), enlarged=base.clone(true);
+  base.position.x=2; enlarged.position.x=2;
+  const mirror=new T.Mesh(new T.BoxGeometry(.25,.14,.10),new T.MeshStandardMaterial());
+  mirror.name='full_size_left_mirror'; mirror.position.set(-1.2,.95,-.65); enlarged.add(mirror);
+  const original=createCar(base), changed=createCar(enlarged);
+  for(const name of ['body','steering_yoke','wheel_fl','wheel_fr','wheel_rl','wheel_rr']) {
+    const a=original.getObjectByName(name).getWorldPosition(new T.Vector3());
+    const b=changed.getObjectByName(name).getWorldPosition(new T.Vector3());
+    assert.ok(a.distanceTo(b)<1e-9, `${name}: accessory bounds must not move the authored rest pose`);
+  }
+  const xs=changed.userData.wheels.map(w=>w.getWorldPosition(new T.Vector3()).x);
+  assert.ok(Math.abs(xs.reduce((a,b)=>a+b,0)/4)<1e-9,'the actual axle centre remains on the lane centre');
+  assert.equal(enlarged.position.x,2,'normalization never mutates the source');
+});
+
 test('steering carriers do not rotate calipers and tire spin cannot tilt the steering axis',()=>{
   const car=createCar(playerFixture());
   for(const distance of [0,1,4,13]){

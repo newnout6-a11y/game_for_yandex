@@ -28,7 +28,7 @@ function vertexBounds(car) {
 test('collision and lane reservations share one conservative Rocket envelope', () => {
   assert.equal(COLLISION_BOUNDS, PLAYER_BOUNDS);
   assert.ok(Object.isFrozen(PLAYER_BOUNDS));
-  assert.deepEqual(PLAYER_BOUNDS, { length: 4.7, width: 2.3, height: 1.35 });
+  assert.deepEqual(PLAYER_BOUNDS, { length: 4.7, width: 2.36, height: 1.35 });
 });
 
 test('actual Rocket vertices fit the player collision envelope through steering and wing travel', async () => {

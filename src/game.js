@@ -5,6 +5,7 @@ import { trafficDefinition, chooseTrafficKind, trafficCenterGap } from './traffi
 import { playerBottom, playerTrafficDepth, playerTrafficWidth, trafficHitsPlayer, updateTrailerKinematics, LANE_WIDTH } from './traffic-physics.js';
 import { trafficLateral, occupiedTrafficLanes, updateTrafficManoeuvres } from './traffic-behavior.js';
 import { trafficDynamics } from './traffic-motion.js';
+import { updatePlayerPath, updatePlayerDynamics } from './player-motion.js';
 /**
  * Coerces an input axis to a finite number and clamps it to the accepted range.
  * Non-finite input becomes zero, including when a negative minimum is allowed.
@@ -37,7 +38,8 @@ export class Game {
   reset(difficulty='flow') {
     this.difficulty=Object.hasOwn(DIFFICULTIES,difficulty)?difficulty:'flow';
     this.state={
-      phase:'ready',lane:1,x:1,heading:0,steerAngle:0,acceleration:0,throttle:0,braking:false,
+      bodyPitch:0,bodyRoll:0,bodyHeave:0,bodyPitchVelocity:0,bodyRollVelocity:0,bodyHeaveVelocity:0,
+      phase:'ready',lane:1,x:1,heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,rearDistance:0,wheelDistance:0,acceleration:0,throttle:0,braking:false,
       distance:0,score:0,elapsed:0,speed:0,nitro:60,boosting:false,
       ...createFlightState(),
       combo:1,comboTime:0,overtakes:0,nearMisses:0,charges:0,revives:0,invincible:0,
@@ -118,14 +120,9 @@ export class Game {
     // Releasing boost/accelerator reduces speed gradually rather than cutting it.
     if(s.speed>maxSpeed)s.speed=Math.max(maxSpeed,s.speed-dt*3);
     s.acceleration=(s.speed-beforeSpeed)/dt;
-    s.steerAngle+=clamp(steering*.3-s.steerAngle,-CONFIG.steeringRate*dt,CONFIG.steeringRate*dt);
-    const grip=1/(1+Math.max(0,s.speed-30)*.012);
-    s.heading=lerp(s.heading,s.steerAngle*.67*grip,1-Math.exp(-dt*5));
     const previousX=s.x;
-    s.x=clamp(s.x+Math.sin(s.heading)*s.speed*dt/3.5,-.24,2.24);
-    if((s.x<=-.24&&s.heading<0)||(s.x>=2.24&&s.heading>0))s.heading=0;
-    s.lane=clamp(Math.round(s.x),0,2);
-    const travelled=s.speed*Math.cos(s.heading)*dt;
+    const travelled=updatePlayerPath(s,steering,dt);
+    updatePlayerDynamics(s,dt);
     s.distance+=travelled;s.score+=travelled*s.combo*this.rules.score;
     if(s.distance>=s.nextSpawn){this.spawnWave();s.nextSpawn+=CONFIG.spawnDistance*this.rules.spacing;}
     if(!s.traffic.length&&s.speed>10&&Number.isFinite(s.nextSpawn)){this.spawnWave(160);s.nextSpawn=s.distance+CONFIG.spawnDistance;}
@@ -156,7 +153,7 @@ export class Game {
       const response=trafficDynamics(car.kind);
       const wanted=lerp(car.speed,targetSpeed,1-Math.exp(-dt*(following?6:1.5)));
       car.speed+=clamp(wanted-car.speed,-response.braking*dt,response.acceleration*dt);
-      car.z+=(car.speed-s.speed*Math.cos(s.heading))*dt;
+      car.z+=car.speed*dt-travelled;
       if(leader&&leader.previousZ-before>=minGap-1e-8&&car.z>leader.z-minGap){car.z=leader.z-minGap;car.speed=Math.min(car.speed,leader.speed);car.braking=true;}
       // A following driver stops behind the player, including a parked player.
       const stopZ=Math.max(before,-(depth+2));
@@ -183,7 +180,8 @@ export class Game {
       const before=pickup.z;pickup.z-=travelled;
       if(!pickup.collected&&before>=-2&&pickup.z<=2&&Math.abs(s.x-pickup.lane)<.5&&flightClearance<1.7){pickup.collected=true;s.nitro=Math.min(100,s.nitro+CONFIG.nitroPickup);s.score+=50*s.combo*this.rules.score;s.charges++;this.onEvent('charge');}
     }
-    s.traffic=s.traffic.filter(car=>car.z>-18-trafficDefinition(car.kind).length/2&&car.z<420+trafficDefinition(car.kind).length/2);s.pickups=s.pickups.filter(p=>!p.collected&&p.z>-5);s.obstacles=s.obstacles.filter(o=>!o.hit&&o.z>-8);
+    // Rear traffic remains until its closest bumper has faded beyond the bounded 78 m mirror view.
+    s.traffic=s.traffic.filter(car=>car.z>-78-trafficDefinition(car.kind).length/2&&car.z<420+trafficDefinition(car.kind).length/2);s.pickups=s.pickups.filter(p=>!p.collected&&p.z>-5);s.obstacles=s.obstacles.filter(o=>!o.hit&&o.z>-8);
     if(!s.goalReached&&s.distance>=CONFIG.goal){s.goalReached=true;s.score+=1000;this.onEvent('goal');}
   }
   /**
@@ -314,7 +312,8 @@ export class Game {
     const s=this.state;if(s.phase!=='crashed'||s.revives>=CONFIG.maxRevives)return false;
     s.revives++;s.traffic=s.traffic.filter(c=>c.z>80);s.pickups=s.pickups.filter(p=>p.z>20);s.obstacles=[];
     if(s.roadEvent)this.finishEvent(false);
-    s.speed=0;Object.assign(s,createFlightState());s.heading=0;s.steerAngle=0;s.throttle=0;s.braking=false;this.pulseTime=0;
+    s.speed=0;Object.assign(s,createFlightState(),{heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,acceleration:0,
+      bodyPitch:0,bodyPitchVelocity:0,bodyRoll:0,bodyRollVelocity:0,bodyHeave:0,bodyHeaveVelocity:0});s.throttle=0;s.braking=false;this.pulseTime=0;
     s.nitro=Math.max(40,s.nitro);s.invincible=2.5;s.combo=1;s.comboTime=0;s.phase='playing';return true;
   }
 }

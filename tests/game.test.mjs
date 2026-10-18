@@ -130,3 +130,21 @@ test('convoy actually brakes, signals, and rewards only after all cars were pass
 test('convoy timeout fails cleanly and event types rotate in order',()=>{
   const g=make();for(const type of ['roadworks','checkpoint','convoy','roadworks']){g.startEvent();assert.equal(g.state.roadEvent.type,type);if(type==='convoy'){g.state.elapsed=g.state.roadEvent.deadline+1;g.update(.01);assert.equal(g.state.lastEvent.success,false);}else g.finishEvent(false);}assert.equal(g.state.eventsCompleted,0);
 });
+
+test('rear-view traffic survives passing until its nearest bumper clears the bounded mirror range',()=>{
+  const g=make();g.state.speed=0;
+  g.state.traffic=[{id:910,kind:'sedan',lane:0,z:-40,speed:0,passed:true},{id:911,kind:'semi',lane:2,z:-85,speed:0,passed:true},{id:912,kind:'sedan',lane:1,z:-90,speed:0,passed:true}];
+  g.update(1/120,{});
+  assert.ok(g.state.traffic.some(c=>c.id===910),'Passed sedan must remain visible in rear mirrors');
+  assert.ok(g.state.traffic.some(c=>c.id===911),'Long trailer cannot recycle before its front bumper clears rear range');
+  assert.ok(!g.state.traffic.some(c=>c.id===912),'Far rear vehicles still recycle to bound the scene');
+});
+
+
+test('revive clears crash kinematics and sprung velocities without rewinding wheel travel',()=>{
+ const g=make(),s=g.state;advance(g,.3,{throttle:1,steer:1});
+ const fields=['heading','steerAngle','curvature','yawRate','lateralAcceleration','acceleration','bodyPitch','bodyPitchVelocity','bodyRoll','bodyRollVelocity','bodyHeave','bodyHeaveVelocity'];
+ for(const key of fields)s[key]=.17;s.rearDistance=123.4;s.wheelDistance=123.4;s.distance=123;s.phase='crashed';
+ assert.equal(g.revive(),true);for(const key of fields)assert.equal(s[key],0,key);
+ assert.equal(s.speed,0);assert.equal(s.rearDistance,123.4);assert.equal(s.wheelDistance,123.4);assert.equal(s.distance,123);
+});

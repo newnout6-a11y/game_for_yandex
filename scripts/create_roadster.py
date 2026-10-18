@@ -59,6 +59,9 @@ M['spring_gold']=material('suspension_anodized_gold',(.56,.32,.095),.78,.26)
 M['plate']=material('rear_license_plate',(.17,.18,.19),.05,.64)
 M['optical']=material('optical_smoked_lens',(.032,.036,.042),.08,.30)
 M['brake_carbon']=material('brake_carbon_ceramic',(.022,.025,.028),.18,.70)
+for role in ('left','right','center'):
+    M['mirror_'+role]=material('mirror_'+role,(.72,.76,.80),.95,.04)
+    M['mirror_'+role].use_backface_culling=True
 objects=[]
 
 def mesh(name, verts, faces, mat, parent=None, bevel=0, smooth=False):
@@ -89,6 +92,52 @@ def box(name, c, dims, mat, bevel=.01, parent=None):
     ps=[(x-a,y-b,z-d),(x+a,y-b,z-d),(x+a,y+b,z-d),(x-a,y+b,z-d),
         (x-a,y-b,z+d),(x+a,y-b,z+d),(x+a,y+b,z+d),(x-a,y+b,z+d)]
     return mesh(name,ps,[(0,3,2,1),(4,5,6,7),(0,1,5,4),(3,7,6,2),(0,4,7,3),(1,2,6,5)],mat,parent,bevel)
+
+def mirror_pane(role,points,normal,curvature_radius=None):
+    """Author an isolated reflector and its exported mesh-local optical shape.
+
+    Geometry and extras both use game metres; the glTF exporter rotates mesh
+    coordinates from Blender back to those game axes. Runtime may project the
+    real world into this existing pane, but never creates a replacement mesh.
+    A positive curvature radius makes the supplied four tangent-plane corners
+    a genuinely spherical convex glass surface, not a flat image distortion.
+    """
+    n=Vector(normal).normalized()
+    center=sum((Vector(p) for p in points),Vector())/len(points)
+    if curvature_radius is None:
+        face=list(range(len(points)))
+        if (Vector(points[1])-Vector(points[0])).cross(Vector(points[2])-Vector(points[0])).dot(n)<0:face.reverse()
+        ob=mesh('mirror_'+role+'_reflective_pane',points,[face],'mirror_'+role)
+        ob.data.normals_split_custom_set([tuple(v(n)) for _ in ob.data.loops])
+        ob['mirrorAuthoring']='Flat Blender-authored pane seated in the existing mirror housing'
+    else:
+        if len(points)!=4 or curvature_radius<=0:
+            raise ValueError('A spherical mirror requires four corners and a positive metre radius')
+        sphere_center=center-n*curvature_radius
+        corners=[Vector(p) for p in points];vertices=[];normals=[];faces=[]
+        nx,ny=24,12
+        for iy in range(ny+1):
+            y=iy/ny
+            for ix in range(nx+1):
+                x=ix/nx
+                tangent_point=corners[0].lerp(corners[1],x).lerp(corners[3].lerp(corners[2],x),y)
+                offset=tangent_point-center
+                if offset.length_squared>=curvature_radius**2:
+                    raise ValueError('The requested mirror aperture exceeds its sphere radius')
+                point=tangent_point+n*(sqrt(curvature_radius**2-offset.length_squared)-curvature_radius)
+                vertices.append(tuple(point));normals.append((point-sphere_center).normalized())
+        for iy in range(ny):
+            for ix in range(nx):
+                a=iy*(nx+1)+ix;face=[a,a+1,a+nx+2,a+nx+1]
+                if (Vector(vertices[face[1]])-Vector(vertices[face[0]])).cross(Vector(vertices[face[2]])-Vector(vertices[face[0]])).dot(n)<0:face.reverse()
+                faces.append(face)
+        ob=mesh('mirror_'+role+'_reflective_pane',vertices,faces,'mirror_'+role,smooth=True)
+        ob.data.normals_split_custom_set([tuple(v(normals[loop.vertex_index])) for loop in ob.data.loops])
+        ob['mirrorCurvature']={'type':'spherical-convex','radius':curvature_radius,'center':list(sphere_center)}
+        ob['mirrorAuthoring']='Blender-authored spherical convex glass in a full-size left mirror housing; usability reconstruction, not factory curvature'
+    ob['authored_normals']=True;ob['mirrorRole']=role
+    ob['mirrorPlane']={'point':list(center),'normal':list(n)}
+    return ob
 
 def beam(name,a,b,width,depth,mat,parent=None):
     # Rectangular section whose local length is aimed along the segment.
@@ -346,7 +395,9 @@ asset_root=bpy.data.objects.new('Roadster',None);bpy.context.collection.objects.
 for ob in model_objects:
     if ob.parent is None:ob.parent=asset_root
 asset_root.scale=(asset_scale,)*3
-asset_root.location=(-.5*(lo[0]+hi[0])*asset_scale,-.5*(lo[1]+hi[1])*asset_scale,-lo[2]*asset_scale)
+# Keep the authored vehicle centerline stable when an asymmetric mirror grows.
+asset_root.location=(0,-.5*(lo[1]+hi[1])*asset_scale,-lo[2]*asset_scale)
+asset_root['vehicleCenterlineX']=0.0
 measured_wheel_radius=max(math.hypot(vert.co.y,vert.co.z) for ob in model_objects if ob.type=='MESH' and ob.name.endswith('_tire') for vert in ob.data.vertices)
 asset_root['wheelRadius']=measured_wheel_radius*asset_scale
 asset_root['wheelRadiusUnscaled']=measured_wheel_radius

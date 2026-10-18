@@ -105,11 +105,11 @@
   },
   {
     "file": "assets/roadster.glb",
-    "bytes": 6513500,
-    "sha256": "8bd33a39215813787635fb4cad0ba5671e97b257cc12383eb6de1e77a339da69",
+    "bytes": 7150000,
+    "sha256": "d71068fb3da4771f1a5945f03d078cd97a4cac4f0884442cda9c7c732722100e",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_roadster.py",
-    "changes": "Original reference-driven Blender reconstruction of the single-seat Rocket, with authored cabin maps, reconstructed passenger-space vessel, underfloor components, optical lamps, telescopic/folding wing, independent wheel/fan/yoke pivots and nozzle metadata. Visual reference reconstruction, not factory CAD, certified engineering or exact Tesla flight physics. No third-party mesh or photo texture copied.",
+    "changes": "Original reference-driven Blender reconstruction of the single-seat Rocket, with authored cabin maps, reconstructed passenger-space vessel, underfloor components, optical lamps, telescopic/folding wing, independent wheel/fan/yoke pivots and nozzle metadata. Visual reference reconstruction, not factory CAD, certified engineering or exact Tesla flight physics. No third-party mesh or photo texture copied. User-requested full-size left mirror: original 180 x 95 mm spherical convex glass, 205 x 120 mm housing and revised mount (radius 0.65 m); deliberately enlarged for game usability, not factory dimensions or optical specifications. Central tablet car artwork is an offline antialiased Blender rendering of this exact authored Rocket in its stowed-wing presentation, replacing the generic polygon profile; geometry and other image assets are unchanged. Reproducible source: scripts/render_tablet_rocket.py and art/textures/roadster-tablet-rocket.png.",
     "editableSource": "art/roadster.blend"
   },
   {

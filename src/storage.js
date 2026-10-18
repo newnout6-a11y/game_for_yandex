@@ -1,9 +1,11 @@
 import { ROUTES, DIFFICULTIES } from './config.js';
+import { normalizeRenderQuality } from './render-settings.js';
+import { normalizeCameraMode } from './camera-view.js';
 export const STORAGE_KEY = 'potok.v1';
 /**
  * Create a fresh save record so nested best-score objects are never shared between stores.
  */
-const defaults = () => ({ best: { flow: 0, rush: 0 }, runs: 0, totalDistance: 0, route: 'ring', difficulty: 'flow', sound: false });
+const defaults = () => ({ best: { flow: 0, rush: 0 }, runs: 0, totalDistance: 0, route: 'ring', difficulty: 'flow', sound: false, renderQuality: 'auto', cameraMode: 'chase' });
 /**
  * Copy only supported settings and finite non-negative integer progress from untrusted storage.
  * @param {*} raw - Parsed localStorage value, including malformed or obsolete shapes.
@@ -23,6 +25,9 @@ export function sanitizeSave(raw) {
   if (Object.hasOwn(ROUTES, raw.route)) result.route = raw.route;
   if (Object.hasOwn(DIFFICULTIES, raw.difficulty)) result.difficulty = raw.difficulty;
   result.sound = raw.sound === true;
+  result.renderQuality = normalizeRenderQuality(raw.renderQuality);
+  // Older saves keep the external camera; only the exact supported cockpit value opts in.
+  result.cameraMode = normalizeCameraMode(raw.cameraMode);
   return result;
 }
 /**

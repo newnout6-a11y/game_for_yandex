@@ -5,7 +5,7 @@ body { overflow-x: hidden; }
 button, a { -webkit-tap-highlight-color: var(--color-transparent); touch-action: manipulation; }
 button { font: inherit; color: inherit; cursor: pointer; border: var(--stroke) solid var(--color-transparent); }
 button:disabled { opacity: var(--opacity-disabled); cursor: wait; }
-button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: var(--stroke-focus) solid var(--color-accent); outline-offset: var(--focus-offset); }
+button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: var(--stroke-focus) solid var(--color-accent); outline-offset: var(--focus-offset); }
 svg { width: var(--space-6); height: var(--space-6); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 #app { min-height: 100svh; position: relative; isolation: isolate; overflow: hidden; }
 #scene { position: absolute; width: 100%; height: 100%; inset: 0; z-index: var(--z-scene); touch-action: none; }
@@ -20,6 +20,9 @@ svg { width: var(--space-6); height: var(--space-6); fill: none; stroke: current
 .icon-button svg { width: var(--space-5); height: var(--space-5); }
 .icon-button:hover, .icon-button:active { background: var(--color-event-scrim); }
 .icon-button[aria-pressed="true"] { color: var(--color-text); }
+.camera-button { flex-shrink: 0; min-width: var(--control-size); min-height: var(--control-size); }
+.camera-button[aria-pressed="true"] { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }
+.pause-camera-button[aria-pressed="true"] { border-color: var(--color-accent); }
 .menu-screen { position: relative; z-index: var(--z-content); padding: var(--hero-top) var(--page-gutter) var(--space-6); min-height: calc(100svh - var(--header-height)); display: flex; flex-direction: column; justify-content: space-between; }
 .hero { max-width: var(--hero-max-width); margin-bottom: var(--space-12); }
 .eyebrow { font-size: var(--text-micro); font-weight: 600; letter-spacing: var(--tracking-wide); color: var(--color-muted); }
@@ -60,6 +63,13 @@ kbd { font: var(--text-xs)/var(--line-heading) var(--font-mono); border: var(--s
 .difficulty { display: flex; gap: var(--space-1); }
 .difficulty button { padding: var(--space-2) var(--space-4); min-height: var(--control-size); background: var(--color-transparent); color: var(--color-muted); font-size: var(--text-small); border-bottom: var(--stroke-focus) solid var(--color-transparent); }
 .difficulty button:hover, .difficulty button[aria-pressed="true"] { color: var(--color-text); border-bottom-color: var(--color-text); }
+.render-settings { margin-top: var(--space-3); font-size: var(--text-small); color: var(--color-muted); }
+.render-settings > summary { width: fit-content; max-width: 100%; min-height: var(--control-size); padding-block: var(--space-3); cursor: pointer; }
+.render-resolution { margin-left: var(--space-3); font-family: var(--font-mono); color: var(--color-text); }
+.render-settings-controls { max-width: var(--modal-width); padding-block: var(--space-2); }
+.render-settings label { display: block; margin-bottom: var(--space-2); color: var(--color-text); }
+.render-settings select { min-width: 0; width: 100%; min-height: var(--control-size); padding: var(--space-2); border: var(--stroke) solid var(--color-border); border-radius: var(--radius-small); color: var(--color-text); background: var(--color-surface); font: inherit; }
+.render-settings p { margin: var(--space-2) 0; font-size: var(--text-xs); line-height: var(--line-body); }
 #app[data-screen="playing"], #app[data-screen="paused"], #app[data-screen="results"] { height: 100svh; min-height: 0; }
 #app:not([data-screen="menu"]) .scene-shade { opacity: 0; }
 #app:not([data-screen="menu"]) .header-center { display: none; }
@@ -179,6 +189,11 @@ kbd { font: var(--text-xs)/var(--line-heading) var(--font-mono); border: var(--s
 }
 @media (max-width: 360px) {
   :root { --page-gutter: var(--page-gutter-narrow); --text-hero: var(--text-hero-narrow); }
+  /* Keep the logo and all four mobile controls usable at the 280px viewport floor. */
+  .topbar { gap: var(--space-2); }
+  .brand { min-width: var(--control-size); min-height: var(--control-size); gap: 0; justify-content: center; flex-shrink: 0; }
+  .brand > span { display: none; }
+  .toolbar, .toolbar .icon-button { flex-shrink: 0; }
   .routes { gap: var(--space-3); }
   .route-info { grid-template-columns: 1fr; }
   .route-index { display: none; }
@@ -307,4 +322,21 @@ kbd { font: var(--text-xs)/var(--line-heading) var(--font-mono); border: var(--s
   .roll-status { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1); }
   .roll-status .roll-label { letter-spacing: 0; font-size: .5625rem; }
   .roll-status strong { white-space: nowrap; }
+}
+
+/* Camera-only holds stay clear of pedals and steering, including the 280px phone floor. */
+.glance-controls { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); display: flex; gap: var(--space-2); }
+.glance-button { min-width: var(--control-size); min-height: var(--control-size); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); padding: var(--space-1); pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; border: var(--stroke) solid var(--color-border); border-radius: var(--radius-small); background: color-mix(in srgb, var(--color-event-scrim) 50%, var(--color-transparent)); color: var(--color-muted); font: .5625rem/1 var(--font-mono); }
+.glance-button > [aria-hidden] { font-size: var(--text-large); }
+.glance-button[data-held="true"] { color: var(--color-text); border-color: var(--color-text); background: var(--color-elevated); }
+.glance-button:disabled { cursor: default; }
+@media (max-width: 600px) {
+  .glance-controls { left: 0; bottom: var(--space-24); transform: none; gap: var(--space-1); }
+  .glance-button { flex-direction: column; gap: 0; }
+  .glance-button > [aria-hidden] { line-height: .8; }
+  .game-hud:has(.glance-controls:not([hidden])) .flight-status { bottom: calc(var(--space-24) + var(--control-size) + var(--space-2)); }
+}
+@media (max-height: 500px) and (max-width: 600px) {
+  .glance-controls { bottom: var(--space-20); }
+  .game-hud:has(.glance-controls:not([hidden])) .flight-status { bottom: calc(var(--space-20) + var(--control-size) + var(--space-2)); }
 }

@@ -6,7 +6,8 @@ are in game metres (+X right, +Y up, -Z front). Call build_cabin(api) after the
 host's geometry helpers exist. This module never clears, batches, exports, or
 renders a scene, and never creates external glazing or a driver.
 
-Small original tiled maps and a hand-drawn infotainment UI are generated with
+Small original tiled maps and an infotainment UI using an offline render of the
+current authored Rocket are generated with
 NumPy into art/textures/roadster-cabin-*.png, packed in the .blend, and exported
 by Blender's standard glTF material pipeline. No photograph is mapped onto the
 car. Carbon, upholstery, roof apertures, seat shells and all controls have depth.
@@ -129,8 +130,41 @@ def _make_maps(directory):
     }
 
 
+def _composite_tablet_rocket(canvas):
+    """Alpha-compose the offline Blender Rocket render in linear-light RGB.
+
+    The checked-in PNG is a 680 by 201 pixel antialiased render of the current
+    authored vehicle, not a separate hand-drawn approximation. Blender byte-image
+    pixels retain encoded sRGB here, so explicitly decode both layers, blend in
+    linear light, then encode once for _save_image. Live telemetry is untouched.
+    Rebuild with: blender --background --python scripts/render_tablet_rocket.py
+    """
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        'art', 'textures', 'roadster-tablet-rocket.png')
+    if not os.path.isfile(path):
+        raise FileNotFoundError('Missing offline Rocket render: ' + path)
+    image = bpy.data.images.load(path, check_existing=False)
+    try:
+        if tuple(image.size) != (680, 201):
+            raise ValueError('Rocket artwork must remain 680 by 201 pixels')
+        image.colorspace_settings.name = 'sRGB'
+        rgba = np.empty(680 * 201 * 4, dtype=np.float32)
+        image.pixels.foreach_get(rgba)
+        rgba = rgba.reshape((201, 680, 4))[::-1]
+        alpha = rgba[:, :, 3:4]
+        region = canvas[247:448, 300:980]
+        foreground = np.where(rgba[:, :, :3] <= .04045, rgba[:, :, :3] / 12.92,
+                              ((rgba[:, :, :3] + .055) / 1.055) ** 2.4)
+        background = np.where(region <= .04045, region / 12.92, ((region + .055) / 1.055) ** 2.4)
+        blended = foreground * alpha + background * (1 - alpha)
+        region[:] = np.where(blended <= .0031308, blended * 12.92,
+                             1.055 * np.maximum(blended, 0) ** (1 / 2.4) - .055)
+    finally:
+        bpy.data.images.remove(image)
+
+
 def _screen_art():
-    """Original 16:10 cockpit UI with a consistent orthographic side-profile diagram; all layout positions are texture pixels, not perspective geometry."""
+    """Original 16:10 cockpit UI with an authentic offline-rendered Rocket."""
     w, h = 1024, 640
     canvas = np.zeros((h, w, 3), dtype=np.float32)
     gy = np.linspace(0, 1, h)[:, None, None]
@@ -138,29 +172,6 @@ def _screen_art():
     def rect(x0, y0, x1, y1, color):
         """Overwrite an axis-aligned pixel rectangle in the enclosing RGB UI canvas; clip its bounds to the image."""
         canvas[max(0,int(y0)):min(h,int(y1)), max(0,int(x0)):min(w,int(x1))] = color
-    def poly(points, color):
-        """Rasterize a closed UI polygon from pixel XY vertices into the canvas using scanline spans; return nothing."""
-        pts = np.array(points, dtype=float)
-        for y in range(max(0, int(pts[:, 1].min())), min(h, int(pts[:, 1].max())+1)):
-            hits = []
-            for a, b in zip(pts, np.roll(pts, -1, axis=0)):
-                if (a[1] <= y < b[1]) or (b[1] <= y < a[1]):
-                    hits.append(a[0] + (y-a[1])*(b[0]-a[0])/(b[1]-a[1]))
-            hits.sort()
-            for a, b in zip(hits[0::2], hits[1::2]):
-                rect(a, y, b+1, y+1, color)
-    def line(points, color, width=2):
-        """Stroke consecutive pixel XY points into the UI canvas with a square brush of the requested pixel width."""
-        for a, b in zip(points, points[1:]):
-            n = max(1, int(max(abs(b[0]-a[0]), abs(b[1]-a[1]))))
-            for t in np.linspace(0, 1, n+1):
-                x, y = np.array(a)*(1-t)+np.array(b)*t
-                rect(x-width/2, y-width/2, x+width/2+1, y+width/2+1, color)
-    def ellipse(cx, cy, rx, ry, color):
-        """Fill a UI ellipse whose center and radii are pixels, modifying the enclosing RGB canvas in place."""
-        for y in range(max(0,int(cy-ry)), min(h,int(cy+ry+1))):
-            dx = rx*sqrt(max(0, 1-((y-cy)/ry)**2))
-            rect(cx-dx,y,cx+dx,y+1,color)
     def text(x,y,value,scale=2,color=(.66,.69,.71)):
         """Draw the module's original bitmap glyphs at pixel XY with integer pixel scaling and advance each character."""
         for ch in value:
@@ -179,43 +190,10 @@ def _screen_art():
     text(34,243,'P',3,red); text(75,243,'R N D',2,muted)
     text(34,306,'RANGE',2,muted); text(34,338,'620 KM',3,white)
     text(34,405,'READY',2,(.38,.62,.46))
-    # One orthographic profile: both wheels share a baseline and radius, and
-    # every body/glazing edge belongs to that same projection. This intentionally
-    # avoids a fake perspective rendering with mismatched axles or sheared panels.
-    # The diagram is original status artwork, not a photographed dashboard UI.
+    # Static status illustration rendered from art/roadster.blend. Its authored
+    # parked/stowed pose does not claim live vehicle or rear-camera telemetry.
     rect(251,93,253,479,(.10,.115,.13))
-    ellipse(632,398,301,18,(.009,.012,.016))
-    wheel_y=366;wheel_r=39
-    for x in [440,823]:ellipse(x,wheel_y,wheel_r+4,wheel_r+4,(.007,.009,.012))
-    body=[(326,348),(355,327),(423,309),(511,301),(564,254),
-          (685,247),(748,270),(807,300),(878,312),(921,333),
-          (931,364),(897,383),(361,383),(327,367)]
-    poly(body,(.35,.38,.41))
-    poly([(327,349),(449,343),(551,332),(784,332),(923,345),
-          (931,364),(897,383),(361,383),(327,367)],(.20,.23,.26))
-    poly([(426,311),(515,305),(559,266),(574,257),(682,252),
-          (741,275),(783,302),(758,309),(540,313)],(.095,.12,.15))
-    poly([(533,302),(572,263),(619,260),(619,302)],(.032,.055,.075))
-    poly([(628,259),(680,257),(734,278),(770,300),(628,302)],(.022,.039,.054))
-    line([(353,328),(423,312),(514,305),(564,254),(685,247),
-          (748,270),(807,300),(878,312)],(.58,.62,.65),3)
-    line([(547,317),(543,365),(743,365),(761,317)],(.10,.13,.16),2)
-    line([(723,323),(748,323)],(.54,.58,.61),3)
-    line([(337,348),(382,344)],(.83,.91,.96),4)
-    line([(901,330),(920,336)],red,4)
-    line([(342,370),(397,370)],(.025,.035,.045),6)
-    line([(868,372),(911,365)],(.025,.035,.045),6)
-    line([(486,378),(778,378)],(.08,.10,.12),5)
-    # Grounded wheel silhouettes, circular spokes and consistent arch gaps.
-    for x in [440,823]:
-        ellipse(x,wheel_y,wheel_r+3,wheel_r+3,(.012,.016,.021))
-        ellipse(x,wheel_y,wheel_r,wheel_r,(.023,.030,.039))
-        ellipse(x,wheel_y,27,27,(.39,.43,.47))
-        ellipse(x,wheel_y,23,23,(.048,.063,.079))
-        for a in np.linspace(0,2*pi,10,endpoint=False):
-            line([(x+8*cos(a),wheel_y+8*sin(a)),
-                  (x+25*cos(a+.12),wheel_y+25*sin(a+.12))],(.48,.53,.57),3)
-        ellipse(x,wheel_y,6,6,(.39,.44,.48))
+    _composite_tablet_rocket(canvas)
     text(350,177,'VEHICLE STATUS',2,muted)
     text(350,212,'PARKED',3,white)
     text(370,460,'VEHICLE',2,white); text(550,460,'CHARGING',2,muted); text(760,460,'CONTROLS',2,muted)
@@ -280,6 +258,9 @@ def build_cabin(api):
     newmat('rc_console_glass','RC_Dark_Console_Touch_Glass',(.006,.008,.012),0,.43)
     M['rc_console_glass'].node_tree.nodes.get('Principled BSDF').inputs['Specular IOR Level'].default_value=.12
     newmat('rc_ui','RC_Original_Landscape_UI',(.02,.025,.03),.02,.32,.45,texture='ui')
+    # User-requested separate right camera monitor, not the central tablet UI.
+    newmat('right_rear_display','RC_Right_Rear_Camera',(.006,.009,.012),0,.55)
+    M['right_rear_display'].use_backface_culling=True
     # Texture-space density is in repeats per metre, not object-scale guesses.
     density={'rc_carbon':16,'rc_ivory':10,'rc_perforated':12.5,'rc_suede':5}
 
@@ -637,8 +618,60 @@ def build_cabin(api):
         'visibility_probe_count_per_steering_pose':7938,
         'visibility_steering_angles_radians':[-1.2,0,1.2],
         'visibility_probe_count':23814,
-        'ui_artwork':'Original orthographic side-profile status graphic; no factory software or live telemetry claim.'
+        'ui_artwork':'Offline Blender render of this authored Rocket in parked/stowed pose; live game instruments remain separate; no factory UI claim.'
     }
+
+    # Original game addition requested by the user: a separate small right-side
+    # rear-camera monitor. Its actual surface faces the fixed authored driver eye.
+    # The central tablet, passenger vessel and exterior right pod stay unchanged.
+    rear_c=Vector((.600,1.040,-.540))
+    rear_eye=Vector((-.43,1.04,.33))
+    rear_n=(rear_eye-rear_c).normalized()
+    rear_r=Vector((rear_n.z,0,-rear_n.x)).normalized()
+    rear_u=rear_n.cross(rear_r).normalized()
+    def rear_display_transform(x,y,d):
+        """Map the independent right monitor's orthonormal plane into game metres."""
+        return tuple(rear_c+rear_r*x+rear_u*y+rear_n*d)
+    rear_outer=rounded_rect(.095,.051,.004,5)
+    rear_inner=rounded_rect(.0905,.0455,.0005,5)
+    ring('RC_Right_Rear_Display_Bezel',rear_outer,rear_inner,
+         rear_display_transform,-.007,'rc_black')
+    rear_back=[rear_display_transform(x,y,-.007) for x,y in rear_outer]
+    mesh('RC_Right_Rear_Display_Closed_Back',rear_back,
+         [tuple(reversed(range(len(rear_back))))],'rc_black')
+    rear_pts=[rear_display_transform(x,y,.0008)
+              for x,y in [(-.090,-.045),(.090,-.045),(.090,.045),(-.090,.045)]]
+    rear_screen=mesh('RC_Right_Rear_Camera_Active_Display',rear_pts,
+                     [(0,1,2,3)],'right_rear_display')
+    rear_screen['authored_normals']=True
+    rear_screen.data.normals_split_custom_set([tuple(v(rear_n))]*4)
+    rear_screen['rightRearDisplay']={
+        'point':list(rear_c+rear_n*.0008),'normal':list(rear_n),
+        'right':list(rear_r),'up':list(rear_u),'active_dimensions_m':[.180,.090],
+        'reference_eye_game_m':list(rear_eye),'uv_origin':'top_left_in_gltf',
+        'purpose':'Original user-requested right rear-camera display; not factory placement evidence'
+    }
+    rear_screen['display_role']='separate_right_rear_camera'
+    rear_screen['active_aspect_ratio']=2.0
+    uv=rear_screen.data.uv_layers.new(name='RC_Right_Rear_Camera_UV')
+    for loop,co in zip(uv.data,[(0,0),(1,0),(1,1),(0,1)]):loop.uv=co
+    # A short physical bracket joins the BACK of the screen to the unchanged
+    # right A-pillar centerline. Both endpoints overlap their supported parts.
+    t=.70
+    pillar_anchor=Vector((.775,.836,-1.180))*(1-t)**2+Vector((.718,1.035,-.735))*2*t*(1-t)+Vector((.653,1.176,-.293))*t*t
+    beam('RC_Right_Rear_Display_A_Pillar_Bracket',tuple(pillar_anchor),
+         rear_display_transform(.066,.031,-.006),.012,.010,'rc_black')
+    # Real shallow, original bezel lettering; no canvas or central-UI overlay.
+    name='RC_Right_Rear_Display_Label'
+    curve=bpy.data.curves.new(name,'FONT');curve.body='RIGHT REAR';curve.align_x='CENTER';curve.align_y='CENTER'
+    curve.size=.0032;curve.extrude=.00010;curve.resolution_u=2
+    rear_label=bpy.data.objects.new(name,curve);bpy.context.collection.objects.link(rear_label)
+    curve.materials.append(M['rc_metal'])
+    bpy.ops.object.select_all(action='DESELECT');rear_label.select_set(True);bpy.context.view_layer.objects.active=rear_label
+    bpy.ops.object.convert(target='MESH');rear_label=bpy.context.object;rear_label.select_set(False)
+    for vertex in rear_label.data.vertices:
+        p=vertex.co.copy();vertex.co=v(rear_display_transform(p.x,p.y-.0482,p.z+.0003))
+    rear_label['material_group']='rc_metal';objects.append(rear_label)
 
     # The longer profile-matched windshield has a real closed interior cowl
     # between its base and the unchanged dashboard, not an empty gap.
@@ -670,10 +703,27 @@ def build_cabin(api):
     box('RC_Overhead_Recessed_Control',(0,1.149,-.226),(.045,.005,.049),'rc_black',.004)
     # Compact faceted interior mirror, mounted beneath the front header.
     beam('RC_Rearview_Mirror_Stem',(0,1.165,-.320),(0,1.091,-.469),.026,.024,'rc_black')
-    for s in [-1,1]:beam('RC_Rearview_Triangular_Bracket',(0,1.115,-.431),(s*.083,1.047,-.499),.009,.008,'rc_metal')
+    # The user's functional mirror request requires a physically aimed pane,
+    # not a fixed rear-camera image. Aim the existing small bezel toward the
+    # driver and a clear rear-glazing sightline; this is reconstructed mounting,
+    # not a claim of factory placement. Its stem and all dashboard parts stay.
+    mirror_origin=Vector((-.00022,1.04328,-.4892))
+    mirror_center=mirror_origin+Vector((0,.025,0))
+    # Aim the reflected center ray level through the rear glazing rather than
+    # upward into sky above following traffic. Pane, bezel and rear bracket
+    # share this physical rotation; the accepted 25 mm lift stays unchanged.
+    mirror_normal=((Vector((-.43,1.04,.33))-mirror_center).normalized()+Vector((0,0,1))).normalized()
+    mirror_rotation=Vector((0,0,1)).rotation_difference(mirror_normal)
+    def mirror_transform(point):
+        """Rotate the existing mirror assembly about its reflective face center."""
+        return tuple(mirror_center+mirror_rotation@(Vector(point)-mirror_origin))
+    for s in [-1,1]:beam('RC_Rearview_Triangular_Bracket',(0,1.115,-.431),mirror_transform((s*.083,1.047,-.515)),.009,.008,'rc_metal')
     mirror=[(-.118,1.064),(.118,1.064),(.094,1.022),(-.095,1.022)]
-    extrude_xy('RC_Faceted_Rearview_Mirror',mirror,-.517,-.490,'rc_black',.004)
-    extrude_xy('RC_Rearview_Mirror_Reflector',[(x*.88,(y-1.044)*.72+1.044) for x,y in mirror],-.487,-.485,'dark_alloy',.001)
+    bezel=extrude_xy('RC_Faceted_Rearview_Mirror',mirror,-.517,-.490,'rc_black',.004)
+    for vertex in bezel.data.vertices:
+        q=vertex.co;point=mirror_transform((q.x,q.z,-q.y));vertex.co=Vector((point[0],-point[2],point[1]))
+    points=[mirror_transform((x*.88,(y-1.044)*.72+1.044,-.4892)) for x,y in mirror]
+    api['mirror_pane']('center',points,mirror_normal)
 
     # Bring tall seat portions forward beneath the actual descending rear glazing.
     # The confirmed one-seat Rocket packaging remains a reconstruction, not an

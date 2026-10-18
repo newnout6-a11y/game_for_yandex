@@ -40,7 +40,11 @@ The selected Rocket variant is single-seat. Exact seat placement, unseen hardwar
 working game dimensions and the wing mechanism are reconstructed, not verified
 factory specifications. Visible geometry, glazing, upholstery, lighting, wing,
 fans, wheels and nozzle apertures are modeled rather than photograph overlays.
-The original screen artwork is illustrative, not a factory UI or live telemetry.
+The original screen layout is not a factory UI. Its car artwork is an offline
+Blender rendering of this same current Rocket model, not a generic drawing or
+manufacturer photograph. The game overlays live arcade instruments, not Tesla
+telemetry. Render source: scripts/render_tablet_rocket.py; artwork:
+art/textures/roadster-tablet-rocket.png. See docs/TABLET_ROCKET_ARTWORK_UPDATE.md.
 No manufacturer endorsement is implied. Flight, roll, fan speed and wing control
 remain explicitly arcade/visual interpretations, not manufacturer control laws.
 Technical scope and limitations: docs/ROADSTER_ROCKET_PLAN.md and
@@ -104,3 +108,5 @@ Original Blender-authored facial features, hair, clothing seams/cuffs and curled
 
 Swept wheel-house clearance refinement (2026-10-17)
 Original Blender-authored hollow liners, formed arch walls and sealed floor transitions sized against the animated wheel envelope. Passenger body travel is bounded by measured arch compression limits. No external geometry was used.
+
+Player live rear views: original reconstructed Blender mirror panes/backings and game-specific rear-right camera display. Left uses an original authored convex glass and bounded scene-reflection approximation; cabin uses planar scene reflection; right camera screen is user-selected and is not represented as documented factory hardware. See docs/PLAYER_MIRRORS_UPDATE.md.

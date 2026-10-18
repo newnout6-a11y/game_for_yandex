@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Authentic static parked/stowed Rocket illustration on the central tablet; no rear-camera feed and no per-frame model render.",
+  "sourceBlend": "art/roadster.blend",
+  "sourceBlendSha256": "ea4f57c7212f115022135d6ee99f7fca7cca04e3065aca104ba6092e2926efe9",
+  "sourceGlb": "public/assets/roadster.glb",
+  "sourceGlbSha256": "615d379ccb873755881b9701e7117b4b27f8269253e12e10c691b66555643616",
+  "sourceAnchorMeaning": "Immutable accepted model baseline; retained only while the geometry fingerprint matches. Current render inputs are recorded separately.",
+  "inputBlendSha256": "bbaccf5a4ea2750525fa0227a75f537d96f248f96d3e395af7aeeb9f2fddb401",
+  "inputGlbSha256": "38874011ba983cc1f564cb6c2b41827236665a4b95c4bea0c84edd73173da44f",
+  "renderInputBlendSha256": "ea4f57c7212f115022135d6ee99f7fca7cca04e3065aca104ba6092e2926efe9",
+  "renderInputGlbSha256": "615d379ccb873755881b9701e7117b4b27f8269253e12e10c691b66555643616",
+  "geometryFingerprintSha256": "db66bbe0f2405184c4f56ad5b7ccd402f643057149fbbc192fe43bc43b10fc84",
+  "geometryFingerprintMethod": "SHA256 canonical sorted-key GLB JSON; buffer byte lengths and view offsets/lengths removed; each view replaced by its SHA256 except the one named tablet image. Includes all nodes, extras, materials, accessors, geometry and other images; only the exact new Roadster.driverDisplay.ui_artwork description is canonicalized to its original value.",
+  "editableGeometryFingerprintSha256": "5ac2c5d330099c20949ac3352ed6397abdc213db1edc328faa80d44e2b242f88",
+  "image": {
+    "path": "art/textures/roadster-tablet-rocket.png",
+    "sha256": "4294c609769962eb193bfd295221a4d3eba282abdacb68ef2941dfbbf825f551",
+    "width": 680,
+    "height": 201,
+    "alpha": true,
+    "partiallyTransparentPixels": 4629
+  },
+  "composition": {
+    "region": [
+      300,
+      247,
+      680,
+      201
+    ],
+    "clearRegion": [
+      300,
+      245,
+      680,
+      203
+    ],
+    "resize": "none",
+    "colorSpace": "Explicit sRGB decode, linear-light alpha-over, explicit sRGB encode; Blender byte-buffer PNG stores encoded values unchanged",
+    "clearRegionReason": "The obsolete 3px roof-outline brush extended to y245, two rows above the prior silhouette bounds; all live readout regions remain outside.",
+    "background": "Unmodified procedural dark UI gradient, identical to same-row x=10",
+    "formula": "result_linear_rgb = source_linear_rgb * alpha + background_linear_rgb * (1 - alpha)",
+    "outsideRegionRgbaSha256": "00befc1319d5e48e553fa3c542aba1b08dfcf8e35205f2a2a67cb44e4c61c82f"
+  },
+  "render": {
+    "engine": "Blender Cycles",
+    "blenderVersion": "4.3.2",
+    "samples": 128,
+    "seed": 17,
+    "viewTransform": "AgX",
+    "look": "AgX - Medium High Contrast",
+    "filmTransparent": true,
+    "supersample": 3,
+    "reduction": "3x3 area average in premultiplied linear RGB/alpha, then unpremultiply",
+    "sourceResolution": [
+      2040,
+      603
+    ],
+    "camera": {
+      "projection": "orthographic",
+      "gamePosition": [
+        -8.0,
+        1.8,
+        -3.4
+      ],
+      "gameTarget": [
+        0.0,
+        0.57,
+        0.0
+      ],
+      "orthoScale": 5.55
+    },
+    "lights": [
+      {
+        "name": "key",
+        "gamePosition": [
+          3,
+          6,
+          -3
+        ],
+        "watts": 1200,
+        "color": [
+          0.94,
+          0.97,
+          1
+        ],
+        "size": 5,
+        "sizeY": 3
+      },
+      {
+        "name": "side",
+        "gamePosition": [
+          -4,
+          3,
+          0
+        ],
+        "watts": 950,
+        "color": [
+          1,
+          0.98,
+          0.95
+        ],
+        "size": 5,
+        "sizeY": 2
+      },
+      {
+        "name": "rim",
+        "gamePosition": [
+          2,
+          3.6,
+          4
+        ],
+        "watts": 1400,
+        "color": [
+          0.82,
+          0.9,
+          1
+        ],
+        "size": 4,
+        "sizeY": 2
+      },
+      {
+        "name": "front",
+        "gamePosition": [
+          -1,
+          1.7,
+          -5
+        ],
+        "watts": 220,
+        "color": [
+          0.9,
+          0.95,
+          1
+        ],
+        "size": 3,
+        "sizeY": 2
+      }
+    ],
+    "pose": "Existing authored aeroStowPositionOffset and aeroStowAxis/aeroStowAngle applied at deployment=0 only during render",
+    "recursionPrevention": "Hide RC_Original_Infotainment_Display only in temporary render scene; reopen unmodified .blend before packing UI",
+    "modelMaterials": "All source model materials unchanged during render and in outputs"
+  },
+  "output": {
+    "blendSha256": "4c48dfb2c98d76747b20a5daeb951d343112ace1a7f77af984f8e2f8b005e6eb",
+    "glbSha256": "d71068fb3da4771f1a5945f03d078cd97a4cac4f0884442cda9c7c732722100e",
+    "uiSha256": "2e256acc022bef6007e2d22c769230254f91d7d68c1c7ae2f5c75120cc9916a2"
+  },
+  "verification": {
+    "nonUiBufferViewsIdentical": true,
+    "geometryStructureIdentical": true,
+    "liveUiRegionsIdentical": true,
+    "editableGeometryIdentical": true,
+    "embeddedUiIdentical": true,
+    "packedUiIdentical": true,
+    "otherPackedImagesIdentical": true,
+    "noModelReExport": true,
+    "onlyDescriptionUpdated": "Roadster.driverDisplay.ui_artwork",
+    "uiArtworkDescription": "Offline Blender render of this authored Rocket in parked/stowed pose; live game instruments remain separate; no factory UI claim."
+  }
+}
