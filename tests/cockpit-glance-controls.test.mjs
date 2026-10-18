@@ -10,6 +10,26 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles/app.css', import.meta.url), 'utf8');
 const theme = readFileSync(new URL('../styles/theme.css', import.meta.url), 'utf8');
 
+
+/** Extract one real function using balanced braces, tolerating compact formatting. */
+function applicationFunction(name) {
+  const start = new RegExp('function\\s+' + name + '\\s*\\(\\s*\\)\\s*\\{').exec(main);
+  assert.ok(start, 'production function exists: ' + name);
+  let depth = 0, quote = null, escaped = false, lineComment = false, blockComment = false;
+  for (let at = main.indexOf('{', start.index); at < main.length; at++) {
+    const char = main[at], next = main[at + 1];
+    if (lineComment) { if (char === '\n') lineComment = false; continue; }
+    if (blockComment) { if (char === '*' && next === '/') { blockComment = false; at++; } continue; }
+    if (quote) { if (escaped) escaped = false; else if (char === '\\') escaped = true; else if (char === quote) quote = null; continue; }
+    if (char === '/' && next === '/') { lineComment = true; at++; continue; }
+    if (char === '/' && next === '*') { blockComment = true; at++; continue; }
+    if (char === "'" || char === '"' || char === '`') { quote = char; continue; }
+    if (char === '{') depth++;
+    if (char === '}' && --depth === 0) return main.slice(start.index, at + 1);
+  }
+  assert.fail('unterminated production function: ' + name);
+}
+
 /** Minimal event target for exercising the actual application bindings without WebGL. */
 function element() {
   return {
@@ -40,7 +60,7 @@ function withDocument(elements, operation) {
 function harness() {
   const elements = Object.fromEntries(['glanceControls', 'lookLeftBtn', 'lookRightBtn'].map(id => [id, element()]));
   const changes = [];
-  const renderer = { cameraMode: 'cockpit', effectiveCameraMode: 'cockpit', setLookDirection: direction => changes.push(direction) };
+  const renderer = { playerVehicleId: 'rocket', cameraMode: 'cockpit', effectiveCameraMode: 'cockpit', setLookDirection: direction => changes.push(direction) };
   const sandbox = {
     screen: 'playing', busy: false, renderer, glance: new CockpitGlanceControls(direction => renderer.setLookDirection(direction)),
     lifecycle: { paused: false }, game: { state: { phase: 'playing', rolling: false } }, input: new DrivingInput(),
@@ -50,7 +70,7 @@ function harness() {
     toggleCamera() { assert.fail('glance must not toggle camera mode'); }, pauseRun() {}, startRun() {},
   };
   vm.createContext(sandbox);
-  const sync = main.match(/function syncGlanceControls\(\) \{[\s\S]*?\n\}/)?.[0];
+  const sync = applicationFunction('syncGlanceControls');
   assert.ok(sync);
   vm.runInContext(sync, sandbox);
   vm.runInContext(main.slice(main.indexOf("document.addEventListener('keydown', event => {"), main.indexOf('const controlBindings =')), sandbox);
@@ -175,18 +195,19 @@ test('pause, modal, menu, result, crash, roll and external-camera boundaries for
 
 test('actual lifecycle clear resets gaze along with held driving controls at blur/visibility boundaries', () => {
   const { sandbox: s } = harness();
-  let releases = 0;
+  let releases = 0, thumbClears = 0;
+  s.thumbDrive = { clear() { thumbClears++; } };
   s.game.releaseControls = () => { releases++; };
-  const clear = main.match(/function clearInput\(\) \{[^\n]+\}/)?.[0];
+  const clear = applicationFunction('clearInput');
   assert.ok(clear); vm.runInContext(clear, s);
   s.input.key('KeyW', true); s.document.emit('keydown', { code: 'KeyZ' });
   s.clearInput();
   assert.equal(s.glance.direction, 0); assert.equal(s.glance.sources.size, 0);
-  assert.equal(s.input.read().throttle, 0); assert.equal(releases, 1);
+  assert.equal(s.input.read().throttle, 0); assert.equal(releases, 1); assert.equal(thumbClears, 1);
   assert.match(main, /window\.addEventListener\('blur', \(\) => \{ clearInput\(\); gesture = null; pauseRun\('blur'\); \}\)/);
   assert.match(main, /if \(document\.hidden\) \{ clearInput\(\); gesture = null; pauseRun\('hidden'\); \}/);
-  assert.match(main, /const lifecycle = createLifecycle\(\(\) => \{\s*clearInput\(\)/);
-  assert.match(main, /screen = 'menu'; clearInput\(\)/);
+  assert.match(main, /const\s+lifecycle\s*=\s*createLifecycle\(\(\)\s*=>\s*\{\s*clearInput\(\)/);
+  assert.match(main, /screen\s*=\s*'hub';\s*clearInput\(\)/);
 });
 
 test('glance buttons are cockpit-only, accessible 44px holds, with concise mirror help and no new video overlay', () => {
@@ -212,5 +233,20 @@ test('glance buttons are cockpit-only, accessible 44px holds, with concise mirro
   let help;
   UI.prototype.help.call({ open(type, markup) { help = markup; } });
   assert.match(help, /удерживай Z \/ X/); assert.match(help, /кнопки «Взгляд»/); assert.match(help, /руль и газ не меняются/);
-  assert.match(main, /new CockpitGlanceControls\(direction => renderer\.setLookDirection\(direction\)\)/);
+  assert.match(main, /new CockpitGlanceControls\(direction\s*=>\s*renderer\.setLookDirection\(direction\)\)/);
+});
+
+
+test('ground-only fleet cars have no cockpit glances even if the saved camera preference is cockpit', () => {
+  for (const id of ['hatch', 'sedan', 'suv', 'van']) {
+    const { sandbox: s, elements } = harness();
+    s.input.key('KeyW', true); s.input.key('KeyA', true);
+    s.document.emit('keydown', { code: 'KeyZ' }); assert.equal(s.glance.direction, -1);
+    s.renderer.playerVehicleId = id; s.syncGlanceControls();
+    assert.equal(s.glance.direction, 0); assert.equal(s.glance.sources.size, 0);
+    assert.equal(elements.glanceControls.hidden, true); assert.equal(elements.lookLeftBtn.disabled, true);
+    s.document.emit('keydown', { code: 'KeyX' }); elements.lookRightBtn.emit('pointerdown');
+    assert.equal(s.glance.direction, 0); assert.equal(s.input.read().throttle, 1); assert.equal(s.input.read().steer, -1);
+    assert.equal(s.renderer.cameraMode, 'cockpit', 'unsupported vehicle must not overwrite the saved Rocket preference');
+  }
 });

@@ -53,8 +53,8 @@ test('reward is granted only from onRewarded before close, and only one ad may r
 test('close without reward does not grant a bonus; late reward is ignored', async () => {
   const h = adHarness(); const pending = h.ads.rewarded(); h.callbacks().onClose(); const result = await pending; h.callbacks().onRewarded(); assert.equal(result.rewarded, false);
 });
-test('ad errors, exceptions and timeout release the lock without clearing platform pause', async () => {
-  for (const mode of ['error', 'timeout', 'throw', 'offline']) {
+test('terminal ad errors and exceptions release the lock without clearing platform pause', async () => {
+  for (const mode of ['error', 'throw', 'offline']) {
     const h = adHarness({ timeoutMs: 10, ...(mode === 'throw' ? { /** Throw synchronously from the ad SDK call to test lock release without clearing platform pause. */ method: () => { throw Error('sdk'); } } : {}) });
     h.lifecycle.pause('platform'); const pending = h.ads.rewarded();
     if (mode === 'error') h.callbacks().onError();

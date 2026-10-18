@@ -1,10 +1,10 @@
 import { trafficDefinition } from './traffic-catalog.js';
-import { PLAYER_BOUNDS } from './player-spec.js';
+import { playerBoundsFor } from './player-spec.js';
 
 // Simulation-only lane planning. Coordinates are lane units (right is positive),
 // z is metres ahead of the player, and all speeds/accelerations are SI units.
 // Keep this module independent of rendering and traffic-physics to avoid cycles.
-const LANE_WIDTH = 3.5, PLAYER_WIDTH = PLAYER_BOUNDS.width, PLAYER_LENGTH = PLAYER_BOUNDS.length;
+const LANE_WIDTH = 3.5;
 /**
  * Clamps a scalar to inclusive bounds without changing simulation state.
  * @param {number} x - Value to constrain.
@@ -148,11 +148,12 @@ function playerEnvelope(state, car, horizon) {
   const pv = Math.max(0, finite(state.speed) * Math.cos(finite(state.heading)));
   // A driver may accelerate or brake during our signal. Include both responses,
   // not just their present speed, and test the entire swept relative-z interval.
-  const acceleration = Math.max(8, finite(state.acceleration));
+  const acceleration = Math.max(8, finite(state.playerAccelerationBound,8), finite(state.acceleration));
   const farthestPlayer = pv * horizon + .5 * acceleration * horizon * horizon;
-  const stopTime = Math.min(horizon, pv / 19);
-  const shortestPlayer = pv * stopTime - .5 * 19 * stopTime * stopTime;
-  const extent = halfLength(car) + PLAYER_LENGTH / 2;
+  const braking = Math.max(19, finite(state.playerBrakingBound,19));
+  const stopTime = Math.min(horizon, pv / braking);
+  const shortestPlayer = pv * stopTime - .5 * braking * stopTime * stopTime;
+  const extent = halfLength(car) + playerBoundsFor(state).length / 2;
   return [Math.min(car.z, car.z + vMin * horizon - farthestPlayer) - extent,
     Math.max(car.z, car.z + vMax * horizon - shortestPlayer) + extent];
 }
@@ -185,7 +186,7 @@ function safeTarget(state, car, target, horizon) {
   const [lo, hi] = playerEnvelope(state, car, horizon);
   const playerX = finite(state.x, finite(state.lane, 1));
   const projectedPlayerX = clamp(playerX + Math.sin(finite(state.heading)) * Math.max(0, finite(state.speed)) * horizon / LANE_WIDTH, -.24, 2.24);
-  const playerHalfWidth = (PLAYER_WIDTH + .9) / (2 * LANE_WIDTH);
+  const playerHalfWidth = (playerBoundsFor(state).width + .9) / (2 * LANE_WIDTH);
   const playerLeft = Math.min(playerX, projectedPlayerX) - playerHalfWidth;
   const playerRight = Math.max(playerX, projectedPlayerX) + playerHalfWidth;
   const spec = trafficDefinition(car.kind), [ownMin, ownMax] = speedBounds(car);

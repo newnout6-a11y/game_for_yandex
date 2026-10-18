@@ -1,493 +1,426 @@
+/**
+ * Current Roadster garage browser smoke, against the unmodified source or --dist.
+ * npm run test:browser -- [--dist] [--webkit]
+ * CHROME_BIN overrides installed Chrome; SOFTWARE_WEBGL=1 opts into SwiftShader.
+ * WebKit is tested only when explicitly requested and its binary is installed.
+ *
+ * This is entry/UI/accessibility coverage, not an FPS or long-drive benchmark.
+ * Real touch physics, settlement and ad/orientation ownership remain covered by
+ * scripts/garage-flow-qa.mjs; fleet/progression by scripts/garage-release-qa.mjs.
+ * SDK callbacks below are an isolated readiness spy, not real platform traffic.
+ */
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium, webkit, devices } from 'playwright';
+import { chromium, webkit } from 'playwright';
 import { startServer } from './serve.mjs';
-import { Game } from '../src/game.js';
-import { seededRandom } from '../src/util.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const output = path.join(root, 'output/playwright');
+const target = process.argv.includes('--dist') ? 'dist' : 'source';
+const output = path.join(root, 'output/playwright', target);
+const initialGarageAsset = '/public/assets/garage/tier1.glb';
+const seed = new Date('2026-10-18T00:00:00Z');
+const timeout = Number(process.env.BROWSER_CHECK_TIMEOUT_MS) || 180000;
+const report = { completed: false, target, browsers: [], results: [], errors: [], expectedFailures: [], accessibility: [], webkit: process.argv.includes('--webkit') ? 'requested' : 'not requested' };
+let server, browser, safari, url;
+const paused = new WeakSet();
+const intentionalTeardown = new WeakSet();
+const integrityHeader = 'x-roadster-qa-fetch-id';
+const integrityProofs = new Map(), abortedFetches = [], assetIntegrity = new Map();
+/** Context destruction cancels in-flight browser fetch bookkeeping; only aborts after this explicit harness action are expected. */
+async function closeContext(context){
+  for(const page of context.pages()){
+    // Finish proof already being hashed before destroying its document. Do not
+    // wait for unfinished downloads: only our explicit teardown may cancel those.
+    await page.evaluate(() => Promise.all(window.__browserCheckIntegrityPending || [])).catch(() => {});
+    intentionalTeardown.add(page);
+  }
+  await context.close();
+}
 await mkdir(output, { recursive: true });
-const server = startServer({ port: 0, root: process.argv.includes('--dist') ? path.join(root, 'dist') : root });
-await once(server, 'listening');
-const url = 'http://127.0.0.1:' + server.address().port;
-const errors = [], results = [];
-let completed = false;
-const seed = 1792022400000;
-const fixture = new Game({ random: seededRandom(seed) }); fixture.start();
-const browser = await chromium.launch({ ...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{channel:'chrome'}), headless: true });
-let safari;
-/**
- * Append and print one completed browser-check result.
- * @param {string} name - Human-readable assertion group that has already passed.
- */
-const pass = name => { results.push({ name, status: 'PASS' }); console.log('PASS ' + name); };
+const pass = name => { report.results.push({ name, status: 'PASS' }); console.log('PASS ' + name); };
+const save = (name, value) => writeFile(path.join(output, name), JSON.stringify(value, null, 2));
+const action = (page, key) => page.locator(`[data-gs-focus="${key}"]:visible`).first();
 
 /**
- * Open an instrumented page, wait for assets and pause its seeded clock.
- * Collects script, console, HTTP and external-runtime-request errors globally;
- * then installs state observation while preserving production rendering.
- * @param {object} context - Playwright browser context owned by the caller.
- * @returns {Promise<object>} Loaded page with a controlled clock and observed world.
+ * Chromium 154 can emit ERR_ABORTED after FileLoader consumed an intact body.
+ * Reconcile that exact request, never a URL-level retry or a general abort. The
+ * standalone scripts/probe-glb-network.mjs proves EOF+SHA for both framing variants
+ * and rejects a deliberately truncated body. Production loading is unchanged.
  */
-async function setup(context) {
+async function reconcileCompletedFetches() {
+  for (const candidate of abortedFetches) {
+    const proof = integrityProofs.get(candidate.requestId);
+    if (!proof || proof.page !== candidate.page || proof.url !== candidate.entry.url ||
+        proof.status !== 200 || candidate.responseStatus !== 200 || !proof.eof || proof.error) continue;
+    const address = new URL(proof.url);
+    if (address.origin !== url || !/^\/public\/assets\/.*\.glb$/i.test(address.pathname)) continue;
+    const servedRoot = target === 'dist' ? path.join(root, 'dist') : root;
+    const file = path.resolve(servedRoot, '.' + decodeURIComponent(address.pathname));
+    const relative = path.relative(servedRoot, file);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) continue;
+    if (!assetIntegrity.has(file)) assetIntegrity.set(file, readFile(file).then(bytes => ({ bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') })));
+    const expected = await assetIntegrity.get(file);
+    if (proof.bytes !== expected.bytes || proof.sha256 !== expected.sha256) continue;
+    const index = report.errors.indexOf(candidate.entry);
+    if (index < 0) continue;
+    report.errors.splice(index, 1);
+    report.expectedFailures.push({ ...candidate.entry, kind: 'verified-complete-fetch', integrity: { requestId: candidate.requestId, status: 200, eof: true, ...expected } });
+  }
+}
+
+/** Poll host time, so an intentionally paused browser clock cannot deadlock waits. */
+async function until(check, description) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if (await check()) return;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error('Timed out: ' + description);
+}
+async function screen(page, expected) {
+  await until(async () => await page.locator('#app').getAttribute('data-screen') === expected, 'screen ' + expected);
+}
+/** Freeze only after asynchronous loading settles; a two-second idle margin covers slow software-renderer transport, never a live drive. */
+async function pauseClock(page) {
+  if (paused.has(page)) return;
+  const now = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(new Date(now + 2000));
+  paused.add(page);
+}
+async function resumeClock(page) {
+  if (!paused.has(page)) return;
+  await page.clock.resume();
+  paused.delete(page);
+}
+async function capture(page, name) {
+  if (paused.has(page)) await page.clock.runFor(34); // Two real production render callbacks, not a render mock.
+  await page.screenshot({ path: path.join(output, name + '.png') });
+}
+
+/** Watch every page; only exact errors from our deliberate tier-1 503 are expected. */
+async function openPage(context, label, { readySpy = false, failureFixture = false } = {}) {
   const page = await context.newPage();
-  page.on('pageerror', error => errors.push(error.message));
-  page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
-  page.on('response', response => { if (response.status() >= 400) errors.push(response.status() + ' ' + response.url()); });
-  page.on('request', request => { const target = new URL(request.url()); if (target.protocol.startsWith('http') && !['127.0.0.1','localhost'].includes(target.hostname)) errors.push('External runtime request: ' + request.url()); });
-  await page.clock.install({ time: new Date(seed) });
-  await page.addInitScript(value => { /** Return the fixed millisecond seed used by game randomness; new Date still follows the controlled clock. */ Date.now = () => value; }, seed);
-  await page.goto(url);
-  await page.waitForFunction(() => document.querySelector('#loadStatus').hidden, { timeout: 60000 });
-  const readyTime = await page.evaluate(() => new Date().getTime());
-  await page.clock.pauseAt(new Date(readyTime + 100));
-  await observe(page); await frame(page,32);
+  const responseStatuses = new WeakMap();
+  page.setDefaultTimeout(timeout);
+  const record = (kind, message, location = '') => {
+    const deliberate = failureFixture && (
+      kind === 'http' && message === '503' && new URL(location).pathname === initialGarageAsset ||
+      kind === 'console' && message.startsWith('Interactive startup failed:') && message.includes('Garage asset unavailable') ||
+      kind === 'console' && message.includes('Failed to load resource') && message.includes('503') && location && new URL(location).pathname === initialGarageAsset
+    );
+    const entry = { page: label, kind, message, url: location };
+    (deliberate ? report.expectedFailures : report.errors).push(entry);
+    return entry;
+  };
+  page.on('pageerror', error => record('pageerror', error.message));
+  page.on('console', message => { if (message.type() === 'error') record('console', message.text(), message.location().url); });
+  page.on('response', response => { responseStatuses.set(response.request(), response.status()); if (response.status() >= 400) record('http', String(response.status()), response.url()); });
+  page.on('requestfailed', request => {
+    const error = request.failure()?.errorText || 'failed';
+    if (intentionalTeardown.has(page) && error === 'net::ERR_ABORTED') {
+      report.expectedFailures.push({ page: label, kind: 'harness-teardown', message: error, url: request.url() });
+    } else {
+      const entry = record('requestfailed', error, request.url());
+      const requestId = request.headers()[integrityHeader];
+      if (error === 'net::ERR_ABORTED' && requestId) abortedFetches.push({ page, entry, requestId, responseStatus: responseStatuses.get(request) });
+    }
+  });
+  page.on('request', request => {
+    const address = new URL(request.url());
+    if (['http:', 'https:'].includes(address.protocol) && address.origin !== url) record('external-request', request.url());
+  });
+  await page.clock.install({ time: seed });
+  // Binding lives outside the document, so an explicit retry navigation cannot
+  // overwrite proof for an earlier fetch with the same URL.
+  await page.exposeBinding('__browserCheckIntegrityProof', ({ page: sourcePage }, proof) => { integrityProofs.set(proof.id, { ...proof, page: sourcePage }); });
+  await page.addInitScript(({ header }) => {
+    const streams = new WeakMap(), readers = new WeakMap();
+    const pending = new Set();
+    window.__browserCheckIntegrityPending = pending;
+    const fetchOriginal = window.fetch;
+    window.fetch = function (input, init) {
+      const address = new URL(typeof input === 'string' || input instanceof URL ? input : input.url, location.href);
+      if (address.origin !== location.origin || !/^\/public\/assets\/.*\.glb$/i.test(address.pathname)) return Reflect.apply(fetchOriginal, this, arguments);
+      const request = new Request(input, init), id = crypto.randomUUID();
+      request.headers.set(header, id);
+      return Reflect.apply(fetchOriginal, this, [request]).then(response => {
+        if (response.status === 200 && response.body) streams.set(response.body, { id, url: request.url, status: response.status, bytes: 0, chunks: [] });
+        return response;
+      });
+    };
+    const getReader = ReadableStream.prototype.getReader;
+    ReadableStream.prototype.getReader = function (...args) {
+      const reader = Reflect.apply(getReader, this, args), proof = streams.get(this);
+      if (proof) readers.set(reader, proof);
+      return reader;
+    };
+    const read = ReadableStreamDefaultReader.prototype.read;
+    ReadableStreamDefaultReader.prototype.read = function (...args) {
+      const proof = readers.get(this);
+      return Reflect.apply(read, this, args).then(result => {
+        if (proof && !proof.eof) {
+          if (!result.done) { proof.bytes += result.value.byteLength; proof.chunks.push(result.value.slice()); }
+          else {
+            proof.eof = true;
+            const task = (async () => {
+              const body = new Uint8Array(proof.bytes);
+              let offset = 0;
+              for (const chunk of proof.chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+              proof.chunks = [];
+              const sha256 = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', body)), byte => byte.toString(16).padStart(2, '0')).join('');
+              await window.__browserCheckIntegrityProof({ id: proof.id, url: proof.url, status: proof.status, bytes: proof.bytes, eof: true, sha256 });
+            })().catch(() => {}).finally(() => pending.delete(task));
+            pending.add(task);
+          }
+        }
+        return result;
+      });
+    };
+  }, { header: integrityHeader });
+  if (readySpy) await page.addInitScript(() => {
+    window.__browserCheckReady = 0;
+    window.YaGames = { init: async () => ({
+      on() {},
+      features: { LoadingAPI: { ready() { window.__browserCheckReady++; } } },
+    }) };
+  });
   return page;
 }
-/**
- * Wrap the page renderer to expose the live state/world without suppressing draws.
- * Mutates only this test page's prototype; navigation discards the instrumentation.
- * @param {object} page - Loaded Playwright page with the production world module.
- */
-async function observe(page) {
-  await page.evaluate(async()=>{
-    const {RoadRenderer}=await import('./src/world.js'); const render=RoadRenderer.prototype.render;
-    /** Expose live state/world references, then forward every original render argument and return value. */ RoadRenderer.prototype.render=function(state,...rest){window.__driveState=state;window.__testWorld=this;return render.call(this,state,...rest);};
-  });
+async function ready(page) {
+  await screen(page, 'hub');
+  assert.equal(await action(page, 'startDrive').isEnabled(), true);
+  await pauseClock(page);
 }
-/**
- * Dispatch one touch-control press/release through the real pointer handler.
- * Distinct pointer IDs keep simultaneous held controls independently releasable.
- * @param {object} page - Playwright page.
- * @param {string} id - Control element ID without '#'.
- * @param {boolean} down - True for pointerdown, false for pointerup.
- * @param {number} [pointerId=1] - Synthetic touch identity.
- */
-async function hold(page,id,down,pointerId=1){await page.locator('#'+id).dispatchEvent(down?'pointerdown':'pointerup',{pointerId,pointerType:'touch'});}
-/**
- * Require held gas/boost to remain active and drain energy between pickups.
- * Samples ten 16 ms updates, ignoring reward-caused energy increases, then
- * advances the remaining duration. Mutates simulation time and throws on failure.
- * @param {object} page - Observed page with gas and boost already held.
- * @param {number} ms - Total simulated milliseconds, expected to be at least 160.
- */
-async function assertBoostDrain(page,ms) {
-  let previous=await page.evaluate(()=>({nitro:window.__driveState.nitro,charges:window.__driveState.charges})), spent=false;
-  for(let i=0;i<10;i++){
-    await frame(page,16);
-    const current=await page.evaluate(()=>({nitro:window.__driveState.nitro,charges:window.__driveState.charges,boosting:window.__driveState.boosting}));
-    assert.equal(current.boosting,true,'Held gas + nitro must activate boost');
-    if(current.charges===previous.charges&&current.nitro<previous.nitro)spent=true;previous=current;
-  }
-  assert.ok(spent,'Nitro must drain between pickup rewards');await frame(page,ms-160);
-}
-/**
- * Advance the controlled browser clock, including real game/input callbacks.
- * @param {object} page - Page whose clock is installed.
- * @param {number} ms - Simulated milliseconds, not an FPS or wall-time sample.
- */
-async function frame(page, ms) { await page.clock.runFor(ms); }
-/**
- * Assert the app's declared screen equals the requested UI state.
- * @param {object} page - Playwright page containing #app.
- * @param {string} expected - Expected data-screen value.
- */
-async function screen(page, expected) { assert.equal(await page.locator('#app').getAttribute('data-screen'), expected); }
-/**
- * Write a PNG under the browser-check output directory.
- * @param {object} page - Playwright page to capture.
- * @param {string} name - Output basename without extension.
- * @param {boolean} [fullPage=false] - Capture the whole document instead of viewport.
- */
-async function screenshot(page, name, fullPage = false) { await page.screenshot({ path: path.join(output, name + '.png'), fullPage }); }
-/**
- * Exercise default, hover, focus and active states of the primary play button.
- * Asserts 4.5:1 computed-color contrast and a non-none focus outline, then saves
- * measurements. This does not model transparency/compositing or all WCAG criteria.
- * @param {object} page - Menu page; focus and pointer state are changed by the check.
- */
-async function buttonStates(page) {
-  const button = page.locator('#playBtn');
+
+/** Read opaque computed button colors, not design tokens or screenshot heuristics. */
+async function primaryButtonStates(page) {
+  const button = action(page, 'startDrive');
   const states = [];
-  /**
-   * Read current button colors, assert contrast/focus and append measurements.
-   * @param {string} name - State label; 'focus' additionally requires an outline.
-   */
+  const luminance = rgb => rgb.map(channel => {
+    const value = channel / 255;
+    return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+  }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
   async function inspect(name) {
-    const colors = await button.evaluate(el => {
-      const style = getComputedStyle(el);
-      return { foreground: style.color, background: style.backgroundColor, outline: style.outlineStyle };
+    const colors = await button.evaluate(element => {
+      const style = getComputedStyle(element);
+      return { foreground: style.color, background: style.backgroundColor, image: style.backgroundImage, outline: style.outlineStyle, outlineWidth: style.outlineWidth, focusVisible: element.matches(':focus-visible') };
     });
-    /**
-     * Extract the first three channels of a computed rgb()/rgba() color.
-     * @param {string} value - Browser-computed color string, not an arbitrary CSS token.
-     * @returns {number[]} Red, green and blue in 0–255 units; alpha is ignored.
-     */
-    const rgb = value => value.match(/[\d.]+/g).slice(0,3).map(Number);
-    /**
-     * Convert computed sRGB channels to WCAG relative luminance.
-     * @param {string} value - Opaque computed rgb()/rgba() color used by this fixture.
-     * @returns {number} Linear-light weighted luminance in the range 0–1.
-     */
-    const luminance = value => rgb(value).map(v => { const c = v / 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; }).reduce((sum,v,i) => sum + v * [.2126,.7152,.0722][i], 0);
-    const a = luminance(colors.foreground), b = luminance(colors.background);
-    const contrast = (Math.max(a,b) + .05) / (Math.min(a,b) + .05);
+    const channels = value => {
+      const parts = value.match(/[\d.]+/g).map(Number);
+      assert.ok(parts.length === 3 || parts[3] === 1, 'Contrast fixture requires opaque colors: ' + value);
+      return parts.slice(0, 3);
+    };
+    assert.equal(colors.image, 'none', 'Computed solid-color contrast must not ignore a background image');
+    const light = luminance(channels(colors.foreground)), dark = luminance(channels(colors.background));
+    const contrast = (Math.max(light, dark) + .05) / (Math.min(light, dark) + .05);
     states.push({ name, ...colors, contrast });
-    assert.ok(contrast >= 4.5, name + ' primary button contrast');
-    if (name === 'focus') assert.notEqual(colors.outline, 'none');
-  }
-  await inspect('default');
-  await button.hover(); await inspect('hover');
-  await page.mouse.move(0,0); await button.focus(); await inspect('focus');
-  await button.hover(); await page.mouse.down(); await inspect('active');
-  await page.mouse.move(0,0); await page.mouse.up();
-  await writeFile(path.join(output, 'button-states.json'), JSON.stringify(states, null, 2));
-  pass('primary button default/hover/focus/active contrast and visible focus');
-}
-/**
- * Run the selected WCAG A/AA axe rules and assert there are no violations.
- * Temporarily resumes timers required by axe, pauses the clock afterward and
- * writes the full JSON report; automated checks are not a full accessibility audit.
- * @param {object} page - Loaded Playwright page to inspect.
- * @param {string} label - Report filename suffix and pass-result label.
- */
-async function axe(page, label) {
-  // axe uses timers internally; it must run with the virtual clock ticking.
-  await page.clock.resume();
-  await page.addScriptTag({ path: path.join(root, 'node_modules/axe-core/axe.min.js') });
-  const report = await page.evaluate(async () => await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } }));
-  const clockTime = await page.evaluate(() => new Date().getTime());
-  await page.clock.pauseAt(new Date(clockTime + 100));
-  await writeFile(path.join(output, 'axe-' + label + '.json'), JSON.stringify(report, null, 2));
-  assert.deepEqual(report.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) })), []);
-  pass('axe ' + label + ': no violations in selected WCAG rules');
-}
-/**
- * Estimate player center from red-dominant pixels in the lower WebGL buffer.
- * This color heuristic assumes the red player fixture and can include other red
- * pixels; it checks rendered steering movement, not exact geometry bounds.
- * @param {object} page - Page whose canvas exposes a readable WebGL2 buffer.
- * @returns {Promise<number>} Mean horizontal CSS-pixel coordinate, or -1 if absent.
- */
-async function playerX(page) {
-  return await page.evaluate(() => {
-    const canvas = document.querySelector('canvas');
-    const context = canvas.getContext('webgl2');
-    const pixels = new Uint8Array(canvas.width * Math.floor(canvas.height * .52) * 4);
-    context.readPixels(0, 0, canvas.width, Math.floor(canvas.height * .52), context.RGBA, context.UNSIGNED_BYTE, pixels);
-    const data = { data: pixels };
-    let total = 0, count = 0;
-    for (let i = 0; i < data.data.length; i += 4) {
-      if (data.data[i] > 110 && data.data[i] > data.data[i + 1] * 1.5 && data.data[i] > data.data[i + 2] * 1.4) { total += (i / 4) % canvas.width; count++; }
+    assert.ok(contrast >= 4.5, `${name} primary button text contrast ${contrast.toFixed(2)} < 4.5`);
+    if (name === 'keyboard-focus') {
+      assert.equal(colors.focusVisible, true);
+      assert.notEqual(colors.outline, 'none');
+      assert.ok(parseFloat(colors.outlineWidth) >= 2);
     }
-    return count ? total / count / (canvas.width / canvas.clientWidth) : -1;
-  });
-}
-/**
- * Drive toward the nearest ahead traffic using actual held keyboard events.
- * Uses heading-aware 0.3-second steering prediction, stopping when results appears
- * or throwing after 220 × 350 ms of controlled time. Held keys remain page state.
- * @param {object} page - Observed game page; mutates inputs and simulation state.
- */
-async function waitForCrash(page) {
-  await page.keyboard.down('KeyW');
-  for (let i = 0; i < 220; i++) {
-    if (await page.locator('#app').getAttribute('data-screen') === 'results') return;
-    const direction=await page.evaluate(()=>{
-      const s=window.__driveState,car=s.traffic.filter(c=>c.z>0).sort((a,b)=>a.z-b.z)[0];
-      if(!car||s.phase!=='playing')return 0;
-      const error=car.lane-(s.x+Math.sin(s.heading)*s.speed*.3/3.5);return Math.abs(error)>.05?Math.sign(error):0;
-    });
-    await page.keyboard.up('KeyA');await page.keyboard.up('KeyD');
-    if(direction)await page.keyboard.down(direction<0?'KeyA':'KeyD');
-    await frame(page, 350);
   }
-  throw Error('No collision while driving toward traffic after 77 simulated seconds');
+  await page.mouse.move(0, 0); await inspect('default');
+  await button.hover(); await inspect('hover');
+  await page.mouse.move(0, 0);
+  await page.locator('.gs-hub-title').focus(); await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.gsFocus), 'startDrive', 'Primary action is keyboard reachable');
+  await inspect('keyboard-focus');
+  await button.hover(); await page.mouse.down();
+  try { await inspect('active'); } finally { await page.mouse.move(0, 0); await page.mouse.up(); }
+  await screen(page, 'hub');
+  await save('button-states.json', states);
+  pass('current primary action: default/hover/active contrast and real keyboard-visible focus');
 }
-/**
- * Estimate the red player's CSS-pixel center from a composited screenshot.
- * Uses the lower image band for WebKit, where direct WebGL pixel reads can differ
- * from visible output. Fewer than 101 qualifying pixels is treated as no player.
- * @param {object} page - Playwright page to screenshot without writing a file.
- * @returns {Promise<number>} Mean horizontal CSS-pixel coordinate, or -1.
- */
-async function compositedPlayerX(page) {
-  const png = await page.screenshot();
-  return await page.evaluate(async data => {
-    const image = new Image(); image.src = data; await image.decode();
-    const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
-    const context = canvas.getContext('2d'); context.drawImage(image, 0, 0);
-    const pixels = context.getImageData(0, Math.floor(image.height * .48), image.width, Math.floor(image.height * .49)).data;
-    let total = 0, count = 0;
-    for (let i = 0; i < pixels.length; i += 4) if (pixels[i] > 110 && pixels[i] > pixels[i+1] * 1.5 && pixels[i] > pixels[i+2] * 1.4) { total += i/4 % image.width; count++; }
-    return count > 100 ? total/count/image.width*innerWidth : -1;
-  }, 'data:image/png;base64,' + png.toString('base64'));
+
+/** Axe inspects the real document with all selected WCAG rules, with no rule exclusions. */
+async function axeCheck(page, label) {
+  await resumeClock(page); // axe owns asynchronous timers; the idle garage does not continually render.
+  let result;
+  try {
+    if (!await page.evaluate(() => !!window.axe)) await page.addScriptTag({ path: path.join(root, 'node_modules/axe-core/axe.min.js') });
+    result = await page.evaluate(() => window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } }));
+  } finally { await pauseClock(page); }
+  await save('axe-' + label + '.json', result);
+  const violations = result.violations.map(item => ({ id: item.id, impact: item.impact, targets: item.nodes.map(node => node.target) }));
+  report.accessibility.push({ page: label, violations, incomplete: result.incomplete.map(item => item.id) });
+  if (violations.length) console.error(`FAIL axe ${label}: ${violations.map(item=>item.id).join(', ')}; collecting remaining panels before failing release`);
+  else pass(`axe ${label}: no selected WCAG A/AA violations (automated, not a complete audit)`);
+}
+
+/** Exercise five real section panels, keyboard tab semantics and the settings dialog. */
+async function desktopUI(page) {
+  await capture(page, 'hub-desktop');
+  await primaryButtonStates(page); await axeCheck(page, 'hub-desktop');
+  await action(page, 'navigate:garage:fleet').click(); await screen(page, 'garage');
+  const sections = ['fleet', 'style', 'engineering', 'contracts', 'season'];
+  assert.equal(await page.locator('[role="tab"]').count(), sections.length);
+  for (const tab of sections) {
+    await page.locator(`[data-gs-tab="${tab}"]`).click();
+    assert.equal(await page.locator('#garageShell').getAttribute('data-tab'), tab);
+    assert.equal(await page.locator(`[data-gs-tab="${tab}"]`).getAttribute('aria-selected'), 'true');
+    assert.equal(await page.locator('[role="tab"][aria-selected="true"]').count(), 1);
+    assert.equal(await page.locator('#gs-workbench').getAttribute('aria-labelledby'), 'gs-tab-' + tab);
+    assert.equal(await page.locator('#gs-workbench').isVisible(), true);
+    assert.ok((await page.locator('#gs-workbench h2').first().textContent()).trim());
+    await axeCheck(page, 'garage-' + tab);
+  }
+  await page.locator('[data-gs-tab="season"]').focus();
+  for (const [key, tab] of [['Home', 'fleet'], ['ArrowRight', 'style'], ['End', 'season']]) {
+    await page.keyboard.press(key);
+    assert.equal(await page.locator('#garageShell').getAttribute('data-tab'), tab);
+    assert.equal(await page.evaluate(() => document.activeElement.dataset.gsTab), tab);
+  }
+  await capture(page, 'garage-desktop');
+  await page.keyboard.press('Escape'); await screen(page, 'hub');
+  pass('all five garage sections, selected-panel relationships, arrow/Home/End navigation and Escape');
+  await action(page, 'openSettings').click();
+  const dialog = page.getByRole('dialog', { name: 'Настрой свой выезд' });
+  assert.equal(await dialog.isVisible(), true);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.gsFocus), 'closeSettings');
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await dialog.locator('button').last().evaluate(element => element === document.activeElement), true);
+  await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.gsFocus), 'closeSettings');
+  await dialog.locator('[data-gs-setting="difficulty"]').selectOption('rush');
+  await axeCheck(page, 'settings-desktop');
+  await page.keyboard.press('Escape');
+  assert.equal(await dialog.count(), 0);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.gsFocus), 'openSettings');
+  await action(page, 'openSettings').click();
+  assert.equal(await dialog.locator('[data-gs-setting="difficulty"]').inputValue(), 'rush');
+  await dialog.locator('[data-gs-setting="difficulty"]').selectOption('flow');
+  await page.keyboard.press('Escape');
+  pass('settings native controls, focus containment, Escape restoration and retained selection');
+
+  await action(page, 'startDrive').click(); await screen(page, 'playing');
+  await page.clock.runFor(34);
+  assert.equal(await page.locator('#garageShell').isHidden(), true);
+  assert.equal(await page.locator('#hud').isVisible(), true);
+  assert.equal(await page.locator('#speed').textContent(), '0');
+  await page.keyboard.press('Escape'); await screen(page, 'paused');
+  await page.locator('[data-action="menu"]').click(); await screen(page, 'hub');
+  pass('real start action enters zero-speed play; keyboard pause and return restore the hub');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.locator('#orientationGate').isHidden(), true, 'Narrow fine-pointer desktop is not a phone');
+  assert.equal(await page.locator('#app').evaluate(element => element.inert), false);
+  assert.equal(await action(page, 'startDrive').isVisible(), true);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await capture(page, 'hub-narrow-desktop');
+  pass('390×844 non-touch desktop remains an interactive hub, without portrait gate or horizontal overflow');
+}
+
+/** Touch capability and actual viewport rotation control the real black portrait gate. */
+async function touchOrientation(engine, label) {
+  const context = await engine.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+  try {
+    const page = await openPage(context, label, { readySpy: true });
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await screen(page, 'hub'); // Assets can finish behind the gate, but interactive readiness must wait.
+    await pauseClock(page);
+    const gate = page.locator('#orientationGate');
+    assert.equal(await gate.isVisible(), true);
+    assert.equal(await gate.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(0, 0, 0)');
+    assert.equal(await page.locator('#app').evaluate(element => element.inert), true);
+    assert.equal(await page.evaluate(() => window.__browserCheckReady), 0);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'orientationGate');
+    await page.keyboard.press('Enter'); await screen(page, 'hub');
+    await capture(page, label + '-portrait-gate'); await axeCheck(page, label + '-portrait-gate');
+    await page.setViewportSize({ width: 844, height: 390 });
+    await until(async () => await gate.isHidden(), label + ' landscape gate release');
+    assert.equal(await page.locator('#app').evaluate(element => element.inert), false);
+    assert.equal(await action(page, 'startDrive').isEnabled(), true);
+    assert.equal(await page.evaluate(() => window.__browserCheckReady), 1);
+    await capture(page, label + '-landscape-hub'); await axeCheck(page, label + '-landscape-hub');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await until(async () => await gate.isVisible(), label + ' portrait re-entry');
+    await page.setViewportSize({ width: 844, height: 390 });
+    await until(async () => await gate.isHidden(), label + ' second landscape entry');
+    assert.equal(await page.evaluate(() => window.__browserCheckReady), 1, 'SDK readiness is once per document');
+    pass(`${label}: touch portrait black gate → landscape hub, inert/focus protection and exactly-once readiness`);
+  } finally { await closeContext(context); }
 }
 
 try {
-  const loadingContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  await loadingContext.addInitScript(() => {
-    window.__readyCalls = 0;
-    window.YaGames = { /** Resolve a loading-only SDK mock used to count ready notifications while an asset is held. */ init: async () => ({ features: { LoadingAPI: { /** Count readiness calls without contacting Yandex. */ ready: () => window.__readyCalls++ } } }) };
-  });
-  const loadingPage = await loadingContext.newPage();
-  let releaseCar;
-  const heldCar = new Promise(resolve => { releaseCar = resolve; });
-  await loadingPage.route('**/public/assets/roadster.glb', async route => { await heldCar; await route.continue(); });
-  await loadingPage.goto(url);
-  await loadingPage.waitForFunction(() => document.querySelector('#playBtn').textContent.includes('Загрузка'));
-  assert.equal(await loadingPage.locator('#playBtn').isDisabled(), true);
-  await loadingPage.keyboard.press('Enter'); await screen(loadingPage, 'menu');
-  assert.equal(await loadingPage.evaluate(() => window.__readyCalls), 0);
-  releaseCar();
-  await loadingPage.waitForFunction(() => document.querySelector('#loadStatus').hidden, { timeout: 60000 });
-  await loadingPage.waitForFunction(() => window.__readyCalls === 1);
-  await loadingPage.locator('#playBtn').click(); await screen(loadingPage, 'playing');
-  pass('slow artist model blocks start and SDK ready until every asset is loaded');
-  await loadingContext.close();
+  await access(path.join(root, target === 'dist' ? 'dist/index.html' : 'index.html'));
+  server = startServer({ port: 0, root: target === 'dist' ? path.join(root, 'dist') : root });
+  await once(server, 'listening'); url = 'http://127.0.0.1:' + server.address().port;
+  browser = await chromium.launch({ ...(process.env.CHROME_BIN ? { executablePath: process.env.CHROME_BIN } : { channel: 'chrome' }), headless: true, args: process.env.SOFTWARE_WEBGL ? ['--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader'] : [] });
+  report.browsers.push({ engine: 'Chromium', version: browser.version(), softwareWebGL: !!process.env.SOFTWARE_WEBGL });
 
-  const failureContext = await browser.newContext();
-  const failurePage = await failureContext.newPage();
-  let failSky = true;
-  await failurePage.route('**/public/assets/daylight.hdr', route => failSky ? route.fulfill({ status: 503, body: 'Controlled asset failure' }) : route.continue());
-  failurePage.on('pageerror', error => errors.push(error.message));
-  await failurePage.goto(url);
-  await failurePage.waitForFunction(() => document.querySelector('#playBtn').textContent === 'Повторить загрузку');
-  await screen(failurePage, 'menu');
-  assert.equal(await failurePage.locator('#loadStatus').isVisible(), true);
-  failSky = false;
-  await failurePage.locator('#playBtn').click();
-  await failurePage.waitForFunction(() => document.querySelector('#loadStatus').hidden, { timeout: 60000 });
-  pass('failed asset has a visible retry state; retry reloads a complete scene');
-  await failureContext.close();
+  const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+  let release;
+  try {
+    const page = await openPage(desktop, 'desktop-held-asset', { readySpy: true });
+    let requested = false;
+    const held = new Promise(resolve => { release = resolve; });
+    await page.route('**' + initialGarageAsset, async route => { requested = true; await held; await route.continue(); });
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await until(() => requested, 'real initial tier1 garage request');
+    await screen(page, 'loading');
+    assert.equal(await page.locator('.gs-loading [role="progressbar"]').isVisible(), true);
+    assert.equal(await action(page, 'startDrive').count(), 0);
+    assert.equal(await page.locator('#playBtn').isDisabled(), true, 'Legacy hidden start must also stay disabled');
+    await page.keyboard.press('Enter'); await screen(page, 'loading');
+    assert.equal(await page.evaluate(() => window.__browserCheckReady), 0);
+    release(); await ready(page);
+    assert.equal(await page.evaluate(() => window.__browserCheckReady), 1);
+    assert.equal(await page.locator('#menu').isHidden(), true, 'Obsolete title menu remains hidden');
+    pass('held real tier1 garage GLB blocks visible/legacy start and SDK ready; release reaches actual hub');
+    await desktopUI(page);
+  } finally { release?.(); await closeContext(desktop); }
 
-  const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
-  const page = await setup(desktop);
-  await screen(page, 'menu');
-  await screenshot(page, 'menu-desktop-final');
-  await buttonStates(page);
-  await axe(page, 'menu-desktop');
-  for (const route of ['neon', 'dawn', 'ring']) {
-    await page.locator('[data-route="' + route + '"]').click();
-    assert.equal(await page.locator('[data-route="' + route + '"]').getAttribute('aria-pressed'), 'true');
-    await frame(page, 32); await screenshot(page, 'route-' + route);
+  const failure = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
+  try {
+    const page = await openPage(failure, 'failed-initial-garage', { readySpy: true, failureFixture: true });
+    let fail = true, requests = 0;
+    await page.route('**' + initialGarageAsset, route => { requests++; return fail ? route.fulfill({ status: 503, contentType: 'text/plain', body: 'Deliberate initial garage failure' }) : route.continue(); });
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await action(page, 'retryLoad').waitFor({ state: 'visible', timeout });
+    await screen(page, 'loading');
+    assert.equal(await page.locator('.gs-loading h1').textContent(), 'Не удалось открыть бокс');
+    assert.equal(await page.locator('#playBtn').isDisabled(), true);
+    assert.equal(await action(page, 'startDrive').count(), 0);
+    await page.keyboard.press('Enter'); await screen(page, 'loading');
+    assert.equal(requests, 1, 'A failed asset must not enter an automatic retry loop');
+    assert.equal(await page.evaluate(() => window.__browserCheckReady), 0);
+    await capture(page, 'initial-garage-failure');
+    fail = false;
+    await action(page, 'retryLoad').click(); await ready(page);
+    assert.equal(requests, 2, 'Explicit retry must request the real asset again');
+    assert.equal(await page.evaluate(() => window.__browserCheckReady), 1);
+    assert.equal(await action(page, 'retryLoad').count(), 0);
+    assert.ok(report.expectedFailures.some(item => item.kind === 'http'), 'Controlled 503 must actually occur');
+    pass('failed initial tier1 GLB blocks start/ready, presents explicit retry, and real reload recovers');
+  } finally { await closeContext(failure); }
+
+  await touchOrientation(browser, 'chromium-touch');
+  if (process.argv.includes('--webkit')) {
+    await access(webkit.executablePath()).catch(() => { throw new Error('--webkit requested but its browser binary is not installed; install Playwright WebKit before requesting this check'); });
+    safari = await webkit.launch({ headless: true });
+    report.browsers.push({ engine: 'WebKit', version: safari.version() });
+    await touchOrientation(safari, 'webkit-touch');
+    report.webkit = 'passed explicit touch-orientation smoke';
   }
-  await page.locator('[data-difficulty="rush"]').click();
-  await page.reload(); await page.waitForFunction(() => document.querySelector('#loadStatus').hidden); await observe(page); await frame(page, 100);
-  assert.equal(await page.locator('[data-difficulty="rush"]').getAttribute('aria-pressed'), 'true');
-  await page.locator('[data-difficulty="flow"]').click();
-  await page.locator('#soundBtn').click(); assert.equal(await page.locator('#soundBtn').getAttribute('aria-pressed'), 'true');
-  await page.locator('#soundBtn').click(); assert.equal(await page.locator('#soundBtn').getAttribute('aria-pressed'), 'false');
-  pass('routes, difficulty persistence, sound toggle');
-  await page.locator('#helpBtn').click();
-  assert.equal(await page.locator('#dialogTitle').textContent(), 'Управление');
-  await axe(page, 'help-dialog'); await screenshot(page, 'help-desktop');
-  await page.keyboard.press('Escape'); assert.equal(await page.locator('#overlay').isHidden(), true);
-  assert.equal(await page.evaluate(() => document.activeElement.id), 'helpBtn');
-  pass('help modal, Escape, focus restoration');
-  await page.locator('#fullscreenBtn').click();
-  assert.equal(await page.evaluate(() => Boolean(document.fullscreenElement)), true);
-  await page.locator('#fullscreenBtn').click();
-  assert.equal(await page.evaluate(() => Boolean(document.fullscreenElement)), false);
-  pass('fullscreen enter/exit');
-
-  await page.locator('#playBtn').click(); await frame(page, 1000); await screen(page, 'playing');
-  assert.equal(await page.locator('#speed').textContent(),'0');assert.equal(await page.locator('#distance').textContent(),'0 м');
-  assert.equal(await page.locator('#combo').isVisible(),false);
-  assert.equal(await page.locator('.speed-dial').isVisible(),true);
-  assert.equal(await page.locator('#speedNeedle').getAttribute('transform'),'rotate(-90 110 120)');
-  await axe(page,'driving-desktop');
-  await page.keyboard.down('KeyW');await frame(page,4000);assert.ok(parseInt(await page.locator('#speed').textContent())>90);
-  const dial=await page.evaluate(()=>({speed:window.__driveState.speed,angle:document.querySelector('#speedNeedle').getAttribute('transform'),arc:document.querySelector('#speedArc').style.strokeDashoffset}));
-  assert.equal(dial.angle,'rotate('+(-90+Math.min(1,dial.speed*3.6/300)*180)+' 110 120)');
-  assert.ok(Math.abs(Number(dial.arc)-(100-Math.min(1,dial.speed*3.6/300)*100))<.001,'Speed scale follows actual speed');
-  pass('instrument HUD starts at zero, hides inactive combo and follows actual vehicle speed');
-  const center = await playerX(page); assert.ok(center > 600 && center < 840);
-  await page.keyboard.down('KeyA'); await frame(page, 800);await page.keyboard.up('KeyA');
-  const left = await playerX(page); assert.ok(left < center - 100);
-  const samples=[];await page.keyboard.down('KeyD');for(let i=0;i<50;i++){await frame(page,16);samples.push(await playerX(page));}await page.keyboard.up('KeyD');await frame(page,250);
-  assert.ok(samples.slice(1).every((x,i)=>Math.abs(x-samples[i])<15),'No frame teleports during steering');
-  const view=await page.evaluate(()=>window.__testWorld.view);assert.ok(Math.abs(view.x)<.001&&Math.abs(view.lookX)<.001,'Camera remains centered during steering');
-  await page.keyboard.down('Space'); await assertBoostDrain(page,700); await page.keyboard.up('Space');
-  assert.ok(parseInt(await page.locator('#speed').textContent()) > 110);
-  await screenshot(page, 'game-desktop-final');
-  assert.equal(await page.locator('#eventBanner').isVisible(),true);assert.equal(await page.locator('#eventTitle').textContent(),'Дорожные работы');
-  assert.ok(await page.evaluate(()=>window.__testWorld.hazards.size>=8),'Roadworks have real rendered obstacles');
-  pass('manual gas, continuous steering without frame teleports, stationary chase camera, nitro and rendered roadworks');
-  const fastSpeed=parseInt(await page.locator('#speed').textContent());await page.keyboard.up('KeyW');await page.keyboard.down('KeyS');await frame(page,800);await page.keyboard.up('KeyS');
-  assert.ok(parseInt(await page.locator('#speed').textContent())<fastSpeed-30);pass('keyboard brake slows the car independently of steering');
-  await page.evaluate(async () => {
-    const { RoadRenderer } = await import('./src/world.js');
-    const original = RoadRenderer.prototype.render;
-    /** Refresh the observed renderer instance while preserving the original draw behavior. */ RoadRenderer.prototype.render = function (...args) { window.__testWorld = this; return original.apply(this, args); };
-  });
-  await frame(page, 32);
-  const resources = await page.evaluate(state => {
-    const world = window.__testWorld;
-    /**
-     * Render a fresh set of IDs while reusing the cloned simulation fixture.
-     * Mutates distance, two traffic entries and one pickup to exercise recycling;
-     * 0.1-second render updates also age crash particles before resource assertions.
-     * @param {number} index - Unique batch index and 15 m distance multiplier.
-     */
-    const renderBatch = index => {
-      state.distance = index * 15;
-      state.traffic = [0,2].map(lane => ({ id: 'test-car-' + index + '-' + lane, lane, z: 80 + lane * 25, color: lane }));
-      state.pickups = [{ id: 'test-pickup-' + index, lane: 1, z: 35 }];
-      world.render(state, { dt: .1 });
-    };
-    renderBatch(0); world.effect('crash');
-    for (let i = 1; i < 15; i++) renderBatch(i);
-    const before = world.renderer.info.memory.geometries;
-    const beforeCars=world.traffic.size+[...world.trafficPool.values()].reduce((sum,pool)=>sum+pool.length,0),beforePickups=world.pickups.size+world.pickupPool.length;
-    for (let i = 15; i < 40; i++) renderBatch(i);
-    return { before, after: world.renderer.info.memory.geometries, beforeCars, beforePickups, cars: world.traffic.size + [...world.trafficPool.values()].reduce((sum,pool)=>sum+pool.length,0), pickups: world.pickups.size + world.pickupPool.length, particles: world.particles.length };
-  }, structuredClone(fixture.state));
-  assert.equal(resources.after, resources.before);
-  assert.equal(resources.cars,resources.beforeCars);assert.equal(resources.pickups,resources.beforePickups);assert.equal(resources.particles, 0);
-  await frame(page, 32);
-  pass('traffic, pickups and collision particles reuse GPU geometry across repeated spawns');
-
-  await page.locator('#pauseBtn').click(); await screen(page, 'paused');
-  const pausedScore = await page.locator('#score').textContent(); await frame(page, 3000);
-  assert.equal(await page.locator('#score').textContent(), pausedScore);
-  await page.keyboard.press('Shift+Tab'); assert.equal(await page.evaluate(() => document.activeElement.dataset.action), 'menu');
-  await page.keyboard.press('Tab'); assert.equal(await page.evaluate(() => document.activeElement.dataset.action), 'resume');
-  await axe(page, 'pause-dialog'); await screenshot(page, 'pause-desktop');
-  await page.locator('[data-action="resume"]').click(); await screen(page, 'playing');
-  await page.evaluate(() => window.dispatchEvent(new Event('blur'))); await screen(page, 'paused');
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await screen(page, 'paused'); await page.locator('[data-action="resume"]').click();
-  pass('pause freezes simulation, traps focus, and tab restore waits for explicit resume');
-
-  await waitForCrash(page); await screen(page, 'results');
-  await screenshot(page, 'results-desktop'); await axe(page, 'results-dialog');
-  assert.match(await page.locator('[data-action="revive"]').textContent(), /бесплатно/);
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('potok.v1')));
-  assert.equal(saved.runs, 1); assert.ok(saved.best.flow > 0);
-  await page.locator('[data-action="revive"]').click(); await screen(page, 'playing');
-  await waitForCrash(page);
-  assert.equal(await page.locator('[data-action="revive"]').count(), 0);
-  const continued = await page.evaluate(() => JSON.parse(localStorage.getItem('potok.v1')));
-  assert.equal(continued.runs, 1); assert.ok(continued.totalDistance > saved.totalDistance);
-  await page.locator('[data-action="retry"]').click(); await screen(page, 'playing');
-  await page.keyboard.press('Escape'); await screen(page, 'paused');
-  pass('keyboard pause immediately after retry leaves no focus in hidden dialog');
-  await page.locator('[data-action="menu"]').click();
-  assert.equal(await page.locator('#menuBest').textContent(), Math.floor(continued.best.flow).toLocaleString('ru-RU'));
-  pass('collision, records, one free revive, repeat collision, retry, menu, no duplicate run count');
-  await desktop.close();
-
-  for (const [width, height] of [[280,720],[320,780],[390,844],[414,896],[768,1024],[844,390],[1920,1080]]) {
-    const context = await browser.newContext({ viewport: { width, height }, isMobile: width < 600, hasTouch: width < 900, reducedMotion: 'reduce' });
-    const mobile = await setup(context);
-    assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Horizontal overflow at ' + width);
-    for (const selector of ['#playBtn', '[data-route="ring"]', '[data-route="neon"]', '[data-route="dawn"]']) {
-      const bounds = await mobile.locator(selector).boundingBox(); assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width + 1, selector + ' at ' + width);
-    }
-    await screenshot(mobile, 'menu-' + width, true);
-    if (width <= 414) {
-      await mobile.locator('#helpBtn').click();
-      const dialogBounds = await mobile.locator('#dialog').boundingBox();
-      assert.ok(dialogBounds.y >= 0 && dialogBounds.y + dialogBounds.height <= height + 1, 'Dialog outside viewport at ' + width);
-      await mobile.locator('[data-action="closeHelp"]').click();
-    }
-    if (width === 390) {
-      await axe(mobile, 'menu-mobile');
-      await mobile.locator('#playBtn').click(); await frame(mobile, 1000);
-      await axe(mobile,'driving-mobile');
-      const nitroBounds = await mobile.locator('.nitro-block').boundingBox();
-      assert.ok(nitroBounds.y + nitroBounds.height < height * .4, 'Mobile nitro must leave the car unobstructed');
-      await hold(mobile,'gasBtn',true,1);await frame(mobile,4000);
-      const before = await playerX(mobile);await hold(mobile,'leftBtn',true,2);await frame(mobile,800);await hold(mobile,'leftBtn',false,2);
-      const after = await playerX(mobile); assert.ok(after >= 0 && after < before - 40);
-      await hold(mobile,'rightBtn',true,2);await frame(mobile,800);await hold(mobile,'rightBtn',false,2);await frame(mobile,250);
-      await hold(mobile,'boostBtn',true,3);await assertBoostDrain(mobile,400);await hold(mobile,'boostBtn',false,3);
-      await screenshot(mobile, 'game-mobile-final');
-      const mobileSpeed=parseInt(await mobile.locator('#speed').textContent());await hold(mobile,'brakeBtn',true,4);await frame(mobile,700);await hold(mobile,'brakeBtn',false,4);
-      assert.ok(parseInt(await mobile.locator('#speed').textContent())<mobileSpeed-30,'Brake has priority over held gas');
-      await mobile.locator('#gasBtn').dispatchEvent('pointercancel',{pointerId:1});await frame(mobile,16);
-      assert.equal(await mobile.locator('#gasBtn').getAttribute('data-held'),'false');
-      pass('mobile multi-touch gas, steering, brake priority, nitro and pointer cancellation');
-      // Actual pointer sequence exercises the canvas gesture handler.
-      const canvasBounds = await mobile.locator('#scene').boundingBox();
-      await mobile.mouse.move(260, canvasBounds.height * .55); await mobile.mouse.down();
-      await mobile.mouse.move(170, canvasBounds.height * .55, { steps: 4 }); await mobile.mouse.up();
-      const swipeBefore=await playerX(mobile);await frame(mobile,650);assert.ok(await playerX(mobile)<swipeBefore-15);
-      pass('mobile canvas swipe');
-    }
-    if(width!==390){await mobile.locator('#playBtn').click();await frame(mobile,100);}
-    const instrumentBoxes=await mobile.locator('.score-block,.speed-block,.nitro-block,.challenge').evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return {name:el.className,x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
-    for(let i=0;i<instrumentBoxes.length;i++){
-      const a=instrumentBoxes[i];assert.ok(a.x>=0&&a.y>=0&&a.right<=width+1&&a.bottom<=height+1,a.name+' stays on screen at '+width);
-      for(const b of instrumentBoxes.slice(i+1))assert.ok(a.right<=b.x||b.right<=a.x||a.bottom<=b.y||b.bottom<=a.y,a.name+' overlaps '+b.name+' at '+width);
-    }
-    if(width<900){
-      for(const id of ['leftBtn','rightBtn','gasBtn','brakeBtn','boostBtn']){
-        const b=await mobile.locator('#'+id).boundingBox();assert.ok(b&&b.x>=0&&b.x+b.width<=width+1&&b.y+b.height<=height+1,id+' stays on screen at '+width);
-      }
-    }
-    pass('responsive menu and non-overlapping HUD ' + width + '×' + height);
-    await context.close();
-  }
-
-  const platform = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  await platform.addInitScript(() => {
-    window.__sdkCalls = []; window.__platformEvents = {};
-    window.YaGames = { /** Resolve the page-local SDK mock with manually driven platform/ad callbacks. */ init: async () => ({
-      /** Store a platform listener by event name for explicit pause/resume dispatch in the test. */ on: (name, callback) => { window.__platformEvents[name] = callback; },
-      features: { LoadingAPI: { /** Record loading-ready notifications for exactly-once assertions. */ ready: () => window.__sdkCalls.push('ready') }, GameplayAPI: { /** Record gameplay-start notifications without calling the external SDK. */ start: () => window.__sdkCalls.push('start'), /** Record gameplay-stop notifications without calling the external SDK. */ stop: () => window.__sdkCalls.push('stop') } },
-      adv: { /** Save rewarded-ad callbacks so skipped and earned rewards can be tested independently. */ showRewardedVideo: ({ callbacks }) => { window.__adCallbacks = callbacks; }, /** Close the fake interstitial immediately with the not-shown flag. */ showFullscreenAdv: ({ callbacks }) => callbacks.onClose(false) },
-    }) };
-  });
-  const sdkPage = await setup(platform);
-  assert.deepEqual(await sdkPage.evaluate(() => window.__sdkCalls), ['ready']);
-  await sdkPage.locator('#playBtn').click(); await frame(sdkPage, 100);
-  await sdkPage.evaluate(() => window.__platformEvents.game_api_pause()); await screen(sdkPage, 'paused');
-  await sdkPage.evaluate(() => window.dispatchEvent(new Event('focus'))); await screen(sdkPage, 'paused');
-  await sdkPage.evaluate(() => window.__platformEvents.game_api_resume());
-  await sdkPage.locator('[data-action="resume"]').click();
-  await waitForCrash(sdkPage);
-  await sdkPage.locator('[data-action="revive"]').click();
-  assert.equal(await sdkPage.locator('#dialog').getAttribute('aria-busy'), 'true');
-  await sdkPage.evaluate(() => window.__adCallbacks.onClose());
-  await screen(sdkPage, 'results'); assert.equal(await sdkPage.locator('[data-action="revive"]').isEnabled(), true);
-  await sdkPage.locator('[data-action="revive"]').click();
-  await sdkPage.evaluate(() => { window.__adCallbacks.onRewarded(); window.__adCallbacks.onClose(); });
-  await screen(sdkPage, 'playing');
-  assert.equal(await sdkPage.evaluate(() => window.__sdkCalls.filter(x => x === 'ready').length), 1);
-  pass('mocked Yandex SDK: ready, gameplay, independent platform pause, no reward on skipped ad, confirmed rewarded continuation');
-  await platform.close();
-
-  safari = await webkit.launch({ headless: true });
-  const ios = await safari.newContext({ ...devices['iPhone 13'], reducedMotion: 'reduce' });
-  const iosPage = await setup(ios);
-  await screenshot(iosPage, 'menu-webkit-iphone');
-  await iosPage.locator('#playBtn').tap(); await frame(iosPage, 1000); await screen(iosPage, 'playing');
-  const iosBefore = await compositedPlayerX(iosPage); assert.ok(iosBefore > 100 && iosBefore < 280, 'WebKit screenshot must contain the rendered car');
-  await hold(iosPage,'gasBtn',true,1);await frame(iosPage,4000);await hold(iosPage,'rightBtn',true,2);await frame(iosPage,650);await hold(iosPage,'rightBtn',false,2);await hold(iosPage,'gasBtn',false,1);
-  assert.ok(await compositedPlayerX(iosPage) > iosBefore + 40, 'WebKit composited car must move after held steering and gas');
-  await iosPage.locator('#pauseBtn').tap(); await screen(iosPage, 'paused');
-  await iosPage.locator('[data-action="resume"]').tap(); await frame(iosPage, 200); await screen(iosPage, 'playing');
-  await screenshot(iosPage, 'game-webkit-iphone');
-  pass('WebKit with iPhone 13 emulation: composited car pixels, touch steering, pause, resume');
-  await iosPage.setViewportSize({ width: 844, height: 390 }); await frame(iosPage, 200);
-  assert.ok(await compositedPlayerX(iosPage) > 0, 'WebKit car must remain visible after rotation');
-  await screenshot(iosPage, 'game-webkit-landscape');
-  await iosPage.setViewportSize({ width: 390, height: 664 }); await frame(iosPage, 200);
-  assert.ok(await compositedPlayerX(iosPage) > 0, 'WebKit car must remain visible after rotating back');
-  pass('WebKit portrait/landscape/portrait preserves the composited 3D scene');
-  await ios.close();
-
-  assert.deepEqual(errors, [], 'Browser console/network errors');
-  pass('zero runtime console, page and HTTP errors');
-  completed = true;
+  assert.deepEqual(report.accessibility.filter(item=>item.violations.length), [], 'Accessibility violations must all be corrected; see individual axe reports');
+  await reconcileCompletedFetches();
+  assert.deepEqual(report.errors, [], 'Unexpected browser script, console, HTTP, failed or external runtime requests');
+  pass('no unexpected runtime/network errors; intentional failure/teardown and exact EOF+SHA-verified completed fetches only');
+  report.completed = true;
+} catch (error) {
+  await reconcileCompletedFetches();
+  report.failure = { message: error.message, stack: error.stack };
+  throw error;
 } finally {
-  await writeFile(path.join(output, 'browser-report.json'), JSON.stringify({ completed, target: process.argv.includes('--dist') ? 'dist' : 'source', results, errors }, null, 2));
-  await browser.close(); if (safari) await safari.close(); server.close();
+  await save('browser-report.json', report);
+  await safari?.close(); await browser?.close();
+  if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
 }
-console.log('Browser checks: ' + results.length + '/' + results.length + ' passed');
+console.log(`Browser checks: ${report.results.length} passed (${target}); report: ${path.relative(root, output)}/browser-report.json`);

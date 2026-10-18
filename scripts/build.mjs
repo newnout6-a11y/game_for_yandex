@@ -11,7 +11,7 @@ const dist = path.join(root, 'dist');
 // Only the build-owned directory is replaced.
 await rm(dist, { recursive: true, force: true });
 await mkdir(dist, { recursive: true });
-for (const name of ['index.html', 'src', 'styles', 'public']) await cp(path.join(root, name), path.join(dist, name), { recursive: true });
+for (const name of ['index.html', 'src', 'styles', 'public', 'CREDITS.md']) await cp(path.join(root, name), path.join(dist, name), { recursive: true });
 const archive = {};
 /**
  * Recursively add release files to the shared ZIP-entry map.
@@ -30,5 +30,5 @@ async function collect(dir, prefix = '') {
 await collect(dist);
 await mkdir(path.join(root, 'output'), { recursive: true });
 const zipped = zipSync(archive, { level: 9 });
-await writeFile(path.join(root, 'output/potok-yandex.zip'), zipped);
-console.log('Built ' + Object.keys(archive).length + ' files; output/potok-yandex.zip (' + (zipped.length / 1024).toFixed(1) + ' KiB)');
+await writeFile(path.join(root, 'output/roadster-yandex.zip'), zipped);
+console.log('Built ' + Object.keys(archive).length + ' files; output/roadster-yandex.zip (' + (zipped.length / 1024).toFixed(1) + ' KiB)');

@@ -1,0 +1,39 @@
+/* One held thumb owns all ordinary driving axes. Never shown on desktop or portrait. */
+.thumb-drive { display: none; }
+.thumb-drive__pad { position: relative; width: 144px; height: 78px; min-width: 44px; min-height: 44px; margin: 0; padding: 0; overflow: hidden; border-radius: 16px; color: var(--color-text); cursor: grab; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
+.thumb-drive__visual { position: absolute; inset: 0; pointer-events: none; }
+.thumb-drive__gas, .thumb-drive__brake { position: absolute; left: 0; width: 100%; text-align: center; font: 700 10px/12px var(--font-mono); letter-spacing: .04em; }
+.thumb-drive__gas { top: 7px; }
+.thumb-drive__brake { bottom: 6px; color: var(--color-muted); }
+.thumb-drive__left, .thumb-drive__right { position: absolute; top: 23px; font: 28px/28px var(--font-body); color: var(--color-muted); }
+.thumb-drive__left { left: 10px; }
+.thumb-drive__right { right: 10px; }
+.thumb-drive__knob { position: absolute; left: var(--thumb-x, 50%); top: var(--thumb-y, 39px); width: 28px; height: 28px; border: 2px solid var(--color-text); border-radius: 50%; background: var(--color-elevated); transform: translate(-50%, -50%); box-shadow: inset 0 0 0 5px var(--color-event-scrim); }
+.thumb-drive__hint { display: block; margin: 0; color: var(--color-muted); font: 10px/12px var(--font-body); text-align: center; pointer-events: none; }
+.thumb-drive__pad:focus-visible { outline: var(--stroke-focus) solid var(--color-text); outline-offset: 3px; }
+.touch-controls .thumb-drive__pad[data-held="true"] { transform: none; cursor: grabbing; border-color: var(--color-warning); }
+.thumb-drive__pad[data-mode="gas"] .thumb-drive__knob { border-color: var(--color-warning); }
+.thumb-drive__pad[data-mode="brake"] .thumb-drive__knob { border-color: var(--color-danger); }
+.thumb-drive__pad[data-mode="brake"] .thumb-drive__brake { color: var(--color-danger); }
+.thumb-drive__pad:disabled { cursor: default; }
+
+@media (orientation: landscape) and (any-pointer: coarse), (orientation: landscape) and (pointer: coarse) {
+  #app[data-thumb-drive="true"] .touch-controls { display: flex; }
+  #app[data-thumb-drive="true"] .thumb-drive { position: absolute; right: 0; bottom: 0; display: grid; grid-template-rows: 78px 24px; gap: 4px; width: 144px; height: 106px; }
+  #app[data-thumb-drive="true"] .touch-controls > .steer-pair,
+  #app[data-thumb-drive="true"] .touch-controls > .pedal-pair { display: none; }
+  #app[data-thumb-drive="true"] .touch-controls .ability-pair { bottom: 114px; width: 144px; gap: 8px; }
+  #app[data-thumb-drive="true"] .touch-controls .ability-pair button { min-height: 44px; min-width: 44px; }
+  #app[data-thumb-drive="true"][data-flight="false"] .touch-controls .ability-pair { display: flex; justify-content: flex-end; }
+  #app[data-thumb-drive="true"][data-flight="false"] .touch-controls .boost-button { min-width: 72px; }
+  #app[data-thumb-drive="true"] .glance-controls { left: 0; bottom: 0; transform: none; gap: 8px; }
+  #app[data-thumb-drive="true"] .flight-status { bottom: 0; width: 144px; }
+  #app[data-thumb-drive="true"] .game-hud:has(.glance-controls:not([hidden])) .flight-status { bottom: 52px; }
+}
+
+/* A single short row prevents airborne buttons colliding with speed on small phones. */
+@media (orientation: landscape) and (max-height: 360px) and (any-pointer: coarse), (orientation: landscape) and (max-height: 360px) and (pointer: coarse) {
+  #app[data-thumb-drive="true"] .touch-controls .ability-pair { grid-template-columns: repeat(4, minmax(44px, 1fr)); width: 240px; }
+  #app[data-thumb-drive="true"][data-flight="false"] .touch-controls .ability-pair { width: 144px; }
+  #app[data-thumb-drive="true"] .touch-controls .flight-button svg { display: none; }
+}

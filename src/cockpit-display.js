@@ -79,6 +79,7 @@ export function createCockpitDisplay(player) {
   material.map = map;
   if (original.emissiveMap?.image === image) material.emissiveMap = map;
   screen.material = material;
+  let accent = '#e74450';
   let previous = null, elapsed = 0, disposed = false, lastPhase, invalidated = false;
 
   /** Restore a readout with an empty same-row strip, retaining the authored gradient. */
@@ -96,6 +97,8 @@ export function createCockpitDisplay(player) {
 
   return {
     get texture() { return map; },
+    /** Change only live instrument accents; the authored Rocket artwork and readout contrast remain intact. */
+    setTheme(theme) { const next=theme==='cockpit_amber'?'#ffb35c':theme==='cockpit_glacier'?'#9dcad1':'#e74450';if(next!==accent){accent=next;previous=null;invalidated=true;} },
     get telemetry() { return previous; },
     /** Refresh the next state even at dt=0 after a camera switch; unchanged pixels still stay cached. */
     invalidate() { if (!disposed) invalidated = true; },
@@ -124,7 +127,7 @@ export function createCockpitDisplay(player) {
           text('KM/H', 38, 182, 16, '#9ba2a9', 180);
         } else if (name === 'gear') {
           for (const [index, gear] of ['P', 'R', 'N', 'D'].entries())
-            text(gear, 34 + index * 42, 243, gear === next.gear ? 24 : 19, gear === next.gear ? '#e74450' : '#90979f', 32);
+            text(gear, 34 + index * 42, 243, gear === next.gear ? 24 : 19, gear === next.gear ? accent : '#90979f', 32);
         } else if (name === 'distance') {
           text('DISTANCE', 34, 306, 16, '#9ba2a9', 202);
           text(next.distance, 34, 336, 26, '#e5e9ed', 202);

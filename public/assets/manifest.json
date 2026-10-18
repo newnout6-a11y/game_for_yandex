@@ -191,5 +191,165 @@
     "source": "project:scripts/create_traffic_passenger.py",
     "editableSource": "art/traffic/van.blend",
     "changes": "Original Blender vehicle with rounded wheels, real cabin openings, sealed floor/footwells and wheel tubs, original seated adult driver, articulated arm/hand and steering pivots, environment-reflective mirror panes and independent side indicators. No third-party character/vehicle mesh or manufacturer CAD copied."
+  },
+  {
+    "file": "assets/garage/tier1.glb",
+    "bytes": 4393932,
+    "sha256": "6b77c8f1c6d177a34d8ed9f0031079dc6f99be50e63a1fdd3a10adac3473d105",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage.py",
+    "changes": "Original Blender-authored Roadster tier-1 garage environment, equipment, service markings, embedded original concrete textures and Rose Velocity wall mural. Mural source: art/garage/mural/create_mural.py and rose-velocity.svg; original room architecture, materials and parked-car envelopes retained. No external models, photo textures, purchased assets, vehicle geometry or runtime lights are embedded. Retained Rocket appears only in separate reference previews. See art/garage/provenance.json, art/garage/mural/manifest.json and CREDITS.md.",
+    "editableSource": "art/garage/tier1.blend"
+  },
+  {
+    "file": "assets/garage/tier2.glb",
+    "bytes": 4832924,
+    "sha256": "31f7621b8929e596ecd342effbb2c6577926bc70ba2e9beb095db79e5482c5da",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage.py",
+    "changes": "Original Blender-authored Roadster tier-2 garage environment, equipment, service markings, embedded original concrete textures and Rose Velocity wall mural. Mural source: art/garage/mural/create_mural.py and rose-velocity.svg; original room architecture, materials and parked-car envelopes retained. No external models, photo textures, purchased assets, vehicle geometry or runtime lights are embedded. Retained Rocket appears only in separate reference previews. See art/garage/provenance.json, art/garage/mural/manifest.json and CREDITS.md.",
+    "editableSource": "art/garage/tier2.blend"
+  },
+  {
+    "file": "assets/garage/tier3.glb",
+    "bytes": 4224948,
+    "sha256": "8d3a7788c2d24a008c731810d9bc06ea7d38d627694466c01bc2bc8a65523de3",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage.py",
+    "changes": "Original Blender-authored Roadster tier-3 garage environment, equipment, service markings, embedded original concrete textures and Rose Velocity wall mural. Mural source: art/garage/mural/create_mural.py and rose-velocity.svg; original room architecture, materials and parked-car envelopes retained. No external models, photo textures, purchased assets, vehicle geometry or runtime lights are embedded. Retained Rocket appears only in separate reference previews. See art/garage/provenance.json, art/garage/mural/manifest.json and CREDITS.md.",
+    "editableSource": "art/garage/tier3.blend"
+  },
+  {
+    "file": "assets/garage/tier4.glb",
+    "bytes": 4593108,
+    "sha256": "fecaddad8b4d862640a0d9451f7bcbb022784b9077b3709d1d13d33fcd18c5d3",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage.py",
+    "changes": "Original Blender-authored Roadster tier-4 garage environment, equipment, service markings, embedded original concrete textures and Rose Velocity wall mural. Mural source: art/garage/mural/create_mural.py and rose-velocity.svg; original room architecture, materials and parked-car envelopes retained. No external models, photo textures, purchased assets, vehicle geometry or runtime lights are embedded. Retained Rocket appears only in separate reference previews. See art/garage/provenance.json, art/garage/mural/manifest.json and CREDITS.md.",
+    "editableSource": "art/garage/tier4.blend"
+  },
+  {
+    "file": "assets/garage/original-concrete-grain.png",
+    "bytes": 816362,
+    "sha256": "d054dda0a071e76b3ae800bf3070675f9943c13fc318e79bb7c6e3b753acc396",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage.py",
+    "changes": "Original procedurally authored concrete colour/grain texture for the four Roadster garage environments; also embedded in their GLBs. No downloaded photograph or third-party texture."
+  },
+  {
+    "file": "assets/garage/original-concrete-roughness.png",
+    "bytes": 728905,
+    "sha256": "898f9b2706009655d122182d3577cbc046e28d3f4d4af5f90addf63ae7417bfd",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage.py",
+    "changes": "Original procedurally authored concrete roughness texture for the four Roadster garage environments; also embedded in their GLBs. No downloaded photograph or third-party texture."
+  },
+  {
+    "file": "assets/garage-cosmetics/body-splitter.glb",
+    "bytes": 43872,
+    "sha256": "7eda497d53d7ef9747280aaf288f4446bcfb5cb436aacf81f4acd13a8fe76f62",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage_cosmetics.py",
+    "changes": "Original formed graphite lower nose lip with copper inlays and captive fasteners, fitted to the retained Rocket sprung body. Original Blender artwork; no copied mesh, photo texture or manufacturer CAD. Rocket-only fit; source vehicle SHA-256 and attachment details are in assets/garage-cosmetics/manifest.json. Vehicle design/trademark clearance remains unresolved.",
+    "editableSource": "art/garage-cosmetics/body-splitter.blend"
+  },
+  {
+    "file": "assets/garage-cosmetics/body-louver.glb",
+    "bytes": 62944,
+    "sha256": "ea5164816c953d78f8ffcfaab4774f2799da440e035bf55bfab4040d34b60281",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage_cosmetics.py",
+    "changes": "Original open-gap rear-deck louver applique fitted over retained Rocket metal deck; cosmetic, not a new functional intake. Original Blender artwork; no copied mesh, photo texture or manufacturer CAD. Rocket-only fit; source vehicle SHA-256 and attachment details are in assets/garage-cosmetics/manifest.json. Vehicle design/trademark clearance remains unresolved.",
+    "editableSource": "art/garage-cosmetics/body-louver.blend"
+  },
+  {
+    "file": "assets/garage-cosmetics/wheel-turbine-left.glb",
+    "bytes": 45652,
+    "sha256": "6376a784024eb3ef3eea9be9a25cb688e787f4fa8d152d72ce64020ebf38b752",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage_cosmetics.py",
+    "changes": "Original ventilated left wheel-face cover, cloned onto retained Rocket left wheel spinners; original wheel/tyre radius remains unchanged. Original Blender artwork; no copied mesh, photo texture or manufacturer CAD. Rocket-only fit; source vehicle SHA-256 and attachment details are in assets/garage-cosmetics/manifest.json. Vehicle design/trademark clearance remains unresolved.",
+    "editableSource": "art/garage-cosmetics/wheel-turbine-left.blend"
+  },
+  {
+    "file": "assets/garage-cosmetics/wheel-turbine-right.glb",
+    "bytes": 45656,
+    "sha256": "c325ea1cf79fda7b3c2657475cb16cb96896eb6a8cadf92a779f5f75a937d787",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage_cosmetics.py",
+    "changes": "Original ventilated right wheel-face cover, cloned onto retained Rocket right wheel spinners; original wheel/tyre radius remains unchanged. Original Blender artwork; no copied mesh, photo texture or manufacturer CAD. Rocket-only fit; source vehicle SHA-256 and attachment details are in assets/garage-cosmetics/manifest.json. Vehicle design/trademark clearance remains unresolved.",
+    "editableSource": "art/garage-cosmetics/wheel-turbine-right.blend"
+  },
+  {
+    "file": "assets/garage-cosmetics/rim-copper-left.glb",
+    "bytes": 17600,
+    "sha256": "470ea3477d88d9fc24757a70fc12382691247eeb516b0de92cbc9f7bf98b31dc",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage_cosmetics.py",
+    "changes": "Original narrow left copper rim annulus, compatible with retained Rocket stock wheel or authored turbine cover; tyre unchanged. Original Blender artwork; no copied mesh, photo texture or manufacturer CAD. Rocket-only fit; source vehicle SHA-256 and attachment details are in assets/garage-cosmetics/manifest.json. Vehicle design/trademark clearance remains unresolved.",
+    "editableSource": "art/garage-cosmetics/rim-copper-left.blend"
+  },
+  {
+    "file": "assets/garage-cosmetics/rim-copper-right.glb",
+    "bytes": 17600,
+    "sha256": "dfab3d3cd18ea6aa66896e0971a9754cec44b9ee881222578a94236c6cac70b4",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_garage_cosmetics.py",
+    "changes": "Original narrow right copper rim annulus, compatible with retained Rocket stock wheel or authored turbine cover; tyre unchanged. Original Blender artwork; no copied mesh, photo texture or manufacturer CAD. Rocket-only fit; source vehicle SHA-256 and attachment details are in assets/garage-cosmetics/manifest.json. Vehicle design/trademark clearance remains unresolved.",
+    "editableSource": "art/garage-cosmetics/rim-copper-right.blend"
+  },
+  {
+    "file": "brand/roadster-emblem.svg",
+    "bytes": 405,
+    "sha256": "17dd02a41b786bb28d398de904fa59cd1be5c2db0b3bd93151c3b3ea2809dd40",
+    "license": "Original-project-artwork",
+    "source": "project:public/brand/roadster-emblem.svg",
+    "changes": "Original geometric road/wing-inspired Roadster emblem. Editable SVG paths and composition authored for the project, no external image or manufacturer logo. This provenance does not constitute trademark clearance.",
+    "editableSource": "public/brand/roadster-emblem.svg"
+  },
+  {
+    "file": "brand/roadster-wordmark.svg",
+    "bytes": 671,
+    "sha256": "6e0690b85e023fa6e0cedfc1f434e0c418dd5983f3b3f10b6791e3129fee2964",
+    "license": "Original-project-artwork",
+    "source": "project:public/brand/roadster-wordmark.svg",
+    "changes": "Original Roadster wordmark lockup; uses system font fallbacks, no font file redistributed. Editable SVG paths and composition authored for the project, no external image or manufacturer logo. This provenance does not constitute trademark clearance.",
+    "editableSource": "public/brand/roadster-wordmark.svg"
+  },
+  {
+    "file": "brand/road-wing-grid.svg",
+    "bytes": 500,
+    "sha256": "8a0c48bf97e231643e9b56ef92386ef5a6e483fdd0de4ea37e0b604589e59060",
+    "license": "Original-project-artwork",
+    "source": "project:public/brand/road-wing-grid.svg",
+    "changes": "Original Roadster road-perspective and workshop line graphic. Editable SVG paths and composition authored for the project, no external image or manufacturer logo. This provenance does not constitute trademark clearance.",
+    "editableSource": "public/brand/road-wing-grid.svg"
+  },
+  {
+    "file": "assets/garage/original-rose-velocity-mural.png",
+    "bytes": 587374,
+    "sha256": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd",
+    "license": "Original-project-artwork",
+    "source": "project:art/garage/mural/create_mural.py",
+    "changes": "Original Rose Velocity plum/magenta/rose/blush wall mural: authored SVG paths and deterministic aerosol, porosity and chips. Local 1024x512 PNG embedded in all four garage GLBs. No external image, photograph, text, logo or copied artwork. Source and authorship manifest: art/garage/mural/manifest.json.",
+    "editableSource": "art/garage/mural/rose-velocity.svg"
+  },
+  {
+    "file": "assets/cosmetics/steering-round.glb",
+    "bytes": 262948,
+    "sha256": "f10a6de81b71f9281ff1a845752d0b89fd4a73415527190161cb2c56e3a0cfd7",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_steering_cosmetics.py",
+    "changes": "Original fictional round sport steering assembly for Rocket only, not a Tesla factory variant. Authored Blender grip, hub, spoke, paddle, seam and trim geometry; 49 editable parts, four material batches. Identity mount at the unchanged steering_yoke pivot; original stationary column, tablet, controls and physics retained. No downloaded or purchased mesh, external texture or manufacturer logo. Exact mount, budget and source-vehicle hash: assets/cosmetics/steering-manifest.json. Vehicle design/trademark clearance remains unresolved.",
+    "editableSource": "art/cosmetics/steering-round.blend"
+  },
+  {
+    "file": "assets/cosmetics/steering-yoke.glb",
+    "bytes": 263972,
+    "sha256": "f52ae0fcda9e7bca98bbd8830c10e300292cdbfa54f8f5cf827a1d7d984c553b",
+    "license": "Original-project-artwork",
+    "source": "project:scripts/create_steering_cosmetics.py",
+    "changes": "Original fictional compact open-top steering yoke for Rocket only, not a Tesla factory variant. Authored Blender grip, hub, spoke, paddle, seam and trim geometry; 49 editable parts, four material batches. Identity mount at the unchanged steering_yoke pivot; original stationary column, tablet, controls and physics retained. No downloaded or purchased mesh, external texture or manufacturer logo. Exact mount, budget and source-vehicle hash: assets/cosmetics/steering-manifest.json. Vehicle design/trademark clearance remains unresolved.",
+    "editableSource": "art/cosmetics/steering-yoke.blend"
   }
 ]

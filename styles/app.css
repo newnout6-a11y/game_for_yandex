@@ -340,3 +340,9 @@ kbd { font: var(--text-xs)/var(--line-heading) var(--font-mono); border: var(--s
   .glance-controls { bottom: var(--space-20); }
   .game-hud:has(.glance-controls:not([hidden])) .flight-status { bottom: calc(var(--space-20) + var(--control-size) + var(--space-2)); }
 }
+
+/* The workshop owns menu presentation; the legacy driving HUD remains isolated. */
+#app[data-screen="hub"] .scene-shade,#app[data-screen="garage"] .scene-shade,#app[data-screen="loading"] .scene-shade,#app[data-screen="results"] .scene-shade{display:none}
+#app[data-flight="false"] #flightStatus,#app[data-flight="false"] #flightBtn,#app[data-flight="false"] .roll-button{display:none}
+#app[data-flight="false"] .ability-pair{display:flex;align-items:end}
+.topbar[hidden]{display:none}

@@ -1,223 +1,241 @@
+import { createThumbDrive } from './thumb-drive.js';
+import { createOrientationGate } from './orientation-gate.js';
 import { Game } from './game.js';
 import { RoadRenderer } from './world.js';
+import { loadOwnGames, openOwnGame } from './own-games.js';
+import { GarageScene } from './garage-scene.js';
+import { GarageUI } from './garage-ui.js';
+import { createProgressionStorage } from './progression-storage.js';
+import { deriveGarageView, getEngineeringModifiers, LIMITS } from './progression.js';
+import { CATALOG, ADS, vehicleDefinition } from './progression-catalog.js';
+import { RunTelemetry } from './run-telemetry.js';
+import { createPlatformServices } from './platform-services.js';
 import { createStorage } from './storage.js';
 import { createSdk } from './sdk.js';
 import { createLifecycle } from './lifecycle.js';
+import { createAdCadence } from './ad-cadence.js';
 import { createAds } from './ads.js';
 import { GameAudio } from './audio.js';
 import { UI, cameraShortcutAllowed, glanceShortcutAllowed, CockpitGlanceControls } from './ui.js';
 import { DrivingInput } from './input.js';
 import { normalizeRenderQuality, observeRenderPixelRatio } from './render-settings.js';
 
-/**
- * Resolve a known game DOM element from the static HTML shell.
- * @param {string} id - Element identifier.
- * @returns {HTMLElement|null} Matching element; callers rely on validated HTML assets.
- */
-const byId = id => document.getElementById(id);
-const storage = createStorage();
-const settings = storage.get();
-const sdk = createSdk();
-const audio = new GameAudio(settings.sound);
-const input = new DrivingInput();
-const ui = new UI(action => void handleAction(action));
-const playButton = byId('playBtn');
-playButton.disabled = true;
-playButton.textContent = 'Загрузка трассы…';
-const renderer = new RoadRenderer(byId('scene'), percent => { byId('loadStatus').textContent = 'Загрузка моделей и материалов · ' + percent + '%'; }, {
-  quality: settings.renderQuality,
-  cameraMode: settings.cameraMode,
-  /** Reflect the actual drawing buffer only after initialization, resize or a quality change. */
-  onRenderSettings: info => ui.renderSettings(info),
-});
-const glance = new CockpitGlanceControls(direction => renderer.setLookDirection(direction));
-let assetsReady = false, assetsFailed = false;
-const assetsLoaded = renderer.ready.then(() => {
-  assetsReady = true; playButton.disabled = false;
-  playButton.textContent = 'Выехать →'; byId('loadStatus').hidden = true;
-}).catch(error => {
-  console.error('Asset loading failed:', error);
-  assetsFailed = true; playButton.disabled = false; playButton.textContent = 'Повторить загрузку';
-  byId('loadStatus').textContent = 'Не удалось загрузить трассу. Проверь соединение и повтори загрузку.';
-});
-const game = new Game({ /** Translate simulation events into sound, particles and localized score feedback; no simulation mutation. */ onEvent: (event, value) => {
-  audio.tone(event);
-  renderer.effect(event);
-  if (event === 'near') ui.toast('БЛИЗКО!  ×' + value);
-  if (event === 'charge') ui.toast('+22% НИТРО');
-  if (event === 'goal') ui.toast('1 500 М · +1 000 ОЧКОВ');
-  if (event === 'cone') ui.toast('КОНУС · −50 ОЧКОВ');
-  if (event === 'event-clear') ui.toast(value.success ? '+' + value.points + ' · СОБЫТИЕ ПРОЙДЕНО' : 'СОБЫТИЕ НЕ ПРОЙДЕНО');
-} });
-let screen = 'menu';
-let busy = false;
-let runBest = 0;
-let savedDistance = 0;
-let runCounted = false;
-let lastAdAt = -Infinity;
-let helpFromGame = false;
-let crashElapsed = 0;
-
-const lifecycle = createLifecycle(() => {
+/** Resolve a validated static shell element; the garage presenter creates its own scoped DOM. */
+const byId=id=>document.getElementById(id);
+const storage=createStorage(), profileStore=createProgressionStorage();
+const settings={...storage.get(),...profileStore.get().settings};
+const sdk=createSdk(),audio=new GameAudio(settings.sound),input=new DrivingInput();
+let otherGames=[],inspection='overview',orientationBlocked=false,thumbDrive=null;
+let screen='loading',tab='fleet',busy=false,assetsReady=false,assetsFailed=false,garageScene=null,platform=null;
+let run=null,telemetry=null,runResult=null,runBest=0,continuedBest=0,savedDistance=0,runCounted=false,crashElapsed=0,helpFromGame=false;
+let appliedSettingsKey='',appliedSelectedId=profileStore.get().selectedVehicleId;
+let appliedProfileId=profileStore.get().profileId,observedNextSequence=profileStore.get().ledger.nextSequence;
+let previewId=profileStore.get().selectedVehicleId,loading={progress:0,message:'Подготавливаем мастерскую…'},garageDirty=true;
+let adCadence=createAdCadence(ADS.interstitial);
+const ui=new UI(action=>void handleAction(action));
+const garageUI=new GarageUI({root:byId('garageShell'),onAction:action=>void handleGarageAction(action)});
+const playButton=byId('playBtn');playButton.disabled=true;
+const renderer=new RoadRenderer(byId('scene'),percent=>{loading={progress:Math.round(percent*.85),message:'Модели, материалы и трасса'};refreshGarage();},{quality:settings.renderQuality,cameraMode:settings.cameraMode,onRenderSettings:info=>ui.renderSettings(info)});
+const glance=new CockpitGlanceControls(direction=>renderer.setLookDirection(direction));
+const game=new Game({onEvent:(event,value)=>{
+  telemetry?.event(event,value,game.state);audio.tone(event);renderer.effect(event);
+  if(event==='near')ui.toast('БЛИЗКО! ×'+value);
+  if(event==='charge')ui.toast('+22% ЭНЕРГИИ');
+  if(event==='goal')ui.toast('1 500 М · ЦЕЛЬ ПРОЙДЕНА');
+  if(event==='cone')ui.toast('КОНУС · −50 ОЧКОВ');
+  if(event==='event-clear')ui.toast(value.success?'+'+value.points+' · СОБЫТИЕ ПРОЙДЕНО':'СОБЫТИЕ НЕ ПРОЙДЕНО');
+}});
+const lifecycle=createLifecycle(()=>{
   clearInput();
-  if (screen === 'playing' && lifecycle.paused) {
-    screen = 'paused';
-    ui.setScreen(screen);
-    lifecycle.pause('user');
-    ui.pause();
-  }
+  if(lifecycle.paused&&garageScene?.advance?.(0,{visible:false}))garageDirty=true;
+  if(screen==='playing'&&lifecycle.paused&&lifecycle.reasons().some(reason=>reason!=='orientation')){screen='paused';applyScreen();lifecycle.pause('user');ui.pause();}
   syncGameplay();
 });
-/**
- * Release both held controls and the transient swipe steering pulse at lifecycle boundaries.
- */
-function clearInput() { input.clear(); game.releaseControls(); glance.clear(); }
-const ads = createAds({ sdk, lifecycle, /** Ads are eligible only on the results screen, never during a live run. */ canShow: () => screen === 'results' });
+const ads=createAds({sdk,lifecycle,canShow:()=>!orientationBlocked&&screen==='results'&&!lifecycle.has('payment')&&!lifecycle.has('account-selection')&&!platform?.getState?.().commerce?.busy&&platform?.getState?.().auth!=='pending'});
+platform=createPlatformServices({sdk,lifecycle,profileStore,onState:()=>{reconcileProfileLineage();if(assetsReady&&!['playing','paused'].includes(screen)){hydrateStoredSettings();refreshGarage();}}});
 
-/**
- * Synchronize platform gameplay reporting and engine audibility with screen, lifecycle and simulation phase.
- */
-function syncGameplay() {
-  const active = screen === 'playing' && !lifecycle.paused && game.state.phase === 'playing';
-  sdk.gameplay(active);
-  audio.update(game.state, active);
+const orientationGate=createOrientationGate({window,document,appRoot:byId('app'),onChange:blocked=>{
+  orientationBlocked=blocked;clearInput();if(blocked)lifecycle.pause('orientation');else lifecycle.resume('orientation');garageDirty=true;signalReady();
+}});
+thumbDrive=createThumbDrive({root:byId('thumbDrive'),window,onControls:controls=>input.setAnalog('thumb-drive',controls)});
+syncThumbControls();
+/** Enable one-thumb controls only for actual touch landscape play; keyboard ownership remains independent. */
+function syncThumbControls(){const nav=window.navigator||{};const touch=Number(nav.maxTouchPoints)>0&&matchMedia('(pointer: coarse)').matches;const eligible=touch&&innerWidth>=innerHeight&&!orientationBlocked;byId('app').dataset.thumbDrive=String(eligible);thumbDrive?.setEnabled(eligible&&screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing');}
+window.addEventListener('resize',syncThumbControls);
+/** Loading completion is sent once only after an interactive landscape entry is available. */
+function signalReady(){if(assetsReady&&!orientationBlocked)sdk.ready();}
+
+/** Discard stale physical runs when a chosen cloud save replaces their ledger; never settle old telemetry into a new profile. */
+function reconcileProfileLineage(){
+  const profile=profileStore.get();
+  const replaced=profile.profileId!==appliedProfileId||profile.ledger.nextSequence<observedNextSequence||(run&&profile.ledger.activeRun?.id!==run.id);
+  appliedProfileId=profile.profileId;observedNextSequence=profile.ledger.nextSequence;
+  if(!replaced)return;
+  adCadence=createAdCadence(ADS.interstitial);run=null;telemetry=null;runResult=null;clearInput();
+  if(assetsReady){ui.close();game.state.phase='ready';screen='hub';lifecycle.resume('user');applyScreen();syncGameplay();}
 }
-/** Reconcile mirror-glance eligibility without modifying pedals, steering or camera preference. */
-function syncGlanceControls() {
-  const visible = renderer.cameraMode === 'cockpit' && ['playing', 'paused'].includes(screen);
-  const enabled = visible && screen === 'playing' && !lifecycle.paused && !busy && ui.overlay.hidden
-    && game.state.phase === 'playing' && !game.state.rolling && renderer.effectiveCameraMode === 'cockpit';
-  glance.setEnabled(enabled);
-  ui.glance(visible, enabled, glance.direction);
+/** Apply accepted local/cloud preferences once without overwriting an intentional unowned-car preview on ordinary save emissions. */
+function hydrateStoredSettings(){
+  const profile=profileStore.get(),key=JSON.stringify(profile.settings);
+  if(appliedSelectedId!==profile.selectedVehicleId){previewId=profile.selectedVehicleId;appliedSelectedId=profile.selectedVehicleId;}
+  if(key===appliedSettingsKey)return;
+  appliedSettingsKey=key;Object.assign(settings,profile.settings);audio.enabled=settings.sound;
+  renderer.setQuality(settings.renderQuality);renderer.setCameraMode(settings.cameraMode);renderer.setRoute(settings.route);ui.sound(settings.sound);garageDirty=true;
 }
-/**
- * Refresh local settings from the save snapshot, update menu state and apply the selected scenic route.
- */
-function refreshMenu() {
-  Object.assign(settings, storage.get());
-  ui.menu(settings);
-  renderer.setRoute(settings.route);
+/** Release input owners at every screen or lifecycle boundary, including mirror glances. */
+function clearInput(){thumbDrive?.clear();input.clear();game.releaseControls();glance.clear();}
+/** Only genuine active simulation is reported as gameplay or produces engine audio. */
+function syncGameplay(){syncThumbControls();const active=screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing';sdk.gameplay(active);audio.update(game.state,active);}
+/** Keep legacy driving HUD separate from the new menu; hidden legacy controls cannot receive focus. */
+function applyScreen(){
+  const driving=['playing','paused'].includes(screen);ui.setScreen(driving?screen:'menu');
+  byId('menu').hidden=true;byId('hud').hidden=!driving;document.querySelector('.topbar').hidden=!driving;
+  byId('app').dataset.screen=screen;garageUI.setVisible(!driving);
+  const flight=vehicleDefinition(profileStore.get().selectedVehicleId)?.flight!==false;
+  byId('app').dataset.flight=String(flight);byId('cameraBtn').hidden=!driving||!flight;
+  document.querySelector('.nitro-hint').textContent=flight?'Нитро + полёт · общий запас':'Нитро · запас энергии';
+  byId('runHint').textContent=flight?'W / ↑ — газ · S / ↓ — тормоз · A D / ← → — руль · F — полёт · Q / E — кувырок · C — камера':'W / ↑ — газ · S / ↓ — тормоз · A D / ← → — руль · SPACE — нитро';
+  if(!driving){glance.clear();renderer.playerMirrors?.suspend?.();}garageDirty=true;
 }
-/**
- * Start a fresh run only after assets are ready and no ad action is pending.
- * Resets controls and per-run accounting, but preserves external lifecycle pause owners.
- */
-function startRun() {
-  if (assetsFailed) { location.reload(); return; }
-  if (!assetsReady) return;
-  if (busy) return;
-  ui.close();
-  lifecycle.resume('user');
-  game.reset(settings.difficulty);
-  game.start();
-  runBest = storage.get().best[settings.difficulty];
-  savedDistance = 0;
-  runCounted = false;
-  clearInput();
-  crashElapsed = 0;
-  screen = 'playing';
-  ui.setScreen(screen);
-  ui.hud(game.state);
-  void audio.unlock();
-  // A platform pause may precede the first user action.
-  if (lifecycle.paused) {
-    screen = 'paused'; ui.setScreen(screen); lifecycle.pause('user'); ui.pause();
-  }
-  syncGameplay();
-  renderer.resize();
-}
-/**
- * Persist only unsaved distance and count this run once, including repeated saves across a revive.
- * Empty runs are ignored; savedDistance advances only after the storage call.
- */
-function saveRun() {
-  if (game.state.elapsed <= 0) return;
-  storage.finish(game.state.score, game.state.distance - savedDistance, game.difficulty, !runCounted);
-  savedDistance = game.state.distance;
-  runCounted = true;
-}
-/**
- * Save the current run, stop gameplay/audio and open result actions with platform reward availability.
- */
-function showResults() {
-  saveRun();
-  screen = 'results'; clearInput();
-  ui.setScreen(screen); syncGameplay();
-  ui.results(game.state, { record: Math.floor(game.state.score) > runBest, best: storage.get().best[game.difficulty], adAvailable: ads.available });
-}
-/**
- * Pause active play until explicit user resume and retain any independent platform/visibility blocker.
- * @param {string} reason - Additional pause owner; user is always retained for safe resumption.
- */
-function pauseRun(reason = 'user') {
-  if (screen === 'playing') lifecycle.pause('user');
-  if (reason !== 'user') lifecycle.pause(reason);
-}
-/**
- * Persist the requested view without changing driving, flight or lifecycle state.
- * The renderer may briefly use its external comfort view during a roll; that is not a preference change.
- */
-function toggleCamera() {
-  if (busy || !['playing', 'paused'].includes(screen)) return;
-  if (!ui.overlay.hidden && ui.modalType !== 'pause') return;
-  settings.cameraMode = settings.cameraMode === 'cockpit' ? 'chase' : 'cockpit';
-  storage.settings({ cameraMode: settings.cameraMode });
-  renderer.setCameraMode(settings.cameraMode);
-  ui.camera(settings.cameraMode);
-  ui.notice(settings.cameraMode === 'cockpit' ? 'Выбран вид из кабины' : 'Выбрана внешняя камера');
-}
-/**
- * Dispatch guarded modal actions and await ad completion before retry/revive transitions.
- * Busy ad operations exclude concurrent actions; a reward callback, not ad close, authorizes revival.
- * @param {string} action - retry, revive, resume, menu, camera or closeHelp from a validated UI action.
- * @returns {Promise<void>} Resolves after the requested transition or guarded no-op.
- */
-async function handleAction(action) {
-  if (busy) return;
-  if (action === 'retry') {
-    if (screen !== 'results') return;
-    if (sdk.get() && game.state.elapsed >= 30 && performance.now() - lastAdAt > 60000) {
-      busy = true; ui.busy(true);
-      try { await ads.interstitial(); lastAdAt = performance.now(); }
-      finally { busy = false; ui.busy(false); }
-    }
-    startRun();
-  } else if (action === 'revive') {
-    if (screen !== 'results' || game.state.revives >= 1) return;
-    if (ads.available) {
-      busy = true; ui.busy(true);
-      let result;
-      try { result = await ads.rewarded(); }
-      finally { busy = false; ui.busy(false); }
-      if (!result?.rewarded) {
-        byId('adStatus').textContent = 'Бонус не получен. Можно попробовать ещё или начать новый заезд.';
-        return;
-      }
-    }
-    if (game.revive()) {
-      clearInput();
-      ui.close(); screen = 'playing'; ui.setScreen(screen);
-      if (lifecycle.paused) { lifecycle.pause('user'); screen = 'paused'; ui.setScreen(screen); ui.pause(); }
-      syncGameplay();
-    }
-  } else if (action === 'resume') {
-    if (screen !== 'paused') return;
-    const blockers = lifecycle.reasons().filter(reason => reason !== 'user');
-    if (blockers.length) { ui.notice('Дождись закрытия окна платформы и вернись в игру.'); return; }
-    clearInput(); ui.close(); screen = 'playing'; lifecycle.resume('user'); ui.setScreen(screen); syncGameplay(); void audio.unlock();
-  } else if (action === 'menu') {
-    if (screen === 'playing' || screen === 'paused') saveRun();
-    ui.close(); screen = 'menu'; clearInput();
-    lifecycle.resume('user'); ui.setScreen(screen); syncGameplay(); refreshMenu(); renderer.resize();
-    byId('playBtn').focus({ preventScroll: true });
-  } else if (action === 'camera') {
-    if (ui.modalType === 'pause') toggleCamera();
-  } else if (action === 'closeHelp') {
-    ui.close();
-    if (helpFromGame) ui.pause();
-    helpFromGame = false;
+/** Reflect authored capabilities, exact prices and honest platform persistence without computing awards in the UI. */
+function refreshGarage(){
+  const profile=profileStore.get(),state=platform?.getState?.()||{};
+  const view=deriveGarageView(profile,{capabilities:profileStore.getCapabilities(),vehicleId:previewId});
+  garageUI.render({...view,catalog:CATALOG,screen,tab,inspection,cloud:state.cloud,selectedVehicle:previewId,settings:{...settings,runMode:profile.mode},loading,runResult,otherGames,
+    platform:{...state,sdk:!!sdk.get(),cloud:state.cloud?.available===true,cloudConnected:['durable','loaded'].includes(state.cloud?.status),cloudStatus:state.cloud?.status,local:profileStore.status(),rewarded:ads?.available===true,payments:false,authenticated:state.auth==='authorized'}});
+  garageUI.setBusy(busy);garageDirty=true;
+  if(garageScene&&assetsReady&&!['playing','paused'].includes(screen)){
+    const id=previewId||profile.selectedVehicleId,cosmetics=profile.loadouts[id]?.cosmetics||{};
+    garageScene.setVehicle(id,cosmetics);garageScene.setParking?.(profile.ownedVehicles.filter(owned=>owned!==id).map(owned=>({id:owned,appearance:profile.loadouts[owned]?.cosmetics||{}})));
+    if(garageScene.tier!==profile.garage.level&&garageScene.failedTier!==profile.garage.level&&garageScene.loadingTier!==profile.garage.level)void garageScene.setTier(profile.garage.level).then(()=>{garageDirty=true;});
   }
 }
+/** Queue cloud sync only after the local transactional reducer has accepted a real change. */
+function changed(result){
+  if(!result.ok){garageUI.notice(({ 'insufficient-credits':'Не хватает кредитов.', 'vehicle-not-owned':'Сначала приобрети автомобиль.', 'level-not-owned':'Сначала открой этот уровень.', 'future-version-read-only':'Это сохранение создано более новой версией игры.' })[result.reason]||'Действие сейчас недоступно.');return false;}
+  if(result.changed)void platform.queueSave(profileStore.get());refreshGarage();return true;
+}
+/** Close one cumulative receipt only when the player leaves results, never on a revivable crash. */
+function finalizeRun(){
+  if(!run)return;
+  if(telemetry)adCadence.observeRun(run.sequence,telemetry.snapshot());
+  if(telemetry)profileStore.settleRun(run,telemetry.finalize(game.state),{finalized:true});
+  else profileStore.finalizeRun(run);
+  if(runResult)runResult.canRevive=false;
+  run=null;telemetry=null;void platform.queueSave(profileStore.get());
+}
+/** Product-owned cadence at a non-game transition; never an extra launch or mid-race advert. */
+/** Await the platform's terminal callback; its request has no cancellation API, so a timeout cannot safely start another race. */
+async function requestAd(kind){
+  let outcome=await ads[kind]();
+  if(outcome.pending){loading={...loading,adPending:true,error:'Платформа не завершила запрос рекламы. Заезд сохранён. Можно дождаться ответа или перезагрузить игру.'};refreshGarage();outcome=await outcome.completion;loading={...loading,adPending:false,error:null};refreshGarage();}
+  return outcome;
+}
+async function transitionAd(action='continue'){
+  if(orientationBlocked||screen!=='results'||platform.getState().commerce?.busy)return;
+  const sequence=run?.sequence||runResult?.runIdentity?.sequence;
+  const decision=adCadence.beginTransition({sequence,screen,action,sdkAvailable:ads.interstitialAvailable===true});
+  if(!decision.eligible)return;
+  busy=true;garageUI.setBusy(true,'Реклама платформы…');
+  try{const result=await requestAd('interstitial');adCadence.settleInterstitial(result,sequence);}
+  finally{busy=false;garageUI.setBusy(false);}
+}
+/** Begin an owned car with bounded research and a durable monotonic run identity; free stock mode ignores tuning. */
+async function startRun(){
+  if(orientationBlocked||busy||!assetsReady||assetsFailed)return;
+  await transitionAd();if(orientationBlocked)return;finalizeRun();
+  const profile=profileStore.get(),id=profile.selectedVehicleId;previewId=id;
+  const opened=profileStore.beginRun({vehicleId:id,mode:profile.mode,difficulty:settings.difficulty,route:settings.route});
+  if(!opened.ok){garageUI.notice('Не удалось открыть заезд. Проверь сохранение.');return;}
+  run=opened.run;telemetry=new RunTelemetry();runResult=null;
+  // The previous phase is closed before reconfiguration; no live car can change dimensions mid-run.
+  game.state.phase='ready';game.configureVehicle(id,getEngineeringModifiers(profile,id,profile.mode));game.reset(settings.difficulty);
+  renderer.selectOwnedVehicle(id,profile.loadouts[id]?.cosmetics);renderer.setRoute(settings.route);renderer.setCameraMode(settings.cameraMode);
+  game.start();runBest=profile.records[profile.mode]?.[`${id}:${settings.difficulty}`]?.score||0;continuedBest=profile.records.continued?.[`${id}:${settings.difficulty}`]?.score||0;savedDistance=0;runCounted=false;crashElapsed=0;
+  ui.close();clearInput();lifecycle.resume('user');screen='playing';applyScreen();ui.hud(game.state);void audio.unlock();
+  if(lifecycle.paused){screen='paused';applyScreen();lifecycle.pause('user');ui.pause();}
+  syncGameplay();renderer.resize();void platform.queueSave(profileStore.get());
+}
+/** Save only the production telemetry delta; revive reuses both its run ID and counters. */
+function saveRun(){
+  if(!run||!telemetry)return null;
+  telemetry.observe(game.state,0);adCadence.observeRun(run.sequence,telemetry.snapshot());const result=profileStore.settleRun(run,telemetry.snapshot());
+  if(game.state.elapsed>0){storage.finish(game.state.score,game.state.distance-savedDistance,game.difficulty,!runCounted);savedDistance=game.state.distance;runCounted=true;}
+  void platform.queueSave(profileStore.get());return result;
+}
+/** Show earned cumulative credits/XP and optional, separately idempotent ad actions after crash. */
+function showResults(){
+  const result=saveRun(),metrics=telemetry?.snapshot()||{},receipt=result?.receipt||{};
+  const bonusCredits=Math.max(0,Math.min(ADS.rewarded.maximumCredits,Math.floor((receipt.creditsGranted||0)*ADS.rewarded.creditFraction),LIMITS.credits-profileStore.get().wallet.credits));
+  if(run)adCadence.completeRun(run.sequence,metrics,{reason:'crash'});
+  runResult={runIdentity:run?{id:run.id,sequence:run.sequence}:null,score:game.state.score,distance:metrics.distanceM,flightTime:metrics.airSeconds,metrics:{...metrics},newRecord:game.state.score>(game.state.revives>0?continuedBest:runBest),modified:run?.mode==='tuned',continued:game.state.revives>0,
+    settled:result?.ok===true,receipt:{credits:receipt.creditsGranted||0,xp:receipt.xpGranted||0},onboarding:result?.rewardDelta?.onboarding||0,
+    canRevive:game.state.revives<1,reviveLabel:ads.available?'Продолжить за видео':'Тренировочное продолжение',bonusEligible:bonusCredits>0&&(metrics.distanceM||0)>=ADS.rewarded.minimumRunMetres,
+    bonusCredits,bonusClaimed:false,
+    saveMessage:profileStore.status().localSaved?'Сохранено на этом устройстве.':'Учтено в этой сессии. Локальное сохранение недоступно.'};
+  screen='results';clearInput();ui.close();applyScreen();syncGameplay();refreshGarage();
+}
+/** Pause until explicit resume while retaining other independent platform and document blockers. */
+function pauseRun(reason='user'){if(screen==='playing')lifecycle.pause('user');if(reason!=='user')lifecycle.pause(reason);}
+/** Change the saved view only for the authored Rocket cockpit, without altering simulation. */
+function toggleCamera(){
+  if(busy||!['playing','paused'].includes(screen)||!vehicleDefinition(game.state.vehicleId)?.cockpit)return;
+  if(!ui.overlay.hidden&&ui.modalType!=='pause')return;
+  settings.cameraMode=settings.cameraMode==='cockpit'?'chase':'cockpit';storage.settings({cameraMode:settings.cameraMode});profileStore.dispatch({type:'UPDATE_SETTINGS',settings:{cameraMode:settings.cameraMode}});
+  renderer.setCameraMode(settings.cameraMode);ui.camera(settings.cameraMode);ui.notice(settings.cameraMode==='cockpit'?'Выбран вид из кабины':'Выбрана внешняя камера');
+}
+/** Enable deliberate held glances only when the actual Rocket eye is active and gameplay has focus. */
+function syncGlanceControls(){
+  const visible=renderer.playerVehicleId==='rocket'&&renderer.cameraMode==='cockpit'&&['playing','paused'].includes(screen);
+  const enabled=visible&&screen==='playing'&&!lifecycle.paused&&!busy&&ui.overlay.hidden&&game.state.phase==='playing'&&!game.state.rolling&&renderer.effectiveCameraMode==='cockpit';
+  glance.setEnabled(enabled);ui.glance(visible,enabled,glance.direction);
+}
+/** Preserve legacy driving modal actions while new menu progression is owned by its reducer. */
+async function handleAction(action){
+  if(busy)return;
+  if(action==='retry'){if(screen==='results')await startRun();}
+  else if(action==='revive'){
+    if(screen!=='results'||!runResult?.canRevive||!run)return;
+    if(ads.available){busy=true;refreshGarage();let result;try{result=await requestAd('rewarded');adCadence.recordRewarded(result);}finally{busy=false;}if(!result?.rewarded){refreshGarage();garageUI.notice('Просмотр не подтверждён, награда не выдана.');return;}}
+    if(game.revive()){clearInput();ui.close();screen='playing';applyScreen();if(lifecycle.paused){lifecycle.pause('user');screen='paused';applyScreen();ui.pause();}syncGameplay();}
+  }else if(action==='resume'){
+    if(screen!=='paused')return;if(lifecycle.reasons().some(reason=>reason!=='user')){ui.notice('Дождись закрытия окна платформы и вернись в игру.');return;}
+    clearInput();ui.close();screen='playing';lifecycle.resume('user');applyScreen();syncGameplay();void audio.unlock();
+  }else if(action==='menu'){
+    if(['playing','paused'].includes(screen))saveRun();finalizeRun();ui.close();screen='hub';clearInput();lifecycle.resume('user');applyScreen();syncGameplay();refreshGarage();
+  }else if(action==='camera'){if(ui.modalType==='pause')toggleCamera();}
+  else if(action==='closeHelp'){ui.close();if(helpFromGame)ui.pause();helpFromGame=false;}
+}
+/** Translate UI intents into validated economy actions; no DOM value directly awards credits or paid entitlements. */
+async function handleGarageAction(action){
+  if(orientationBlocked||!action)return;if(action.type==='retryLoad'&&loading.adPending){location.reload();return;}if(busy)return;
+  if(action.type==='retryLoad'){if(assetsReady&&garageScene){garageScene.failedTier=null;void garageScene.setTier(profileStore.get().garage.level).then(ok=>{if(ok)loading={...loading,error:null};refreshGarage();});}else location.reload();return;}
+  if(action.type==='startDrive'){await startRun();return;}
+  if(action.type==='revive'){await handleAction('revive');return;}
+  if(action.type==='navigate'){const keepPreview=screen==='garage'&&action.screen==='garage';await transitionAd('menu');finalizeRun();screen=action.screen==='garage'?'garage':'hub';tab=action.tab||tab;if(screen==='hub'||tab!=='style'){inspection='overview';garageScene?.setInspection?.('overview');}if(!keepPreview)previewId=profileStore.get().selectedVehicleId;applyScreen();refreshGarage();return;}
+  if(action.type==='inspectVehicle'){inspection=garageScene?.setInspection?.(action.view)||'overview';refreshGarage();return;}
+  if(action.type==='selectVehicle'){inspection='overview';garageScene?.setInspection?.('overview');previewId=action.id;if(profileStore.get().ownedVehicles.includes(action.id))changed(profileStore.dispatch({type:'SELECT_VEHICLE',vehicleId:action.id}));else refreshGarage();return;}
+  if(action.type==='settings'){
+    if(action.key==='runMode')changed(profileStore.dispatch({type:'SET_MODE',mode:action.value}));
+    else{const result=profileStore.dispatch({type:'UPDATE_SETTINGS',settings:{[action.key]:action.value}});if(changed(result)){Object.assign(settings,profileStore.get().settings);storage.settings(settings);audio.enabled=settings.sound;renderer.setQuality(settings.renderQuality);renderer.setCameraMode(settings.cameraMode);renderer.setRoute(settings.route);refreshGarage();}}return;
+  }
+  if(action.type==='retryCloud'){busy=true;refreshGarage();try{await platform.retryCloud();}finally{busy=false;refreshGarage();}return;}
+  if(action.type==='cloudConnect'){busy=true;refreshGarage();try{await platform.authorize({userInitiated:true});}finally{busy=false;refreshGarage();}return;}
+  if(action.type==='resolveCloudConflict'){await platform.resolveCloudConflict(action.choice);reconcileProfileLineage();hydrateStoredSettings();previewId=profileStore.get().selectedVehicleId;refreshGarage();return;}
+  if(action.type==='openOtherGame'){openOwnGame(otherGames,action.id,{screen});return;}
+  if(action.type==='purchaseProduct'){garageUI.notice('Покупки за реальные деньги ещё не настроены.');return;}
+  if(action.type==='rewardedBonus'){
+    if(screen!=='results'||!runResult?.bonusEligible||runResult.bonusClaimed||!ads.available)return;
+    const identity=run?{id:run.id,sequence:run.sequence}:runResult.runIdentity;busy=true;refreshGarage();
+    let result;try{result=await requestAd('rewarded');adCadence.recordRewarded(result);}finally{busy=false;}
+    if(result?.rewarded&&identity){finalizeRun();runResult.runIdentity=identity;const grant=profileStore.dispatch({type:'CLAIM_AD_BONUS',runId:identity.id,runSequence:identity.sequence});if(grant.ok){runResult.bonusClaimed=true;runResult.receipt.credits+=grant.rewardDelta?.credits||0;changed(grant);}}
+    else garageUI.notice('Просмотр не подтверждён, бонус не начислен.');refreshGarage();return;
+  }
+  const translated={resetCosmetic:{type:'UNEQUIP_COSMETIC',slot:action.slot,vehicleId:previewId},purchaseVehicle:{type:'BUY_VEHICLE',vehicleId:action.id},buyCosmetic:{type:'BUY_COSMETIC',cosmeticId:action.id,vehicleId:previewId},equipCosmetic:{type:'EQUIP_COSMETIC',cosmeticId:action.id,vehicleId:previewId},upgradeEngineering:{type:'BUY_RESEARCH',branchId:action.branch,expectedLevel:action.expectedLevel},equipEngineering:{type:'EQUIP_RESEARCH',branchId:action.branch,level:action.level,vehicleId:previewId},upgradeGarage:{type:'UPGRADE_GARAGE',expectedLevel:action.expectedLevel},claimContract:{type:'CLAIM_CONTRACT',contractId:action.id},claimSeason:{type:'CLAIM_SEASON',rewardId:action.id},equipBadge:{type:'EQUIP_BADGE',badgeId:action.id},savePreset:{type:'SAVE_PRESET',name:action.name,vehicleId:previewId},applyPreset:{type:'APPLY_PRESET',presetId:action.id}}[action.type];
+  if(translated&&changed(profileStore.dispatch(translated))){if(action.type==='purchaseVehicle'){profileStore.dispatch({type:'SELECT_VEHICLE',vehicleId:action.id});previewId=action.id;void platform.queueSave(profileStore.get());refreshGarage();}if(action.type==='applyPreset'){previewId=profileStore.get().selectedVehicleId;refreshGarage();}}
+}
+/** Keep legacy settings helpers functional in the pause panel without re-exposing the old title menu. */
+function refreshMenu(){ui.menu({...settings,best:storage.get().best});renderer.setRoute(settings.route);refreshGarage();}
 byId('playBtn').addEventListener('click', startRun);
 byId('pauseBtn').addEventListener('click', () => pauseRun());
 byId('cameraBtn').addEventListener('click', toggleCamera);
@@ -233,7 +251,7 @@ byId('helpBtn').addEventListener('click', () => {
 byId('soundBtn').addEventListener('click', async () => {
   settings.sound = !settings.sound;
   audio.enabled = settings.sound;
-  storage.settings({ sound: settings.sound });
+  storage.settings({ sound: settings.sound });profileStore.dispatch({type:'UPDATE_SETTINGS',settings:{sound:settings.sound}});
   ui.sound(settings.sound);
   await audio.unlock(); syncGameplay();
   ui.notice(settings.sound ? 'Звук включён' : 'Звук выключен');
@@ -252,15 +270,15 @@ document.addEventListener('fullscreenchange', () => {
 });
 document.querySelector('.brand').addEventListener('click', event => { event.preventDefault(); void handleAction('menu'); });
 for (const button of document.querySelectorAll('[data-route]')) button.addEventListener('click', () => {
-  settings.route = button.dataset.route; storage.settings({ route: settings.route }); refreshMenu();
+  settings.route = button.dataset.route; storage.settings({ route: settings.route });profileStore.dispatch({type:'UPDATE_SETTINGS',settings:{route:settings.route}}); refreshMenu();
 });
 for (const button of document.querySelectorAll('[data-difficulty]')) button.addEventListener('click', () => {
-  settings.difficulty = button.dataset.difficulty; storage.settings({ difficulty: settings.difficulty }); refreshMenu();
+  settings.difficulty = button.dataset.difficulty; storage.settings({ difficulty: settings.difficulty });profileStore.dispatch({type:'UPDATE_SETTINGS',settings:{difficulty:settings.difficulty}}); refreshMenu();
 });
 byId('renderQuality').addEventListener('change', event => {
   settings.renderQuality = normalizeRenderQuality(event.target.value);
   storage.settings({ renderQuality: settings.renderQuality });
-  renderer.setQuality(settings.renderQuality);
+  profileStore.dispatch({type:'UPDATE_SETTINGS',settings:{renderQuality:settings.renderQuality}});renderer.setQuality(settings.renderQuality);garageDirty=true;
 });
 /**
  * Apply a short swipe-derived steering pulse only while simulation is actively playing.
@@ -279,7 +297,7 @@ document.addEventListener('keydown', event => {
     return;
   }
   if (!ui.overlay.hidden) return;
-  if (screen === 'menu' && event.code === 'Enter' && !event.target.closest('button, a, select, summary, input, textarea')) { event.preventDefault(); startRun(); return; }
+  if (screen === 'hub' && event.code === 'Enter' && !event.target.closest('button, a, select, summary, input, textarea')) { event.preventDefault(); startRun(); return; }
   if (screen !== 'playing') return;
   if (input.key(event.code,true)) event.preventDefault();
   if (!event.repeat && ['Escape', 'KeyP'].includes(event.code)) { event.preventDefault(); pauseRun(); }
@@ -363,40 +381,53 @@ window.addEventListener('blur', () => { clearInput(); gesture = null; pauseRun('
 window.addEventListener('focus', () => lifecycle.resume('blur'));
 sdk.on('game_api_pause', () => pauseRun('platform'));
 sdk.on('game_api_resume', () => lifecycle.resume('platform'));
-window.addEventListener('resize', () => renderer.resize());
+window.addEventListener('resize', () => {renderer.resize();garageDirty=true;});
 observeRenderPixelRatio(() => renderer.resize());
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', event => { renderer.reducedMotion = event.matches; renderer.needsRender = true; });
-refreshMenu(); ui.setScreen('menu');
-renderer.render(game.state, { menu: true, dt: 0 });
-void Promise.all([sdk.init(), assetsLoaded]).then(() => { if (assetsReady) sdk.ready(); syncGameplay(); });
-let previous = performance.now();
-/**
- * Advance one animation frame, limiting elapsed simulation time to 0.1 seconds.
- * Updates controls/HUD/render/audio and delays results briefly for crash feedback; always schedules the next frame.
- * @param {number} time - requestAnimationFrame timestamp in milliseconds.
- */
-function tick(time) {
-  const dt = Math.min((time - previous) / 1000, .1);
-  previous = time;
-  if (screen === 'playing' && !lifecycle.paused) {
-    game.update(dt, input.read());
-    if (game.state.phase === 'crashed') {
-      clearInput();
-      syncGameplay();
-      crashElapsed += dt;
-      if (crashElapsed >= .65) { crashElapsed = 0; showResults(); }
-    }
+
+applyScreen();refreshMenu();
+/** Complete interactive startup before notifying the platform; workshop failures have a real retry state. */
+async function initialize(){
+  try{
+    await Promise.all([renderer.ready,platform.init()]);
+    hydrateStoredSettings();previewId=profileStore.get().selectedVehicleId;
+    profileStore.setCapabilities(renderer.cosmeticCapabilities||{});
+    garageScene=new GarageScene({renderer:renderer.renderer,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),onStatus:status=>{if(status.error){loading={...loading,error:'Не удалось загрузить мастерскую. Проверь соединение.'};if(assetsReady)garageUI.notice('Новый бокс не загрузился. Сохранение цело, прежний бокс остаётся доступен. Повтори загрузку в разделе бокса.');}garageDirty=true;}});
+    loading={progress:90,message:'Открываем бокс…'};refreshGarage();
+    garageScene.setVehicle(previewId,profileStore.get().loadouts[previewId]?.cosmetics||{});
+    if(!await garageScene.setTier(profileStore.get().garage.level))throw new Error('Garage asset unavailable');
+    assetsReady=true;void loadOwnGames(sdk).then(games=>{otherGames=games;if(!['playing','paused'].includes(screen))refreshGarage();});playButton.disabled=false;loading={progress:100,message:'Готово'};screen='hub';applyScreen();refreshGarage();signalReady();syncGameplay();
+  }catch(error){console.error('Interactive startup failed:',error);assetsFailed=true;loading={...loading,error:'Не удалось загрузить игру. Проверь соединение и повтори.'};refreshGarage();}
+}
+void initialize();
+let previous=performance.now(),garagePointer=null;
+byId('scene').addEventListener('pointerdown',event=>{if(['hub','garage'].includes(screen))garagePointer={id:event.pointerId,x:event.clientX,y:event.clientY};});
+byId('scene').addEventListener('pointermove',event=>{if(!garagePointer||event.pointerId!==garagePointer.id)return;garageScene?.orbit(event.clientX-garagePointer.x,event.clientY-garagePointer.y);garagePointer.x=event.clientX;garagePointer.y=event.clientY;garageDirty=true;});
+for(const name of ['pointerup','pointercancel'])window.addEventListener(name,()=>{garagePointer=null;});
+/** Reserve the real visible inspection rectangle, including the mobile drawer, rather than hiding half the car under UI. */
+function garageFraming(){
+  const stage=document.querySelector('.gs-stage');
+  if(stage&&screen==='garage'){
+    const rect=stage.getBoundingClientRect(),heading=stage.querySelector('.gs-stage-heading')?.getBoundingClientRect(),controls=stage.querySelector('.gs-stage-bottom')?.getBoundingClientRect();
+    const top=Math.max(rect.top+12,(heading?.bottom||rect.top+70)+12),bottom=Math.min(rect.bottom-12,(controls?.top||rect.bottom-55)-12);
+    return{x:rect.x+20,y:top,width:Math.max(60,rect.width-40),height:Math.max(60,bottom-top)};
   }
-  if (screen !== 'menu') ui.hud(game.state);
-  for (const [id, action] of controlBindings) {
-    const held = String(input.active(action));
-    const button = byId(id);
-    if (button.dataset.held !== held) button.dataset.held = held;
-    if (button.getAttribute('aria-pressed') !== held) button.setAttribute('aria-pressed', held);
-  }
-  syncGlanceControls();
-  renderer.render(game.state, { menu: screen === 'menu', dt, paused: screen !== 'playing' });
-  audio.update(game.state, screen === 'playing' && !lifecycle.paused);
-  requestAnimationFrame(tick);
+  if(innerWidth<700)return{x:18,y:innerHeight*.29,width:innerWidth-36,height:innerHeight*.265};
+  return null;
+}
+byId('garageShell').addEventListener('garage-layout-change',()=>{garageDirty=true;});
+/** Advance only live simulation; a settled garage has no recurring render or shadow work. */
+function tick(time){
+  const dt=Math.min((time-previous)/1000,.1);previous=time;
+  const garageVisible=!orientationBlocked&&!document.hidden&&['hub','garage','results'].includes(screen);
+  const paintChanged=garageScene?.advance?.(dt,{visible:garageVisible,reducedMotion:renderer.reducedMotion===true});
+  if(paintChanged)garageDirty=true;
+  if(screen==='playing'&&!lifecycle.paused){game.update(dt,input.read());telemetry?.observe(game.state,dt);if(game.state.phase==='crashed'){clearInput();syncGameplay();crashElapsed+=dt;if(crashElapsed>=.65){crashElapsed=0;showResults();}}}
+  if(!orientationBlocked&&['playing','paused'].includes(screen)){
+    ui.hud(game.state);
+    for(const[id,action]of controlBindings){const held=String(input.active(action)),button=byId(id);if(button.dataset.held!==held)button.dataset.held=held;if(button.getAttribute('aria-pressed')!==held)button.setAttribute('aria-pressed',held);}
+    syncGlanceControls();renderer.render(game.state,{dt,paused:screen!=='playing'||lifecycle.paused});
+  }else if(!orientationBlocked&&garageScene?.ready&&(garageDirty||renderer.needsRender||garageScene.animating)&&!document.hidden){garageScene.render(innerWidth,innerHeight,garageFraming());garageDirty=false;renderer.needsRender=false;}
+  audio.update(game.state,screen==='playing'&&!lifecycle.paused);requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
