@@ -174,3 +174,36 @@ test('a manual drag takes over the displayed exterior orbit without inheriting t
   scene.orbit(8, 0); scene.render(width, height, region);
   assertSafe(scene.camera, scene.cameraContext.limits, scene.cameraContext.vehicleBounds, 'manual interrupted orbit');
 });
+
+/** The interruption distance is temporary even when a wheel close-up used a different look target. */
+test('manual takeover recovers adaptive distance safely for all actual cars and occupied room tiers', () => {
+  for(let tier=1;tier<=4;tier++)for(const id of ids)for(const destination of ['overview','wheels']){
+    const scene=sceneFixture(tier,id),[width,height,region]=viewports[1];
+    scene.setInspection(destination==='wheels'?'overview':'wheels');scene.advance(2);scene.render(width,height,region);
+    scene.setInspection(destination);scene.advance(.17);scene.render(width,height,region);
+    scene.orbit(8,0);scene.render(width,height,region);
+    for(let frame=0;frame<24;frame++){
+      scene.advance(1/60);scene.render(width,height,region);
+      const context=scene.cameraContext,label=`recovery/${tier}/${id}/${destination}/${frame}`;
+      assertSafe(scene.camera,context.limits,context.vehicleBounds,label);assertFits(scene.camera,context.points,width,height,region,label);
+    }
+    assert.equal(scene.orbitRecovery,null);assert.equal(scene.animating,false);
+    const final=scene.camera.position.clone();scene.advance(1);scene.render(width,height,region);assert.ok(final.equals(scene.camera.position));
+  }
+});
+
+/** Test complete displayed optics, not merely an unchanged eye, at every exterior mode boundary. */
+test('zero-delta takeover preserves eye, orientation and projection across exterior inspection pairs', () => {
+ for(const from of ['overview','rear','wheels'])for(const to of ['overview','rear','wheels']){
+  if(from===to)continue;
+  const scene=sceneFixture(2),[width,height,region]=viewports[1];scene.setInspection(from);scene.advance(2);scene.render(width,height,region);
+  scene.setInspection(to);scene.advance(.17);scene.render(width,height,region);
+  const shown=scene.camera.clone(),label=`${from}->${to}`;scene.orbit(0,0);scene.render(width,height,region);
+  assert.ok(scene.camera.position.distanceTo(shown.position)<1e-5,label+' eye');
+  assert.ok(scene.camera.quaternion.angleTo(shown.quaternion)<1e-6,label+' orientation');
+  assert.ok(Math.abs(scene.camera.fov-shown.fov)<1e-5,label+' lens');
+  scene.camera.projectionMatrix.elements.forEach((n,i)=>assert.ok(Math.abs(n-shown.projectionMatrix.elements[i])<1e-5,label+' projection'));
+  for(let frame=0;frame<24;frame++){scene.advance(1/60);scene.render(width,height,region);assertSafe(scene.camera,scene.cameraContext.limits,scene.cameraContext.vehicleBounds,label+'/'+frame);}
+  assert.equal(scene.orbitRecovery,null);assert.equal(scene.animating,false);
+ }
+});

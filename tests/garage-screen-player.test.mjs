@@ -17,6 +17,36 @@ function fixture({play}={}){
 }
 const flush=async()=>{await Promise.resolve();await Promise.resolve();await Promise.resolve();};
 
+for(const initialized of [false,true])test(`attach after disposal is a no-op before traversal, retention or resource allocation (initialized: ${initialized})`,async()=>{
+ const f=fixture();if(initialized)await f.player.attach(f.room);f.player.dispose();
+ const late=fixture(),original=late.screen.material,frame=late.frame.material;
+ late.screen.material=[frame,original];late.screen.castShadow=true;late.screen.receiveShadow=true;
+ const materials=late.screen.material,userData=late.screen.userData,ready=f.player.ready,material=f.player.material,stats={...f.stats};
+ let traversals=0;const traverse=late.room.traverse.bind(late.room);late.room.traverse=visitor=>{traversals++;return traverse(visitor);};
+ assert.equal(f.player.attach(late.room),ready,'A disposed attachment returns the existing readiness promise');
+ assert.equal(traversals,0,'A late room must not even be traversed');assert.equal(f.player.rooms.size,0);assert.equal(f.player.room,null);
+ assert.equal(f.player.material,material,'No owned material is created or replaced');assert.equal(f.player.video,null);assert.equal(f.player.videoTexture,null);
+ assert.deepEqual(f.stats,stats,'No poster load, decoder creation or change notification is allowed');
+ assert.equal(late.screen.material,materials);assert.deepEqual(materials,[frame,original]);assert.equal(late.frame.material,frame);
+ assert.equal(late.screen.castShadow,true);assert.equal(late.screen.receiveShadow,true);assert.equal(late.screen.userData,userData);
+ assert.equal(late.screen.userData.garageScreenOriginalMaterials,undefined,'The room owner keeps its untouched original materials');
+ late.player.dispose();
+});
+
+test('late fallback poster completion releases its texture without reviving a disposed player or room',async()=>{
+ const f=fixture();let resolve,posterDisposals=0,materialDisposals=0;
+ f.player.loadPoster=()=>{f.stats.posterLoads++;return new Promise(done=>resolve=done);};
+ f.poster.addEventListener('dispose',()=>posterDisposals++);
+ const original=f.screen.material,ready=f.player.attach(f.room),material=f.player.material;
+ material.addEventListener('dispose',()=>materialDisposals++);
+ f.player.dispose();const stats={...f.stats};
+ assert.equal(f.player.attach(f.room),ready);resolve(f.poster);await ready;f.player.dispose();
+ assert.equal(posterDisposals,1);assert.equal(materialDisposals,1);assert.equal(f.player.rooms.size,0);assert.equal(f.player.room,null);
+ assert.equal(f.player.poster,null);assert.equal(material.map,null);assert.equal(f.poster.flipY,true,'A released late texture is not configured or installed');
+ assert.deepEqual(f.stats,stats,'A late result causes no notification, request or decoder allocation');
+ assert.deepEqual(f.screen.userData.garageScreenOriginalMaterials,[original],'Original room ownership remains intact');
+});
+
 test('one original poster and one deferred silent decoder serve all tier screens without changing frames',async()=>{
  const f=fixture(),original=f.screen.material,frame=f.frame.material;
  await f.player.attach(f.room);assert.equal(f.stats.created,0);assert.equal(f.screen.material.map,f.poster);assert.equal(f.frame.material,frame);

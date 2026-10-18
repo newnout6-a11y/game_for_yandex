@@ -35,7 +35,7 @@ export class GarageScene {
     this.tier = 0; this.ready = false; this.disposed = false; this.yaw = -.63; this.pitch = .24; this.zoom = 1;
     this.vehicle = null; this.vehicleKey = ''; this.environmentTarget = null; this.inspection='overview'; this.orbitOffset=0;
     this.loadingTier=null;this.failedTier=null;this.environmentDirty=false;this.parkedVehicles=[];this.parkedKey='';
-    this.vehicleId=null;this.paintTransition=null;this.rimTransitions=[];this.cameraMotion=new GarageCameraMotion();this.reducedMotion=false;
+    this.vehicleId=null;this.paintTransition=null;this.rimTransitions=[];this.cameraMotion=new GarageCameraMotion();this.reducedMotion=false;this.orbitRecovery=null;
     this.onContextRestored=()=>{this.environmentDirty=true;this.key.shadow.needsUpdate=true;this.onStatus({contextRestored:true});};
     renderer.domElement?.addEventListener('webglcontextrestored',this.onContextRestored);
     this.target = new T.Vector3(0, .83, 0); this.lastWidth = 0; this.lastHeight = 0;
@@ -43,6 +43,7 @@ export class GarageScene {
 
   /** Load one authored tier transactionally; failure retains the previous usable room until an explicit retry. */
   async setTier(raw) {
+    if(this.disposed)return false;
     const tier = Math.max(1, Math.min(4, Math.floor(Number(raw) || 1)));
     if (tier === this.tier && this.ready) return true;
     if (tier === this.loadingTier) return false;
@@ -65,6 +66,8 @@ export class GarageScene {
         }).catch(error => { this.cache.delete(tier); throw error; }));
       }
       const room = await this.cache.get(tier);
+      // A completed old load still belongs to the cache, not to a disposed or newer TV selection.
+      if (this.disposed || generation !== this.generation) return false;
       await this.screenDisplay.attach(room);
       if (this.disposed || generation !== this.generation) return false;
       const previous=this.room;
@@ -115,7 +118,7 @@ export class GarageScene {
     this.vehicle = next; this.vehicleId=id; this.vehicleKey = key; if(id!=='rocket'&&this.inspection==='cockpit')this.setInspection('overview'); next.position.set(0, id==='rocket'?.006:(next.userData.groundY||.006), 0); this.scene.add(next);
     this.paintTransition=new VehiclePaintTransition(next);
     this.rimTransitions=[...new Set((next.userData.appearance?.rims||[]).map(entry=>entry.root).filter(Boolean))].map(root=>new VehiclePaintTransition(next,{slot:"rims",root}));
-    this.cameraMotion.active=false;
+    this.cameraMotion.active=false;this.orbitRecovery=null;
     const size = new T.Box3().setFromObject(next, true).getSize(new T.Vector3());
     this.vehicleLength = Math.max(4.7, size.z); this.target.y = Math.max(.75, Math.min(1.2, size.y * .52));
   }
@@ -126,10 +129,16 @@ export class GarageScene {
     let changed=this.paintTransition?.advance(dt,{visible,reducedMotion})||false;
     for(const wipe of this.rimTransitions)changed=wipe.advance(dt,{visible,reducedMotion})||changed;
     const mediaChanged=this.screenDisplay.advance(dt,{visible,reducedMotion,mediaActive});
-    return this.cameraMotion.advance(dt,{visible,reducedMotion})||mediaChanged||changed;
+    const recovering=Boolean(this.orbitRecovery);
+    if(recovering){
+      const step=Number.isFinite(dt)&&dt>0?dt/.35:0;
+      this.orbitRecovery.progress=visible&&!reducedMotion?Math.min(1,this.orbitRecovery.progress+step):1;
+      if(this.orbitRecovery.progress===1)this.orbitRecovery=null;
+    }
+    return this.cameraMotion.advance(dt,{visible,reducedMotion})||recovering||mediaChanged||changed;
   }
 
-  get animating(){return this.paintTransition?.animating||this.rimTransitions.some(wipe=>wipe.animating)||this.cameraMotion.active||false;}
+  get animating(){return this.paintTransition?.animating||this.rimTransitions.some(wipe=>wipe.animating)||this.cameraMotion.active||Boolean(this.orbitRecovery);}
 
   /** Deterministic inspection of the production paint clock; null resumes normal animation. */
   setPaintProgress(progress){
@@ -159,7 +168,7 @@ export class GarageScene {
     if(next===this.inspection)return next;
     this.key.shadow.needsUpdate=true;
     if(this.lastWidth>0)this.cameraMotion.begin(this.camera,{reducedMotion:this.reducedMotion});
-    this.inspection=next;this.orbitOffset=0;this.dragRadius=null;
+    this.inspection=next;this.orbitOffset=0;this.orbitRecovery=null;
     this.yaw=next==='rear'?2.5:-.63;this.pitch=.24;
     return this.inspection;
   }
@@ -170,7 +179,14 @@ export class GarageScene {
     if(this.cameraMotion.active&&this.inspection!=='cockpit'){
       const target=this.inspection==='wheels'?new T.Box3().setFromObject(this.vehicle.getObjectByName('wheel_fl')||this.vehicle,true).getCenter(new T.Vector3()):this.target;
       const delta=this.camera.position.clone().sub(target),radius=Math.hypot(delta.x,delta.z);
-      this.yaw=Math.atan2(delta.x,-delta.z);this.pitch=Math.asin(Math.max(-1,Math.min(1,delta.y/Math.max(.01,radius))));this.dragRadius=radius;
+      const shownYaw=Math.atan2(delta.x,-delta.z);
+      this.yaw=this.inspection==='wheels'?Math.max(-1.28,Math.min(.02,shownYaw)):shownYaw;
+      const shownPitch=Math.asin(Math.max(-1,Math.min(1,delta.y/Math.max(.01,radius))));
+      this.pitch=Math.max(.13,Math.min(.48,shownPitch));
+      // Keep the full displayed pose at takeover, then restore mode limits and
+      // framing in 350 ms. Pointer deltas still act immediately on the requested orbit.
+      this.orbitRecovery={radius,progress:0,pitchOffset:shownPitch-this.pitch,yawOffset:shownYaw-this.yaw,
+        target:this.camera.userData.garageLookTarget?.clone(),points:this.camera.userData.garageFocusPoints?.map(point=>point.clone()),fov:this.camera.fov,near:this.camera.near};
       this.cameraMotion.active=false;
     }
     this.yaw+=horizontal*.004;
@@ -217,10 +233,19 @@ export class GarageScene {
     const limits=this.cameraLimits||(this.cameraLimits=garageCameraLimits(this.room,this.parkedVehicles));
     let radius=Math.min((this.vehicleLength||4.7)*(aspect<1?1.95:1.75)*this.zoom,limits.orbitRadius);
     if(this.inspection==='wheels')radius=1.9;
-    if(this.dragRadius)radius=Math.min(this.dragRadius,limits.orbitRadius);
-    this.camera.position.copy(target).add(new T.Vector3(Math.sin(this.yaw)*radius,Math.sin(this.pitch)*radius,-Math.cos(this.yaw)*radius));
     const vehicleBounds=new T.Box3().setFromObject(this.vehicle,true);
-    this.cameraContext={limits,pivot:this.target.clone(),target,vehicleBounds,points:garageBoxCorners(focus===this.vehicle?vehicleBounds:new T.Box3().setFromObject(focus,true)),width,height,region,minimumFov};
+    let pitch=this.pitch,yaw=this.yaw,lookTarget=target,fitFov=minimumFov;
+    let points=garageBoxCorners(focus===this.vehicle?vehicleBounds:new T.Box3().setFromObject(focus,true));
+    if(this.orbitRecovery){
+      const recovery=this.orbitRecovery,p=recovery.progress,t=p*p*(3-2*p);
+      radius=T.MathUtils.lerp(recovery.radius,radius,t);pitch+=recovery.pitchOffset*(1-t);yaw+=recovery.yawOffset*(1-t);
+      if(recovery.target)lookTarget=recovery.target.clone().lerp(target,t);
+      if(recovery.points?.length===points.length)points=recovery.points.map((point,index)=>point.clone().lerp(points[index],t));
+      fitFov=T.MathUtils.lerp(recovery.fov,minimumFov,t);
+      this.camera.near=T.MathUtils.lerp(recovery.near,this.camera.near,t);this.camera.updateProjectionMatrix();
+    }
+    this.camera.position.copy(target).add(new T.Vector3(Math.sin(yaw)*radius,Math.sin(pitch)*radius,-Math.cos(yaw)*radius));
+    this.cameraContext={limits,pivot:this.target.clone(),target:lookTarget,vehicleBounds,points,width,height,region,minimumFov:fitFov};
     constrainGarageCamera(this.camera,this.cameraContext);
 
     return this.drawScene();

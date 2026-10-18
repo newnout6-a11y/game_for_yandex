@@ -14,12 +14,17 @@ export class GarageScreenPlayer {
     this.frustum=new T.Frustum();this.projection=new T.Matrix4();
   }
 
-  /** Replace only the dedicated authored screen surface; its physical frame and optics stay in the GLB. */
+  /**
+   * Replace only the authored screen surface; its frame and optics stay in the GLB.
+   * After disposal, return the existing readiness promise without inspecting,
+   * retaining or mutating a late room, or allocating any media resources.
+   */
   attach(room) {
+    if(this.disposed)return this.ready;
     const surfaces=[];
     room.traverse(node=>{if(node.isMesh&&(Array.isArray(node.material)?node.material:[node.material]).some(m=>m?.name==='garage_screen_display'))surfaces.push(node);});
     this.rooms.set(room,surfaces);
-    if(!surfaces.length||!this.doc?.createElement||this.disposed)return this.ready;
+    if(!surfaces.length||!this.doc?.createElement)return this.ready;
     if(!this.material){
       const original=(Array.isArray(surfaces[0].material)?surfaces[0].material:[surfaces[0].material]).find(m=>m?.name==='garage_screen_display');
       this.borrowedPoster=original?.map||original?.emissiveMap||null;
