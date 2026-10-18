@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createThumbDrive, thumbControlsFromOffset } from '../src/thumb-drive.js';
+import { createThumbDrive, thumbControlsFromOffset, THUMB_DRIVE } from '../src/thumb-drive.js';
 
 const NEUTRAL = { steer: 0, throttle: 0, brake: 0 };
 class Target {
@@ -50,10 +50,10 @@ const approx = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-
 test('held displacement produces normalized steering, gas, coast transition and brake', () => {
   assert.deepEqual(thumbControlsFromOffset(), { steer: 0, throttle: 1, brake: 0 });
   assert.deepEqual(thumbControlsFromOffset({ dx: 1, dy: 1 }), { steer: 0, throttle: 1, brake: 0 });
-  approx(thumbControlsFromOffset({ dx: 144 * .32 * .53 }).steer, .5);
-  approx(thumbControlsFromOffset({ dx: -144 * .32 * .53 }).steer, -.5);
-  approx(thumbControlsFromOffset({ dy: 78 * .42 * .31 }).throttle, .5);
-  const coast = thumbControlsFromOffset({ dy: 78 * .42 * .46 });
+  approx(thumbControlsFromOffset({ dx: 144 * .32 * .53 }).steer, .395);
+  approx(thumbControlsFromOffset({ dx: -144 * .32 * .53 }).steer, -.395);
+  approx(thumbControlsFromOffset({ dy: 78 * .42 * .38 }).throttle, .5);
+  const coast = thumbControlsFromOffset({ dy: 78 * .42 * .55 });
   approx(coast.throttle, 0); approx(coast.brake, 0);
   assert.deepEqual(thumbControlsFromOffset({ dx: 1000, dy: 1000 }), { steer: 1, throttle: 0, brake: 1 });
   assert.deepEqual(thumbControlsFromOffset({ dx: -1000, dy: -1000 }), { steer: -1, throttle: 1, brake: 0 });
@@ -101,9 +101,9 @@ test('one pointer accelerates and continuously steers or brakes; release never l
   const f = setup(); f.controller.setEnabled(true);
   f.pad.emit('pointerdown');
   f.pad.emit('pointermove', { clientX: 195 });
-  assert.ok(f.last().steer > .4 && f.last().steer < .6);
+  assert.ok(f.last().steer > .3 && f.last().steer < .4);
   assert.equal(f.last().throttle, 1);
-  f.window.emit('pointermove', { clientX: 122, clientY: 300 });
+  f.window.emit('pointermove', { clientX: 172 - 144 * .32, clientY: 239 + 78 * .42 });
   assert.deepEqual(f.last(), { steer: -1, throttle: 0, brake: 1 });
   f.window.emit('pointermove', { clientX: 172, clientY: 239 });
   assert.deepEqual(f.last(), { steer: 0, throttle: 1, brake: 0 });
@@ -192,4 +192,60 @@ test('landscape-only CSS scopes legacy hiding and reserves space for reachable a
   assert.match(css, /height:\s*106px/);
   assert.match(css, /bottom:\s*114px/);
   assert.match(css, /min-height:\s*44px; min-width:\s*44px/);
+});
+
+
+test('thumb response is continuous, symmetric, monotone and precise near centre', () => {
+  let previous = 0;
+  for (let dx = 0; dx <= 55; dx += .05) {
+    const positive = thumbControlsFromOffset({ dx }).steer;
+    const negative = thumbControlsFromOffset({ dx: -dx }).steer;
+    assert.ok(positive >= previous - 1e-12);
+    assert.ok(positive - previous < .002);
+    approx(negative, -positive);
+    previous = positive;
+  }
+  for (const dx of [-2.7, 0, 2.7]) assert.equal(thumbControlsFromOffset({ dx }).steer, 0);
+  const micro = thumbControlsFromOffset({ dx: 10 }).steer;
+  assert.ok(micro > .1 && micro < .14, '10 px is a usable correction, not a near-full turn');
+  assert.equal(thumbControlsFromOffset({ dx: 47 }).steer, 1);
+});
+
+test('minor downward thumb drift keeps gas and a genuine coast band separates pedals', () => {
+  assert.equal(thumbControlsFromOffset({ dx: 20, dy: 7.8 }).throttle, 1);
+  for (const downward of [.52, .54, .56, .58]) {
+    const sample = thumbControlsFromOffset({ dx: 20, dy: downward * 78 * .42 });
+    approx(sample.throttle, 0); approx(sample.brake, 0);
+    assert.ok(sample.steer > 0, 'steering is available while coasting');
+  }
+  const halfBrake = thumbControlsFromOffset({ dx: 20, dy: (.58 + .42 / 2) * 78 * .42 });
+  approx(halfBrake.brake, .5); assert.equal(halfBrake.throttle, 0);
+});
+
+test('returning from steering overflow responds immediately instead of accumulating dead travel', () => {
+  for (const sign of [-1, 1]) {
+    const f = setup(); f.controller.setEnabled(true); f.pad.emit('pointerdown');
+    const outside = 172 + sign * 500;
+    f.window.emit('pointermove', { clientX: outside });
+    assert.equal(f.last().steer, sign);
+    f.window.emit('pointermove', { clientX: outside - sign * 10 });
+    assert.ok(Math.abs(f.last().steer) < .75 && Math.abs(f.last().steer) > .5);
+    f.window.emit('pointermove', { clientX: outside - sign * 144 * THUMB_DRIVE.horizontalReach });
+    approx(f.last().steer, 0);
+    f.window.emit('pointermove', { clientX: outside - sign * 70 });
+    assert.equal(Math.sign(f.last().steer), -sign);
+    f.window.emit('pointerup'); assert.deepEqual(f.last(), NEUTRAL);
+  }
+});
+
+test('brake and gas overflow never trap the thumb and pointer reset restores a fresh origin', () => {
+  const f = setup(); f.controller.setEnabled(true); f.pad.emit('pointerdown');
+  f.window.emit('pointermove', { clientY: 1000 }); assert.equal(f.last().brake, 1);
+  f.window.emit('pointermove', { clientY: 994 });
+  assert.ok(f.last().brake < .6 && f.last().brake > .5);
+  f.window.emit('pointermove', { clientY: -1000 }); assert.equal(f.last().throttle, 1);
+  f.window.emit('pointermove', { clientY: -980 });
+  assert.ok(f.last().throttle < .6 && f.last().throttle > .5);
+  f.window.emit('pointercancel'); assert.deepEqual(f.last(), NEUTRAL);
+  f.pad.emit('pointerdown'); assert.deepEqual(f.last(), { steer: 0, throttle: 1, brake: 0 });
 });

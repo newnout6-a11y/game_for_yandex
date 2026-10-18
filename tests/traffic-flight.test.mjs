@@ -15,7 +15,7 @@ installTrafficTemplates(models);
  * The fixture retains normal starting speed and energy for flight-gate tests.
  * @returns {Game} Mutable game with no initial traffic or pickups.
  */
-const make=()=>{const g=new Game();g.start();g.state.traffic=[];g.state.pickups=[];g.state.nextSpawn=Infinity;g.state.nextEvent=Infinity;return g;};
+const make=()=>{const g=new Game();g.start();g.state.traffic=[];g.state.safeCorridor=null;g.state.pickups=[];g.state.nextSpawn=Infinity;g.state.nextEvent=Infinity;return g;};
 /**
  * Advance real flight/driving physics with a maximum 1/120-second step.
  * Shortens the last update to the remaining simulated duration.

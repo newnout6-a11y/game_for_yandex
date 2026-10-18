@@ -47,10 +47,12 @@ export const CATALOG = deepFreeze({
   "ads": {
     "rewarded": {
       "id": "result_bonus",
-      "creditFraction": 0.25,
-      "maximumCredits": 100,
+      "creditFraction": 1,
+      "rewardBasis": "actual-base-driving-credits",
+      "exclusiveWithContinue": true,
       "minimumRunMetres": 500,
-      "onePerFinalizedRun": true,
+      "onePerRun": true,
+      "finalizesRun": true,
       "grantsXp": false,
       "grantsRecordScore": false
     },

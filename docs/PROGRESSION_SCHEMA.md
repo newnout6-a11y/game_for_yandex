@@ -67,11 +67,11 @@ EQUIP_BADGE {badgeId} // null clears the display
 UPDATE_SETTINGS {settings}
 ```
 
-Internal integration actions are `BEGIN_RUN`, `SETTLE_RUN`, `FINALIZE_RUN`, `CLAIM_AD_BONUS {runSequence,runId}`. Use the store's run helpers rather than constructing receipt identities. Reward-ad dispatch must occur only after the platform adapter's verified rewarded callback. The reducer does not pretend that a JavaScript action is an independently verified ad receipt.
+Internal integration actions are `BEGIN_RUN`, `SETTLE_RUN`, `FINALIZE_RUN`, `CONTINUE_RUN {runSequence,runId}`, `CLAIM_AD_BONUS {runSequence,runId}`. Use the store's run helpers rather than constructing receipt identities. Reward-ad dispatch must occur only after the platform adapter's verified rewarded callback. The reducer does not pretend that a JavaScript action is an independently verified ad receipt.
 
 ## Run settlement and replay protection
 
-`beginRun()` allocates a monotonically increasing sequence, persists it and closes any older active run. An initial result screen must settle with `finalized:false` if revive remains available. Continuing uses the same identity and cumulative telemetry. Every receipt stores cumulative already-accounted credits/XP and telemetry totals; only a positive difference is awarded, so duplicate results, reloads, or a revive cannot count the same distance or reward again. Run count increments once.
+`beginRun()` allocates a monotonically increasing sequence, persists it and closes any older active run. An initial result screen must settle with `finalized:false` if revive remains available. Continuing first persists the exclusive `finishChoice: "continue"` through `CONTINUE_RUN`, then uses the same identity and cumulative telemetry. It can happen only once and excludes doubling for this run, including after a later crash or restore. Every receipt stores cumulative already-accounted credits/XP and telemetry totals; only a positive difference is awarded, so duplicate results, reloads, or a revive cannot count the same distance or reward again. Run count increments once.
 
 Finalization advances `finalizedThrough`. A settlement at or below that barrier is permanently rejected even if its individual receipt has fallen out of the bounded recent history. Sequence plus ID and run configuration must match the active receipt. A new run cannot reopen an old one. This guarantee is within a valid local save lineage, not across simultaneous devices, a manually reverted browser store, or lost writes.
 
@@ -79,7 +79,7 @@ Base credits: floor(metres/10) + 20 × successful road events + 10 × eligible p
 
 The first 500 m grant is automatically claimed as the **same** `first_500m` contract, once per profile. It awards 200 credits and zero XP. It is never a second onboarding wallet transaction.
 
-Result-ad bonus: min(100, floor(base earned credits × 0.25)), only on a finalized run of at least 500 m, once. It excludes onboarding/contracts, grants no XP and never multiplies score or records. Recent-history eviction can remove an old unclaimed ad opportunity; it cannot permit replay. When the results UI offers this ad, finalization means revive is no longer available for that run.
+Result-ad doubling grants one exact additional copy of the active receipt’s `creditsGranted`, the base driving credits actually received. The run must be at least 500 m, have positive actual earnings, have no continuation choice, and have enough wallet capacity for the entire extra amount. It excludes onboarding, contracts and season reward claims, grants no XP and never multiplies score or records. `CLAIM_AD_BONUS` atomically grants and finalizes in one revision; it no longer requires a separate prior finalization. `adCreditsGranted` stays separate from the base and `adClaimed` plus `finalizedThrough` prevent replay. `onboardingGranted` preserves the separate displayed one-off grant. These are additive v2 receipt fields; old continued/already-claimed receipts remain ineligible. See [Result choices and exact reward doubling](RESULT_CHOICES_REWARD_POLICY.md) for UI choices, cap handling, save-failure and SDK/account boundaries.
 
 ## Authentic telemetry and precision landing
 

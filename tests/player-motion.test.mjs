@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
-import { integratePlayerArc, updatePlayerPath, updatePlayerDynamics, PLAYER_WHEELBASE as L, PLAYER_REAR_OFFSET as A, PLAYER_MAX_LATERAL_ACCELERATION } from '../src/player-motion.js';
+import { integratePlayerArc, updatePlayerPath, updatePlayerDynamics, PLAYER_WHEELBASE as L, PLAYER_REAR_OFFSET as A, PLAYER_MAX_LATERAL_ACCELERATION, PLAYER_HANDLING } from '../src/player-motion.js';
 import { updateChase } from '../src/motion.js';
 /** Start a deterministic unobstructed run without spawning or unrelated events. */
 function fixture(speed=25){const game=new Game();game.start();Object.assign(game.state,{speed,traffic:[],pickups:[],nextSpawn:Infinity,nextEvent:Infinity});return game;}
@@ -37,7 +37,7 @@ test('standstill steering changes the wheels but cannot translate or yaw',()=>{
 test('steering requests are rate-limited and high-speed lateral acceleration stays bounded',()=>{
  for(const speed of [4,18,52,70])for(const sign of [-1,1]){
   const s={x:1,speed,heading:0,steerAngle:0};let prior=0;
-  for(let i=0;i<50;i++){updatePlayerPath(s,sign,1/120);assert.ok(Math.abs(s.steerAngle-prior)<=1.25/120+1e-12);assert.ok(Math.abs(s.lateralAcceleration)<=PLAYER_MAX_LATERAL_ACCELERATION+1e-8);prior=s.steerAngle;}
+  for(let i=0;i<50;i++){updatePlayerPath(s,sign,1/120);assert.ok(Math.abs(s.steerAngle-prior)<=PLAYER_HANDLING.maxSteerRate/120+1e-12);assert.ok(Math.abs(s.lateralAcceleration)<=PLAYER_MAX_LATERAL_ACCELERATION+1e-8);prior=s.steerAngle;}
  }
 });
 test('heading recovery countersteers rather than sliding with straight wheels',()=>{

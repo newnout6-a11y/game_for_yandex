@@ -12,7 +12,7 @@ const models={};for(const kind of TRAFFIC_KINDS){const b=await readFile(`public/
  * Other starting state, including pickups, is left intact for motion regressions.
  * @returns {Game} Mutable fixture using production motion updates.
  */
-const make=()=>{const g=new Game();g.start();Object.assign(g.state,{traffic:[],nextSpawn:Infinity,nextEvent:Infinity});return g;};
+const make=()=>{const g=new Game();g.start();Object.assign(g.state,{traffic:[],safeCorridor:null,nextSpawn:Infinity,nextEvent:Infinity});return g;};
 test('wheel distance integrates actual movement and braking never rewinds accumulated spin',()=>{
  const g=make(),car={id:1,kind:'sedan',lane:0,z:50,speed:20,cruiseSpeed:20};g.state.traffic=[car];let previous=0;
  for(let i=0;i<240;i++){if(i===120)car.eventBraking=true;g.update(1/120);assert.ok(car.travelDistance>=previous);previous=car.travelDistance;}
@@ -92,8 +92,9 @@ test('planned lane changes drive heading, steering, load transfer and continuous
 
 test('new waves cannot designate a committed lane-change corridor as the safe lane',()=>{
  const g=make();/** Force the lowest random choice to verify safe-lane reservation overrides the spawn preference. */ g.random=()=>0;Object.assign(g.state,{safeLane:1,distance:400,traffic:[{id:1,kind:'sedan',lane:1,x:.7,z:6.4,speed:20,heading:-.05,laneChange:{from:1,to:0,phase:'moving',elapsed:1,duration:3.4,signalDuration:.85}}]});
- g.spawnWave(205,true);assert.equal(g.state.safeLane,2);
- assert.ok(g.state.traffic.filter(c=>c.id!==1).every(c=>c.lane!==2));
+ const before=g.state.safeCorridor;g.spawnWave(205,true);const added=g.state.traffic.filter(c=>c.id!==1);
+ if(added.length){assert.equal(g.state.safeLane,2);assert.ok(added.every(c=>c.lane!==2));}
+ else assert.equal(g.state.safeCorridor,before,'Unsafe connecting path defers the whole wave rather than inventing a safe corridor');
 });
 
 test('following gap remains protected when the leader moves backward relative to the player',()=>{

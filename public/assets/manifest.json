@@ -194,38 +194,38 @@
   },
   {
     "file": "assets/garage/tier1.glb",
-    "bytes": 4831864,
-    "sha256": "652446d31e1b16af24f1ae98ae181723fac6055e5530d85c7a5a0c3bb89a69bd",
+    "bytes": 4831288,
+    "sha256": "23772c94a09f41b51171efdcbefe8d9e5c9995c9b6384395ebaf271ebd3bbe6a",
     "license": "Mixed: original project room artwork; user-provided third-party TV poster, redistribution license unverified",
     "source": "project:scripts/create_garage.py",
-    "changes": "Original authored tier-1 room geometry, arrival/charging utilities, physical mounted TV, PBR wall/floor surfaces and pink mural. Current TV poster derives from user-provided Tesla footage, credited separately in art/garage/screen/supplied-video-provenance.json. Full muted supplied video is a separate runtime file. The poster-only update preserves all geometry, shader settings, camera metadata and other image bytes exactly. No second repair bench, no vehicle geometry or dynamic lights embedded. No affiliation or endorsement claimed; public release is separate from local integration.",
+    "changes": "Original authored tier-1 room geometry, arrival/charging utilities, physical mounted TV, PBR wall/floor surfaces and pink mural. Current TV poster derives from user-provided Tesla footage, credited separately in art/garage/screen/supplied-video-provenance.json. Full muted supplied video is a separate runtime file. The poster-only update preserves all geometry, shader settings, camera metadata and other image bytes exactly. No second repair bench, no vehicle geometry or dynamic lights embedded. No affiliation or endorsement claimed; public release is separate from local integration. Original pink mural relocated intact onto one solid right return wall, never gate slats; see art/garage/mural-placement-audit.json.",
     "editableSource": "art/garage/tier1.blend"
   },
   {
     "file": "assets/garage/tier2.glb",
-    "bytes": 5338080,
-    "sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
+    "bytes": 5337508,
+    "sha256": "dfe6183fdb7f8bbf5f6a8a60c86810775db2dc6d64385e6197bef8b406e264e5",
     "license": "Mixed: original project room artwork; user-provided third-party TV poster, redistribution license unverified",
     "source": "project:scripts/create_garage.py",
-    "changes": "Original authored tier-2 room geometry, arrival/charging utilities, physical mounted TV, PBR wall/floor surfaces and pink mural. Current TV poster derives from user-provided Tesla footage, credited separately in art/garage/screen/supplied-video-provenance.json. Full muted supplied video is a separate runtime file. The poster-only update preserves all geometry, shader settings, camera metadata and other image bytes exactly. No second repair bench, no vehicle geometry or dynamic lights embedded. No affiliation or endorsement claimed; public release is separate from local integration.",
+    "changes": "Original authored tier-2 room geometry, arrival/charging utilities, physical mounted TV, PBR wall/floor surfaces and pink mural. Current TV poster derives from user-provided Tesla footage, credited separately in art/garage/screen/supplied-video-provenance.json. Full muted supplied video is a separate runtime file. The poster-only update preserves all geometry, shader settings, camera metadata and other image bytes exactly. No second repair bench, no vehicle geometry or dynamic lights embedded. No affiliation or endorsement claimed; public release is separate from local integration. Original pink mural relocated intact onto one solid right return wall, never gate slats; see art/garage/mural-placement-audit.json.",
     "editableSource": "art/garage/tier2.blend"
   },
   {
     "file": "assets/garage/tier3.glb",
-    "bytes": 4811228,
-    "sha256": "5548bcd400de5733e42adb0b02d7ae9e1c40a86b1a60ce64a1b995d50f265495",
+    "bytes": 4808968,
+    "sha256": "caaffa5545112194763a9fe226208de4d7b9080721f2b38679d4eec01b16106d",
     "license": "Mixed: original project room artwork; user-provided third-party TV poster, redistribution license unverified",
     "source": "project:scripts/create_garage.py",
-    "changes": "Original authored tier-3 room geometry, arrival/charging utilities, physical mounted TV, PBR wall/floor surfaces and pink mural. Current TV poster derives from user-provided Tesla footage, credited separately in art/garage/screen/supplied-video-provenance.json. Full muted supplied video is a separate runtime file. The poster-only update preserves all geometry, shader settings, camera metadata and other image bytes exactly. No second repair bench, no vehicle geometry or dynamic lights embedded. No affiliation or endorsement claimed; public release is separate from local integration.",
+    "changes": "Original authored tier-3 room geometry, arrival/charging utilities, physical mounted TV, PBR wall/floor surfaces and pink mural. Current TV poster derives from user-provided Tesla footage, credited separately in art/garage/screen/supplied-video-provenance.json. Full muted supplied video is a separate runtime file. The poster-only update preserves all geometry, shader settings, camera metadata and other image bytes exactly. No second repair bench, no vehicle geometry or dynamic lights embedded. No affiliation or endorsement claimed; public release is separate from local integration. Original pink mural relocated intact onto one solid right return wall, never gate slats; see art/garage/mural-placement-audit.json.",
     "editableSource": "art/garage/tier3.blend"
   },
   {
     "file": "assets/garage/tier4.glb",
-    "bytes": 5218628,
-    "sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
+    "bytes": 5217224,
+    "sha256": "b699d1e22cff09f43bda4a76f71656c49d5db20b376ce0c8ea0d3443bd80b75f",
     "license": "Mixed: original project room artwork; user-provided third-party TV poster, redistribution license unverified",
     "source": "project:scripts/create_garage.py",
-    "changes": "Original authored tier-4 room geometry, arrival/charging utilities, physical mounted TV, PBR wall/floor surfaces and pink mural. Current TV poster derives from user-provided Tesla footage, credited separately in art/garage/screen/supplied-video-provenance.json. Full muted supplied video is a separate runtime file. The poster-only update preserves all geometry, shader settings, camera metadata and other image bytes exactly. No second repair bench, no vehicle geometry or dynamic lights embedded. No affiliation or endorsement claimed; public release is separate from local integration.",
+    "changes": "Original authored tier-4 room geometry, arrival/charging utilities, physical mounted TV, PBR wall/floor surfaces and pink mural. Current TV poster derives from user-provided Tesla footage, credited separately in art/garage/screen/supplied-video-provenance.json. Full muted supplied video is a separate runtime file. The poster-only update preserves all geometry, shader settings, camera metadata and other image bytes exactly. No second repair bench, no vehicle geometry or dynamic lights embedded. No affiliation or endorsement claimed; public release is separate from local integration. Original pink mural relocated intact onto one solid right return wall, never gate slats; see art/garage/mural-placement-audit.json.",
     "editableSource": "art/garage/tier4.blend"
   },
   {

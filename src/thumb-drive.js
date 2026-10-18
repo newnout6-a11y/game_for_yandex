@@ -3,6 +3,20 @@ const HINT = 'Держи: газ · в стороны: руль · вниз: т�
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
 
+// Fixed pixel-normalized ranges, with centre precision and a real coast band.
+// The curve is spatial, not a time filter: reversing the thumb has no extra lag.
+export const THUMB_DRIVE = Object.freeze({
+  horizontalReach: .32, verticalReach: .42, minHorizontalReach: 24, minVerticalReach: 20,
+  deadZone: .06, precision: .28, gasPlateau: .24, coastStart: .52, brakeStart: .58,
+});
+function thumbTravel(width, height) {
+  return {
+    horizontal: Math.max(THUMB_DRIVE.minHorizontalReach, finite(width, 144) * THUMB_DRIVE.horizontalReach),
+    vertical: Math.max(THUMB_DRIVE.minVerticalReach, finite(height, 78) * THUMB_DRIVE.verticalReach),
+  };
+}
+
+
 /**
  * Convert one held thumb's displacement from its starting point to driving axes.
  * A stationary thumb accelerates; downward travel first lifts the gas, then brakes.
@@ -11,13 +25,16 @@ const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallbac
  * @returns {{steer:number, throttle:number, brake:number}} Bounded, finite axes.
  */
 export function thumbControlsFromOffset({ dx = 0, dy = 0, width = 144, height = 78 } = {}) {
-  const horizontal = clamp(finite(dx) / Math.max(24, finite(width, 144) * .32), -1, 1);
-  const downward = clamp(finite(dy) / Math.max(20, finite(height, 78) * .42), 0, 1);
-  const steer = Math.abs(horizontal) <= .06 ? 0 : Math.sign(horizontal) * (Math.abs(horizontal) - .06) / .94;
+  const travel = thumbTravel(width, height), tuning = THUMB_DRIVE;
+  const horizontal = clamp(finite(dx) / travel.horizontal, -1, 1);
+  const rawDownward = clamp(finite(dy) / travel.vertical, 0, 1);
+  const downward = rawDownward >= 1 - 1e-12 ? 1 : rawDownward;
+  const magnitude = Math.abs(horizontal) >= 1 - 1e-12 ? 1 : Math.max(0, (Math.abs(horizontal) - tuning.deadZone) / (1 - tuning.deadZone));
+  const steer = Math.sign(horizontal) * magnitude * (1 - tuning.precision + tuning.precision * magnitude * magnitude);
   return {
-    steer,
-    throttle: clamp((.46 - downward) / .30, 0, 1),
-    brake: clamp((downward - .46) / .54, 0, 1),
+    steer: steer || 0,
+    throttle: clamp((tuning.coastStart - downward) / (tuning.coastStart - tuning.gasPlateau), 0, 1),
+    brake: clamp((downward - tuning.brakeStart) / (1 - tuning.brakeStart), 0, 1),
   };
 }
 
@@ -92,8 +109,16 @@ export function createThumbDrive({ root, window: win = globalThis.window, onCont
   /** Visual feedback follows the finger but stays inside the pad's visible boundary. */
   function sample(event) {
     if (!gesture || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
-    const { x, y, left, top, width, height } = gesture;
-    const controls = thumbControlsFromOffset({ dx: event.clientX - x, dy: event.clientY - y, width, height });
+    const { left, top, width, height } = gesture;
+    const travel = thumbTravel(width, height);
+    // Once a finger passes full lock, move the virtual origin with its overflow.
+    // Returning from outside the pad therefore changes the axis immediately,
+    // rather than requiring the player to repay invisible saturated dead travel.
+    const dx = clamp(event.clientX - gesture.x, -travel.horizontal, travel.horizontal);
+    const dy = clamp(event.clientY - gesture.y, -travel.vertical * THUMB_DRIVE.gasPlateau, travel.vertical);
+    gesture.x = event.clientX - dx;
+    gesture.y = event.clientY - dy;
+    const controls = thumbControlsFromOffset({ dx, dy, width, height });
     pad.style.setProperty('--thumb-x', clamp(event.clientX - left, 18, Math.max(18, width - 18)) + 'px');
     pad.style.setProperty('--thumb-y', clamp(event.clientY - top, 18, Math.max(18, height - 18)) + 'px');
     pad.dataset.mode = controls.brake > 0 ? 'brake' : controls.throttle > 0 ? 'gas' : 'coast';

@@ -2,9 +2,13 @@ import { CONFIG, DIFFICULTIES } from './config.js';
 import { playerConfiguration } from './player-configuration.js';
 import { clamp, lerp, seededRandom } from './util.js';
 import { createFlightState, updateFlight } from './flight.js';
-import { trafficDefinition, chooseTrafficKind, trafficCenterGap } from './traffic-catalog.js';
+import { trafficDefinition, trafficCenterGap } from './traffic-catalog.js';
 import { playerBottom, playerTrafficDepth, playerTrafficWidth, trafficHitsPlayer, updateTrailerKinematics, LANE_WIDTH } from './traffic-physics.js';
 import { trafficLateral, occupiedTrafficLanes, updateTrafficManoeuvres } from './traffic-behavior.js';
+import { updatePlayerHorn } from './player-horn.js';
+import { planTrafficLongitudinal } from './traffic-policy.js';
+import { canPlaceRoadworks } from './traffic-events.js';
+import { chooseDiverseTrafficKind, assessTrafficSpawn, assessTrafficWaveCorridor } from './traffic-demand.js';
 import { trafficDynamics } from './traffic-motion.js';
 import { updatePlayerPath, updatePlayerDynamics } from './player-motion.js';
 /**
@@ -41,14 +45,15 @@ export class Game {
     const vehicle = this.playerConfig;
     this.difficulty=Object.hasOwn(DIFFICULTIES,difficulty)?difficulty:'flow';
     this.state={
-      vehicleId:vehicle.id,playerBounds:vehicle.bounds,playerAccelerationBound:vehicle.acceleration,playerBrakingBound:vehicle.brakeDeceleration,playerWheelbase:vehicle.wheelbase,playerRearOffset:vehicle.rearOffset,
+      vehicleId:vehicle.id,playerBounds:vehicle.bounds,playerAccelerationBound:vehicle.acceleration+7,playerSpeedBound:vehicle.maxSpeed*this.rules.speed*1.27,playerBrakingBound:vehicle.brakeDeceleration,playerWheelbase:vehicle.wheelbase,playerRearOffset:vehicle.rearOffset,
       maxLateralAcceleration:vehicle.maxLateralAcceleration,steeringSlewMultiplier:vehicle.steeringSlewMultiplier,flightAllowed:vehicle.flight,flightDrainMultiplier:vehicle.flightDrainMultiplier,
       bodyPitch:0,bodyRoll:0,bodyHeave:0,bodyPitchVelocity:0,bodyRollVelocity:0,bodyHeaveVelocity:0,
+      hornTime:0,hornCooldown:0,hornHeld:false,hornSerial:0,
       phase:'ready',lane:1,x:1,heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,rearDistance:0,wheelDistance:0,acceleration:0,throttle:0,braking:false,
       distance:0,score:0,elapsed:0,speed:0,nitro:60,boosting:false,
       ...createFlightState(),
       combo:1,comboTime:0,overtakes:0,nearMisses:0,charges:0,revives:0,invincible:0,
-      traffic:[],pickups:[],obstacles:[],nextSpawn:68,safeLane:1,goalReached:false,
+      traffic:[],pickups:[],obstacles:[],nextSpawn:68,safeLane:1,safeCorridor:null,pendingCorridorLane:null,corridorWaves:0,trafficDiagnostics:{interventions:0,emergencySteps:0,maxCount:0,deferredWaves:0,corridorChanges:0},recentTrafficKinds:[],goalReached:false,
       nextEvent:80,eventIndex:0,roadEvent:null,lastEvent:null,eventsCompleted:0,
     };
     this.serial=0;this.pulse=0;this.pulseTime=0;return this.state;
@@ -83,7 +88,7 @@ export class Game {
    * Continuous controls supplied to update remain independent of this pulse.
    * @returns {void}
    */
-  releaseControls(){this.pulseTime=0;}
+  releaseControls(){this.pulseTime=0;this.state.hornHeld=false;}
   /**
    * Normalizes controls and advances at most 0.1 seconds in steps of at most 1/120 s.
    * Invalid/nonpositive time and non-playing phases are ignored; a crash stops the
@@ -95,13 +100,13 @@ export class Game {
    */
   update(dt, controls={}){
     if(this.state.phase!=='playing'||!Number.isFinite(dt)||dt<=0)return;
-    const c={throttle:axis(controls?.throttle),brake:axis(controls?.brake),steer:axis(controls?.steer,-1),boost:Boolean(controls?.boost),flight:Boolean(controls?.flight),roll:axis(controls?.roll,-1)};
+    const c={throttle:axis(controls?.throttle),brake:axis(controls?.brake),steer:axis(controls?.steer,-1),boost:Boolean(controls?.boost),flight:Boolean(controls?.flight),horn:Boolean(controls?.horn),roll:axis(controls?.roll,-1)};
     let remaining=Math.min(dt,.1);
     while(remaining>1e-9&&this.state.phase==='playing'){const step=Math.min(remaining,1/120);this.step(step,c);remaining-=step;}
   }
   /**
    * Advances one positive simulation substep, mutating the run and its entities.
-   * Applies flight, propulsion and continuous positive-right steering, then lane
+   * Applies a bounded horn/light request, flight, propulsion and steering, then lane
    * planning, traffic following, trailer motion, swept collisions and scoring.
    * A collision emits crash and returns before later entities or goal checks run.
    * @param {number} dt - Positive substep duration in seconds, normally <= 1/120.
@@ -109,7 +114,7 @@ export class Game {
    * @returns {void}
    */
   step(dt,c){
-    const s=this.state;s.elapsed+=dt;s.invincible=Math.max(0,s.invincible-dt);s.comboTime=Math.max(0,s.comboTime-dt);
+    const s=this.state;updatePlayerHorn(s,c.horn,dt,this.onEvent);s.elapsed+=dt;s.invincible=Math.max(0,s.invincible-dt);s.comboTime=Math.max(0,s.comboTime-dt);
     if(!s.comboTime)s.combo=1;
     this.pulseTime=Math.max(0,this.pulseTime-dt);
     const steering=c.steer||(this.pulseTime>0?this.pulse:0);
@@ -129,6 +134,7 @@ export class Game {
     const travelled=updatePlayerPath(s,steering,dt);
     updatePlayerDynamics(s,dt);
     s.distance+=travelled;s.score+=travelled*s.combo*this.rules.score;
+    if(s.safeCorridor){s.safeCorridor.z+=s.safeCorridor.speed*dt-travelled;if(s.safeCorridor.z+s.safeCorridor.halfLength < -35)s.safeCorridor=null;}
     if(s.distance>=s.nextSpawn){this.spawnWave();s.nextSpawn+=CONFIG.spawnDistance*this.rules.spacing;}
     if(!s.traffic.length&&s.speed>10&&Number.isFinite(s.nextSpawn)){this.spawnWave(160);s.nextSpawn=s.distance+CONFIG.spawnDistance;}
     this.updateEvent(dt);
@@ -144,25 +150,18 @@ export class Game {
       if(car.eventId&&s.roadEvent?.id===car.eventId&&s.roadEvent.remaining<115)car.eventBraking=true;
       const occupied=occupiedTrafficLanes(car),carX=trafficLateral(car);
       const following=before<0&&(Math.abs(carX-s.x)<width||(car.laneChange&&occupied.includes(Math.round(s.x))))&&flightClearance<clearHeight;
-      const rearSafeSpeed=s.speed+Math.max(0,-before-depth-2)*.8;
       const leader=occupied.map(l=>laneLeader.get(l)).filter(Boolean).sort((a,b)=>a.z-b.z)[0];
       for(const l of occupied)laneLeader.set(l,car);
-      const gap=leader?leader.z-before:Infinity;
       const minGap=leader?trafficCenterGap(car,leader,1.4):0;
-      const freeGap=leader?gap-trafficCenterGap(car,leader,0):Infinity;
-      const followSpeed=leader?Math.max(0,leader.speed+(freeGap-2)*.7):Infinity;
-      const cruise=car.cruiseSpeed??car.speed;
-      const needsHeadway=Boolean(leader&&freeGap<7+car.speed*.65&&followSpeed<cruise);
-      car.braking=Boolean(car.eventBraking||(following&&car.speed>rearSafeSpeed)||needsHeadway);
-      const targetSpeed=Math.min(car.eventBraking?6:cruise,following?rearSafeSpeed:Infinity,needsHeadway?followSpeed:Infinity);
-      const response=trafficDynamics(car.kind);
-      const wanted=lerp(car.speed,targetSpeed,1-Math.exp(-dt*(following?6:1.5)));
-      car.speed+=clamp(wanted-car.speed,-response.braking*dt,response.acceleration*dt);
+      const plan=planTrafficLongitudinal(s,car,{leader,followingPlayer:following,playerDepth:depth,occupiedLanes:occupied,limits:trafficDynamics(car.kind)},dt);
+      car.speed=plan.speed;car.braking=plan.braking;car.longitudinalIntent=plan.intent;
+      car.followingGap=plan.gap;car.desiredSpeed=plan.targetSpeed;
+      if(plan.emergency)s.trafficDiagnostics.emergencySteps++;
       car.z+=car.speed*dt-travelled;
-      if(leader&&leader.previousZ-before>=minGap-1e-8&&car.z>leader.z-minGap){car.z=leader.z-minGap;car.speed=Math.min(car.speed,leader.speed);car.braking=true;}
+      if(leader&&leader.previousZ-before>=minGap-1e-8&&car.z>leader.z-minGap){s.trafficDiagnostics.interventions++;car.z=leader.z-minGap;car.speed=Math.min(car.speed,leader.speed);car.braking=true;}
       // A following driver stops behind the player, including a parked player.
       const stopZ=Math.max(before,-(depth+2));
-      if(following&&before<=-depth&&car.z>stopZ){car.z=stopZ;car.speed=Math.min(car.speed,s.speed);car.braking=true;}
+      if(following&&before<=-depth&&car.z>stopZ){s.trafficDiagnostics.interventions++;car.z=stopZ;car.speed=Math.min(car.speed,s.speed);car.braking=true;}
       car.acceleration=(car.speed-beforeSpeed)/dt;
       car.travelDistance=(car.travelDistance||0)+Math.hypot(Math.max(0,car.z-before+travelled),(carX-car.previousLateral)*LANE_WIDTH);
       if(spec.articulated)updateTrailerKinematics(car,s.distance,dt);
@@ -198,7 +197,7 @@ export class Game {
    */
   crash(){this.state.phase='crashed';this.state.boosting=false;this.state.flying=false;this.pulseTime=0;this.onEvent('crash');}
   /**
-   * Attempts a randomized traffic wave while preserving an actually clear lane.
+   * Attempts a varied staggered wave with a local, reachable moving corridor.
    * Respects closures, committed lane changes and full vehicle headway; may spawn
    * nothing if no safe corridor exists. Successful planning updates safeLane and
    * can add a charge pickup, consuming RNG values and monotonically assigned IDs.
@@ -209,25 +208,45 @@ export class Game {
    */
   spawnWave(initialZ=null,dense=false){
     const s=this.state,closed=s.roadEvent?.type==='roadworks'?s.roadEvent.lane:-1;
-    let nextSafe=clamp(s.safeLane+Math.floor(this.random()*3)-1,0,2);
-    if(nextSafe===closed)nextSafe=1;
+    const previousSafe=s.safeLane;
+    if(s.pendingCorridorLane===closed)s.pendingCorridorLane=null;
+    if(s.pendingCorridorLane===null&&(s.corridorWaves>=2||s.safeLane===closed)){
+      const adjacent=[s.safeLane-1,s.safeLane+1].filter(l=>l>=0&&l<=2&&l!==closed);
+      if(adjacent.length)s.pendingCorridorLane=adjacent[Math.floor(this.random()*adjacent.length)];
+    }
+    let nextSafe=s.pendingCorridorLane??s.safeLane;
+    if(nextSafe===closed)nextSafe=[0,1,2].find(l=>l!==closed);
     const z=(initialZ??205)+this.random()*10;
     // Reserve a genuinely empty corridor through the whole wave, including
     // long trailers from earlier spawns, rather than only omitting a lane now.
     const committedLanes=new Set(s.traffic.filter(car=>car.laneChange?.phase==='moving').flatMap(occupiedTrafficLanes));
     const clearLanes=[0,1,2].filter(l=>l!==closed&&!committedLanes.has(l)&&!s.traffic.some(car=>occupiedTrafficLanes(car).includes(l)&&Math.abs(car.z-z)<trafficDefinition(car.kind).length/2+16));
-    if(!clearLanes.length)return;
-    if(!clearLanes.includes(nextSafe))nextSafe=clearLanes.reduce((best,l)=>Math.abs(l-s.safeLane)<Math.abs(best-s.safeLane)?l:best,clearLanes[0]);
-    s.safeLane=nextSafe;
-    const blocked=[0,1,2].filter(l=>l!==nextSafe&&l!==closed);
+    if(!clearLanes.length){s.trafficDiagnostics.deferredWaves++;return;}
+    const forcedChange=s.pendingCorridorLane!==null;
+    const corridorCandidates=forcedChange?[nextSafe]:[nextSafe,...clearLanes.filter(l=>l!==nextSafe).sort((a,b)=>Math.abs(a-s.safeLane)-Math.abs(b-s.safeLane))];
+    const candidate=corridorCandidates.find(l=>clearLanes.includes(l)&&assessTrafficWaveCorridor(s,{lane:l,z,halfLength:20,speed:14}).allowed);
+    // A requested route change earns a real open transition, not a perpetual
+    // fallback to the same empty lane. Skipping one demand wave is intentional.
+    if(candidate===undefined){s.trafficDiagnostics.deferredWaves++;return;}
+    nextSafe=candidate;
+    const corridor={lane:nextSafe,z,halfLength:20,speed:14};
+    const priorCorridor=s.safeCorridor;s.safeCorridor=corridor;
+    const blocked=[0,1,2].filter(l=>l!==nextSafe&&l!==closed),created=[];
     if(!(dense||(s.distance>300&&this.random()<.6))&&blocked.length>1)blocked.splice(Math.floor(this.random()*blocked.length),1);
     for(const lane of blocked){
-      const kind=chooseTrafficKind(this.random()),spec=trafficDefinition(kind);
+      const laneZ=z+(this.random()-.5)*16;
+      const kind=chooseDiverseTrafficKind(this.random(),{traffic:s.traffic,lane,z:laneZ,recentKinds:s.recentTrafficKinds}),spec=trafficDefinition(kind);
       const speed=spec.cruise[0]+this.random()*(spec.cruise[1]-spec.cruise[0]);
-      // Do not insert a new car into another driver's braking space.
-      if(s.traffic.some(car=>occupiedTrafficLanes(car).includes(lane)&&Math.abs(car.z-z)<trafficCenterGap(car,{kind},12)))continue;
-      s.traffic.push({id:++this.serial,lane,z,speed,cruiseSpeed:speed,kind,category:spec.category,color:Math.floor(this.random()*7),passed:false});
+      if(!assessTrafficSpawn(s,{lane,z:laneZ,kind,speed}).allowed)continue;
+      const car={id:++this.serial,lane,z:laneZ,speed,cruiseSpeed:speed,kind,category:spec.category,color:Math.floor(this.random()*7),passed:false};
+      s.traffic.push(car);created.push(car);s.recentTrafficKinds.push(kind);
+      if(s.recentTrafficKinds.length>8)s.recentTrafficKinds.shift();
     }
+    if(!created.length){s.safeCorridor=priorCorridor;return;}
+    s.safeLane=nextSafe;if(nextSafe!==previousSafe){s.trafficDiagnostics.corridorChanges++;s.corridorWaves=0;}
+    s.pendingCorridorLane=null;s.corridorWaves++;
+    corridor.speed=Math.min(...created.map(car=>car.speed));
+    s.trafficDiagnostics.maxCount=Math.max(s.trafficDiagnostics.maxCount,s.traffic.length);
     if(this.random()<.8)s.pickups.push({id:++this.serial,lane:nextSafe,z:z-24,collected:false});
   }
   /**
@@ -242,35 +261,55 @@ export class Game {
     const s=this.state;if(s.roadEvent)return false;
     if(!['roadworks','checkpoint','convoy'].includes(type))return false;
     const committed=new Set(s.traffic.filter(car=>car.laneChange?.phase==='moving').flatMap(occupiedTrafficLanes));
-    const openEdges=[0,2].filter(lane=>!committed.has(lane));
+    const openEdges=[0,2].filter(lane=>!committed.has(lane)&&(type!=='roadworks'||canPlaceRoadworks(s,lane)));
     if((type==='roadworks'||type==='convoy')&&!openEdges.length)return false;
     const lane=type==='roadworks'?openEdges[Math.floor(this.random()*openEdges.length)]:Math.floor(this.random()*3);
-    const at=s.distance+(type==='convoy'?240:150),id=++this.serial;
+    const at=s.distance+(type==='convoy'?240:150),id=this.serial+1;
     const info={
       roadworks:{title:'Дорожные работы',hint:(lane===0?'Левая':'Правая')+' полоса закрыта. Обойди ограждение.',points:300},
       checkpoint:{title:'Контрольная точка',hint:'Пройди между флагами до конца отсчёта.',points:500},
       convoy:{title:'Поток тормозит',hint:'Тормози или обойди колонну. Следи за стоп-сигналами.',points:400},
     }[type];
     if(!info)return false;
-    s.roadEvent={...info,id,type,lane,at,end:at+65,remaining:at-s.distance,deadline:s.elapsed+(type==='checkpoint'?18:35),clean:true,targets:[]};
+    const event={...info,id,type,lane,at,end:at+65,remaining:at-s.distance,deadline:s.elapsed+(type==='checkpoint'?18:35),clean:true,targets:[]};
+    let serial=id;
     if(type==='roadworks'){
-      for(let i=0;i<8;i++)s.obstacles.push({id:++this.serial,kind:'cone',x:lane+(lane===0?.33:-.33),z:150+i*9});
-      for(const z of [174,204])s.obstacles.push({id:++this.serial,kind:'barrier',x:lane,z});
+      for(let i=0;i<8;i++)s.obstacles.push({id:++serial,kind:'cone',x:lane+(lane===0?.33:-.33),z:150+i*9});
+      for(const z of [174,204])s.obstacles.push({id:++serial,kind:'barrier',x:lane,z});
     }
     if(type==='convoy'){
       const preferredSafe=lane===0?2:0;
-      const safe=openEdges.includes(preferredSafe)?preferredSafe:openEdges[0];
-      for(let i=0;i<4;i++){
-        const kind=['van','sedan','suv','hatch'][i];
-        const car={id:++this.serial,eventId:id,lane:i%2?1:(safe===0?2:0),z:240+i*18,speed:19,cruiseSpeed:19,color:i%7,kind,category:trafficDefinition(kind).category,passed:false};
-        // Existing convoy activity is retained, but it must not spawn on a
-        // pre-existing long truck. Move forward until its whole envelope fits.
-        while(car.z<=400&&s.traffic.some(other=>occupiedTrafficLanes(other).includes(car.lane)&&Math.abs(other.z-car.z)<trafficCenterGap(other,car,12)))car.z+=18;
-        if(car.z>400)continue;
-        s.traffic.push(car);s.roadEvent.targets.push(car.id);
+      const edges=[preferredSafe,...openEdges.filter(value=>value!==preferredSafe)].filter(value=>openEdges.includes(value));
+      let accepted=null;
+      // Try a finite set of complete convoy layouts. Individual stopping gaps
+      // and the connecting player passage must both pass before anything exists.
+      for(const safe of edges){
+        for(let offset=0;offset<=144&&!accepted;offset+=18){
+          const created=[];let nextSerial=id;
+          for(let i=0;i<4;i++){
+            const kind=['van','sedan','suv','hatch'][i];
+            const car={id:nextSerial+1,eventId:id,lane:i%2?1:(safe===0?2:0),z:240+offset+i*18,speed:19,cruiseSpeed:19,color:i%7,kind,category:trafficDefinition(kind).category,passed:false};
+            const proposed={...s,traffic:[...s.traffic,...created]};
+            while(car.z<=400&&!assessTrafficSpawn(proposed,car).allowed)car.z+=18;
+            if(car.z>400)continue;
+            nextSerial++;created.push(car);
+          }
+          if(!created.length)continue;
+          const low=Math.min(...created.map(car=>car.z-trafficDefinition(car.kind).length/2));
+          const high=Math.max(...created.map(car=>car.z+trafficDefinition(car.kind).length/2));
+          // Six m/s is the event's braking target, never its initial cruise speed.
+          const corridor={lane:safe,z:(low+high)/2,halfLength:(high-low)/2+8,speed:6};
+          if(!assessTrafficWaveCorridor({...s,traffic:[...s.traffic,...created]},corridor).allowed)continue;
+          accepted={created,serial:nextSerial,corridor};
+        }
+        if(accepted)break;
       }
-      s.safeLane=safe;
+      if(!accepted)return false;
+      serial=accepted.serial;event.targets=accepted.created.map(car=>car.id);
+      s.traffic.push(...accepted.created);
+      s.safeLane=accepted.corridor.lane;s.safeCorridor=accepted.corridor;
     }
+    s.roadEvent=event;this.serial=serial;
     s.eventIndex++;this.onEvent('event-start',s.roadEvent);return true;
   }
   /**
@@ -281,7 +320,11 @@ export class Game {
    */
   updateEvent(){
     const s=this.state;
-    if(!s.roadEvent&&s.distance>=s.nextEvent)this.startEvent();
+    if(!s.roadEvent&&s.distance>=s.nextEvent&&s.elapsed>=(s.eventRetryAt||0)){
+      // A rejected bounded layout is retried later in simulation time, not on
+      // every 120 Hz substep. No timers run while the game is paused.
+      s.eventRetryAt=this.startEvent()?0:s.elapsed+.5;
+    }
     const e=s.roadEvent;if(!e)return;
     e.remaining=e.at-s.distance;e.seconds=Math.max(0,e.deadline-s.elapsed);
     if(e.type==='checkpoint'&&(e.remaining<=0||e.seconds<=0)){
@@ -319,7 +362,7 @@ export class Game {
     const s=this.state;if(s.phase!=='crashed'||s.revives>=CONFIG.maxRevives)return false;
     s.revives++;s.traffic=s.traffic.filter(c=>c.z>80);s.pickups=s.pickups.filter(p=>p.z>20);s.obstacles=[];
     if(s.roadEvent)this.finishEvent(false);
-    s.speed=0;Object.assign(s,createFlightState(),{heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,acceleration:0,
+    s.safeCorridor=null;s.hornTime=0;s.hornHeld=false;s.speed=0;Object.assign(s,createFlightState(),{heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,acceleration:0,
       bodyPitch:0,bodyPitchVelocity:0,bodyRoll:0,bodyRollVelocity:0,bodyHeave:0,bodyHeaveVelocity:0});s.throttle=0;s.braking=false;this.pulseTime=0;
     s.nitro=Math.max(40,s.nitro);s.invincible=2.5;s.combo=1;s.comboTime=0;s.phase='playing';return true;
   }

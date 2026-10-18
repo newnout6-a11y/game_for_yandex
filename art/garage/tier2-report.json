@@ -5,8 +5,8 @@
   "glb": "public/assets/garage/tier2.glb",
   "editable_parts": 1110,
   "draw_batches": 21,
-  "triangles": 50222,
-  "vertices": 28020,
+  "triangles": 50208,
+  "vertices": 27992,
   "bounds_m": {
     "min": [
       -10.12,
@@ -19,8 +19,8 @@
       8.8
     ]
   },
-  "bytes": 5338080,
-  "sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
+  "bytes": 5337508,
+  "sha256": "dfe6183fdb7f8bbf5f6a8a60c86810775db2dc6d64385e6197bef8b406e264e5",
   "original_textures": [
     "original-rose-velocity-mural.png",
     "original-workshop-wall-basecolor.png",
@@ -120,6 +120,27 @@
     ],
     "poster": "assets/garage/roadster-screen-poster.jpg",
     "video": "assets/garage/roadster-screen-loop.mp4"
+  },
+  "user_provided_textures": [
+    "roadster-screen-poster.jpg"
+  ],
+  "screen_media_provenance": "art/garage/screen/supplied-video-provenance.json",
+  "garage_mural": {
+    "version": 2,
+    "support": "Right rear return wall",
+    "wall_interior_x": 9.88,
+    "paint_x": 9.878,
+    "paint_offset_m": 0.002,
+    "z_min": 1.0,
+    "z_max": 7.0,
+    "y_min": 1.5,
+    "y_max": 4.5,
+    "normal": [
+      -1.0,
+      0.0,
+      0.0
+    ],
+    "texture_aspect": 2.0
   },
   "degenerate_cleanup": {
     "relative_cross_squared_threshold": 1e-16,
@@ -4020,10 +4041,6 @@
   },
   "interior_completion_version": 1,
   "preserved_rear_geometry_sha256": "87a16e071efa59f696d37a247a07bd12167ed1824f4c9db0a519fc0ed6298e2a",
-  "user_provided_textures": [
-    "roadster-screen-poster.jpg"
-  ],
-  "screen_media_provenance": "art/garage/screen/supplied-video-provenance.json",
   "screen_poster_swap": {
     "method": "Exact image bufferView replacement, no geometry export or rebatching",
     "source_before_sha256": "618efc6d587a21d13587c84531e23818f8d34d7a890a32bb0f1fc35d9e7a6764",
@@ -4056,6 +4073,79 @@
         "armatures": 0,
         "actions": 0
       }
+    },
+    "historical_operation": true,
+    "scope_note": "Before/after hashes and preservation claims describe the earlier poster replacement only, not the current asset after subsequent edits."
+  },
+  "mural_relocation": {
+    "operation": "Place the complete original Rose Velocity mural on its solid right concrete wall within actual native overview framing",
+    "placement_before": {
+      "version": 2,
+      "support": "Right rear return wall",
+      "wall_interior_x": 9.88,
+      "paint_x": 9.878,
+      "paint_offset_m": 0.002,
+      "z_min": 1.0,
+      "z_max": 7.0,
+      "y_min": 2.25,
+      "y_max": 5.25,
+      "normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "texture_aspect": 2.0
+    },
+    "placement_after": {
+      "version": 2,
+      "support": "Right rear return wall",
+      "wall_interior_x": 9.88,
+      "paint_x": 9.878,
+      "paint_offset_m": 0.002,
+      "z_min": 1.0,
+      "z_max": 7.0,
+      "y_min": 1.5,
+      "y_max": 4.5,
+      "normal": [
+        -1.0,
+        0.0,
+        0.0
+      ],
+      "texture_aspect": 2.0
+    },
+    "source_before_sha256": "3c92e440e872c54f822ef6feced7ab0a1cb912f90086357f70aa3549d45b74d5",
+    "source_after_sha256": "1cddc60d201852ac1f5c96745821de0aed2e6e8dab0b042a5fe6f6779695c6b9",
+    "glb_before_sha256": "6a7e12dbc7ee8480b3af2584eb7d8a30f532e81a12dae7095b3213b22a34b7b4",
+    "glb_after_sha256": "dfe6183fdb7f8bbf5f6a8a60c86810775db2dc6d64385e6197bef8b406e264e5",
+    "changed_scope": [
+      "Original rose velocity mural vertical position",
+      "Mural placement metadata"
+    ],
+    "full_glb_byte_identical": false,
+    "preservation_scope": "Non-mural mesh accessor payloads, all material definitions and embedded images only; not the complete pre-mural GLB buffer.",
+    "verification_report": "art/garage/mural-placement-audit.json",
+    "translation_game_m": [
+      0.0,
+      -0.75,
+      0.0
+    ],
+    "size_and_uvs_unchanged": true
+  },
+  "mural_relocation_history": [
+    {
+      "operation": "Move the complete original Rose Velocity mural from multi-surface rear projection onto one solid right concrete wall",
+      "source_before_sha256": "978d728f4ad52c7c516f5bd2f8cba386589509d69bfdf8cc90a6c6a039ea4b41",
+      "source_after_sha256": "3c92e440e872c54f822ef6feced7ab0a1cb912f90086357f70aa3549d45b74d5",
+      "glb_before_sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
+      "glb_after_sha256": "6a7e12dbc7ee8480b3af2584eb7d8a30f532e81a12dae7095b3213b22a34b7b4",
+      "changed_scope": [
+        "Original rose velocity mural mesh positions, topology and UVs",
+        "Mural placement metadata"
+      ],
+      "full_glb_byte_identical": false,
+      "preservation_scope": "Non-mural mesh accessor payloads, all material definitions and embedded images only; not the complete pre-mural GLB buffer.",
+      "verification_report": "art/garage/mural-placement-audit.json",
+      "historical_operation": true
     }
-  }
+  ]
 }

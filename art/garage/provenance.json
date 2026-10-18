@@ -34,28 +34,28 @@
   "files": [
     {
       "path": "scripts/create_garage.py",
-      "bytes": 86312,
-      "sha256": "989a875c1afd730e2f26a6a66f143da9371561f42254b5e432580a27a7ed2b86"
+      "bytes": 88877,
+      "sha256": "1bfaf5920d8c323c2ab25a406352af4d6331bc6f2b5fe0ad75a8c97fad17fe56"
     },
     {
       "path": "art/garage/tier1.blend",
-      "bytes": 10004016,
-      "sha256": "e649da776da3c5f260e7a3f05df6853a1e6a6d82c231bfb0db3cbec67a22141a"
+      "bytes": 10008748,
+      "sha256": "c0a4dbb6b272b779453c8df13897cc7b33e59d375f3a6ad89b090f4296d81595"
     },
     {
       "path": "art/garage/tier2.blend",
-      "bytes": 11062336,
-      "sha256": "978d728f4ad52c7c516f5bd2f8cba386589509d69bfdf8cc90a6c6a039ea4b41"
+      "bytes": 11067068,
+      "sha256": "1cddc60d201852ac1f5c96745821de0aed2e6e8dab0b042a5fe6f6779695c6b9"
     },
     {
       "path": "art/garage/tier3.blend",
-      "bytes": 9132732,
-      "sha256": "376d07fce5b42179ba36b4a9f6aa7f3695e381e494fb647ce34af13600cc026e"
+      "bytes": 9135568,
+      "sha256": "88d3e340d95f439d6d5e4f6a6e4ecb64598957068a09fe6b34362bcdb289a32b"
     },
     {
       "path": "art/garage/tier4.blend",
-      "bytes": 10056168,
-      "sha256": "313b5030694560fa4c17561112b1733e549091078a650da7131628184813e920"
+      "bytes": 10059948,
+      "sha256": "b57f80f9ba792c0ad0921a5e0029d02e3bec2d90eccba277cc93e17b2266b25e"
     },
     {
       "path": "public/assets/garage/original-concrete-grain.png",
@@ -124,13 +124,13 @@
     },
     {
       "path": "art/garage/workshop-surface-source-audit.json",
-      "bytes": 40616,
-      "sha256": "d861394f7d8b60c2c5669a3caeddd77fd6dc1f56201ab7a3fdc56aa580f51078"
+      "bytes": 40778,
+      "sha256": "567f72566a25005de9de2be0c314486a6b41dbd02db6677aee0d1ce43b6029ff"
     },
     {
       "path": "art/garage/workshop-surface-map-audit.json",
-      "bytes": 23310,
-      "sha256": "526351d39cd4b55c967b348f43fbb4381d0c77fb2e53163ea4d535227f614293"
+      "bytes": 23446,
+      "sha256": "fa0f7dabd5429194015d0c47b12e29163eb4791ee4083fd839d429d15aef6a59"
     },
     {
       "path": "art/garage/reverse-workshop-audit.json",
@@ -150,7 +150,7 @@
     {
       "path": "art/garage/export-audit.json",
       "bytes": 2386,
-      "sha256": "9bdc97cf28156b1459cca7f1c1ea4f5d2eadae89429f7a3d9154efd414879b82"
+      "sha256": "66e0e398dee499c007e2df012c935553c339b8da3cc07e873e2988b34395e1db"
     },
     {
       "path": "art/garage/parking-envelope-audit.json",
@@ -159,23 +159,23 @@
     },
     {
       "path": "art/garage/tier1-report.json",
-      "bytes": 63777,
-      "sha256": "5efdf1b8479a841b8f8c4763e43a7d0910002dced19a73bf69262af124fe15fe"
+      "bytes": 67038,
+      "sha256": "7b30b642e6b9c5dc8deef208869820a44a3073b035dd941b50cff994326ba1cf"
     },
     {
       "path": "art/garage/tier2-report.json",
-      "bytes": 69534,
-      "sha256": "258133ed304c68d8a14586e7cda71331eb3782bef00cff70839f45c01bc91ec4"
+      "bytes": 72795,
+      "sha256": "013240a69f816128f1e43e83809707b419b976ba5a74fff3422e078527ed8a57"
     },
     {
       "path": "art/garage/tier3-report.json",
-      "bytes": 76628,
-      "sha256": "237b16b329cd5a7196c88dc8edacbe60f522836b9999d393d25fd2dd609a3ecd"
+      "bytes": 79889,
+      "sha256": "454ae073d0bcede64ae40eb002f759fc43ab801636ef76d4ee57825f4b331d4f"
     },
     {
       "path": "art/garage/tier4-report.json",
-      "bytes": 76552,
-      "sha256": "cc8882c8a8ad41434367b6950ec332138566f1be8c54ac030e61ccc8d7b73365"
+      "bytes": 79813,
+      "sha256": "779e64897801a1ee62de06d74694ee299720c9b7d4f6df6dbf7fd2a5fcee4051"
     },
     {
       "path": "public/assets/garage/original-workshop-wall-basecolor.png",
@@ -226,10 +226,10 @@
   "exports": [
     {
       "tier": 1,
-      "glb_bytes": 4831864,
-      "sha256": "652446d31e1b16af24f1ae98ae181723fac6055e5530d85c7a5a0c3bb89a69bd",
+      "glb_bytes": 4831288,
+      "sha256": "23772c94a09f41b51171efdcbefe8d9e5c9995c9b6384395ebaf271ebd3bbe6a",
       "primitives": 18,
-      "triangles": 42428,
+      "triangles": 42414,
       "materials": 18,
       "embedded_images": 8,
       "cameras": 0,
@@ -254,10 +254,10 @@
     },
     {
       "tier": 2,
-      "glb_bytes": 5338080,
-      "sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
+      "glb_bytes": 5337508,
+      "sha256": "dfe6183fdb7f8bbf5f6a8a60c86810775db2dc6d64385e6197bef8b406e264e5",
       "primitives": 21,
-      "triangles": 50222,
+      "triangles": 50208,
       "materials": 21,
       "embedded_images": 8,
       "cameras": 0,
@@ -282,10 +282,10 @@
     },
     {
       "tier": 3,
-      "glb_bytes": 4811228,
-      "sha256": "5548bcd400de5733e42adb0b02d7ae9e1c40a86b1a60ce64a1b995d50f265495",
+      "glb_bytes": 4808968,
+      "sha256": "caaffa5545112194763a9fe226208de4d7b9080721f2b38679d4eec01b16106d",
       "primitives": 20,
-      "triangles": 37834,
+      "triangles": 37796,
       "materials": 20,
       "embedded_images": 8,
       "cameras": 0,
@@ -310,10 +310,10 @@
     },
     {
       "tier": 4,
-      "glb_bytes": 5218628,
-      "sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
+      "glb_bytes": 5217224,
+      "sha256": "b699d1e22cff09f43bda4a76f71656c49d5db20b376ce0c8ea0d3443bd80b75f",
       "primitives": 20,
-      "triangles": 43274,
+      "triangles": 43248,
       "materials": 20,
       "embedded_images": 8,
       "cameras": 0,
@@ -545,5 +545,6 @@
     "media_status": "Full user-provided Tesla video locally integrated, silent; all 1,052 frames retained. Redistribution license unverified; external publication is a separate decision.",
     "media_provenance": "art/garage/screen/supplied-video-provenance.json",
     "poster_only_preservation": "Saved/reopened Blender fingerprints and every non-poster GLB bufferView verified unchanged; only image data and truthful attribution extras differ."
-  }
+  },
+  "mural_placement_audit": "art/garage/mural-placement-audit.json"
 }

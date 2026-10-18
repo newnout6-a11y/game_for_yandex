@@ -40,7 +40,7 @@ const INSPECTION_VIEWS = Object.freeze([
   { id: 'cockpit', name: 'Салон', description: 'Осмотр салона и кокпита' },
 ]);
 const canInspect = (view, vehicleId) => INSPECTION_VIEWS.some(item => item.id === view) && (view !== 'cockpit' || vehicleId === 'rocket');
-const ACTIONS = new Set(['navigate', 'startDrive', 'selectVehicle', 'purchaseVehicle', 'buyCosmetic', 'equipCosmetic', 'resetCosmetic', 'upgradeEngineering', 'equipEngineering', 'equipBadge', 'savePreset', 'applyPreset', 'upgradeGarage', 'acceptContract', 'claimContract', 'claimSeason', 'settings', 'cloudConnect', 'retryCloud', 'rewardedBonus', 'revive', 'resolveCloudConflict', 'purchaseProduct', 'retryLoad', 'openOtherGame']);
+const ACTIONS = new Set(['navigate', 'startDrive', 'selectVehicle', 'purchaseVehicle', 'buyCosmetic', 'equipCosmetic', 'resetCosmetic', 'upgradeEngineering', 'equipEngineering', 'equipBadge', 'savePreset', 'applyPreset', 'upgradeGarage', 'acceptContract', 'claimContract', 'claimSeason', 'settings', 'cloudConnect', 'retryCloud', 'rewardedBonus', 'revive', 'finishRun', 'resolveCloudConflict', 'purchaseProduct', 'retryLoad', 'openOtherGame']);
 /** Clamp untrusted display values without making economy decisions. */
 const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : fallback;
 /** Text display is local, deterministic and never interpreted as HTML. */
@@ -884,29 +884,48 @@ export class GarageUI {
     } else if (Number.isFinite(metrics.precisionLandings) && metrics.precisionLandings > 0) highlights.append(stat(this.doc, 'ТОЧНЫЕ ПОСАДКИ', garageNumber(metrics.precisionLandings)));
     if (highlights.children.length) intro.append(highlights);
     main.append(intro);
-    const settlement = element(this.doc, 'section', 'gs-settlement'); settlement.append(element(this.doc, 'h2', '', 'Награды'));
-    const rewards = element(this.doc, 'div', 'gs-settlement-rewards'); rewards.append(stat(this.doc, 'КРЕДИТЫ', `+${garageNumber(receipt.credits ?? receipt.creditsEarned)}`, '₵'), stat(this.doc, 'ОПЫТ СЕЗОНА', `+${garageNumber(receipt.xp ?? receipt.xpEarned)}`, 'XP')); settlement.append(rewards);
-    if (number(result.onboarding) > 0) settlement.append(element(this.doc, 'p', 'gs-result-contract', `Первый рубеж · +${garageNumber(result.onboarding)} ₵`));
-    const contracts = items(receipt.contracts || result.contracts);
-    for (const contract of contracts) settlement.append(element(this.doc, 'p', 'gs-result-contract', `${contract.complete ? '✓ ' : ''}${contract.name || contract.title || contract.id}${contract.progressLabel ? ` · ${contract.progressLabel}` : ''}`));
-    const claimable = items(this.view.contracts).filter(item => item.canClaim === true);
-    if (claimable.length) settlement.append(this.button(`Готовые контракты · ${claimable.length}`, { type: 'navigate', screen: 'garage', tab: 'contracts' }, { iconName: 'arrow', className: 'gs-full gs-small-button' }));
-    if (result.settled !== true && receipt.finalized !== true || receipt.pending === true) settlement.append(element(this.doc, 'p', 'gs-small-note', 'Результат ещё не подтверждён. Награды появятся после сохранения.'));
-    else settlement.append(element(this.doc, 'p', 'gs-small-note', result.saveMessage || 'Результат заезда учтён.'));
-    if (result.canRevive === true && !result.bonusClaimed) {
-      settlement.append(this.button(result.reviveLabel || 'Продолжить заезд', { type: 'revive' }, { iconName: 'arrow', className: 'gs-full' }));
-      settlement.append(element(this.doc, 'p', 'gs-small-note', 'Продолжение учитывается в отдельном классе рекордов. Бонус за результат завершит этот заезд.'));
+    const settlement = element(this.doc, 'section', 'gs-settlement');
+    const earned=number(receipt.credits ?? receipt.creditsEarned),base=number(receipt.baseCredits ?? result.bonusCredits);
+    const choices=element(this.doc,'div','gs-result-optional');
+    // The free choice leads the decision panel; all choices stay outside its scrolling reward details.
+    const freeChoice=element(this.doc,'div','gs-result-free-choice');
+    freeChoice.append(element(this.doc,'p','gs-result-earned',result.settled===true?`Твои +${garageNumber(earned)} ₵${result.bonusClaimed?' · удвоение получено':' · уже начислены'}`:'Обычная награда не требует видео'));
+    freeChoice.append(this.button(result.finalized?'В гараж':'Завершить и забрать',result.finalized?{type:'navigate',screen:'garage',tab:'fleet'}:{type:'finishRun'},{primary:true,iconName:'garage',className:'gs-full gs-finish-free'}));
+    freeChoice.append(element(this.doc,'p','gs-small-note',result.finalized?'Заезд завершён. Заработанное остаётся у тебя.':'Завершить заезд без бонусного видео.'));
+    const scroll = element(this.doc, 'div', 'gs-settlement-scroll'); scroll.tabIndex = 0; scroll.setAttribute('aria-label', 'Подробности наград и условий после заезда');
+    const details=element(this.doc,'details','gs-result-details');details.append(element(this.doc,'summary','','Награды и условия ↓'));
+    const detailBody=element(this.doc,'div','gs-result-detail-body');details.append(detailBody);scroll.append(details);
+    detailBody.append(element(this.doc, 'h2', '', 'Награды за заезд'));
+    const rewards = element(this.doc, 'div', 'gs-settlement-rewards'); rewards.append(stat(this.doc, 'КРЕДИТЫ', `+${garageNumber(earned)}`, '₵'), stat(this.doc, 'ОПЫТ СЕЗОНА', `+${garageNumber(receipt.xp ?? receipt.xpEarned)}`, 'XP')); detailBody.append(rewards);
+    if (number(result.onboarding) > 0) detailBody.append(element(this.doc, 'p', 'gs-result-contract', `В том числе первый рубеж · +${garageNumber(result.onboarding)} ₵ (не удваивается)`));
+    if (result.settled !== true && receipt.finalized !== true || receipt.pending === true) detailBody.append(element(this.doc, 'p', 'gs-small-note', 'Результат ещё не подтверждён. Награды появятся после сохранения.'));
+    else detailBody.append(element(this.doc, 'p', 'gs-small-note', result.saveMessage || 'Результат заезда учтён.'));
+    if (!result.finalized && !result.bonusClaimed && (result.canRevive===true || result.bonusEligible===true)) {
+      choices.append(element(this.doc,'p','gs-kicker','ИЛИ ВЫБЕРИ ОДИН БОНУС'));
+      if (result.canRevive === true) {
+        choices.append(this.button(result.reviveLabel || 'Видео → продолжить заезд', { type: 'revive' }, { iconName: this.view.platform.rewarded?'play':'arrow', className: 'gs-full' }));
+        detailBody.append(element(this.doc, 'p', 'gs-small-note', result.trainingContinue||!this.view.platform.rewarded?'Тренировочный режим: без рекламы. Один раз за заезд, без удвоения.':'Одна попытка в том же заезде. Рекорд будет «С продолжением», удвоение после этого недоступно.'));
+      }
+      if (this.view.platform.rewarded && result.bonusEligible === true) {
+        choices.append(this.button(`Видео → ×2 и завершить · +${garageNumber(result.bonusCredits)} ₵`, { type: 'rewardedBonus' }, { iconName: 'play', className: 'gs-full' }));
+        choices.append(element(this.doc, 'p', 'gs-small-note gs-double-basis', `${garageNumber(base)} → ${garageNumber(base*2)} ₵ за вождение. Без XP.`));
+        detailBody.append(element(this.doc, 'p', 'gs-small-note', 'Первый рубеж, контракты, награды сезона и XP не удваиваются.'));
+        detailBody.append(element(this.doc, 'p', 'gs-small-note', 'Только после подтверждения просмотра. Удвоение завершает заезд, продолжить его нельзя.'));
+      }
+
     }
-    if (this.view.platform.rewarded && !result.bonusClaimed && result.bonusEligible === true) {
-      settlement.append(element(this.doc, 'p', 'gs-bonus-warning', 'Полученный бонус завершает заезд; продолжение после него недоступно.'));
-      settlement.append(this.button(result.bonusCredits != null ? `Видео → +${garageNumber(result.bonusCredits)} ₵` : 'Бонус за добровольное видео', { type: 'rewardedBonus' }, { iconName: 'play', className: 'gs-full' }));
-      settlement.append(element(this.doc, 'p', 'gs-small-note', 'По желанию. Награда выдаётся только после подтверждения просмотра.'));
-    } else if (!this.view.platform.rewarded) settlement.append(element(this.doc, 'p', 'gs-platform-note', 'Рекламный бонус сейчас недоступен. Можно продолжать без него.'));
+    if (!result.finalized && result.bonusReason==='continue-chosen') detailBody.append(element(this.doc,'p','gs-small-note','Продолжение уже использовано. Удвоение для этого заезда недоступно.'));
+    else if (!result.finalized && result.bonusReason==='wallet-cap') detailBody.append(element(this.doc,'p','gs-small-note','Для полного удвоения не хватает места в кошельке. Видео для частичной награды не предлагается.'));
+    else if (!result.finalized && result.bonusReason==='run-too-short') detailBody.append(element(this.doc,'p','gs-small-note',`Удвоение доступно с ${garageNumber(this.view.catalog.ads?.rewarded?.minimumRunMetres??500)} м. Обычная награда уже твоя.`));
+    if (!this.view.platform.rewarded && !result.finalized) detailBody.append(element(this.doc, 'p', 'gs-platform-note', 'Реклама недоступна. Удвоение за видео не предлагается; обычная награда сохраняется.'));
+    const contracts = items(receipt.contracts || result.contracts);
+    for (const contract of contracts) detailBody.append(element(this.doc, 'p', 'gs-result-contract', `${contract.complete ? '✓ ' : ''}${contract.name || contract.title || contract.id}${contract.progressLabel ? ` · ${contract.progressLabel}` : ''}`));
+    const claimable = items(this.view.contracts).filter(item => item.canClaim === true);
+    if (claimable.length) detailBody.append(this.button(`Готовые контракты · ${claimable.length}`, { type: 'navigate', screen: 'garage', tab: 'contracts' }, { iconName: 'arrow', className: 'gs-full gs-small-button' }));
     const records = element(this.doc, 'details', 'gs-results-records');
-    records.append(element(this.doc, 'summary', '', 'Рекорды и статистика'), this.renderTelemetry()); settlement.append(records);
-    const actions = element(this.doc, 'div', 'gs-result-actions'); actions.append(this.button('Ещё заезд', { type: 'startDrive' }, { primary: true, iconName: 'arrow' }), this.button('В гараж', { type: 'navigate', screen: 'garage', tab: 'fleet' }, { iconName: 'garage' }));
-    const scroll = element(this.doc, 'div', 'gs-settlement-scroll'); scroll.tabIndex = 0; scroll.setAttribute('aria-label', 'Награды и возможности после заезда');
-    scroll.append(...Array.from(settlement.children)); settlement.replaceChildren(scroll, actions);
+    records.append(element(this.doc, 'summary', '', 'Рекорды и статистика'), this.renderTelemetry()); detailBody.append(records);
+    const actions = element(this.doc, 'div', 'gs-result-actions gs-result-retry'); actions.append(this.button('Новый заезд', { type: 'startDrive' }, { iconName: 'arrow',className:'gs-full' }));
+    intro.append(actions);settlement.append(freeChoice);if(choices.children.length)settlement.append(choices);settlement.append(scroll);
     main.append(settlement); return main;
   }
   /** Loading has a real controller progress value and an explicit failure path. */

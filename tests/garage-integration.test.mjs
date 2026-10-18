@@ -6,7 +6,7 @@ import { bindGarageOrbitInput } from '../src/garage-orbit-input.js';
 import { Game } from '../src/game.js';
 import { RunTelemetry } from '../src/run-telemetry.js';
 import { createProgressionStorage, PROGRESSION_STORAGE_KEY } from '../src/progression-storage.js';
-import { createProfile, deriveGarageView, getEngineeringModifiers, LIMITS } from '../src/progression.js';
+import { createProfile, deriveGarageView, getEngineeringModifiers, getRunDoubleOffer, LIMITS } from '../src/progression.js';
 import { CATALOG, ADS, vehicleDefinition } from '../src/progression-catalog.js';
 import { createStorage } from '../src/storage.js';
 import { createLifecycle } from '../src/lifecycle.js';
@@ -94,7 +94,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     window:{addEventListener(name,callback){listen(`window:${name}`,callback);}},
     performance:{now:()=>0},innerWidth:1200,innerHeight:800,requestAnimationFrame(){},
     matchMedia:()=>({matches:false,addEventListener(){}}),location:{reload(){}},
-    Game,bindGarageOrbitInput,RunTelemetry,deriveGarageView,getEngineeringModifiers,LIMITS,CATALOG,ADS,vehicleDefinition,
+    Game,bindGarageOrbitInput,RunTelemetry,deriveGarageView,getEngineeringModifiers,getRunDoubleOffer,LIMITS,CATALOG,ADS,vehicleDefinition,
     createStorage:()=>createStorage(()=>localStorage),createProgressionStorage:()=>({...profileStore,dispatch:action=>rejectSettings&&action.type==='UPDATE_SETTINGS'?{ok:false,changed:false,reason:'future-version-read-only',profile:profileStore.get(),persistence:profileStore.status()}:profileStore.dispatch(structuredClone(action))}),
     createThumbDrive:()=>({setEnabled(){},clear(){}}),createOrientationGate:({onChange})=>{orientationHandler=onChange;onChange(portrait);return {blocked:portrait};},createSdk:()=>sdk,createLifecycle,createAds,createAdCadence,loadOwnGames,openOwnGame,
     createPlatformServices:options=>{
@@ -531,4 +531,74 @@ test('successive touch selections survive old-row blur and return after the boun
   send('hatch','touch');send(null,'focus');send('hatch','focus');assert.equal(h.api.state.fleetMiniatures.activeId,'hatch');assert.equal(h.api.state.fleetTouchRemaining,1.8);
   for(let i=1;i<=30;i++)h.api.tick(i*100);assert.equal(h.api.state.fleetMiniatures.activeId,null);assert.equal(h.api.state.fleetTouchRemaining,0);
   send('sedan','touch');send('van','focus');assert.equal(h.api.state.fleetMiniatures.activeId,'van');assert.equal(h.api.state.fleetTouchRemaining,0,'Deliberate keyboard focus takes over');
+});
+
+test('free finish settles once without requesting ads and later transition retains qualified interstitial cadence',async()=>{
+  let interstitials=0,rewarded=0;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){rewarded++;o.callbacks.onClose(false);},showFullscreenAdv(o){interstitials++;o.callbacks.onClose(true);}}}});
+  for(let attempt=0;attempt<3;attempt++){
+    await rewardedResults(h);const {game,telemetry}=h.api.state;
+    // Build genuine additional active seconds to meet the established cadence, not wall-clock waiting.
+    for(let i=0;i<250;i++){game.state.phase='playing';game.state.traffic=[];game.state.nextSpawn=Infinity;game.state.nextEvent=Infinity;game.update(.05,{throttle:1});telemetry.observe(game.state,.05);}game.crash();h.api.showResults();
+    const before=h.profileStore.get(),identity=h.api.state.runResult.runIdentity;
+    await h.api.handleGarageAction({type:'finishRun'});await h.api.handleGarageAction({type:'finishRun'});
+    assert.equal(rewarded,0);assert.equal(interstitials,0);assert.equal(h.api.state.screen,'results');assert.equal(h.api.state.run,null);
+    assert.equal(h.profileStore.get().wallet.credits,before.wallet.credits);assert.equal(h.profileStore.get().ledger.finalizedThrough,identity.sequence);
+    assert.equal(h.api.state.runResult.finalized,true);assert.equal(h.api.state.runResult.bonusEligible,false);assert.equal(h.api.state.runResult.canRevive,false);
+  }
+  await h.api.handleGarageAction({type:'navigate',screen:'garage',tab:'fleet'});assert.equal(interstitials,1);assert.equal(h.api.state.screen,'garage');
+});
+
+test('doubletap and competing finish/continue/retry intents cannot create a second ad or cross-run grant',async()=>{
+  let callbacks,requests=0;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){requests++;callbacks=o.callbacks;}}}});await rewardedResults(h);
+  const before=h.profileStore.get(),amount=h.api.state.runResult.bonusCredits,sequence=h.api.state.run.sequence;
+  const pending=h.api.handleGarageAction({type:'rewardedBonus'});
+  await Promise.all([h.api.handleGarageAction({type:'rewardedBonus'}),h.api.handleGarageAction({type:'finishRun'}),h.api.handleAction('revive'),h.api.startRun()]);
+  assert.equal(requests,1);assert.equal(h.api.state.run.sequence,sequence);assert.deepEqual(h.profileStore.get(),before);
+  callbacks.onRewarded();callbacks.onRewarded();callbacks.onClose(true);callbacks.onRewarded();await pending;
+  assert.equal(h.profileStore.get().wallet.credits,before.wallet.credits+amount);assert.equal(h.api.state.run,null);assert.equal(h.api.state.runResult.finalized,true);
+  await h.api.handleGarageAction({type:'rewardedBonus'});await h.api.handleAction('revive');assert.equal(requests,1);
+  await h.api.startRun();assert.equal(h.api.state.run.sequence,sequence+1);assert.equal(h.api.state.runResult,null);assert.equal(h.profileStore.get().wallet.credits,before.wallet.credits+amount);
+});
+
+for(const terminal of ['onClose','onError','onOffline'])for(const choice of ['rewardedBonus','revive'])test(`${choice} ${terminal} without onRewarded preserves ordinary reward and free finish`,async()=>{
+  let callbacks;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){callbacks=o.callbacks;}}}});await rewardedResults(h);
+  const before=h.profileStore.get(),pending=h.api.handleGarageAction({type:choice});callbacks[terminal](false);await pending;
+  assert.deepEqual(h.profileStore.get(),before);assert.equal(h.api.state.screen,'results');assert.equal(h.api.state.runResult.canRevive,true);assert.equal(h.api.state.runResult.bonusClaimed,false);assert.equal(h.api.state.busy,false);
+  await h.api.handleGarageAction({type:'finishRun'});assert.equal(h.profileStore.get().wallet.credits,before.wallet.credits);assert.equal(h.api.state.runResult.finalized,true);
+});
+
+test('SDK absence is explicitly training continuation and never simulated paid-double success',async()=>{
+  const h=await controller();await rewardedResults(h);const before=h.profileStore.get();
+  assert.equal(h.api.state.runResult.trainingContinue,true);assert.match(h.api.state.runResult.reviveLabel,/Тренировочное/);
+  await h.api.handleGarageAction({type:'rewardedBonus'});assert.deepEqual(h.profileStore.get(),before);
+  await h.api.handleAction('revive');assert.equal(h.api.state.screen,'playing');assert.equal(h.profileStore.get().ledger.activeRun.finishChoice,'continue');
+  h.api.state.game.crash();h.api.showResults();assert.equal(h.api.state.runResult.canRevive,false);assert.equal(h.api.state.runResult.bonusEligible,false);assert.equal(h.api.state.runResult.bonusReason,'continue-chosen');
+});
+
+test('a rewarded continuation persists one choice and no second crash can request either reward again',async()=>{
+  let callbacks,requests=0;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){requests++;callbacks=o.callbacks;}}}});await rewardedResults(h);
+  const before=h.profileStore.get(),identity=h.api.state.run.id,pending=h.api.handleAction('revive');
+  callbacks.onRewarded();callbacks.onClose(true);await pending;
+  assert.equal(h.api.state.screen,'playing');assert.equal(h.api.state.run.id,identity);assert.equal(h.profileStore.get().wallet.credits,before.wallet.credits);
+  assert.equal(h.profileStore.get().ledger.activeRun.finishChoice,'continue');
+  const {game,telemetry}=h.api.state;for(let i=0;i<100;i++){game.state.traffic=[];game.update(.05,{throttle:1});telemetry.observe(game.state,.05);}game.crash();h.api.showResults();
+  assert.equal(h.api.state.runResult.bonusEligible,false);assert.equal(h.api.state.runResult.canRevive,false);
+  const after=h.profileStore.get();await h.api.handleAction('revive');await h.api.handleGarageAction({type:'rewardedBonus'});
+  assert.equal(requests,1);assert.deepEqual(h.profileStore.get(),after);assert.equal(after.stats.runs,1);
+});
+
+test('result doubling reports local-save failure honestly and remains claimed after safe persistence retry',async()=>{
+  let callbacks;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){callbacks=o.callbacks;}}}});await rewardedResults(h);
+  const amount=h.api.state.runResult.bonusCredits,before=h.profileStore.get().wallet.credits;
+  h.failStorageWrites();const pending=h.api.handleGarageAction({type:'rewardedBonus'});callbacks.onRewarded();callbacks.onClose(true);await pending;
+  assert.equal(h.profileStore.get().wallet.credits,before+amount);assert.equal(h.profileStore.status().localSaved,false);
+  assert.equal(h.api.state.runResult.bonusClaimed,true);assert.match(h.api.state.runResult.saveMessage,/этой сессии.*недоступно/);
+  await h.api.handleGarageAction({type:'rewardedBonus'});assert.equal(h.profileStore.get().wallet.credits,before+amount);
+});
+
+test('navigation reserves its no-ad await before a competing result reward can start',async()=>{
+  let requests=0;const h=await controller({sdkApi:{adv:{showRewardedVideo(){requests++;}}}});await rewardedResults(h);
+  const before=h.profileStore.get().wallet.credits,pending=h.api.handleGarageAction({type:'navigate',screen:'garage'});
+  await h.api.handleGarageAction({type:'rewardedBonus'});await h.api.handleAction('revive');await pending;
+  assert.equal(requests,0);assert.equal(h.api.state.screen,'garage');assert.equal(h.profileStore.get().wallet.credits,before);
 });

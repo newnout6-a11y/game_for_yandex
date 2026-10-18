@@ -702,15 +702,16 @@ test('scrollable workbench is focusable even with no enabled panel controls and 
 test('results use functional headings and keep actions separate from scrollable rewards and optional offers', async () => {
   const h = harness(); h.render({ screen: 'results', runResult: { newRecord: true, credits: 12, xp: 3, onboarding: 200, canRevive: true } });
   assert.equal(h.root.querySelector('.gs-result-intro h1').textContent, 'Новый рекорд');
-  assert.equal(h.root.querySelector('.gs-settlement h2').textContent, 'Награды');
+  assert.equal(h.root.querySelector('.gs-settlement h2').textContent, 'Награды за заезд');
   assert.equal(h.root.querySelector('.gs-result-intro').querySelector('.gs-kicker'), null);
   const scroll = h.root.querySelector('.gs-settlement-scroll');
   const actions = h.root.querySelector('.gs-result-actions');
-  assert.equal(scroll.contains(h.button('revive')), true);
+  assert.equal(scroll.contains(h.button('revive')), false);
+  assert.equal(h.root.querySelector('.gs-result-optional').contains(h.button('revive')), true);
   assert.equal(scroll.contains(h.root.querySelector('.gs-results-records')), true);
-  assert.match(scroll.textContent, /Первый рубеж · \+200 ₵/);
+  assert.match(scroll.textContent, /первый рубеж · \+200 ₵/);
   assert.equal(scroll.contains(actions), false);
-  assert.equal(actions.parentElement, scroll.parentElement);
+  assert.equal(actions.parentElement, h.root.querySelector('.gs-result-intro'));
   assert.equal(actions.contains(h.button('startDrive')), true);
   h.render({ screen: 'results', runResult: {} }); assert.equal(h.root.querySelector('.gs-result-intro h1').textContent, 'Результат заезда');
   const css = await readFile(new URL('../styles/garage.css', import.meta.url), 'utf8');
@@ -841,4 +842,46 @@ test('fleet interaction respects overlays and clears models when the catalog unm
   h.ui.setVisible(false);assert.equal(turns.at(-1),null);h.ui.handleMiniatureInteraction(event);assert.equal(turns.at(-1),null);
   h.ui.setVisible(true);h.render({tab:'style'});assert.deepEqual(targets.at(-1),[]);assert.equal(turns.at(-1),null);
   h.ui.dispose();assert.deepEqual(targets.at(-1),[]);for(const key of ['pointerover','pointerout','pointerdown','focusin','focusout'])assert.equal(h.root.listeners[key],undefined);
+});
+
+test('earned free finish precedes both video choices and remains outside the result scroll',()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{settled:true,receipt:{credits:321,baseCredits:121,xp:25},onboarding:200,canRevive:true,bonusEligible:true,bonusCredits:121}});
+  const panel=h.root.querySelector('.gs-settlement'),free=h.root.querySelector('.gs-result-free-choice'),scroll=h.root.querySelector('.gs-settlement-scroll');
+  assert.equal(panel.children[0],free);assert.ok(free.contains(h.button('finishRun')));assert.equal(scroll.contains(h.button('finishRun')),false);
+  assert.match(free.textContent,/Твои \+321 ₵ · уже начислены/);assert.match(h.button('finishRun').textContent,/Завершить и забрать/);
+  assert.match(h.button('rewardedBonus').textContent,/×2 и завершить · \+121/);assert.match(h.root.querySelector('.gs-result-optional').textContent,/121 → 242 ₵ за вождение/);
+  assert.match(scroll.textContent,/Первый рубеж, контракты, награды сезона и XP не удваиваются/);
+  h.click(h.button('finishRun'));assert.deepEqual(h.actions.at(-1),{type:'finishRun'});
+});
+
+for(const result of [
+  {bonusReason:'no-base-reward',receipt:{credits:0,baseCredits:0}},
+  {bonusReason:'wallet-cap',receipt:{credits:12,baseCredits:12}},
+  {bonusReason:'continue-chosen',receipt:{credits:50,baseCredits:50}},
+  {settled:false},
+])test(`free finish is available without a video offer for ${result.bonusReason||'an unsettled result'}`,()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:false},runResult:result});
+  assert.ok(h.button('finishRun'));assert.equal(h.button('finishRun').disabled,false);assert.ok(h.button('startDrive'));assert.equal(h.button('rewardedBonus'),undefined);
+});
+
+test('finalized and doubled results expose no continuation or duplicate reward claims',()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{settled:true,finalized:true,bonusClaimed:true,canRevive:true,bonusEligible:true,receipt:{credits:442,baseCredits:121}}});
+  assert.equal(h.button('finishRun'),undefined);assert.equal(h.button('rewardedBonus'),undefined);assert.equal(h.button('revive'),undefined);
+  const free=h.root.querySelector('.gs-result-free-choice');assert.match(free.textContent,/удвоение получено/);assert.match(free.textContent,/В гараж/);
+});
+
+test('busy ad requests disable result choices instead of offering an unsafe second operation',()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{settled:true,canRevive:true,bonusEligible:true,bonusCredits:100}});h.ui.setBusy(true);
+  for(const action of ['finishRun','startDrive','revive','rewardedBonus']){const button=h.button(action);assert.equal(button.disabled,true);h.click(button);}
+  assert.equal(h.actions.length,0);
+});
+
+
+test('compact result hierarchy keeps both optional choices before expandable reward details',()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{settled:true,receipt:{credits:479,baseCredits:279,xp:67},canRevive:true,bonusEligible:true,bonusCredits:279}});
+  const panel=h.root.querySelector('.gs-settlement'),free=h.root.querySelector('.gs-result-free-choice'),choices=h.root.querySelector('.gs-result-optional'),scroll=h.root.querySelector('.gs-settlement-scroll'),details=h.root.querySelector('.gs-result-details');
+  assert.deepEqual(panel.children,[free,choices,scroll]);assert.ok(choices.contains(h.button('revive')));assert.ok(choices.contains(h.button('rewardedBonus')));
+  assert.equal(details.open,undefined);assert.equal(details.querySelector('summary').textContent,'Награды и условия ↓');
+  assert.ok(details.contains(h.root.querySelector('.gs-settlement-rewards')));assert.equal(details.contains(h.button('revive')),false);assert.equal(details.contains(h.button('rewardedBonus')),false);
+  assert.match(choices.textContent,/279 → 558 ₵ за вождение/);assert.match(choices.textContent,/Без XP/);
 });

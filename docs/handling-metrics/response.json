@@ -1,0 +1,683 @@
+{
+  "description": "Arcade engineering measurements, not factory specifications or a reproduction of Traffic Racer source physics.",
+  "response": [
+    {
+      "accepted": {
+        "speedMps": 8,
+        "hz": 30,
+        "initialMovementSeconds": 0.19999999999999998,
+        "laneSeconds": 2.366666666666668,
+        "releaseHeadingRadians": 0.14686734148228728,
+        "releaseDriftMetres": 0.31622171283570777,
+        "settledAfterSeconds": 0.9,
+        "reverseAfterSeconds": 0.3333333333333333,
+        "steadyLateralMps": 1.5971943825136758,
+        "maximumLateralAcceleration": 4.925632217686782,
+        "finalHeading": 1.1375063570475145e-7
+      },
+      "current": {
+        "speedMps": 8,
+        "hz": 30,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 1.7666666666666688,
+        "releaseHeadingRadians": 0.23414759235615334,
+        "releaseDriftMetres": 0.14356969723359791,
+        "settledAfterSeconds": 0.5,
+        "reverseAfterSeconds": 0.23333333333333334,
+        "steadyLateralMps": 2.0566444151372387,
+        "maximumLateralAcceleration": 6.746029012766337,
+        "finalHeading": 9.411439981039405e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 18,
+        "hz": 30,
+        "initialMovementSeconds": 0.16666666666666666,
+        "laneSeconds": 1.2000000000000004,
+        "releaseHeadingRadians": 0.1568119643944852,
+        "releaseDriftMetres": 0.696204703439244,
+        "settledAfterSeconds": 0.8,
+        "reverseAfterSeconds": 0.36666666666666664,
+        "steadyLateralMps": 3.593687356358881,
+        "maximumLateralAcceleration": 9.990119796905196,
+        "finalHeading": 6.836456853810562e-8
+      },
+      "current": {
+        "speedMps": 18,
+        "hz": 30,
+        "initialMovementSeconds": 0.1,
+        "laneSeconds": 0.9999999999999999,
+        "releaseHeadingRadians": 0.20359481839910282,
+        "releaseDriftMetres": 0.5665895144195128,
+        "settledAfterSeconds": 0.5,
+        "reverseAfterSeconds": 0.36666666666666664,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.990119796905196,
+        "finalHeading": 9.689391581362254e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 28,
+        "hz": 30,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.9333333333333332,
+        "releaseHeadingRadians": 0.13305006335292738,
+        "releaseDriftMetres": 1.145617343216503,
+        "settledAfterSeconds": 0.8,
+        "reverseAfterSeconds": 0.4666666666666667,
+        "steadyLateralMps": 5.590180324531637,
+        "maximumLateralAcceleration": 9.998310501914286,
+        "finalHeading": 6.92640894599007e-8
+      },
+      "current": {
+        "speedMps": 28,
+        "hz": 30,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 1.0333333333333332,
+        "releaseHeadingRadians": 0.13106594000691557,
+        "releaseDriftMetres": 0.6433697126755734,
+        "settledAfterSeconds": 0.43333333333333335,
+        "reverseAfterSeconds": 0.4,
+        "steadyLateralMps": 4.199999999999964,
+        "maximumLateralAcceleration": 9.998310501914286,
+        "finalHeading": 5.634968412684358e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 40,
+        "hz": 30,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.8666666666666666,
+        "releaseHeadingRadians": 0.09626717814248437,
+        "releaseDriftMetres": 1.0585783090646308,
+        "settledAfterSeconds": 0.7,
+        "reverseAfterSeconds": 0.43333333333333335,
+        "steadyLateralMps": 7.140099508945177,
+        "maximumLateralAcceleration": 9.999594273378555,
+        "finalHeading": 4.021593288640547e-8
+      },
+      "current": {
+        "speedMps": 40,
+        "hz": 30,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 1.0666666666666667,
+        "releaseHeadingRadians": 0.09164927302874605,
+        "releaseDriftMetres": 0.6981227630637163,
+        "settledAfterSeconds": 0.4,
+        "reverseAfterSeconds": 0.4,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.999594273378555,
+        "finalHeading": 3.9113711495418824e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 52,
+        "hz": 30,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.8333333333333333,
+        "releaseHeadingRadians": 0.07514591846366084,
+        "releaseDriftMetres": 1.0242753224845416,
+        "settledAfterSeconds": 0.6333333333333333,
+        "reverseAfterSeconds": 0.43333333333333335,
+        "steadyLateralMps": 8.234181612021594,
+        "maximumLateralAcceleration": 9.99985793821342,
+        "finalHeading": 2.8419298722410674e-8
+      },
+      "current": {
+        "speedMps": 52,
+        "hz": 30,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 1.0666666666666667,
+        "releaseHeadingRadians": 0.07046957637434989,
+        "releaseDriftMetres": 0.7278814548130382,
+        "settledAfterSeconds": 0.4,
+        "reverseAfterSeconds": 0.4,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.99985793821342,
+        "finalHeading": 2.9991052644348193e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 65,
+        "hz": 30,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.8333333333333333,
+        "releaseHeadingRadians": 0.0605950426118061,
+        "releaseDriftMetres": 1.0051602521885452,
+        "settledAfterSeconds": 0.5666666666666667,
+        "reverseAfterSeconds": 0.43333333333333335,
+        "steadyLateralMps": 9.17001035359533,
+        "maximumLateralAcceleration": 9.999941810760141,
+        "finalHeading": 2.1581350099936308e-8
+      },
+      "current": {
+        "speedMps": 65,
+        "hz": 30,
+        "initialMovementSeconds": 0.16666666666666666,
+        "laneSeconds": 1.0666666666666667,
+        "releaseHeadingRadians": 0.056363083499782654,
+        "releaseDriftMetres": 0.7478245309047303,
+        "settledAfterSeconds": 0.36666666666666664,
+        "reverseAfterSeconds": 0.4,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.999941810760141,
+        "finalHeading": 2.395321884037017e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 8,
+        "hz": 60,
+        "initialMovementSeconds": 0.19999999999999998,
+        "laneSeconds": 2.3499999999999965,
+        "releaseHeadingRadians": 0.14686734148228728,
+        "releaseDriftMetres": 0.31622171283570777,
+        "settledAfterSeconds": 0.9,
+        "reverseAfterSeconds": 0.3333333333333333,
+        "steadyLateralMps": 1.5971943825343793,
+        "maximumLateralAcceleration": 4.925632217686782,
+        "finalHeading": 1.1375063570475145e-7
+      },
+      "current": {
+        "speedMps": 8,
+        "hz": 60,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 1.7666666666666653,
+        "releaseHeadingRadians": 0.23414759235615334,
+        "releaseDriftMetres": 0.14356969723359725,
+        "settledAfterSeconds": 0.5,
+        "reverseAfterSeconds": 0.21666666666666667,
+        "steadyLateralMps": 2.056644415137292,
+        "maximumLateralAcceleration": 6.746029012766337,
+        "finalHeading": 9.411439981039405e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 18,
+        "hz": 60,
+        "initialMovementSeconds": 0.15,
+        "laneSeconds": 1.183333333333334,
+        "releaseHeadingRadians": 0.1568119643944852,
+        "releaseDriftMetres": 0.6962047034392448,
+        "settledAfterSeconds": 0.8,
+        "reverseAfterSeconds": 0.3333333333333333,
+        "steadyLateralMps": 3.593687356588191,
+        "maximumLateralAcceleration": 9.990119796905196,
+        "finalHeading": 6.836456853810562e-8
+      },
+      "current": {
+        "speedMps": 18,
+        "hz": 60,
+        "initialMovementSeconds": 0.09999999999999999,
+        "laneSeconds": 1.0000000000000013,
+        "releaseHeadingRadians": 0.20359481839910282,
+        "releaseDriftMetres": 0.5665895144195128,
+        "settledAfterSeconds": 0.5,
+        "reverseAfterSeconds": 0.35,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.990119796905196,
+        "finalHeading": 9.689391581362254e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 28,
+        "hz": 60,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.9166666666666679,
+        "releaseHeadingRadians": 0.13305006335292738,
+        "releaseDriftMetres": 1.1456173432164996,
+        "settledAfterSeconds": 0.8,
+        "reverseAfterSeconds": 0.45,
+        "steadyLateralMps": 5.590180325210667,
+        "maximumLateralAcceleration": 9.998310501914286,
+        "finalHeading": 6.92640894599007e-8
+      },
+      "current": {
+        "speedMps": 28,
+        "hz": 60,
+        "initialMovementSeconds": 0.11666666666666665,
+        "laneSeconds": 1.0333333333333345,
+        "releaseHeadingRadians": 0.13106594000691557,
+        "releaseDriftMetres": 0.6433697126755703,
+        "settledAfterSeconds": 0.45,
+        "reverseAfterSeconds": 0.36666666666666664,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.998310501914286,
+        "finalHeading": 5.634968412684358e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 40,
+        "hz": 60,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.850000000000001,
+        "releaseHeadingRadians": 0.09626717814248437,
+        "releaseDriftMetres": 1.058578309064633,
+        "settledAfterSeconds": 0.7,
+        "reverseAfterSeconds": 0.43333333333333335,
+        "steadyLateralMps": 7.140099510504356,
+        "maximumLateralAcceleration": 9.999594273378555,
+        "finalHeading": 4.021593288640547e-8
+      },
+      "current": {
+        "speedMps": 40,
+        "hz": 60,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 1.0500000000000012,
+        "releaseHeadingRadians": 0.09164927302874605,
+        "releaseDriftMetres": 0.6981227630637177,
+        "settledAfterSeconds": 0.4166666666666667,
+        "reverseAfterSeconds": 0.38333333333333336,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.999594273378555,
+        "finalHeading": 3.9113711495418824e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 52,
+        "hz": 60,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.8333333333333343,
+        "releaseHeadingRadians": 0.07514591846366084,
+        "releaseDriftMetres": 1.024275322484542,
+        "settledAfterSeconds": 0.6333333333333333,
+        "reverseAfterSeconds": 0.4166666666666667,
+        "steadyLateralMps": 8.234181614809017,
+        "maximumLateralAcceleration": 9.99985793821342,
+        "finalHeading": 2.8419298722410674e-8
+      },
+      "current": {
+        "speedMps": 52,
+        "hz": 60,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 1.0500000000000012,
+        "releaseHeadingRadians": 0.07046957637434989,
+        "releaseDriftMetres": 0.7278814548130387,
+        "settledAfterSeconds": 0.4,
+        "reverseAfterSeconds": 0.38333333333333336,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.99985793821342,
+        "finalHeading": 2.9991052644348193e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 65,
+        "hz": 60,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.8333333333333343,
+        "releaseHeadingRadians": 0.0605950426118061,
+        "releaseDriftMetres": 1.0051602521885465,
+        "settledAfterSeconds": 0.5666666666666667,
+        "reverseAfterSeconds": 0.4166666666666667,
+        "steadyLateralMps": 9.170010358164262,
+        "maximumLateralAcceleration": 9.999941810760141,
+        "finalHeading": 2.1581350099936308e-8
+      },
+      "current": {
+        "speedMps": 65,
+        "hz": 60,
+        "initialMovementSeconds": 0.15,
+        "laneSeconds": 1.0500000000000012,
+        "releaseHeadingRadians": 0.056363083499782654,
+        "releaseDriftMetres": 0.747824530904729,
+        "settledAfterSeconds": 0.38333333333333336,
+        "reverseAfterSeconds": 0.4,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.999941810760141,
+        "finalHeading": 2.395321884037017e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 8,
+        "hz": 120,
+        "initialMovementSeconds": 0.19999999999999998,
+        "laneSeconds": 2.341666666666661,
+        "releaseHeadingRadians": 0.14686734148228728,
+        "releaseDriftMetres": 0.31622171283570777,
+        "settledAfterSeconds": 0.9,
+        "reverseAfterSeconds": 0.325,
+        "steadyLateralMps": 1.597194382544238,
+        "maximumLateralAcceleration": 5.045896786468949,
+        "finalHeading": 1.1375063570475145e-7
+      },
+      "current": {
+        "speedMps": 8,
+        "hz": 120,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 1.7583333333333295,
+        "releaseHeadingRadians": 0.23414759235615334,
+        "releaseDriftMetres": 0.14356969723359703,
+        "settledAfterSeconds": 0.5,
+        "reverseAfterSeconds": 0.21666666666666667,
+        "steadyLateralMps": 2.0566444151371854,
+        "maximumLateralAcceleration": 6.746029012766337,
+        "finalHeading": 9.411439981039405e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 18,
+        "hz": 120,
+        "initialMovementSeconds": 0.14166666666666666,
+        "laneSeconds": 1.1833333333333316,
+        "releaseHeadingRadians": 0.1568119643944852,
+        "releaseDriftMetres": 0.6962047034392456,
+        "settledAfterSeconds": 0.8,
+        "reverseAfterSeconds": 0.325,
+        "steadyLateralMps": 3.59368735669797,
+        "maximumLateralAcceleration": 9.990119796905196,
+        "finalHeading": 6.836456853810562e-8
+      },
+      "current": {
+        "speedMps": 18,
+        "hz": 120,
+        "initialMovementSeconds": 0.09999999999999999,
+        "laneSeconds": 0.9999999999999989,
+        "releaseHeadingRadians": 0.20359481839910282,
+        "releaseDriftMetres": 0.5665895144195168,
+        "settledAfterSeconds": 0.5,
+        "reverseAfterSeconds": 0.3416666666666667,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.990119796905196,
+        "finalHeading": 9.689391581362254e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 28,
+        "hz": 120,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.9166666666666659,
+        "releaseHeadingRadians": 0.13305006335292738,
+        "releaseDriftMetres": 1.1456173432165018,
+        "settledAfterSeconds": 0.8083333333333333,
+        "reverseAfterSeconds": 0.44166666666666665,
+        "steadyLateralMps": 5.590180325535954,
+        "maximumLateralAcceleration": 9.998310501914286,
+        "finalHeading": 6.92640894599007e-8
+      },
+      "current": {
+        "speedMps": 28,
+        "hz": 120,
+        "initialMovementSeconds": 0.11666666666666665,
+        "laneSeconds": 1.0249999999999988,
+        "releaseHeadingRadians": 0.13106594000691557,
+        "releaseDriftMetres": 0.6433697126755712,
+        "settledAfterSeconds": 0.4583333333333333,
+        "reverseAfterSeconds": 0.35833333333333334,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.998310501914286,
+        "finalHeading": 5.634968412684358e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 40,
+        "hz": 120,
+        "initialMovementSeconds": 0.12499999999999999,
+        "laneSeconds": 0.8499999999999994,
+        "releaseHeadingRadians": 0.09626717814248437,
+        "releaseDriftMetres": 1.0585783090646321,
+        "settledAfterSeconds": 0.7,
+        "reverseAfterSeconds": 0.425,
+        "steadyLateralMps": 7.140099511251066,
+        "maximumLateralAcceleration": 9.999594273378555,
+        "finalHeading": 4.021593288640547e-8
+      },
+      "current": {
+        "speedMps": 40,
+        "hz": 120,
+        "initialMovementSeconds": 0.12499999999999999,
+        "laneSeconds": 1.0416666666666654,
+        "releaseHeadingRadians": 0.09164927302874605,
+        "releaseDriftMetres": 0.6981227630637186,
+        "settledAfterSeconds": 0.425,
+        "reverseAfterSeconds": 0.375,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.999594273378555,
+        "finalHeading": 3.9113711495418824e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 52,
+        "hz": 120,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.8333333333333328,
+        "releaseHeadingRadians": 0.07514591846366084,
+        "releaseDriftMetres": 1.0242753224845438,
+        "settledAfterSeconds": 0.6333333333333333,
+        "reverseAfterSeconds": 0.4166666666666667,
+        "steadyLateralMps": 8.234181616143843,
+        "maximumLateralAcceleration": 9.99985793821342,
+        "finalHeading": 2.8419298722410674e-8
+      },
+      "current": {
+        "speedMps": 52,
+        "hz": 120,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 1.0499999999999987,
+        "releaseHeadingRadians": 0.07046957637434989,
+        "releaseDriftMetres": 0.7278814548130398,
+        "settledAfterSeconds": 0.4083333333333333,
+        "reverseAfterSeconds": 0.38333333333333336,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.99985793821342,
+        "finalHeading": 2.9991052644348193e-17
+      }
+    },
+    {
+      "accepted": {
+        "speedMps": 65,
+        "hz": 120,
+        "initialMovementSeconds": 0.13333333333333333,
+        "laneSeconds": 0.8249999999999995,
+        "releaseHeadingRadians": 0.0605950426118061,
+        "releaseDriftMetres": 1.0051602521885443,
+        "settledAfterSeconds": 0.575,
+        "reverseAfterSeconds": 0.4083333333333333,
+        "steadyLateralMps": 9.170010360352592,
+        "maximumLateralAcceleration": 9.999941810760141,
+        "finalHeading": 2.1581350099936308e-8
+      },
+      "current": {
+        "speedMps": 65,
+        "hz": 120,
+        "initialMovementSeconds": 0.14166666666666666,
+        "laneSeconds": 1.0499999999999987,
+        "releaseHeadingRadians": 0.056363083499782654,
+        "releaseDriftMetres": 0.7478245309047312,
+        "settledAfterSeconds": 0.39166666666666666,
+        "reverseAfterSeconds": 0.38333333333333336,
+        "steadyLateralMps": 4.200000000000017,
+        "maximumLateralAcceleration": 9.999941810760141,
+        "finalHeading": 2.395321884037017e-17
+      }
+    }
+  ],
+  "braking": [
+    {
+      "speedMps": 18,
+      "brake": 1,
+      "hz": 30,
+      "seconds": 0.9333333333333332,
+      "distanceMetres": 8.0267147241985,
+      "finalSpeedMps": 0
+    },
+    {
+      "speedMps": 28,
+      "brake": 1,
+      "hz": 30,
+      "seconds": 1.400000000000001,
+      "distanceMetres": 19.22179372275834,
+      "finalSpeedMps": 0
+    },
+    {
+      "speedMps": 52,
+      "brake": 1,
+      "hz": 30,
+      "seconds": 2.500000000000001,
+      "distanceMetres": 62.99449381062064,
+      "finalSpeedMps": 0
+    },
+    {
+      "speedMps": 18,
+      "brake": 1,
+      "hz": 60,
+      "seconds": 0.9166666666666679,
+      "distanceMetres": 8.0267147241985,
+      "finalSpeedMps": 0
+    },
+    {
+      "speedMps": 28,
+      "brake": 1,
+      "hz": 60,
+      "seconds": 1.4,
+      "distanceMetres": 19.22179372275834,
+      "finalSpeedMps": 0
+    },
+    {
+      "speedMps": 52,
+      "brake": 1,
+      "hz": 60,
+      "seconds": 2.499999999999996,
+      "distanceMetres": 62.99449381062064,
+      "finalSpeedMps": 0
+    },
+    {
+      "speedMps": 18,
+      "brake": 1,
+      "hz": 120,
+      "seconds": 0.9083333333333325,
+      "distanceMetres": 8.0267147241985,
+      "finalSpeedMps": 0
+    },
+    {
+      "speedMps": 28,
+      "brake": 1,
+      "hz": 120,
+      "seconds": 1.3916666666666642,
+      "distanceMetres": 19.22179372275834,
+      "finalSpeedMps": 0.009916826494659942
+    },
+    {
+      "speedMps": 52,
+      "brake": 1,
+      "hz": 120,
+      "seconds": 2.499999999999994,
+      "distanceMetres": 62.99449381062064,
+      "finalSpeedMps": 0
+    }
+  ],
+  "thumb": [
+    {
+      "dx": 0,
+      "steer": 0,
+      "throttle": 1,
+      "brake": 0
+    },
+    {
+      "dx": 2.7,
+      "steer": 0,
+      "throttle": 1,
+      "brake": 0
+    },
+    {
+      "dx": 5,
+      "steer": 0.037192730992197214,
+      "throttle": 1,
+      "brake": 0
+    },
+    {
+      "dx": 10,
+      "steer": 0.12157089185092325,
+      "throttle": 1,
+      "brake": 0
+    },
+    {
+      "dx": 20,
+      "steer": 0.30412885239271015,
+      "throttle": 1,
+      "brake": 0
+    },
+    {
+      "dx": 30,
+      "steer": 0.5223158952940284,
+      "throttle": 1,
+      "brake": 0
+    },
+    {
+      "dx": 46.08,
+      "steer": 1,
+      "throttle": 1,
+      "brake": 0
+    }
+  ],
+  "pedals": [
+    {
+      "dy": 0,
+      "steer": 0,
+      "throttle": 1,
+      "brake": 0
+    },
+    {
+      "dy": 5,
+      "steer": 0,
+      "throttle": 1,
+      "brake": 0
+    },
+    {
+      "dy": 7.8,
+      "steer": 0,
+      "throttle": 1,
+      "brake": 0
+    },
+    {
+      "dy": 12,
+      "steer": 0,
+      "throttle": 0.5489272632129774,
+      "brake": 0
+    },
+    {
+      "dy": 17.1,
+      "steer": 0,
+      "throttle": 0,
+      "brake": 0
+    },
+    {
+      "dy": 18,
+      "steer": 0,
+      "throttle": 0,
+      "brake": 0
+    },
+    {
+      "dy": 19,
+      "steer": 0,
+      "throttle": 0,
+      "brake": 0
+    },
+    {
+      "dy": 24,
+      "steer": 0,
+      "throttle": 0,
+      "brake": 0.3633350776207921
+    },
+    {
+      "dy": 32.76,
+      "steer": 0,
+      "throttle": 0,
+      "brake": 1
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import { trafficLateral } from './traffic-behavior.js';
 import { trafficPose, trailerYaw } from './traffic-physics.js';
 import { createOwnedVehicle, prepareVehicleAppearance, applyVehicleAppearance, loadGarageCosmetics } from './owned-vehicles.js';
 import { createThrusterEffects } from './thrusters.js';
+import { createPlayerHeadlights } from './player-headlights.js';
 import { createRoadsidePromos } from './roadside-promos.js';
 import { buildScenicLandscape, updateScenicLandscape, scenicTerrainHeight } from './landscape.js';
 
@@ -90,7 +91,7 @@ export class RoadRenderer {
     this.scene.environment = this.environmentTarget.texture;
     reflectionSource.dispose(); pmrem.dispose();
     this.scene.environmentIntensity = 1.15;
-    this.player = createCar(a.car); this.rocketPlayer = this.player; this.playerVehicleId = 'rocket'; this.ownedPlayers = new Map([['rocket', this.player]]); this.player.userData.cosmeticTemplates=a.cosmetics; prepareVehicleAppearance(this.player, 'rocket'); this.scene.add(this.player);
+    this.player = createCar(a.car); this.rocketPlayer = this.player; this.playerVehicleId = 'rocket'; this.ownedPlayers = new Map([['rocket', this.player]]); this.player.userData.cosmeticTemplates=a.cosmetics; prepareVehicleAppearance(this.player, 'rocket'); this.scene.add(this.player);createPlayerHeadlights(this.player);
     this.cockpitView = createCockpitView(this.player); this.cockpitDisplay = createCockpitDisplay(this.player);
     this.rearCameraDisplay = createRearCameraDisplay(this.player);
     this.playerMirrors = createPlayerMirrors(r, this.scene, this.player, {compact:this.compact,reducedMotion:this.reducedMotion,onContextChange:()=>this.handleMirrorContextChange()});
@@ -113,7 +114,7 @@ export class RoadRenderer {
     let next=this.ownedPlayers.get(id);
     if(!next){next=createOwnedVehicle(this.assets,id,cosmetics);this.addContact(next);next.userData.contactShadow.material=this.contactMaterial.clone();next.remove(next.userData.contactShadow);this.scene.add(next.userData.contactShadow);this.ownedPlayers.set(id,next);}
     if(this.player!==next){this.scene.remove(this.player);this.player.userData.contactShadow.visible=false;this.player=next;this.scene.add(next);this.playerState=null;this.flightEffects.clear();}
-    this.playerVehicleId=id;applyVehicleAppearance(next,cosmetics);next.visible=true;next.userData.contactShadow.visible=true;
+    this.playerVehicleId=id;applyVehicleAppearance(next,cosmetics);createPlayerHeadlights(next);next.visible=true;next.userData.contactShadow.visible=true;
     this.cockpitDisplay.setTheme?.(next.userData.cockpitTheme);this.needsRender=true;this.lookDirection=0;this.lookYaw=0;return true;
   }
   /** Create an independent parked showcase instance sharing only immutable buffers with the gameplay assets. */
@@ -418,6 +419,7 @@ export class RoadRenderer {
     else animateTrafficCar(this.player,{kind:this.playerVehicleId,z:0,heading:0,speed:menu?0:state.speed,acceleration:menu?0:state.acceleration,laneCurvature:menu?0:state.curvature,travelDistance:menu?0:state.rearDistance,braking:state.braking},distance,paused?0:dt);
     const contact=this.player.userData.contactShadow;
     contact.position.set(desiredX,.028,0);contact.scale.set(rocket?1+altitude*.15:this.player.userData.width/2.1,rocket?1+altitude*.15:this.player.userData.length/4.7,1);contact.material.opacity=.62-altitude*.1;
+    this.player.userData.highBeams?.update(menu?{phase:'menu'}:state);
     this.player.updateMatrixWorld(true);
     this.flightEffects.update(menu || !rocket ? { phase:'menu', altitude:0, thrusterPower:0, distance } : state, paused ? 0 : dt, this.time);
     this.player.visible=this.cameraMode==='cockpit'||state.invincible<=0||Math.floor(this.time*9)%2===0||menu;

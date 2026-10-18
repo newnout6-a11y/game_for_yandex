@@ -1074,3 +1074,98 @@
   .garage-shell .gs-workbench .gs-vehicle-row-copy strong { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .garage-shell .gs-car-miniature { transition: none; } }
+
+/* Result choices: earned credits are free; one optional reward is secondary.
+   The finish action lives outside the scroll area, including small landscape phones. */
+.garage-shell .gs-result-free-choice { padding: 0 0 18px; border-bottom: 1px solid var(--gs-line); margin-bottom: 20px; flex: 0 0 auto; }
+.garage-shell .gs-result-earned { margin: 0 0 10px; color: var(--gs-chalk); font: 650 13px/1.4 var(--gs-body); }
+.garage-shell .gs-result-free-choice .gs-small-note { margin: 8px 0 0; }
+.garage-shell .gs-result-free-choice .gs-finish-free { min-height: 48px; }
+.garage-shell .gs-result-optional { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--gs-line); }
+.garage-shell .gs-result-optional .gs-kicker { margin: 0 0 12px; }
+.garage-shell .gs-result-optional .gs-button { min-height: 46px; margin: 0 0 6px; }
+.garage-shell .gs-result-optional .gs-small-note { margin: 0 0 16px; }
+.garage-shell .gs-result-optional .gs-double-basis { color: var(--gs-chalk); }
+.garage-shell .gs-result-retry { grid-template-columns: 1fr; }
+@media (max-height: 500px) and (min-width: 600px) {
+  .garage-shell .gs-result-free-choice { padding: 9px 12px; margin: 0; background: #262634; }
+  .garage-shell .gs-result-earned { font-size: 11px; margin: 0 0 5px; }
+  .garage-shell .gs-result-free-choice .gs-finish-free { min-height: 44px; padding: 9px 10px; font-size: 12px; }
+  .garage-shell .gs-result-free-choice .gs-small-note { font-size: 10px; line-height: 1.3; margin: 5px 0 0; }
+  .garage-shell .gs-result-optional { margin-top: 12px; padding-top: 12px; }
+  .garage-shell .gs-result-optional .gs-button { font-size: 12px; }
+  .garage-shell .gs-result-optional .gs-small-note { font-size: 10px; }
+  .garage-shell .gs-result-retry { padding-block: 7px; }
+}
+
+/* All three result choices stay above details, not below a cropped reward total. */
+.garage-shell .gs-result-optional { margin: 0 0 18px; padding: 0 0 14px; border-top: 0; border-bottom: 1px solid var(--gs-line); flex: 0 0 auto; }
+.garage-shell .gs-result-optional .gs-button + .gs-button { margin-top: 4px; }
+.garage-shell .gs-result-optional .gs-double-basis { margin: 5px 0 0; }
+.garage-shell .gs-result-details > summary { min-height: 44px; display: flex; align-items: center; padding: 10px 0; cursor: pointer; color: var(--gs-chalk); font: 650 12px/1.3 var(--gs-body); list-style: none; }
+.garage-shell .gs-result-details > summary:focus-visible { outline: 2px solid var(--gs-glacier); outline-offset: -2px; }
+.garage-shell .gs-result-detail-body { padding-top: 8px; }
+.garage-shell .gs-result-intro .gs-result-retry { max-width: 300px; background: transparent; padding: 0; border: 0; }
+@media (max-height: 500px) and (min-width: 600px) {
+  .garage-shell .gs-result-free-choice { padding: 8px 12px; }
+  .garage-shell .gs-result-free-choice > .gs-small-note { display: none; }
+  .garage-shell .gs-result-optional { margin: 0; padding: 7px 12px; }
+  .garage-shell .gs-result-optional > .gs-kicker { display: none; }
+  .garage-shell .gs-result-optional .gs-button { min-height: 44px; margin: 0; padding: 8px 10px; font-size: 11px; }
+  .garage-shell .gs-result-optional .gs-button + .gs-button { margin-top: 6px; }
+  .garage-shell .gs-result-optional .gs-double-basis { margin: 5px 0 0; font-size: 10px; line-height: 1.3; }
+  .garage-shell .gs-settlement-scroll { padding: 0 12px 8px; scrollbar-width: auto; }
+  .garage-shell .gs-result-details > summary { font-size: 11px; }
+  .garage-shell .gs-result-detail-body { padding: 4px 0 8px; }
+  .garage-shell .gs-result-intro .gs-result-retry { margin-top: 14px; }
+}
+
+/* HOME_ENTRY_COMPACT: the game iframe, not the physical phone, sets this budget.
+   Yandex sidebars can reduce landscape content below 700px. Keep both entry
+   actions in their own non-scrolling row; optional copy yields to the real car.
+   Every override is hub-only so the accepted garage and results stay unchanged. */
+@media (orientation: landscape) and (max-height: 620px), (orientation: landscape) and (max-width: 900px) {
+  .garage-shell[data-screen='hub'] .gs-layout { min-height: 0; height: 100%; max-height: 100%; }
+  .garage-shell[data-screen='hub'] .gs-header { flex: 0 0 52px; min-width: 0; padding: 4px 14px; gap: 10px; }
+  .garage-shell[data-screen='hub'] .gs-header-context,
+  .garage-shell[data-screen='hub'] .gs-brand-type > span { display: none; }
+  .garage-shell[data-screen='hub'] .gs-emblem { width: 34px; height: 34px; }
+  .garage-shell[data-screen='hub'] .gs-brand { gap: 6px; }
+  .garage-shell[data-screen='hub'] .gs-brand-type strong { font-size: 18px; }
+  .garage-shell[data-screen='hub'] .gs-account { gap: 8px; }
+  .garage-shell[data-screen='hub'] .gs-balance { font-size: 13px; gap: 6px; }
+  .garage-shell[data-screen='hub'] .gs-footer { flex: 0 0 28px; min-width: 0; padding: 0 14px; gap: 10px; }
+  .garage-shell[data-screen='hub'] .gs-footer:has(.gs-footer-connect) { flex-basis: 44px; }
+  .garage-shell[data-screen='hub'] .gs-footer-brand,
+  .garage-shell[data-screen='hub'] .gs-footer-build { display: none; }
+  .garage-shell[data-screen='hub'] .gs-save-status { min-width: 0; font-size: 9px; }
+  .garage-shell[data-screen='hub'] .gs-footer-connect { min-height: 44px; font-size: 9px; }
+  .garage-shell[data-screen='hub'] .gs-hub {
+    display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px; padding: 10px 14px 12px; overflow: clip;
+  }
+  .garage-shell[data-screen='hub'] .gs-hub-intro { display: contents; width: auto; max-width: none; pointer-events: none; }
+  .garage-shell[data-screen='hub'] .gs-hub-intro > .gs-kicker,
+  .garage-shell[data-screen='hub'] .gs-hub-copy,
+  .garage-shell[data-screen='hub'] .gs-hub-intro > .gs-small-note { display: none; }
+  /* Preserve the page heading and focus destination without a giant visible slogan. */
+  .garage-shell[data-screen='hub'] .gs-hub-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions {
+    grid-column: 1; grid-row: 2; justify-self: start; display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 480px); margin: 0; gap: 8px;
+  }
+  .garage-shell[data-screen='hub'] .gs-hub-actions .gs-button { min-width: 44px; min-height: 48px; width: 100%; padding: 12px 14px; gap: 8px; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions .gs-secondary { background: #202232ed; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions svg { width: 18px; height: 18px; }
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle { top: 14px; right: 14px; width: min(43%, 260px); gap: 3px; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle > strong { font-size: 16px; line-height: 1.2; }
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle > .gs-kicker,
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle > .gs-small-note { display: none; }
+  .garage-shell[data-screen='hub'] .gs-hub-dock { grid-column: 1; grid-row: 1; align-self: start; justify-self: start; display: block; width: min(49%, 260px); margin: 0; border: 0; background: none; backdrop-filter: none; }
+  /* Contracts remain in the garage. The route is still directly selectable. */
+  .garage-shell[data-screen='hub'] .gs-hub-dock > :not(.gs-route-cell) { display: none; }
+  .garage-shell[data-screen='hub'] .gs-route-cell { display: block; padding: 0; border: 0; }
+  .garage-shell[data-screen='hub'] .gs-route-cell > .gs-kicker { display: none; }
+  .garage-shell[data-screen='hub'] .gs-route-cell .gs-setting { width: 100%; margin: 0; }
+  .garage-shell[data-screen='hub'] .gs-route-cell select { min-height: 44px; width: 100%; padding: 8px 28px 8px 10px; font-size: 12px; background-color: #202232d9; border: 1px solid var(--gs-line); }
+}
