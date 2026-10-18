@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createPlatformServices, CLOUD_PROFILE_KEY } from '../src/platform-services.js';
 import { createProfile } from '../src/progression.js';
-import { createProgressionStorage, PROGRESSION_STORAGE_KEY } from '../src/progression-storage.js';
+import { createProgressionStorage, PROGRESSION_STORAGE_KEY, PROGRESSION_BACKUP_KEY } from '../src/progression-storage.js';
 import { createLifecycle } from '../src/lifecycle.js';
 
 /** Create a manually controlled async boundary for timeout, account-change and ordering tests. */
@@ -142,6 +142,76 @@ test('local choice replaces complete cloud state and missing cloud needs consent
     assert.ok(h.services.getState().conflict); assert.equal(h.writes.length, 0);
     await h.services.resolveCloudConflict('local'); assert.equal(h.writes.at(-1).value[CLOUD_PROFILE_KEY].profile.wallet.credits, 10); h.services.dispose();
   }
+});
+
+test('absent cloud cannot reset earned local progress even through a direct restore action', async () => {
+  const local = profile({ credits: 170, revision: 7 }); local.stats.runs = 2; local.garage.level = 2; local.settings.sound = true;
+  const h = harness({ local }); await h.services.init();
+  const before = h.store.get(), backup = h.provider.getItem(PROGRESSION_BACKUP_KEY), epoch = h.store.getReplacementEpoch();
+  assert.equal(h.services.getState().conflict.reason, 'local-unlinked');
+  assert.equal(h.services.getState().conflict.cloud, null); assert.equal(h.writes.length, 0);
+  h.services.queueSave(); await h.services.flush(); assert.equal(h.writes.length, 0, 'An empty cloud still requires explicit local transfer');
+  assert.deepEqual(await h.services.resolveCloudConflict('cloud'), { status: 'unavailable', reason: 'cloud-profile-unavailable' });
+  assert.deepEqual(h.store.get(), before); assert.equal(h.store.getReplacementEpoch(), epoch);
+  assert.equal(h.provider.getItem(PROGRESSION_BACKUP_KEY), backup); assert.equal(h.writes.length, 0);
+  assert.equal(h.services.getState().conflict.reason, 'local-unlinked');
+  await h.services.resolveCloudConflict('local');
+  assert.deepEqual(h.store.get(), before); assert.equal(h.store.getReplacementEpoch(), epoch);
+  assert.equal(h.writes.length, 1); assert.equal(h.writes[0].durable, true);
+  assert.deepEqual(h.writes[0].value[CLOUD_PROFILE_KEY].profile, before); h.services.dispose();
+});
+
+test('unreadable top-level SDK data is not treated as confirmed empty cloud', async () => {
+  for (const data of [undefined, null, [], '', 'invalid', 0, false, new Date(0)]) {
+    const h = harness({ local: profile({ credits: 170, revision: 7 }), read: async () => data }); await h.services.init();
+    const before = h.store.get(), backup = h.provider.getItem(PROGRESSION_BACKUP_KEY);
+    assert.equal(h.services.getState().cloud.error, 'invalid-cloud-response'); assert.equal(h.services.getState().conflict, null);
+    for (const choice of ['local', 'cloud']) assert.equal((await h.services.resolveCloudConflict(choice)).reason, 'no-resolvable-conflict');
+    h.services.queueSave(); await h.services.flush();
+    assert.deepEqual(h.store.get(), before); assert.equal(h.provider.getItem(PROGRESSION_BACKUP_KEY), backup);
+    assert.equal(h.store.getReplacementEpoch(), 0); assert.equal(h.writes.length, 0); h.services.dispose();
+  }
+});
+
+test('a present null or malformed cloud envelope remains unreadable rather than a transferable empty save', async () => {
+  for (const value of [undefined, null, [], '', 0, false]) {
+    const h = harness({ local: profile({ credits: 170, revision: 7 }), read: async () => ({ [CLOUD_PROFILE_KEY]: value }) }); await h.services.init();
+    assert.equal(h.services.getState().cloud.error, 'invalid-cloud-profile'); assert.equal(h.services.getState().conflict, null);
+    assert.equal((await h.services.resolveCloudConflict('cloud')).reason, 'no-resolvable-conflict');
+    await h.services.flush(); assert.equal(h.writes.length, 0); assert.equal(h.store.get().wallet.credits, 170); h.services.dispose();
+  }
+});
+
+test('a real zero-balance zero-run cloud profile remains a valid explicit restore', async () => {
+  const cloud = profile({ id: 'remote_zero', credits: 0, revision: 3 });
+  const h = harness({ local: profile({ credits: 170, revision: 7 }), cloud }); await h.services.init();
+  const expected = h.services.getState().conflict.cloud;
+  assert.equal(h.services.getState().conflict.cloud.wallet.credits, 0);
+  assert.equal(h.services.getState().conflict.cloud.stats.runs, 0);
+  assert.equal((await h.services.resolveCloudConflict('cloud')).status, 'durable');
+  assert.deepEqual(h.store.get(), expected); assert.equal(h.writes.length, 1); h.services.dispose();
+});
+
+test('creating the first cloud save preserves local progress when its durable write fails', async () => {
+  const h = harness({ local: profile({ credits: 170, revision: 7 }), write: async () => { throw Error('offline'); } });
+  await h.services.init(); const before = h.store.get();
+  const result = await h.services.resolveCloudConflict('local');
+  assert.equal(result.status, 'error'); assert.equal(result.reason, 'cloud-write-failed');
+  assert.equal(result.durableRevision, null); assert.equal(result.localSaved, true);
+  assert.deepEqual(h.store.get(), before); assert.equal(h.store.getReplacementEpoch(), 0);
+  assert.equal(h.writes.length, 1); assert.deepEqual(h.writes[0].value[CLOUD_PROFILE_KEY].profile, before);
+  h.setWrite(null); assert.equal((await h.services.flush()).status, 'durable');
+  assert.deepEqual(h.store.get(), before); h.services.dispose();
+});
+
+test('an unreadable cloud response requires a successful reread before explicit local creation', async () => {
+  const h = harness({ local: profile({ credits: 170, revision: 7 }), read: async () => null });
+  await h.services.init(); const before = h.store.get();
+  assert.equal((await h.services.resolveCloudConflict('local')).reason, 'no-resolvable-conflict');
+  assert.equal(h.writes.length, 0); h.setRead(null); await h.services.retryCloud();
+  assert.equal(h.services.getState().conflict.reason, 'local-unlinked'); assert.equal(h.writes.length, 0);
+  assert.equal((await h.services.resolveCloudConflict('local')).status, 'durable');
+  assert.deepEqual(h.store.get(), before); assert.equal(h.writes.length, 1); h.services.dispose();
 });
 
 test('untouched starter restores a cloud profile without discarding any earned local progress', async () => {

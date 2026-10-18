@@ -92,10 +92,12 @@ export function createPlatformServices({ sdk, lifecycle, profileStore, commerceC
   }
   /** Recognize an untouched starter, which carries no earned progress to lose on a cloud restore. */
   function pristine(profile) { return equal(profile, sanitizeProfile(createProfile({ now: profile.createdAt, id: profile.profileId }))); }
-  /** Unwrap our namespaced SDK save, rejecting future formats and malformed progress without overwriting them. */
+  /** Only a missing key in a valid SDK object confirms an empty cloud; unreadable responses never authorize a write. */
   function decodeCloud(data) {
-    const envelope = data?.[CLOUD_PROFILE_KEY];
-    if (envelope === undefined || envelope === null) return null;
+    if (Object.prototype.toString.call(data) !== '[object Object]') throw fault('invalid-cloud-response');
+    if (!Object.hasOwn(data, CLOUD_PROFILE_KEY)) return null;
+    const envelope = data[CLOUD_PROFILE_KEY];
+    if (!envelope || Object.prototype.toString.call(envelope) !== '[object Object]') throw fault('invalid-cloud-profile');
     if (envelope.formatVersion !== 1) throw fault('unsupported-cloud-version');
     const profile = validProfile(envelope.profile);
     if (!profile || bytes(envelope) > MAX_ENVELOPE_BYTES) throw fault('invalid-cloud-profile');
@@ -305,14 +307,16 @@ export function createPlatformServices({ sdk, lifecycle, profileStore, commerceC
   }
   /**
    * Resolve divergent saves by whole-profile selection. Selecting local explicitly authorizes replacing
-   * the remote snapshot; selecting cloud keeps the existing local storage backup. No currency merging occurs.
+   * the remote snapshot; selecting a validated cloud snapshot keeps the existing local storage backup.
+   * Missing cloud data cannot become a new starter profile or an implicit reset. No currency merging occurs.
    */
   async function resolveCloudConflict(choice) {
     if (disposed || frozen || !state.conflict || !['local', 'cloud'].includes(choice)) return { status: 'unavailable', reason: 'no-resolvable-conflict' };
     if (state.conflict.source === 'backend' && choice !== 'cloud') return { status: 'unavailable', reason: 'server-canonical-required' };
     const source = state.conflict.source;
     if (choice === 'cloud') {
-      const selected = state.conflict.cloud || createProfile({ now: clock(), id: profileStore.get().profileId });
+      const selected = validProfile(state.conflict.cloud);
+      if (!selected) return { status: 'unavailable', reason: 'cloud-profile-unavailable' };
       const result = profileStore.replaceFromCloud(selected);
       if (!result.ok) return { status: 'error', reason: result.reason };
     }

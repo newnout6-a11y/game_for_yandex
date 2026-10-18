@@ -9,6 +9,8 @@
  * platform, settings, loading, runResult, inspection, otherGames}. otherGames contains only
  * verified SDK metadata [{appID, title}]; the presenter never reads target URLs.
  */
+import { PROFILE_VERSION, LIMITS, sanitizeProfile } from './progression.js';
+
 export const GARAGE_TABS = Object.freeze([
   { id: 'fleet', number: '01', name: 'Автопарк', caption: 'Выбери свою линию', icon: 'car' },
   { id: 'style', number: '02', name: 'Ателье', caption: 'Характер в деталях', icon: 'style' },
@@ -55,6 +57,18 @@ export function garagePrice(value) {
 }
 /** Own-key checks prevent prototype names becoming owned catalog entries. */
 const owns = (collection, id) => Array.isArray(collection) ? collection.some(value => value === id || value?.id === id) : !!collection && Object.hasOwn(collection, id) && collection[id] !== false;
+/** Display summaries alone cannot authorize a whole-profile replacement. */
+function conflictSnapshot(conflict, choice) {
+  const raw = Object.hasOwn(conflict, choice) ? conflict[choice] : conflict[`${choice}Profile`];
+  const profile = raw?.profile ?? raw;
+  let valid = false;
+  try {
+    valid = profile?.schemaVersion === PROFILE_VERSION && Number.isSafeInteger(profile.revision) && profile.revision >= 0 &&
+      Number.isSafeInteger(profile.wallet?.credits) && profile.wallet.credits >= 0 && profile.wallet.credits <= LIMITS.credits &&
+      new TextEncoder().encode(JSON.stringify(profile)).byteLength <= LIMITS.profileBytes && !!sanitizeProfile(profile);
+  } catch { /* A malformed display snapshot is never an actionable save. */ }
+  return { raw, profile, valid };
+}
 /** Normalize common controller shapes into one read-only presenter snapshot. */
 export function normalizeGarageView(input = {}) {
   const profile = input.profile || {};
@@ -271,7 +285,11 @@ export class GarageUI {
     if (oldScreen === this.view.screen && Number.isFinite(hubScroll)) {
       const hub = this.root.querySelector('.gs-hub'); if (hub) hub.scrollTop = hubScroll;
     }
-    if (conflict && !focus?.startsWith('resolveCloudConflict')) this.root.querySelector('.gs-cloud-dialog button')?.focus({ preventScroll: true });
+    if (conflict) {
+      const dialog = this.root.querySelector('.gs-cloud-dialog');
+      const buttons = Array.from(dialog.querySelectorAll('button:not(:disabled)'));
+      (buttons.find(node => node.dataset.gsFocus === focus) || buttons[0] || dialog).focus({ preventScroll: true });
+    }
     else if (focus) Array.from(this.root.querySelectorAll('[data-gs-focus]')).find(node => node.dataset.gsFocus === focus)?.focus({ preventScroll: true });
     else if (oldScreen !== this.view.screen && this.visible) this.root.querySelector('[data-gs-heading]')?.focus({ preventScroll: true });
     if (this.view.screen !== 'garage' || this.view.tab !== 'fleet') { this.miniatureHoverId = null; this.miniatureFocusId = null; this.onMiniatureInteraction(null); }
@@ -405,6 +423,7 @@ export class GarageUI {
     if (event.key === 'Tab' && (this.settingsOpen || this.view.platform.conflict)) {
       const nodes = Array.from(this.root.querySelectorAll('[role="dialog"] button:not(:disabled), [role="dialog"] select:not(:disabled), [role="dialog"] input:not(:disabled)'));
       const first = nodes[0], last = nodes.at(-1);
+      if (!first) { event.preventDefault(); this.root.querySelector('[role="dialog"]')?.focus(); }
       if (event.shiftKey && this.doc.activeElement === first) { event.preventDefault(); last?.focus(); }
       if (!event.shiftKey && this.doc.activeElement === last) { event.preventDefault(); first?.focus(); }
     }
@@ -917,7 +936,7 @@ export class GarageUI {
     const authPending = this.view.platform.auth === 'pending';
     const authenticated = this.view.platform.authenticated === true || this.view.platform.auth === 'authorized';
     const guest = !authenticated && (this.view.platform.auth === 'guest' || this.view.platform.cloud || authPending);
-    const cloudReadFailed = cloudStatus === 'error' && (this.view.cloud?.error == null || ['cloud-load-failed', 'timeout', 'sdk-rate-limit', 'player-unavailable', 'invalid-player', 'cloud-replacement-failed'].includes(this.view.cloud.error));
+    const cloudReadFailed = cloudStatus === 'error' && (this.view.cloud?.error == null || ['cloud-load-failed', 'invalid-cloud-response', 'invalid-cloud-profile', 'timeout', 'sdk-rate-limit', 'player-unavailable', 'invalid-player', 'cloud-replacement-failed'].includes(this.view.cloud.error));
     if (this.view.platform.sdk && cloudReadFailed && !authPending && !this.view.platform.conflict) foot.append(this.button('Повторить загрузку из облака', { type: 'retryCloud' }, { iconName: 'cloud', className: 'gs-footer-connect' }));
     else if (guest && !this.view.platform.conflict) foot.append(this.button(authPending ? 'Яндекс ID · ждём подтверждения…' : 'Яндекс ID · прогресс на всех устройствах', { type: 'cloudConnect' }, { disabled: authPending, iconName: 'cloud', className: 'gs-footer-connect' }));
     else foot.append(element(this.doc, 'span', 'gs-footer-build', this.view.platform.sdk ? 'ЯНДЕКС ИГРЫ' : 'ЛОКАЛЬНЫЙ РЕЖИМ'));
@@ -925,14 +944,20 @@ export class GarageUI {
   }
   /** Cloud divergence is an explicit choice between snapshots, never a max merge. */
   renderCloudConflict(conflict) {
+    const snapshots = { local: conflictSnapshot(conflict, 'local'), cloud: conflictSnapshot(conflict, 'cloud') };
+    const emptyCloud = conflict.source === 'sdk' && conflict.reason === 'local-unlinked' && snapshots.cloud.raw === null;
+    const backend = conflict.source === 'backend';
     const backdrop = element(this.doc, 'div', 'gs-settings-backdrop');
     const dialog = element(this.doc, 'section', 'gs-settings-dialog gs-cloud-dialog');
+    dialog.tabIndex = -1;
     dialog.setAttribute('role', 'dialog'); dialog.setAttribute('aria-modal', 'true'); dialog.setAttribute('aria-labelledby', 'gs-cloud-title');
-    const title = element(this.doc, 'h2', '', 'Два разных маршрута'); title.id = 'gs-cloud-title';
-    dialog.append(element(this.doc, 'p', 'gs-kicker', 'ВЫБОР СОХРАНЕНИЯ'), title, element(this.doc, 'p', 'gs-description', 'На устройстве и в облаке разный прогресс. Выбери один вариант: балансы и покупки не складываются.'));
+    const title = element(this.doc, 'h2', '', emptyCloud ? 'В облаке пока нет сохранения' : !snapshots.cloud.valid ? 'Облачное сохранение недоступно' : 'Два разных маршрута'); title.id = 'gs-cloud-title';
+    const description = emptyCloud ? 'Текущий прогресс с этого устройства можно сохранить в облаке Яндекс Игр.' : !snapshots.cloud.valid ? 'Не удалось прочитать облачное сохранение. Прогресс на устройстве не изменён.' : backend ? 'Для этого аккаунта нужно загрузить подтверждённый облачный прогресс. Балансы и покупки не складываются.' : 'На устройстве и в облаке разный прогресс. Выбери один вариант: балансы и покупки не складываются.';
+    dialog.append(element(this.doc, 'p', 'gs-kicker', emptyCloud ? 'ОБЛАЧНОЕ СОХРАНЕНИЕ' : 'ВЫБОР СОХРАНЕНИЯ'), title, element(this.doc, 'p', 'gs-description', description));
     for (const [choice, name] of [['local', 'На этом устройстве'], ['cloud', 'В облаке']]) {
-      const raw = conflict[choice] || conflict[`${choice}Profile`] || {};
-      const profile = raw.profile || raw;
+      if (choice === 'cloud' && emptyCloud) continue;
+      const { raw: supplied, profile: suppliedProfile, valid } = snapshots[choice];
+      const raw = supplied || {}, profile = suppliedProfile || {};
       const row = element(this.doc, 'section', 'gs-cloud-option');
       row.append(element(this.doc, 'h3', '', name));
       const stats = element(this.doc, 'div', 'gs-spec-row');
@@ -941,10 +966,11 @@ export class GarageUI {
       row.append(stats);
       const count = raw.vehicles ?? profile.ownedVehicles?.length;
       if (typeof count === 'number') row.append(element(this.doc, 'p', 'gs-small-note', `Автомобилей: ${garageNumber(count)}`));
-      row.append(this.button(choice === 'local' ? 'Оставить этот прогресс' : 'Загрузить облачный прогресс', { type: 'resolveCloudConflict', choice }, { primary: choice === 'local', className: 'gs-full' }));
+      const selectable = valid && (choice === 'cloud' || !backend && (emptyCloud || snapshots.cloud.valid));
+      if (selectable) row.append(this.button(choice === 'local' ? emptyCloud ? 'Создать облачное сохранение' : 'Оставить этот прогресс' : 'Загрузить облачный прогресс', { type: 'resolveCloudConflict', choice }, { primary: choice === 'local' || backend, className: 'gs-full' }));
       dialog.append(row);
     }
-    dialog.append(element(this.doc, 'p', 'gs-small-note', conflict.message || 'Будет использован выбранный вариант. Ничего не объединяем автоматически.'));
+    dialog.append(element(this.doc, 'p', 'gs-small-note', conflict.message || (emptyCloud ? 'В облако будет перенесён весь прогресс с этого устройства.' : snapshots.cloud.valid ? 'Будет использован выбранный вариант. Ничего не объединяем автоматически.' : 'Загрузка и замена сохранений недоступны.')));
     backdrop.append(dialog); return backdrop;
   }
   /** A focus-contained, reversible settings sheet with labeled native controls. */
