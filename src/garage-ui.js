@@ -218,9 +218,10 @@ function stat(doc, name, value, unit = '') {
 }
 /** Pure UI controller. The owner is responsible for mounting outside legacy HUD. */
 export class GarageUI {
-  constructor({ root, onAction = () => {} } = {}) {
+  constructor({ root, onAction = () => {}, onMiniatures = () => {}, onMiniatureInteraction = () => {} } = {}) {
     if (!root?.ownerDocument) throw new TypeError('GarageUI requires a DOM root element.');
     this.root = root; this.doc = root.ownerDocument; this.onAction = onAction;
+    this.onMiniatures = onMiniatures; this.onMiniatureInteraction = onMiniatureInteraction; this.miniatureHoverId = null; this.miniatureFocusId = null;
     this.visible = true; this.busy = false; this.settingsOpen = false; this.mobileOpen = false; this.atelierSection = 'body'; this.atelierBodySection = 'surface';
     this.view = normalizeGarageView(); this.noticeText = ''; this.disposed = false;
     root.classList.add('garage-shell'); root.setAttribute('aria-label', 'Roadster — гараж и меню');
@@ -230,6 +231,8 @@ export class GarageUI {
     root.addEventListener('click', this.clickHandler);
     root.addEventListener('change', this.changeHandler);
     root.addEventListener('keydown', this.keyHandler);
+    this.miniatureHandlers = Object.fromEntries(['pointerover','pointerout','pointerdown','focusin','focusout'].map(type => [type, event => this.handleMiniatureInteraction(event)]));
+    for (const [type, handler] of Object.entries(this.miniatureHandlers)) root.addEventListener(type, handler);
   }
   /** Reflect the latest authoritative snapshot while preserving keyboard focus. */
   render(input = {}) {
@@ -271,12 +274,15 @@ export class GarageUI {
     if (conflict && !focus?.startsWith('resolveCloudConflict')) this.root.querySelector('.gs-cloud-dialog button')?.focus({ preventScroll: true });
     else if (focus) Array.from(this.root.querySelectorAll('[data-gs-focus]')).find(node => node.dataset.gsFocus === focus)?.focus({ preventScroll: true });
     else if (oldScreen !== this.view.screen && this.visible) this.root.querySelector('[data-gs-heading]')?.focus({ preventScroll: true });
+    if (this.view.screen !== 'garage' || this.view.tab !== 'fleet') { this.miniatureHoverId = null; this.miniatureFocusId = null; this.onMiniatureInteraction(null); }
+    this.onMiniatures(this.getFleetMiniatureTargets());
   }
   /** Hide the entire presentation during gameplay, including its keyboard targets. */
   setVisible(visible) {
     this.visible = !!visible; this.root.hidden = !this.visible;
     this.root.setAttribute('aria-hidden', String(!this.visible));
     this.root.inert = !this.visible;
+    if (!this.visible) { this.miniatureHoverId = null; this.miniatureFocusId = null; this.onMiniatureInteraction(null); }
   }
   /** Disable mutations while the controller waits for a real asynchronous outcome. */
   setBusy(busy, message = 'Подождём подтверждения…') {
@@ -291,7 +297,31 @@ export class GarageUI {
   /** Remove only this presenter's listeners and nodes. */
   dispose() {
     this.root.removeEventListener('click', this.clickHandler); this.root.removeEventListener('change', this.changeHandler); this.root.removeEventListener('keydown', this.keyHandler);
+    for (const [type, handler] of Object.entries(this.miniatureHandlers)) this.root.removeEventListener(type, handler);
+    this.onMiniatureInteraction(null); this.onMiniatures([]);
     this.root.replaceChildren(); this.root.classList.remove('garage-shell'); this.disposed = true;
+  }
+  /** Exact authored-model targets; unowned catalog entries always use their stock appearance. */
+  getFleetMiniatureTargets() {
+    if (this.view.screen !== 'garage' || this.view.tab !== 'fleet') return [];
+    return Array.from(this.root.querySelectorAll('[data-fleet-model]')).map(canvas => {
+      const id=canvas.dataset.fleetModel,car=this.view.vehicles.find(item=>item.id===id);
+      return {id,canvas,appearance:car?.owned?{...(this.view.profile.loadouts?.[id]?.cosmetics||{})}:{}};
+    });
+  }
+  /** Hover/focus drive only visual model rotation; touch selection remains a normal catalog action. */
+  handleMiniatureInteraction(event) {
+    if (!this.visible || this.busy || this.root.inert || this.settingsOpen || this.view.platform.conflict || this.view.loading?.adPending || this.view.screen !== 'garage' || this.view.tab !== 'fleet') return;
+    const row=event.target.closest?.('[data-fleet-id]');if(!row||!this.root.contains(row))return;
+    const id=row.dataset.fleetId;if(!this.view.vehicles.some(car=>car.id===id))return;
+    if(event.type==='pointerdown'&&event.pointerType==='touch'){this.onMiniatureInteraction(id,'touch');return;}
+    if(event.pointerType==='touch')return;
+    if(event.relatedTarget&&row.contains(event.relatedTarget))return;
+    if(event.type==='pointerover')this.miniatureHoverId=id;
+    if(event.type==='pointerout'&&this.miniatureHoverId===id)this.miniatureHoverId=null;
+    if(event.type==='focusin')this.miniatureFocusId=id;
+    if(event.type==='focusout'&&this.miniatureFocusId===id)this.miniatureFocusId=null;
+    this.onMiniatureInteraction(this.miniatureHoverId||this.miniatureFocusId||null,event.type.startsWith('focus')?'focus':'hover');
   }
   /** Create one controller action button with a safe serialized payload. */
   button(text, action, { primary = false, iconName, disabled = false, className = '', title } = {}) {
@@ -479,9 +509,14 @@ export class GarageUI {
     rail.append(nav, this.renderTierCompact()); garage.append(rail);
     const stage = element(this.doc, 'section', 'gs-stage'); stage.setAttribute('aria-label', `Машина в боксе: ${this.view.selected.name}`);
     const title = element(this.doc, 'div', 'gs-stage-heading');
-    const heading = element(this.doc, 'h1', 'gs-vehicle-title', this.view.selected.name); heading.tabIndex = -1; heading.dataset.gsHeading = 'true'; title.append(heading);
+    const heading = element(this.doc, 'h1', 'gs-vehicle-title gs-car-type', this.view.selected.name); heading.tabIndex = -1; heading.dataset.gsHeading = 'true';
+    // Keep the established camera-fit reservation, but expose only the lower-right heading.
+    const reservation = element(this.doc, 'div', 'gs-car-type gs-title-reservation', this.view.selected.name); reservation.setAttribute('aria-hidden', 'true'); title.append(reservation);
     stage.append(title);
     const stageBottom = element(this.doc, 'div', 'gs-stage-bottom');
+    const titleDock = element(this.doc, 'div', 'gs-vehicle-title-dock'); titleDock.append(heading);
+    const stageActions = element(this.doc, 'div', 'gs-stage-actions');
+    stageBottom.append(titleDock, stageActions);
     const inspection = element(this.doc, 'div', 'gs-inspection'); inspection.setAttribute('role', 'group'); inspection.setAttribute('aria-label', 'Осмотр автомобиля');
     for (const view of INSPECTION_VIEWS) {
       const available = canInspect(view.id, this.view.selected.id);
@@ -490,16 +525,17 @@ export class GarageUI {
       button.setAttribute('aria-label', available ? view.description : 'Салон: доступен только у родстера');
       inspection.append(button);
     }
-    stageBottom.append(inspection);
+    stageActions.append(inspection);
     const status = element(this.doc, 'div', 'gs-build-status'); status.append(element(this.doc, 'span', 'gs-status-dot'), element(this.doc, 'span', '', this.view.settings.runMode === 'tuned' ? 'Настроенный класс · отдельный рекорд' : 'Заводской класс · без улучшений'));
-    stageBottom.append(status);
+    stageActions.append(status);
     const drawer = this.localButton('', 'toggleDrawer', 'settings', 'gs-drawer-toggle'); drawer.setAttribute('aria-label', 'Параметры и каталог'); drawer.title = 'Параметры и каталог'; drawer.setAttribute('aria-expanded', String(this.mobileOpen)); drawer.setAttribute('aria-controls', 'gs-workbench'); stageBottom.append(drawer);
     stage.append(stageBottom); garage.append(stage);
     const panel = element(this.doc, 'section', 'gs-workbench'); panel.id = 'gs-workbench'; panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', `gs-tab-${this.view.tab}`); panel.tabIndex = 0; panel.dataset.gsFocus = 'workbench';
     const tab = GARAGE_TABS.find(item => item.id === this.view.tab);
     const panelHead = element(this.doc, 'div', 'gs-panel-heading'); panelHead.append(element(this.doc, 'h2', '', tab.name)); panel.append(panelHead);
     const renderer = { fleet: 'renderFleet', style: 'renderStyle', engineering: 'renderEngineering', contracts: 'renderContracts', season: 'renderSeason' }[this.view.tab];
-    panel.append(this[renderer]()); garage.append(panel); return garage;
+    panel.append(this[renderer]());
+    garage.append(panel); return garage;
   }
   /** A visible four-step upgrade path, not a hidden store destination. */
   renderTierCompact() {
@@ -536,8 +572,10 @@ export class GarageUI {
     const list = element(this.doc, 'div', 'gs-vehicle-list');
     for (const [index, car] of this.view.vehicles.entries()) {
       const selected = car.id === this.view.selected.id;
-      const button = this.button('', { type: 'selectVehicle', id: car.id }, { className: 'gs-vehicle-row' }); button.setAttribute('aria-pressed', String(selected));
-      const thumb = element(this.doc, 'div', `gs-car-thumb gs-car-${car.id}`); thumb.setAttribute('aria-hidden', 'true'); thumb.append(icon(this.doc, 'car'));
+      const button = this.button('', { type: 'selectVehicle', id: car.id }, { className: 'gs-vehicle-row' }); button.setAttribute('aria-pressed', String(selected)); button.dataset.fleetId=car.id;
+      const thumb = element(this.doc, 'div', 'gs-car-thumb'); thumb.setAttribute('aria-hidden', 'true'); thumb.dataset.state='pending';
+      const canvas=element(this.doc,'canvas','gs-car-miniature');canvas.width=320;canvas.height=180;canvas.dataset.fleetModel=car.id;
+      thumb.append(canvas,element(this.doc,'span','gs-miniature-status','3D'));
       const copy = element(this.doc, 'div', 'gs-vehicle-row-copy'); copy.append(element(this.doc, 'strong', '', car.name), element(this.doc, 'span', '', car.owned ? car.id === 'rocket' ? 'Стартовая машина · в гараже' : 'В твоём гараже' : car.price == null ? 'Скоро в каталоге' : `${garageNumber(car.price)} ₵`));
       button.append(element(this.doc, 'span', 'gs-list-index', String(index + 1).padStart(2, '0')), thumb, copy, icon(this.doc, selected ? 'check' : 'arrow')); list.append(button);
     }

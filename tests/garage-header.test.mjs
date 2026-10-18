@@ -100,15 +100,15 @@ test('garage edge-label readability uses text shadow only, not new backplates ac
   assert.deepEqual(Object.keys(override), ['text-shadow'], 'Readability must not add or expand any opaque panel');
 });
 
-test('only the garage vehicle title rises, with a smaller short-screen offset and unchanged font/layout', async () => {
+test('garage selected title docks inside the stage opposite controls and wraps by available width', async () => {
   const css = await readFile(new URL('../styles/garage.css', import.meta.url), 'utf8');
-  const selector = ".garage-shell[data-screen='garage'] .gs-vehicle-title";
-  const rules = rulesFor(css, selector);
-  assert.deepEqual(rules, [{ transform: 'translateY(-20px)' }, { transform: 'translateY(-8px)' }],
-    'Move only the vehicle label visually, without changing font, margins, stage geometry or other chrome');
-  assert.match(css, /@media\s*\(max-height:\s*500px\)\s*\{\s*\.garage-shell\[data-screen='garage'\]\s+\.gs-vehicle-title\s*\{\s*transform:\s*translateY\(-8px\);?\s*\}/,
-    'Short landscape keeps the smaller rise so the vehicle name remains separate from the game wordmark');
-  for (const rule of rulesFor(css, '.garage-shell .gs-vehicle-title')) {
-    assert.equal(rule.transform, undefined, 'The new title offset must not leak to unscoped screens');
-  }
+  const row = Object.assign({}, ...rulesFor(css, ".garage-shell[data-screen='garage'] .gs-stage-bottom"));
+  assert.equal(row.display,'flex');assert.equal(row['flex-wrap'],'wrap');
+  const dock = Object.assign({}, ...rulesFor(css, ".garage-shell[data-screen='garage'] .gs-vehicle-title-dock"));
+  assert.equal(dock.flex,'1 0 auto');assert.equal(dock['text-align'],'right');assert.equal(dock.position,undefined);assert.equal(dock['max-width'],'100%');
+  const title = Object.assign({}, ...rulesFor(css, ".garage-shell[data-screen='garage'] .gs-vehicle-title-dock > .gs-vehicle-title"));
+  assert.equal(title.margin,'0');assert.equal(title.font,undefined);assert.equal(title.transform,undefined);
+  assert.match(css,/font: italic 400 clamp\(28px, 3vw, 47px\)\/1\.08 var\(--gs-editorial, Georgia, serif\)/);
+  assert.equal(Object.assign({}, ...rulesFor(css, ".garage-shell[data-screen='garage'] .gs-title-reservation")).visibility,'hidden');
+  assert.equal(css.includes('.gs-workbench-column'),false,'Workbench retains its original full-height column');
 });

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
+import { bindGarageOrbitInput } from '../src/garage-orbit-input.js';
 import { Game } from '../src/game.js';
 import { RunTelemetry } from '../src/run-telemetry.js';
 import { createProgressionStorage, PROGRESSION_STORAGE_KEY } from '../src/progression-storage.js';
@@ -21,6 +22,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
   let platformState={generation:0,identity:null};
   const cloudSaves=[],cloudWrites=[];
   const saved = new Map(Object.entries(initialStorage)), listeners = new Map(), nodes = new Map(), requests = [];
+  const listen=(key,callback)=>{const prior=listeners.get(key);listeners.set(key,prior?event=>{prior(event);callback(event);}:callback);};
   const localStorage = { getItem:key=>saved.get(key)||null, setItem(key,value){if(failStorageWrites){const error=new Error('quota');error.name='QuotaExceededError';throw error;}saved.set(key,value);} };
   const profileStore = createProgressionStorage({provider:localStorage,idFactory:(()=>{let n=0;return ()=>`run_${++n}`;})()});
   if (initialProfile) profileStore.replaceFromCloud(initialProfile);
@@ -37,9 +39,9 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
   })}:sdkApi;
   const node = id => {
     if (!nodes.has(id)) nodes.set(id, {hidden:false, disabled:false, dataset:{}, style:{}, attributes:{},
-      addEventListener(name, callback) { listeners.set(`${id}:${name}`,callback); },
+      addEventListener(name, callback) { listen(`${id}:${name}`,callback); },
       setAttribute(key,value) { this.attributes[key]=value; }, getAttribute(key) { return this.attributes[key]??null; },
-      setPointerCapture() {}, closest() { return null; }});
+      querySelector(){return null;},getBoundingClientRect(){return {x:0,y:0,left:0,top:0,right:1200,bottom:800,width:1200,height:800};},setPointerCapture() {}, closest() { return null; }});
     return nodes.get(id);
   };
   class UI {
@@ -51,11 +53,13 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     help() { this.overlay.hidden=false;this.modalType='help'; }
   }
   class GarageUI {
+    constructor(options){this.options=options;}
+    getFleetMiniatureTargets(){return this.targets||[];}
     render(view) { this.view=view; } setVisible(value) { this.visible=value; } setBusy(value) { this.busy=value; }
     notice(message) { this.lastNotice=message; }
   }
   class RoadRenderer {
-    constructor(_canvas,_progress,options) { this.ready=Promise.resolve();this.renderer={};this.cosmeticCapabilities={};this.cameraMode=options.cameraMode;this.quality=options.quality;this.playerMirrors={suspend(){}}; }
+    constructor(_canvas,_progress,options) { this.ready=Promise.resolve();this.renderer={};this.scene={environment:null};this.cosmeticCapabilities={};this.cameraMode=options.cameraMode;this.quality=options.quality;this.playerMirrors={suspend(){}}; }
     setRoute(value) { this.route=value; } setQuality(value) { this.quality=value; }
     setCameraMode(value) { this.cameraMode=value; } setLookDirection() {} resize() {} effect() {} render() {}
     selectOwnedVehicle(id) { this.playerVehicleId=id; } createShowcaseVehicle(id) { return {id}; }
@@ -73,17 +77,24 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
       this.tier=tier;this.ready=true;return true;
     }
     render() { return true; } orbit() {}
+    advance(dt,options){this.lastAdvance={dt,...options};return false;}
+  }
+  class FleetMiniatures {
+    constructor(options){this.options=options;this.activeId=null;}
+    sync(targets,options){this.targets=targets;this.scope=options.scopeKey;}
+    setInteraction(id){this.activeId=id;}
+    update(dt,options){this.lastUpdate={dt,...options};return false;}
   }
   class DrivingInput { clear() {} key() {} read() { return {}; } active() {return false;} set() {} release() {} }
   class CockpitGlanceControls { constructor(){this.direction=0;} clear() {} setEnabled(value) {this.enabled=value;} release() {} }
   class GameAudio { constructor(enabled){this.enabled=enabled;} update() {} tone() {} async unlock() {} }
   const sdk={init:async()=>platformSdk,get:()=>platformSdk,on(){},ready(){readyCalls++;},gameplay(){}};
   const context=vm.createContext({console,structuredClone,TextEncoder,Promise,Map,Set,Math,Number,Object,JSON,
-    document:{getElementById:node,querySelector:node,querySelectorAll:selector=>selector==='[data-route]'?[Object.assign(node('route-neon'),{dataset:{route:'neon'}})]:selector==='[data-difficulty]'?[Object.assign(node('difficulty-rush'),{dataset:{difficulty:'rush'}})]:[],addEventListener(name,callback){listeners.set(`document:${name}`,callback);},hidden:false,documentElement:{}},
-    window:{addEventListener(name,callback){listeners.set(`window:${name}`,callback);}},
+    document:{getElementById:node,querySelector:node,querySelectorAll:selector=>selector==='[data-route]'?[Object.assign(node('route-neon'),{dataset:{route:'neon'}})]:selector==='[data-difficulty]'?[Object.assign(node('difficulty-rush'),{dataset:{difficulty:'rush'}})]:[],addEventListener(name,callback){listen(`document:${name}`,callback);},hidden:false,documentElement:{}},
+    window:{addEventListener(name,callback){listen(`window:${name}`,callback);}},
     performance:{now:()=>0},innerWidth:1200,innerHeight:800,requestAnimationFrame(){},
     matchMedia:()=>({matches:false,addEventListener(){}}),location:{reload(){}},
-    Game,RunTelemetry,deriveGarageView,getEngineeringModifiers,LIMITS,CATALOG,ADS,vehicleDefinition,
+    Game,bindGarageOrbitInput,RunTelemetry,deriveGarageView,getEngineeringModifiers,LIMITS,CATALOG,ADS,vehicleDefinition,
     createStorage:()=>createStorage(()=>localStorage),createProgressionStorage:()=>({...profileStore,dispatch:action=>rejectSettings&&action.type==='UPDATE_SETTINGS'?{ok:false,changed:false,reason:'future-version-read-only',profile:profileStore.get(),persistence:profileStore.status()}:profileStore.dispatch(structuredClone(action))}),
     createThumbDrive:()=>({setEnabled(){},clear(){}}),createOrientationGate:({onChange})=>{orientationHandler=onChange;onChange(portrait);return {blocked:portrait};},createSdk:()=>sdk,createLifecycle,createAds,createAdCadence,loadOwnGames,openOwnGame,
     createPlatformServices:options=>{
@@ -91,11 +102,11 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
       if(useRealPlatform)return platformServices=createRealPlatformServices({...options,minSaveIntervalMs:0});
       return {getState:()=>structuredClone(platformState),async init(){if(cloudProfile){profileStore.replaceFromCloud(cloudProfile);onState();}},queueSave(snapshot){cloudSaves.push(structuredClone(snapshot));},async authorize(){},async resolveCloudConflict(){}};
     },
-    UI,GarageUI,RoadRenderer,GarageScene,DrivingInput,CockpitGlanceControls,GameAudio,
+    UI,GarageUI,RoadRenderer,GarageScene,FleetMiniatures,DrivingInput,CockpitGlanceControls,GameAudio,
     cameraShortcutAllowed:()=>false,glanceShortcutAllowed:()=>false,normalizeRenderQuality:value=>value,observeRenderPixelRatio() {},
   });
   const source=(await readFile(new URL('../src/main.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
-  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,ui,storage,lifecycle,garageDirty}}};',context,{filename:'src/main.js'});
+  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,syncFleetMiniatures,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,ui,storage,lifecycle,garageDirty,fleetMiniatures,fleetTouchRemaining}}};',context,{filename:'src/main.js'});
   if(useRealPlatform)await platformServices.init();
   for(let i=0;i<5;i++)await Promise.resolve();
   return {api:context.controller,profileStore,requests,listeners,nodes,cloudSaves,cloudWrites,platformServices,storageValues:saved,rejectSettings(){rejectSettings=true;},failStorageWrites(){failStorageWrites=true;},failCloudWrites(){failCloudWrites=true;},replaceCloud(profile){const result=profileStore.replaceFromCloud(profile);platformChanged();return result;},setPlatformState(patch){platformState={...platformState,...patch};platformChanged();},setOrientation:value=>orientationHandler(value),get readyCalls(){return readyCalls;}};
@@ -483,4 +494,41 @@ test('a settings cloud-write failure reports an error without reverting accepted
   assert.equal(state.local.localSaved,true);assert.equal(profile.settings.sound,true);
   assert.equal(h.api.state.settings.sound,true);assert.equal(h.api.state.audio.enabled,true);
   assert.equal(h.api.state.storage.get().sound,true);
+});
+
+
+test('actual menu loop pauses workshop media for each lifecycle owner, orientation and settings without overriding another pause',async()=>{
+  const {api,setOrientation}=await controller();
+  api.tick(16);assert.equal(api.state.garageScene.lastAdvance.visible,true);assert.equal(api.state.garageScene.lastAdvance.mediaActive,true);
+  for(const reason of ['ad','platform','hidden','blur','account-selection','payment']){
+    api.state.lifecycle.pause(reason);api.tick(32);assert.equal(api.state.garageScene.lastAdvance.mediaActive,false,reason);
+    api.state.lifecycle.pause('another-owner');api.state.lifecycle.resume(reason);api.tick(48);assert.equal(api.state.garageScene.lastAdvance.mediaActive,false);
+    api.state.lifecycle.resume('another-owner');api.tick(64);assert.equal(api.state.garageScene.lastAdvance.mediaActive,true);
+  }
+  setOrientation(true);api.tick(80);assert.equal(api.state.garageScene.lastAdvance.visible,false);assert.equal(api.state.garageScene.lastAdvance.mediaActive,false);
+  setOrientation(false);api.state.garageUI.settingsOpen=true;api.tick(96);assert.equal(api.state.garageScene.lastAdvance.mediaActive,false);
+  api.state.garageUI.settingsOpen=false;api.state.renderer.reducedMotion=true;api.tick(112);assert.equal(api.state.garageScene.lastAdvance.reducedMotion,true);
+  await api.startRun();api.tick(128);assert.equal(api.state.garageScene.lastAdvance.visible,false,'Driving never advances a hidden garage film');
+});
+
+test('controller miniature pass runs only in visible fleet and honors independent pauses and overlays',async()=>{
+  const h=await controller();await h.api.handleGarageAction({type:'navigate',screen:'garage',tab:'fleet'});h.api.tick(100);
+  const fleet=h.api.state.fleetMiniatures;assert.equal(fleet.lastUpdate.visible,true);assert.equal(fleet.lastUpdate.paused,false);
+  for(const reason of ['ad','hidden','payment','account-selection']){h.api.state.lifecycle.pause(reason);h.api.tick(200);assert.equal(fleet.lastUpdate.paused,true,reason);h.api.state.lifecycle.resume(reason);}
+  h.api.state.garageUI.settingsOpen=true;h.api.tick(300);assert.equal(fleet.lastUpdate.paused,true);h.api.state.garageUI.settingsOpen=false;
+  h.setOrientation(true);h.api.tick(400);assert.equal(fleet.lastUpdate.visible,false);h.setOrientation(false);
+  await h.api.handleGarageAction({type:'navigate',screen:'garage',tab:'style'});h.api.tick(500);assert.equal(fleet.lastUpdate.visible,false);
+});
+test('controller miniature cache scope changes on profile replacement, not a local selection',async()=>{
+  const h=await controller();h.api.syncFleetMiniatures([]);const first=h.api.state.fleetMiniatures.scope;
+  h.api.syncFleetMiniatures([]);assert.equal(h.api.state.fleetMiniatures.scope,first);
+  const profile=createProfile({id:'other_profile',now:100});h.replaceCloud(profile);h.api.syncFleetMiniatures([]);assert.notEqual(h.api.state.fleetMiniatures.scope,first);assert.match(h.api.state.fleetMiniatures.scope,/^other_profile:/);
+});
+
+test('successive touch selections survive old-row blur and return after the bounded visual turn',async()=>{
+  const h=await controller();await h.api.handleGarageAction({type:'navigate',screen:'garage',tab:'fleet'});const send=h.api.state.garageUI.options.onMiniatureInteraction;
+  send('rocket','touch');send('rocket','focus');assert.equal(h.api.state.fleetMiniatures.activeId,'rocket');
+  send('hatch','touch');send(null,'focus');send('hatch','focus');assert.equal(h.api.state.fleetMiniatures.activeId,'hatch');assert.equal(h.api.state.fleetTouchRemaining,1.8);
+  for(let i=1;i<=30;i++)h.api.tick(i*100);assert.equal(h.api.state.fleetMiniatures.activeId,null);assert.equal(h.api.state.fleetTouchRemaining,0);
+  send('sedan','touch');send('van','focus');assert.equal(h.api.state.fleetMiniatures.activeId,'van');assert.equal(h.api.state.fleetTouchRemaining,0,'Deliberate keyboard focus takes over');
 });

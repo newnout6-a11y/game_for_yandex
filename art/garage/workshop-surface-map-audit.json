@@ -1,0 +1,724 @@
+{
+  "version": 2,
+  "source": "scripts/garage_surface_finish.py",
+  "provenance": "The six wall/floor maps are original reproducible periodic mineral aggregate and physical microrelief, with no photographic or third-party input. Physical normals derive from metre-scale height gradients. The separate television poster is derived from user-supplied third-party Tesla footage, not original game artwork; its redistribution license is unverified and its provenance is recorded separately.",
+  "resolution": 512,
+  "surfaces": {
+    "wall": {
+      "material": "Warm architectural concrete",
+      "tile_metres": 0.75,
+      "seed": 9351,
+      "roughness": 0.84,
+      "description": "Matte mineral plaster with restrained 4\u201325 mm aggregate and shallow pores",
+      "uv_scale": 2.6666666666666665,
+      "images": {
+        "basecolor": {
+          "file": "public/assets/garage/original-workshop-wall-basecolor.png",
+          "bytes": 132414,
+          "sha256": "8ef7007f9ad917e34de0a561b240d641e501a318b0335a07c7fdba5400961d7c",
+          "dimensions": [
+            512,
+            512
+          ],
+          "colour_space": "sRGB"
+        },
+        "normal": {
+          "file": "public/assets/garage/original-workshop-wall-normal.png",
+          "bytes": 254293,
+          "sha256": "f3922cb4e56f7ed1433f395225ae73288162287ad6de21adde4834f97c4acca3",
+          "dimensions": [
+            512,
+            512
+          ],
+          "colour_space": "Non-Color"
+        },
+        "roughness": {
+          "file": "public/assets/garage/original-workshop-wall-roughness.png",
+          "bytes": 147886,
+          "sha256": "eaf7dd4bc887aa1b39fb011f5debdcc3e11c0908e73706e370b82ba2564e6da8",
+          "dimensions": [
+            512,
+            512
+          ],
+          "colour_space": "Non-Color"
+        }
+      }
+    },
+    "floor": {
+      "material": "Original mottled concrete",
+      "tile_metres": 1.0,
+      "seed": 9352,
+      "roughness": 0.77,
+      "description": "Honed workshop concrete with 5\u201335 mm mineral aggregate and shallow trowel relief",
+      "uv_scale": 2.0,
+      "images": {
+        "basecolor": {
+          "file": "public/assets/garage/original-workshop-floor-basecolor.png",
+          "bytes": 166778,
+          "sha256": "434a192bedbe72a29fb58e756cccac7cc97f358ec1cf94be76bca75ed34eed69",
+          "dimensions": [
+            512,
+            512
+          ],
+          "colour_space": "sRGB"
+        },
+        "normal": {
+          "file": "public/assets/garage/original-workshop-floor-normal.png",
+          "bytes": 192276,
+          "sha256": "9fe07834ef5166d28dc9bba02a7dafc0e56211d790ace34c5d2f7a207e6b08a1",
+          "dimensions": [
+            512,
+            512
+          ],
+          "colour_space": "Non-Color"
+        },
+        "roughness": {
+          "file": "public/assets/garage/original-workshop-floor-roughness.png",
+          "bytes": 166674,
+          "sha256": "87112579119c470c7f4279c7a7ceab7a510fe8bfaa5787ba78216c95651a6490",
+          "dimensions": [
+            512,
+            512
+          ],
+          "colour_space": "Non-Color"
+        }
+      }
+    }
+  },
+  "approved_new_images": {
+    "roadster-screen-poster": {
+      "file": "public/assets/garage/roadster-screen-poster.jpg",
+      "bytes": 20303,
+      "sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+      "dimensions": [
+        640,
+        360
+      ],
+      "provenance": "art/garage/screen/supplied-video-provenance.json",
+      "authorship": "Poster derived from third-party Tesla footage supplied by the user; not original game artwork.",
+      "redistribution_license": "Unverified; not inferred from user possession. Public release approval is separate."
+    }
+  },
+  "source_png_bytes": 1060321,
+  "gpu_estimate": {
+    "method": "Approximate RGBA8 pixel storage including complete mip chains, derived from actual exported PNG dimensions. Not measured hardware allocation; excludes driver padding, texture objects, PMREM, other room images and geometry.",
+    "reuse": "Six distinct surface images per room. Each GLB embeds its own images, and GarageScene caches separate loader results per tier; no cross-room image-source reuse is authored.",
+    "all_four_cached_surface_bytes_before": 25515280,
+    "all_four_cached_surface_bytes_after": 33554400,
+    "all_four_cached_surface_byte_delta": 8039120
+  },
+  "rooms": [
+    {
+      "tier": 1,
+      "file": "public/assets/garage/tier1.glb",
+      "before": {
+        "bytes": 4550288,
+        "sha256": "9dfaee4cc01b2080fb0a56e9f86bbfcc6216b3201e3b208923f05adf3f6c2f4a",
+        "image_bytes": 2104671,
+        "surface_image_bytes": 1517297,
+        "non_image_bytes": 2445617,
+        "images": {
+          "original-concrete-grain": 816362,
+          "original-concrete-roughness": 691489,
+          "original-rose-velocity-mural": 587374,
+          "original-wall-fine-mineral": 9446
+        },
+        "image_details": {
+          "original-concrete-grain": {
+            "dimensions": [
+              768,
+              768
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 3145720
+          },
+          "original-concrete-roughness": {
+            "dimensions": [
+              768,
+              768
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 3145720
+          },
+          "original-rose-velocity-mural": {
+            "dimensions": [
+              1024,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 2796204
+          },
+          "original-wall-fine-mineral": {
+            "dimensions": [
+              128,
+              128
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 87380
+          }
+        },
+        "estimated_surface_gpu_rgba8_mip_bytes": 6378820
+      },
+      "after": {
+        "bytes": 4831864,
+        "sha256": "652446d31e1b16af24f1ae98ae181723fac6055e5530d85c7a5a0c3bb89a69bd",
+        "image_bytes": 1758074,
+        "surface_image_bytes": 1150397,
+        "non_image_bytes": 3073790,
+        "images": {
+          "roadster-screen-poster": 20303,
+          "original-workshop-floor-normal": 192276,
+          "original-workshop-floor-basecolor": 166778,
+          "original-workshop-floor-roughness": 212103,
+          "original-rose-velocity-mural": 587374,
+          "original-workshop-wall-normal": 254293,
+          "original-workshop-wall-basecolor": 132414,
+          "original-workshop-wall-roughness": 192533
+        },
+        "image_details": {
+          "roadster-screen-poster": {
+            "dimensions": [
+              640,
+              360
+            ],
+            "encoding": "JPEG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1228652
+          },
+          "original-workshop-floor-normal": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-floor-basecolor": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-floor-roughness": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-rose-velocity-mural": {
+            "dimensions": [
+              1024,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 2796204
+          },
+          "original-workshop-wall-normal": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-wall-basecolor": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-wall-roughness": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          }
+        },
+        "estimated_surface_gpu_rgba8_mip_bytes": 8388600
+      },
+      "total_byte_delta": 281576,
+      "surface_image_byte_delta": -366900,
+      "non_surface_image_byte_delta": 20303,
+      "non_image_byte_delta": 628173,
+      "estimated_surface_gpu_byte_delta": 2009780
+    },
+    {
+      "tier": 2,
+      "file": "public/assets/garage/tier2.glb",
+      "before": {
+        "bytes": 4999804,
+        "sha256": "00adde49b7f94557c4f3934d981bc59f3a0b284083b92a16bc0b8a742a3dd30a",
+        "image_bytes": 2104671,
+        "surface_image_bytes": 1517297,
+        "non_image_bytes": 2895133,
+        "images": {
+          "original-concrete-grain": 816362,
+          "original-concrete-roughness": 691489,
+          "original-rose-velocity-mural": 587374,
+          "original-wall-fine-mineral": 9446
+        },
+        "image_details": {
+          "original-concrete-grain": {
+            "dimensions": [
+              768,
+              768
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 3145720
+          },
+          "original-concrete-roughness": {
+            "dimensions": [
+              768,
+              768
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 3145720
+          },
+          "original-rose-velocity-mural": {
+            "dimensions": [
+              1024,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 2796204
+          },
+          "original-wall-fine-mineral": {
+            "dimensions": [
+              128,
+              128
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 87380
+          }
+        },
+        "estimated_surface_gpu_rgba8_mip_bytes": 6378820
+      },
+      "after": {
+        "bytes": 5338080,
+        "sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
+        "image_bytes": 1758074,
+        "surface_image_bytes": 1150397,
+        "non_image_bytes": 3580006,
+        "images": {
+          "roadster-screen-poster": 20303,
+          "original-workshop-floor-normal": 192276,
+          "original-workshop-floor-basecolor": 166778,
+          "original-workshop-floor-roughness": 212103,
+          "original-rose-velocity-mural": 587374,
+          "original-workshop-wall-normal": 254293,
+          "original-workshop-wall-basecolor": 132414,
+          "original-workshop-wall-roughness": 192533
+        },
+        "image_details": {
+          "roadster-screen-poster": {
+            "dimensions": [
+              640,
+              360
+            ],
+            "encoding": "JPEG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1228652
+          },
+          "original-workshop-floor-normal": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-floor-basecolor": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-floor-roughness": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-rose-velocity-mural": {
+            "dimensions": [
+              1024,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 2796204
+          },
+          "original-workshop-wall-normal": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-wall-basecolor": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-wall-roughness": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          }
+        },
+        "estimated_surface_gpu_rgba8_mip_bytes": 8388600
+      },
+      "total_byte_delta": 338276,
+      "surface_image_byte_delta": -366900,
+      "non_surface_image_byte_delta": 20303,
+      "non_image_byte_delta": 684873,
+      "estimated_surface_gpu_byte_delta": 2009780
+    },
+    {
+      "tier": 3,
+      "file": "public/assets/garage/tier3.glb",
+      "before": {
+        "bytes": 4409396,
+        "sha256": "93839c137686cfc8f94ff31c4fff240a4602465e810077c7a9559bbef8625dba",
+        "image_bytes": 2104671,
+        "surface_image_bytes": 1517297,
+        "non_image_bytes": 2304725,
+        "images": {
+          "original-concrete-grain": 816362,
+          "original-concrete-roughness": 691489,
+          "original-rose-velocity-mural": 587374,
+          "original-wall-fine-mineral": 9446
+        },
+        "image_details": {
+          "original-concrete-grain": {
+            "dimensions": [
+              768,
+              768
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 3145720
+          },
+          "original-concrete-roughness": {
+            "dimensions": [
+              768,
+              768
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 3145720
+          },
+          "original-rose-velocity-mural": {
+            "dimensions": [
+              1024,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 2796204
+          },
+          "original-wall-fine-mineral": {
+            "dimensions": [
+              128,
+              128
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 87380
+          }
+        },
+        "estimated_surface_gpu_rgba8_mip_bytes": 6378820
+      },
+      "after": {
+        "bytes": 4811228,
+        "sha256": "5548bcd400de5733e42adb0b02d7ae9e1c40a86b1a60ce64a1b995d50f265495",
+        "image_bytes": 1758074,
+        "surface_image_bytes": 1150397,
+        "non_image_bytes": 3053154,
+        "images": {
+          "roadster-screen-poster": 20303,
+          "original-workshop-floor-normal": 192276,
+          "original-workshop-floor-basecolor": 166778,
+          "original-workshop-floor-roughness": 212103,
+          "original-rose-velocity-mural": 587374,
+          "original-workshop-wall-normal": 254293,
+          "original-workshop-wall-basecolor": 132414,
+          "original-workshop-wall-roughness": 192533
+        },
+        "image_details": {
+          "roadster-screen-poster": {
+            "dimensions": [
+              640,
+              360
+            ],
+            "encoding": "JPEG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1228652
+          },
+          "original-workshop-floor-normal": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-floor-basecolor": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-floor-roughness": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-rose-velocity-mural": {
+            "dimensions": [
+              1024,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 2796204
+          },
+          "original-workshop-wall-normal": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-wall-basecolor": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-wall-roughness": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          }
+        },
+        "estimated_surface_gpu_rgba8_mip_bytes": 8388600
+      },
+      "total_byte_delta": 401832,
+      "surface_image_byte_delta": -366900,
+      "non_surface_image_byte_delta": 20303,
+      "non_image_byte_delta": 748429,
+      "estimated_surface_gpu_byte_delta": 2009780
+    },
+    {
+      "tier": 4,
+      "file": "public/assets/garage/tier4.glb",
+      "before": {
+        "bytes": 4776084,
+        "sha256": "5aad391a0045906bb3a9e35ec37c9f6f3aa83db02d2e13dc54f58161af9fdc93",
+        "image_bytes": 2104671,
+        "surface_image_bytes": 1517297,
+        "non_image_bytes": 2671413,
+        "images": {
+          "original-concrete-grain": 816362,
+          "original-concrete-roughness": 691489,
+          "original-rose-velocity-mural": 587374,
+          "original-wall-fine-mineral": 9446
+        },
+        "image_details": {
+          "original-concrete-grain": {
+            "dimensions": [
+              768,
+              768
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 3145720
+          },
+          "original-concrete-roughness": {
+            "dimensions": [
+              768,
+              768
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 3145720
+          },
+          "original-rose-velocity-mural": {
+            "dimensions": [
+              1024,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 2796204
+          },
+          "original-wall-fine-mineral": {
+            "dimensions": [
+              128,
+              128
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 87380
+          }
+        },
+        "estimated_surface_gpu_rgba8_mip_bytes": 6378820
+      },
+      "after": {
+        "bytes": 5218628,
+        "sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
+        "image_bytes": 1758074,
+        "surface_image_bytes": 1150397,
+        "non_image_bytes": 3460554,
+        "images": {
+          "roadster-screen-poster": 20303,
+          "original-workshop-floor-normal": 192276,
+          "original-workshop-floor-basecolor": 166778,
+          "original-workshop-floor-roughness": 212103,
+          "original-rose-velocity-mural": 587374,
+          "original-workshop-wall-normal": 254293,
+          "original-workshop-wall-basecolor": 132414,
+          "original-workshop-wall-roughness": 192533
+        },
+        "image_details": {
+          "roadster-screen-poster": {
+            "dimensions": [
+              640,
+              360
+            ],
+            "encoding": "JPEG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1228652
+          },
+          "original-workshop-floor-normal": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-floor-basecolor": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-floor-roughness": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-rose-velocity-mural": {
+            "dimensions": [
+              1024,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 4,
+            "estimated_rgba8_full_mip_bytes": 2796204
+          },
+          "original-workshop-wall-normal": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-wall-basecolor": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          },
+          "original-workshop-wall-roughness": {
+            "dimensions": [
+              512,
+              512
+            ],
+            "encoding": "PNG",
+            "encoded_channels": 3,
+            "estimated_rgba8_full_mip_bytes": 1398100
+          }
+        },
+        "estimated_surface_gpu_rgba8_mip_bytes": 8388600
+      },
+      "total_byte_delta": 442544,
+      "surface_image_byte_delta": -366900,
+      "non_surface_image_byte_delta": 20303,
+      "non_image_byte_delta": 789141,
+      "estimated_surface_gpu_byte_delta": 2009780
+    }
+  ]
+}

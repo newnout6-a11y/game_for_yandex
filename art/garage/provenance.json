@@ -2,95 +2,243 @@
   "asset_family": "Original four-tier garage environments",
   "authoring_tool": "Blender 4.3.2",
   "created_utc_date": "2026-10-18",
-  "external_assets_used_in_exports": [],
+  "external_assets_used_in_exports": [
+    {
+      "path": "public/assets/garage/roadster-screen-poster.jpg",
+      "source": "user-provided MP4",
+      "credited_creator": "Tesla",
+      "title": "The Kickflip | Roadster",
+      "reference_url": "https://www.youtube.com/watch?v=r5vsHHPVhJg",
+      "original_game_artwork": false,
+      "redistribution_license_verified": false,
+      "usage": "One matching TV poster embedded in each room GLB; full silent supplied video is a separate runtime file.",
+      "bytes": 20303,
+      "sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+      "provenance": "art/garage/screen/supplied-video-provenance.json"
+    }
+  ],
   "transport_assets_modified": false,
   "original_content": [
     "All garage geometry and assembly details",
     "Concrete colour and roughness textures",
     "Diagnostic graphics and service markings",
-    "Rose Velocity original rose/magenta/plum wall mural, hand-authored SVG and seeded aerosol/porosity texture"
+    "Rose Velocity original rose/magenta/plum wall mural, hand-authored SVG and seeded aerosol/porosity texture",
+    "Complete front entrance and personnel door, ceiling, side returns, service panelling, original wall-mounted electrical/ventilation/cable details and tier-specific architectural progression",
+    "Distinct reverse arrival zone: charging pedestal and tethered connectors, real intake/extraction ducting, entry gate motor and manual chain, flush entrance lane/drain markings and progressive filtered air utilities",
+    "Independent physically scaled wall and floor PBR finishes, six original 512 x 512 base colour/normal/roughness maps; original rose mural and non-surface materials retained",
+    "Physical TV chassis, frame, mounting arms, cable, diffuser and independent UV display plane are original geometry. Display imagery is explicitly excluded from original-artwork claims and attributed in external_assets_used_in_exports."
   ],
   "source": "scripts/create_garage.py",
   "coordinate_system": "Metres, +Y up, -Z front in GLB",
-  "preview_car_note": "Preview images import the existing roadster for scale after export; it is absent from GLBs and editable garage sources.",
+  "preview_car_note": "Historical architectural preview renders use the project car only after room export. No vehicle geometry is saved in room GLBs or tierN.blend files. The current screen imagery is third-party Tesla footage supplied by the user, not the project Rocket.",
   "files": [
     {
       "path": "scripts/create_garage.py",
-      "sha256": "c7be859ae4833c99e0c819aca7c692420bf82639f4f81ae66756ce378b0f78e0",
-      "bytes": 44228
+      "bytes": 86312,
+      "sha256": "989a875c1afd730e2f26a6a66f143da9371561f42254b5e432580a27a7ed2b86"
     },
     {
       "path": "art/garage/tier1.blend",
-      "sha256": "ae1a934910460c50e83bf092bf3038bcda11fdb542732f4e5c8015a5fd0d7660",
-      "bytes": 7805444
+      "bytes": 10004016,
+      "sha256": "e649da776da3c5f260e7a3f05df6853a1e6a6d82c231bfb0db3cbec67a22141a"
     },
     {
       "path": "art/garage/tier2.blend",
-      "sha256": "d5cbc3a8ef672e80e95802d5667c8529c29115218950634a8e5bed3e0e816a41",
-      "bytes": 8645884
+      "bytes": 11062336,
+      "sha256": "978d728f4ad52c7c516f5bd2f8cba386589509d69bfdf8cc90a6c6a039ea4b41"
     },
     {
       "path": "art/garage/tier3.blend",
-      "sha256": "e8e103594decf8a5e5da6e2cf73b20da28996a332cd4edc9849e7514b5290a2e",
-      "bytes": 6487624
+      "bytes": 9132732,
+      "sha256": "376d07fce5b42179ba36b4a9f6aa7f3695e381e494fb647ce34af13600cc026e"
     },
     {
       "path": "art/garage/tier4.blend",
-      "sha256": "d021a3b69358b070f3686a2709c0edfbd0cb8348c99d8244071efd046515be4f",
-      "bytes": 7355756
+      "bytes": 10056168,
+      "sha256": "313b5030694560fa4c17561112b1733e549091078a650da7131628184813e920"
     },
     {
       "path": "public/assets/garage/original-concrete-grain.png",
-      "sha256": "d054dda0a071e76b3ae800bf3070675f9943c13fc318e79bb7c6e3b753acc396",
-      "bytes": 816362
+      "bytes": 816362,
+      "sha256": "d054dda0a071e76b3ae800bf3070675f9943c13fc318e79bb7c6e3b753acc396"
     },
     {
       "path": "public/assets/garage/original-concrete-roughness.png",
-      "sha256": "898f9b2706009655d122182d3577cbc046e28d3f4d4af5f90addf63ae7417bfd",
-      "bytes": 728905
+      "bytes": 728905,
+      "sha256": "898f9b2706009655d122182d3577cbc046e28d3f4d4af5f90addf63ae7417bfd"
     },
     {
       "path": "public/assets/garage/original-rose-velocity-mural.png",
-      "sha256": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd",
-      "bytes": 587374
+      "bytes": 587374,
+      "sha256": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
     },
     {
       "path": "art/garage/mural/create_mural.py",
-      "sha256": "7a9a8fb41aa3a9b90f01a466f4a2ed366ca71d68d2685927d2dd3050bee625a0",
-      "bytes": 10014
+      "bytes": 10014,
+      "sha256": "7a9a8fb41aa3a9b90f01a466f4a2ed366ca71d68d2685927d2dd3050bee625a0"
     },
     {
       "path": "art/garage/mural/rose-velocity.svg",
-      "sha256": "c746bd04bf20ef4b248ac03c0b592098dcc539d84ad8fa9eec47eddbf288ab83",
-      "bytes": 14504
+      "bytes": 14504,
+      "sha256": "c746bd04bf20ef4b248ac03c0b592098dcc539d84ad8fa9eec47eddbf288ab83"
     },
     {
       "path": "art/garage/mural/manifest.json",
-      "sha256": "9775fa659977cbb9e0a8c0dfd68040aab547b4bbb76a2710adab9e53eb7de38a",
-      "bytes": 1095
+      "bytes": 1095,
+      "sha256": "9775fa659977cbb9e0a8c0dfd68040aab547b4bbb76a2710adab9e53eb7de38a"
     },
     {
       "path": "scripts/sanitize_blend_sources.py",
-      "sha256": "fcbf4ff594c2030a4b2d9733c19f32a22fab09fc8d0625d76b9b57caee50840f",
-      "bytes": 12547
+      "bytes": 12547,
+      "sha256": "fcbf4ff594c2030a4b2d9733c19f32a22fab09fc8d0625d76b9b57caee50840f"
+    },
+    {
+      "path": "art/garage/render_previews.py",
+      "bytes": 1934,
+      "sha256": "c95ffbd1afa8da4a8bce4009695b3273b79249508dd91fcc3227503da932d018"
+    },
+    {
+      "path": "art/garage/interior-completion-audit.json",
+      "bytes": 4440,
+      "sha256": "a1e2a44bc0d1fc5492b6a26c7c9b7822f08697236fe5ce4a832d8eb9b012b95b"
+    },
+    {
+      "path": "art/garage/audit_wall_finish.py",
+      "bytes": 17308,
+      "sha256": "b0071a11d603bdd8ea879b512c43dbe6ef0f0a03e76df693023d935b0c429ed8"
+    },
+    {
+      "path": "scripts/garage_surface_finish.py",
+      "bytes": 12095,
+      "sha256": "2059b4c80f288c31da4e83d2f3ac69e12a5a4bb85087d5059ac18f88a1a9a2d4"
+    },
+    {
+      "path": "art/garage/audit_reverse_workshop.py",
+      "bytes": 6484,
+      "sha256": "3cf7105b2ecedc73176fbb99c2decdbbde04ca41ec5dd6a39d59418d0e0c27a2"
+    },
+    {
+      "path": "art/garage/reverse-workshop-source-audit.json",
+      "bytes": 247226,
+      "sha256": "2fb2bccc57ee97bb7ee9b5c8bf5b94e4eba6a8a6e535dce07d4261384124a9c2"
+    },
+    {
+      "path": "art/garage/workshop-surface-source-audit.json",
+      "bytes": 40616,
+      "sha256": "d861394f7d8b60c2c5669a3caeddd77fd6dc1f56201ab7a3fdc56aa580f51078"
+    },
+    {
+      "path": "art/garage/workshop-surface-map-audit.json",
+      "bytes": 23310,
+      "sha256": "526351d39cd4b55c967b348f43fbb4381d0c77fb2e53163ea4d535227f614293"
+    },
+    {
+      "path": "art/garage/reverse-workshop-audit.json",
+      "bytes": 17646,
+      "sha256": "78063cfe67bc363d9b7503927152ddd2231dafa866ada152ebb5f4bd55c7a880"
+    },
+    {
+      "path": "public/assets/garage/roadster-screen-poster.jpg",
+      "bytes": 20303,
+      "sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424"
+    },
+    {
+      "path": "art/garage/README.md",
+      "bytes": 16254,
+      "sha256": "af8c9071f12bc2ce85185ae17c53886919cbabd469956e12e871070c6935f0c0"
+    },
+    {
+      "path": "art/garage/export-audit.json",
+      "bytes": 2386,
+      "sha256": "9bdc97cf28156b1459cca7f1c1ea4f5d2eadae89429f7a3d9154efd414879b82"
+    },
+    {
+      "path": "art/garage/parking-envelope-audit.json",
+      "bytes": 2228,
+      "sha256": "d9f903eb2957f35a8a31429a7c2173be4bd22ab25538c7b39506fb38ff6ae195"
+    },
+    {
+      "path": "art/garage/tier1-report.json",
+      "bytes": 63777,
+      "sha256": "5efdf1b8479a841b8f8c4763e43a7d0910002dced19a73bf69262af124fe15fe"
+    },
+    {
+      "path": "art/garage/tier2-report.json",
+      "bytes": 69534,
+      "sha256": "258133ed304c68d8a14586e7cda71331eb3782bef00cff70839f45c01bc91ec4"
+    },
+    {
+      "path": "art/garage/tier3-report.json",
+      "bytes": 76628,
+      "sha256": "237b16b329cd5a7196c88dc8edacbe60f522836b9999d393d25fd2dd609a3ecd"
+    },
+    {
+      "path": "art/garage/tier4-report.json",
+      "bytes": 76552,
+      "sha256": "cc8882c8a8ad41434367b6950ec332138566f1be8c54ac030e61ccc8d7b73365"
+    },
+    {
+      "path": "public/assets/garage/original-workshop-wall-basecolor.png",
+      "bytes": 132414,
+      "sha256": "8ef7007f9ad917e34de0a561b240d641e501a318b0335a07c7fdba5400961d7c"
+    },
+    {
+      "path": "public/assets/garage/original-workshop-wall-normal.png",
+      "bytes": 254293,
+      "sha256": "f3922cb4e56f7ed1433f395225ae73288162287ad6de21adde4834f97c4acca3"
+    },
+    {
+      "path": "public/assets/garage/original-workshop-wall-roughness.png",
+      "bytes": 147886,
+      "sha256": "eaf7dd4bc887aa1b39fb011f5debdcc3e11c0908e73706e370b82ba2564e6da8"
+    },
+    {
+      "path": "public/assets/garage/original-workshop-floor-basecolor.png",
+      "bytes": 166778,
+      "sha256": "434a192bedbe72a29fb58e756cccac7cc97f358ec1cf94be76bca75ed34eed69"
+    },
+    {
+      "path": "public/assets/garage/original-workshop-floor-normal.png",
+      "bytes": 192276,
+      "sha256": "9fe07834ef5166d28dc9bba02a7dafc0e56211d790ace34c5d2f7a207e6b08a1"
+    },
+    {
+      "path": "public/assets/garage/original-workshop-floor-roughness.png",
+      "bytes": 166674,
+      "sha256": "87112579119c470c7f4279c7a7ceab7a510fe8bfaa5787ba78216c95651a6490"
+    },
+    {
+      "path": "art/garage/screen/supplied-video-provenance.json",
+      "bytes": 1480,
+      "sha256": "dd647978c2fddf7ddf7148344be550817c11fb6113ac93762d8953837f578077"
+    },
+    {
+      "path": "scripts/import_garage_screen.py",
+      "bytes": 4593,
+      "sha256": "7b2428bdebafc5182d9eb14e7b63a075935fbf497a53b9d5b105a9aefa074444"
+    },
+    {
+      "path": "public/assets/garage/roadster-screen-loop.mp4",
+      "bytes": 1707750,
+      "sha256": "ad8377d176e7c8ca152d982e35eaff15b97a35014747cc783f3baa53d064e7f5"
     }
   ],
   "exports": [
     {
       "tier": 1,
-      "glb_bytes": 4393932,
-      "sha256": "6b77c8f1c6d177a34d8ed9f0031079dc6f99be50e63a1fdd3a10adac3473d105",
-      "primitives": 17,
-      "triangles": 33202,
-      "materials": 17,
-      "embedded_images": 3,
+      "glb_bytes": 4831864,
+      "sha256": "652446d31e1b16af24f1ae98ae181723fac6055e5530d85c7a5a0c3bb89a69bd",
+      "primitives": 18,
+      "triangles": 42428,
+      "materials": 18,
+      "embedded_images": 8,
       "cameras": 0,
       "runtime_lights": 0,
       "bounds_m": {
         "min": [
           -10.12,
           -0.245,
-          -9.2
+          -9.23
         ],
         "max": [
           10.12,
@@ -106,19 +254,19 @@
     },
     {
       "tier": 2,
-      "glb_bytes": 4832924,
-      "sha256": "31f7621b8929e596ecd342effbb2c6577926bc70ba2e9beb095db79e5482c5da",
-      "primitives": 20,
-      "triangles": 40164,
-      "materials": 20,
-      "embedded_images": 3,
+      "glb_bytes": 5338080,
+      "sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
+      "primitives": 21,
+      "triangles": 50222,
+      "materials": 21,
+      "embedded_images": 8,
       "cameras": 0,
       "runtime_lights": 0,
       "bounds_m": {
         "min": [
           -10.12,
           -0.245,
-          -9.2
+          -9.23
         ],
         "max": [
           10.12,
@@ -134,19 +282,19 @@
     },
     {
       "tier": 3,
-      "glb_bytes": 4224948,
-      "sha256": "8d3a7788c2d24a008c731810d9bc06ea7d38d627694466c01bc2bc8a65523de3",
-      "primitives": 18,
-      "triangles": 26936,
-      "materials": 18,
-      "embedded_images": 3,
+      "glb_bytes": 4811228,
+      "sha256": "5548bcd400de5733e42adb0b02d7ae9e1c40a86b1a60ce64a1b995d50f265495",
+      "primitives": 20,
+      "triangles": 37834,
+      "materials": 20,
+      "embedded_images": 8,
       "cameras": 0,
       "runtime_lights": 0,
       "bounds_m": {
         "min": [
           -10.12,
           -0.245,
-          -9.2
+          -9.23
         ],
         "max": [
           10.12,
@@ -162,19 +310,19 @@
     },
     {
       "tier": 4,
-      "glb_bytes": 4593108,
-      "sha256": "fecaddad8b4d862640a0d9451f7bcbb022784b9077b3709d1d13d33fcd18c5d3",
-      "primitives": 19,
-      "triangles": 31824,
-      "materials": 19,
-      "embedded_images": 3,
+      "glb_bytes": 5218628,
+      "sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
+      "primitives": 20,
+      "triangles": 43274,
+      "materials": 20,
+      "embedded_images": 8,
       "cameras": 0,
       "runtime_lights": 0,
       "bounds_m": {
         "min": [
           -10.12,
           -0.245,
-          -9.2
+          -9.23
         ],
         "max": [
           10.12,
@@ -262,13 +410,140 @@
       512
     ],
     "texture_filter": "Bilinear magnification and mipmapped minification via glTF sampler",
-    "collision_role": "none"
+    "collision_role": "none",
+    "architecture_preservation_scope": "Historical mural-only stage before interior completion. Its hashes identify that accepted baseline. Latest exact original-mesh preservation is independently verified in reverse-workshop-source-audit.json; current exports and costs are recorded in reverse-workshop-audit.json."
   },
   "source_portability": {
     "date": "2026-10-18",
     "helper": "scripts/sanitize_blend_sources.py",
     "textures": "Packed bytes preserved; file references are relative to each editable source.",
     "preservation": "Saved and reopened in Blender; geometry, material values, node graphs, hierarchy, object transforms and packed texture bytes unchanged. Runtime GLBs were not regenerated.",
-    "scope": "Only the twelve new garage and cosmetic sources; previously published vehicle sources are untouched."
+    "scope": "Historical twelve-source portability cleanup; current garage sources are packed and verified again by reverse-workshop-source-audit.json and workshop-surface-source-audit.json. Previously published vehicle sources are untouched."
+  },
+  "interior_completion": {
+    "version": 1,
+    "generator_option": "--resume --interior-only",
+    "audit": "art/garage/interior-completion-audit.json",
+    "reverse_preview": "art/garage/previews/tier1-reverse.png",
+    "preservation": "Every accepted original source mesh, transform, UV and material assignment is unchanged, including the rose mural. Source signature is checked before and after the completion.",
+    "reverse_previews": [
+      "art/garage/previews/tier1-reverse.png",
+      "art/garage/previews/tier2-reverse.png",
+      "art/garage/previews/tier3-reverse.png",
+      "art/garage/previews/tier4-reverse.png"
+    ],
+    "preview_note": "Historical Blender shell-reference renders, before current physically scaled materials, distinct arrival equipment and user-requested television. Use final native application captures for current appearance.",
+    "scope": "Historical shell completion; all of its pre-existing source meshes are retained by the current reverse workshop upgrade."
+  },
+  "reverse_workshop": {
+    "version": 2,
+    "generator_option": "--resume --reverse-workshop-only",
+    "audit": "art/garage/reverse-workshop-audit.json",
+    "source_audit": "art/garage/reverse-workshop-source-audit.json",
+    "preservation": "Every pre-existing source mesh, transform, topology, UV and material assignment unchanged; new equipment authored only in shallow perimeter zones and true camera-solid metadata regenerated. Full orbit, parking and car assets unchanged.",
+    "runtime_preview_note": "Distinct arrival layout was reviewed first, then the user requested a large TV. TV-inclusive tier1 was reviewed natively before propagation. Earlier duplicated-bench screenshots are rejected candidates, and pre-TV entry screenshots are historical, not final appearance evidence. All-tier/mobile/orbit appearance reviewed separately in actual application captures."
+  },
+  "workshop_surface_finish": {
+    "version": 2,
+    "source": "scripts/garage_surface_finish.py",
+    "source_audit": "art/garage/workshop-surface-source-audit.json",
+    "audit": "art/garage/workshop-surface-map-audit.json",
+    "tile_metres": {
+      "wall": 0.75,
+      "floor": 1
+    },
+    "texture_dimensions_px": [
+      512,
+      512
+    ],
+    "embedded_surface_bytes": 1150397,
+    "unchanged_mural_bytes": 587374,
+    "gpu_surface_rgba8_with_mips_bytes": 8388600
+  },
+  "wall_television": {
+    "version": 1,
+    "generator_option": "--resume --screen-poster-only",
+    "material": "garage_screen_display",
+    "plane_contract": {
+      "version": 1,
+      "material": "garage_screen_display",
+      "width": 4.2,
+      "height": 2.3625,
+      "center": [
+        -9.02,
+        2.65,
+        -4.3
+      ],
+      "normal": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "corners": [
+        {
+          "uv": [
+            0,
+            0
+          ],
+          "position": [
+            -9.02,
+            1.46875,
+            -2.2
+          ]
+        },
+        {
+          "uv": [
+            1,
+            0
+          ],
+          "position": [
+            -9.02,
+            1.46875,
+            -6.4
+          ]
+        },
+        {
+          "uv": [
+            1,
+            1
+          ],
+          "position": [
+            -9.02,
+            3.83125,
+            -6.4
+          ]
+        },
+        {
+          "uv": [
+            0,
+            1
+          ],
+          "position": [
+            -9.02,
+            3.83125,
+            -2.2
+          ]
+        }
+      ],
+      "fixtureMin": [
+        -9.76,
+        1.356,
+        -6.519
+      ],
+      "fixtureMax": [
+        -8.965,
+        3.944,
+        -2.081
+      ],
+      "poster": "assets/garage/roadster-screen-poster.jpg",
+      "video": "assets/garage/roadster-screen-loop.mp4"
+    },
+    "packed_poster_bytes": 20303,
+    "movie_embedded_in_glb": false,
+    "new_material_draws": 1,
+    "dynamic_lights_added": 0,
+    "media_status": "Full user-provided Tesla video locally integrated, silent; all 1,052 frames retained. Redistribution license unverified; external publication is a separate decision.",
+    "media_provenance": "art/garage/screen/supplied-video-provenance.json",
+    "poster_only_preservation": "Saved/reopened Blender fingerprints and every non-poster GLB bufferView verified unchanged; only image data and truthful attribution extras differ."
   }
 }

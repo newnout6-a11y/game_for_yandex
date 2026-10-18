@@ -14,6 +14,7 @@ const provenance = await jsonFile('art/garage/provenance.json');
 const parkingAudit = await jsonFile('art/garage/parking-envelope-audit.json');
 const exportAudit = await jsonFile('art/garage/export-audit.json');
 const capacities = [1, 2, 3, 3];
+const screenPoster = await readFile(file('public/assets/garage/roadster-screen-poster.jpg'));
 const rejectedBrand = /aerokrai|аэрокрай|поток/iu;
 const assets = await Promise.all([1, 2, 3, 4].map(async tier => ({
   tier,
@@ -76,16 +77,25 @@ function assertClear(scene, boxes) {
 test('all four editable garage sources and original textures match reproducible provenance', async () => {
   assert.equal(provenance.source, 'scripts/create_garage.py');
   assert.match(provenance.authoring_tool, /^Blender /);
-  assert.deepEqual(provenance.external_assets_used_in_exports, []);
+  assert.equal(provenance.external_assets_used_in_exports.length, 1, 'Exactly the declared user-provided screen poster, no undeclared external room assets');
+  const supplied = provenance.external_assets_used_in_exports[0];
+  assert.equal(supplied.path, 'public/assets/garage/roadster-screen-poster.jpg');
+  assert.equal(supplied.source, 'user-provided MP4');
+  assert.equal(supplied.credited_creator, 'Tesla');
+  assert.equal(supplied.original_game_artwork, false);
+  assert.equal(supplied.redistribution_license_verified, false);
+  assert.equal(supplied.sha256, sha256(screenPoster));
   assert.equal(provenance.transport_assets_modified, false);
   assert.deepEqual(provenance.approved_display_capacity, capacities);
   assert.deepEqual(provenance.exports.map(record => record.tier), [1, 2, 3, 4]);
   assert.equal(CATALOG.brand.ru, 'Roadster'); assert.equal(CATALOG.brand.en, 'Roadster');
   // These are new garage assets only, not old save keys or historical folder names.
   assert.doesNotMatch(JSON.stringify(provenance), rejectedBrand);
-  const required = ['scripts/create_garage.py', 'scripts/sanitize_blend_sources.py', ...assets.map(({ tier }) => `art/garage/tier${tier}.blend`),
+  const required = ['scripts/create_garage.py', 'scripts/garage_surface_finish.py', 'scripts/sanitize_blend_sources.py', ...assets.map(({ tier }) => `art/garage/tier${tier}.blend`),
     'public/assets/garage/original-concrete-grain.png', 'public/assets/garage/original-concrete-roughness.png', 'public/assets/garage/original-rose-velocity-mural.png',
-    'art/garage/mural/create_mural.py', 'art/garage/mural/rose-velocity.svg', 'art/garage/mural/manifest.json'];
+    ...['wall', 'floor'].flatMap(surface => ['basecolor', 'normal', 'roughness'].map(role => `public/assets/garage/original-workshop-${surface}-${role}.png`)),
+    'public/assets/garage/roadster-screen-poster.jpg', 'public/assets/garage/roadster-screen-loop.mp4',
+    'art/garage/screen/supplied-video-provenance.json', 'scripts/import_garage_screen.py', 'art/garage/mural/create_mural.py', 'art/garage/mural/rose-velocity.svg', 'art/garage/mural/manifest.json'];
   for (const path of required) {
     const record = provenance.files.find(record => record.path === path);
     assert.ok(record, `Provenance includes ${path}`);
@@ -161,7 +171,7 @@ for (const { tier, scene, json, bytes, report } of assets) {
     assert.equal(draws, report.draw_batches); assert.equal(triangles, report.triangles);
     assert.equal(json.materials.length, draws);
     assert.ok(draws > 10 && draws <= 40); assert.ok(triangles > 20_000 && triangles <= 100_000);
-    assert.ok(bytes.length < 5_000_000, 'Single room remains below the checked 5 MB download budget');
+    assert.ok(bytes.length < 5_500_000, 'Current authored room stays below the explicit 5.5 MB equipment-plus-PBR-plus-TV budget');
     const bounds = new T.Box3().setFromObject(scene, true);
     const measured = { min: bounds.min.toArray(), max: bounds.max.toArray() };
     for (const record of [report, provenance.exports.find(item => item.tier === tier), exportAudit.find(item => item.tier === tier)]) {
@@ -173,14 +183,20 @@ for (const { tier, scene, json, bytes, report } of assets) {
     }
     assert.deepEqual(report.clear_car_zone, { x: [-2, 2], z: [-3.6, 3.6], floor_top_y: -.005 });
     assert.equal(json.buffers.length, 1); assert.equal(json.buffers[0].uri, undefined);
-    assert.deepEqual(json.images.map(image => image.name).sort(), ['original-concrete-grain', 'original-concrete-roughness', 'original-rose-velocity-mural']);
+    assert.deepEqual(json.images.map(image => image.name).sort(), ['original-rose-velocity-mural', 'roadster-screen-poster', ...['wall', 'floor'].flatMap(surface => ['basecolor', 'normal', 'roughness'].map(role => `original-workshop-${surface}-${role}`))].sort());
     const binaryHeader = 20 + bytes.readUInt32LE(12), binaryStart = binaryHeader + 8;
     assert.equal(bytes.readUInt32LE(binaryHeader + 4), 0x004e4942);
     for (const image of json.images) {
-      assert.equal(image.uri, undefined); assert.equal(image.mimeType, 'image/png');
+      assert.equal(image.uri, undefined);
+      assert.equal(image.mimeType, image.name === 'roadster-screen-poster' ? 'image/jpeg' : 'image/png');
       const view = json.bufferViews[image.bufferView], start = binaryStart + (view.byteOffset || 0);
       assert.equal(view.buffer, 0); assert.ok(start + view.byteLength <= bytes.length);
       const png = bytes.subarray(start, start + view.byteLength);
+      if (image.name === 'roadster-screen-poster') {
+        assert.equal(png.subarray(0, 2).toString('hex'), 'ffd8');
+        assert.deepEqual(png, screenPoster, 'User-provided video-derived TV poster is packed byte-exact, not recompressed or darkened');
+        continue;
+      }
       assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
       assert.equal(png.subarray(12, 16).toString(), 'IHDR');
       for (const offset of [16, 20]) assert.ok(png.readUInt32BE(offset) > 0 && png.readUInt32BE(offset) <= 1024);
@@ -201,7 +217,10 @@ for (const { tier, scene, json, bytes, report } of assets) {
     for (const name of ['Original mottled concrete', 'Warm architectural concrete']) {
       const material = json.materials.find(material => material.name === name);
       assert.ok(material.pbrMetallicRoughness.baseColorTexture);
-      assert.ok(material.pbrMetallicRoughness.metallicRoughnessTexture);
+      assert.ok(material.pbrMetallicRoughness.metallicRoughnessTexture, 'Each finish has an independent physically scaled roughness map');
+      assert.ok(material.normalTexture, 'Real glTF tangent-space normal relief, not only albedo noise');
+      assert.equal(material.pbrMetallicRoughness.roughnessFactor ?? 1, 1, 'Do not multiply an already absolute roughness map twice');
+      assert.equal(material.extras.workshop_surface_finish_version, 2);
     }
   });
 
@@ -254,8 +273,9 @@ for (const { tier, scene, json, bytes, report } of assets) {
 
   test(`garage tier ${tier}: runtime parking positions match the genuinely clear 1/2/3/3 capacity`, () => {
     // Exercise the actual placement method. No WebGL context, fake screenshot, or saved audit verdict is used.
-    const owner = { tier, scene: new T.Scene(), makeVehicle: () => new T.Group(), parkedVehicles: [], parkedKey: '' };
+    const owner = { tier, key: new T.DirectionalLight(), scene: new T.Scene(), makeVehicle: () => new T.Group(), parkedVehicles: [], parkedKey: '' };
     GarageScene.prototype.setParking.call(owner, ['hatch', 'sedan', 'van'].map(id => ({ id })));
+    assert.equal(owner.key.shadow.needsUpdate, true, 'Parking geometry invalidates the cached garage shadow');
     assert.equal(owner.parkedVehicles.length, capacities[tier - 1] - 1);
     const slots = parkingAudit.extra_slots.filter(slot => slot.tier === tier);
     assert.equal(slots.length, owner.parkedVehicles.length);

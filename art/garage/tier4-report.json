@@ -3,15 +3,15 @@
   "root": "GARAGE_TIER_04",
   "source": "art/garage/tier4.blend",
   "glb": "public/assets/garage/tier4.glb",
-  "editable_parts": 565,
-  "draw_batches": 19,
-  "triangles": 31824,
-  "vertices": 17946,
+  "editable_parts": 939,
+  "draw_batches": 20,
+  "triangles": 43274,
+  "vertices": 24468,
   "bounds_m": {
     "min": [
       -10.12,
       -0.245,
-      -9.2
+      -9.23
     ],
     "max": [
       10.12,
@@ -19,12 +19,16 @@
       8.8
     ]
   },
-  "bytes": 4593108,
-  "sha256": "fecaddad8b4d862640a0d9451f7bcbb022784b9077b3709d1d13d33fcd18c5d3",
+  "bytes": 5218628,
+  "sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
   "original_textures": [
-    "original-concrete-grain.png",
-    "original-concrete-roughness.png",
-    "original-rose-velocity-mural.png"
+    "original-rose-velocity-mural.png",
+    "original-workshop-wall-basecolor.png",
+    "original-workshop-wall-normal.png",
+    "original-workshop-wall-roughness.png",
+    "original-workshop-floor-basecolor.png",
+    "original-workshop-floor-normal.png",
+    "original-workshop-floor-roughness.png"
   ],
   "clear_car_zone": {
     "x": [
@@ -39,10 +43,4422 @@
   },
   "contains_car": false,
   "runtime_lights": 0,
+  "workshop_surface_finish_version": 2,
+  "reverse_workshop_version": 2,
+  "reverse_workshop_new_parts": 224,
+  "reverse_workshop_program": "Fleet charging and regulated utility supply",
+  "garage_screen": {
+    "version": 1,
+    "material": "garage_screen_display",
+    "width": 4.2,
+    "height": 2.3625,
+    "center": [
+      -9.02,
+      2.65,
+      -4.3
+    ],
+    "normal": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "corners": [
+      {
+        "uv": [
+          0,
+          0
+        ],
+        "position": [
+          -9.02,
+          1.46875,
+          -2.2
+        ]
+      },
+      {
+        "uv": [
+          1,
+          0
+        ],
+        "position": [
+          -9.02,
+          1.46875,
+          -6.4
+        ]
+      },
+      {
+        "uv": [
+          1,
+          1
+        ],
+        "position": [
+          -9.02,
+          3.83125,
+          -6.4
+        ]
+      },
+      {
+        "uv": [
+          0,
+          1
+        ],
+        "position": [
+          -9.02,
+          3.83125,
+          -2.2
+        ]
+      }
+    ],
+    "fixtureMin": [
+      -9.76,
+      1.356,
+      -6.519
+    ],
+    "fixtureMax": [
+      -8.965,
+      3.944,
+      -2.081
+    ],
+    "poster": "assets/garage/roadster-screen-poster.jpg",
+    "video": "assets/garage/roadster-screen-loop.mp4"
+  },
   "degenerate_cleanup": {
     "relative_cross_squared_threshold": 1e-16,
     "removed_triangles": 0,
     "parts": [],
     "export_collapsed_triangles": 0
+  },
+  "camera_interior": {
+    "version": 1,
+    "interiorMin": [
+      -9.88,
+      0.02,
+      -8.97
+    ],
+    "interiorMax": [
+      9.88,
+      6.45,
+      7.57
+    ],
+    "clearance": 0.25,
+    "orbitRadius": 6.0,
+    "obstacles": [
+      {
+        "name": "Structural steel column",
+        "min": [
+          -9.8,
+          0.0,
+          7.36
+        ],
+        "max": [
+          -9.6,
+          6.4,
+          7.58
+        ]
+      },
+      {
+        "name": "Column base plate",
+        "min": [
+          -9.9,
+          0.0,
+          7.23
+        ],
+        "max": [
+          -9.5,
+          0.11,
+          7.67
+        ]
+      },
+      {
+        "name": "Structural steel column.001",
+        "min": [
+          -5.1,
+          0.0,
+          7.36
+        ],
+        "max": [
+          -4.9,
+          6.4,
+          7.58
+        ]
+      },
+      {
+        "name": "Column base plate.001",
+        "min": [
+          -5.2,
+          0.0,
+          7.23
+        ],
+        "max": [
+          -4.8,
+          0.11,
+          7.67
+        ]
+      },
+      {
+        "name": "Structural steel column.002",
+        "min": [
+          4.9,
+          0.0,
+          7.36
+        ],
+        "max": [
+          5.1,
+          6.4,
+          7.58
+        ]
+      },
+      {
+        "name": "Column base plate.002",
+        "min": [
+          4.8,
+          0.0,
+          7.23
+        ],
+        "max": [
+          5.2,
+          0.11,
+          7.67
+        ]
+      },
+      {
+        "name": "Structural steel column.003",
+        "min": [
+          9.6,
+          0.0,
+          7.36
+        ],
+        "max": [
+          9.8,
+          6.4,
+          7.58
+        ]
+      },
+      {
+        "name": "Column base plate.003",
+        "min": [
+          9.5,
+          0.0,
+          7.23
+        ],
+        "max": [
+          9.9,
+          0.11,
+          7.67
+        ]
+      },
+      {
+        "name": "Exposed roof beam",
+        "min": [
+          -10.0,
+          6.0,
+          -4.89
+        ],
+        "max": [
+          10.0,
+          6.3,
+          -4.71
+        ]
+      },
+      {
+        "name": "Cross beam gusset",
+        "min": [
+          -8.11,
+          5.73,
+          -4.83
+        ],
+        "max": [
+          -7.89,
+          6.17,
+          -4.77
+        ]
+      },
+      {
+        "name": "Cross beam gusset.001",
+        "min": [
+          -4.11,
+          5.73,
+          -4.83
+        ],
+        "max": [
+          -3.89,
+          6.17,
+          -4.77
+        ]
+      },
+      {
+        "name": "Cross beam gusset.002",
+        "min": [
+          -0.11,
+          5.73,
+          -4.83
+        ],
+        "max": [
+          0.11,
+          6.17,
+          -4.77
+        ]
+      },
+      {
+        "name": "Cross beam gusset.003",
+        "min": [
+          3.89,
+          5.73,
+          -4.83
+        ],
+        "max": [
+          4.11,
+          6.17,
+          -4.77
+        ]
+      },
+      {
+        "name": "Cross beam gusset.004",
+        "min": [
+          7.89,
+          5.73,
+          -4.83
+        ],
+        "max": [
+          8.11,
+          6.17,
+          -4.77
+        ]
+      },
+      {
+        "name": "Exposed roof beam.001",
+        "min": [
+          -10.0,
+          6.0,
+          1.01
+        ],
+        "max": [
+          10.0,
+          6.3,
+          1.19
+        ]
+      },
+      {
+        "name": "Cross beam gusset.005",
+        "min": [
+          -8.11,
+          5.73,
+          1.07
+        ],
+        "max": [
+          -7.89,
+          6.17,
+          1.13
+        ]
+      },
+      {
+        "name": "Cross beam gusset.006",
+        "min": [
+          -4.11,
+          5.73,
+          1.07
+        ],
+        "max": [
+          -3.89,
+          6.17,
+          1.13
+        ]
+      },
+      {
+        "name": "Cross beam gusset.007",
+        "min": [
+          -0.11,
+          5.73,
+          1.07
+        ],
+        "max": [
+          0.11,
+          6.17,
+          1.13
+        ]
+      },
+      {
+        "name": "Cross beam gusset.008",
+        "min": [
+          3.89,
+          5.73,
+          1.07
+        ],
+        "max": [
+          4.11,
+          6.17,
+          1.13
+        ]
+      },
+      {
+        "name": "Cross beam gusset.009",
+        "min": [
+          7.89,
+          5.73,
+          1.07
+        ],
+        "max": [
+          8.11,
+          6.17,
+          1.13
+        ]
+      },
+      {
+        "name": "Exposed roof beam.002",
+        "min": [
+          -10.0,
+          6.0,
+          7.16
+        ],
+        "max": [
+          10.0,
+          6.3,
+          7.34
+        ]
+      },
+      {
+        "name": "Cross beam gusset.010",
+        "min": [
+          -8.11,
+          5.73,
+          7.22
+        ],
+        "max": [
+          -7.89,
+          6.17,
+          7.28
+        ]
+      },
+      {
+        "name": "Cross beam gusset.011",
+        "min": [
+          -4.11,
+          5.73,
+          7.22
+        ],
+        "max": [
+          -3.89,
+          6.17,
+          7.28
+        ]
+      },
+      {
+        "name": "Cross beam gusset.012",
+        "min": [
+          -0.11,
+          5.73,
+          7.22
+        ],
+        "max": [
+          0.11,
+          6.17,
+          7.28
+        ]
+      },
+      {
+        "name": "Cross beam gusset.013",
+        "min": [
+          3.89,
+          5.73,
+          7.22
+        ],
+        "max": [
+          4.11,
+          6.17,
+          7.28
+        ]
+      },
+      {
+        "name": "Cross beam gusset.014",
+        "min": [
+          7.89,
+          5.73,
+          7.22
+        ],
+        "max": [
+          8.11,
+          6.17,
+          7.28
+        ]
+      },
+      {
+        "name": "Ceiling longitudinal rail",
+        "min": [
+          -7.67,
+          6.29,
+          -7.0
+        ],
+        "max": [
+          -7.53,
+          6.51,
+          8.0
+        ]
+      },
+      {
+        "name": "Ceiling longitudinal rail.001",
+        "min": [
+          -0.07,
+          6.29,
+          -7.0
+        ],
+        "max": [
+          0.07,
+          6.51,
+          8.0
+        ]
+      },
+      {
+        "name": "Ceiling longitudinal rail.002",
+        "min": [
+          7.53,
+          6.29,
+          -7.0
+        ],
+        "max": [
+          7.67,
+          6.51,
+          8.0
+        ]
+      },
+      {
+        "name": "Rear wall kick plate",
+        "min": [
+          -9.85,
+          0.0,
+          7.5075
+        ],
+        "max": [
+          9.85,
+          0.46,
+          7.5525
+        ]
+      },
+      {
+        "name": "Door reveal",
+        "min": [
+          -3.96,
+          -0.075,
+          7.37
+        ],
+        "max": [
+          3.96,
+          5.425,
+          7.59
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf",
+        "min": [
+          -3.8,
+          0.02,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          0.32,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.001",
+        "min": [
+          -3.8,
+          0.34,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          0.64,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.002",
+        "min": [
+          -3.8,
+          0.66,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          0.96,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.003",
+        "min": [
+          -3.8,
+          0.98,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          1.28,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.004",
+        "min": [
+          -3.8,
+          1.3,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          1.6,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.005",
+        "min": [
+          -3.8,
+          1.62,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          1.92,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.006",
+        "min": [
+          -3.8,
+          1.94,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          2.24,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.007",
+        "min": [
+          -3.8,
+          2.26,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          2.56,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.008",
+        "min": [
+          -3.8,
+          2.58,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          2.88,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.009",
+        "min": [
+          -3.8,
+          2.9,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          3.2,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.010",
+        "min": [
+          -3.8,
+          3.22,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          3.52,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.011",
+        "min": [
+          -3.8,
+          3.54,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          3.84,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.012",
+        "min": [
+          -3.8,
+          3.86,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          4.16,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.013",
+        "min": [
+          -3.8,
+          4.18,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          4.48,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.014",
+        "min": [
+          -3.8,
+          4.5,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          4.8,
+          7.3775
+        ]
+      },
+      {
+        "name": "Insulated sectional door leaf.015",
+        "min": [
+          -3.8,
+          4.82,
+          7.3225
+        ],
+        "max": [
+          3.8,
+          5.12,
+          7.3775
+        ]
+      },
+      {
+        "name": "Door track extrusion",
+        "min": [
+          -3.96,
+          0.0,
+          7.28
+        ],
+        "max": [
+          -3.88,
+          5.35,
+          7.4
+        ]
+      },
+      {
+        "name": "Door track extrusion.001",
+        "min": [
+          3.88,
+          0.0,
+          7.28
+        ],
+        "max": [
+          3.96,
+          5.35,
+          7.4
+        ]
+      },
+      {
+        "name": "Flagship equipment wing",
+        "min": [
+          -9.1,
+          0.0,
+          6.825
+        ],
+        "max": [
+          -4.7,
+          5.8,
+          7.475
+        ]
+      },
+      {
+        "name": "Equipment cassette",
+        "min": [
+          -8.89,
+          1.65,
+          6.74
+        ],
+        "max": [
+          -7.61,
+          5.35,
+          6.82
+        ]
+      },
+      {
+        "name": "Equipment cassette.001",
+        "min": [
+          -7.54,
+          1.65,
+          6.74
+        ],
+        "max": [
+          -6.26,
+          5.35,
+          6.82
+        ]
+      },
+      {
+        "name": "Equipment cassette.002",
+        "min": [
+          -6.19,
+          1.65,
+          6.74
+        ],
+        "max": [
+          -4.91,
+          5.35,
+          6.82
+        ]
+      },
+      {
+        "name": "Folded steel cabinet",
+        "min": [
+          -9.115,
+          0.1,
+          6.175
+        ],
+        "max": [
+          -7.685,
+          1.4,
+          6.825
+        ]
+      },
+      {
+        "name": "Raised worktop lip",
+        "min": [
+          -9.14,
+          1.3975,
+          6.15
+        ],
+        "max": [
+          -7.66,
+          1.4425,
+          6.85
+        ]
+      },
+      {
+        "name": "Black top protector",
+        "min": [
+          -9.0975,
+          1.4425,
+          6.19
+        ],
+        "max": [
+          -7.7025,
+          1.4575,
+          6.81
+        ]
+      },
+      {
+        "name": "Inset drawer",
+        "min": [
+          -9.065,
+          0.211,
+          6.1495
+        ],
+        "max": [
+          -7.735,
+          0.419,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.001",
+        "min": [
+          -9.065,
+          0.441,
+          6.1495
+        ],
+        "max": [
+          -7.735,
+          0.649,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.002",
+        "min": [
+          -9.065,
+          0.671,
+          6.1495
+        ],
+        "max": [
+          -7.735,
+          0.879,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.003",
+        "min": [
+          -9.065,
+          0.901,
+          6.1495
+        ],
+        "max": [
+          -7.735,
+          1.109,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.004",
+        "min": [
+          -9.065,
+          1.131,
+          6.1495
+        ],
+        "max": [
+          -7.735,
+          1.339,
+          6.1745
+        ]
+      },
+      {
+        "name": "Cabinet plinth",
+        "min": [
+          -9.065,
+          0.0,
+          6.225
+        ],
+        "max": [
+          -7.735,
+          0.15,
+          6.775
+        ]
+      },
+      {
+        "name": "Folded steel cabinet.001",
+        "min": [
+          -7.615,
+          0.1,
+          6.175
+        ],
+        "max": [
+          -6.185,
+          1.4,
+          6.825
+        ]
+      },
+      {
+        "name": "Raised worktop lip.001",
+        "min": [
+          -7.64,
+          1.3975,
+          6.15
+        ],
+        "max": [
+          -6.16,
+          1.4425,
+          6.85
+        ]
+      },
+      {
+        "name": "Black top protector.001",
+        "min": [
+          -7.5975,
+          1.4425,
+          6.19
+        ],
+        "max": [
+          -6.2025,
+          1.4575,
+          6.81
+        ]
+      },
+      {
+        "name": "Inset drawer.005",
+        "min": [
+          -7.565,
+          0.211,
+          6.1495
+        ],
+        "max": [
+          -6.235,
+          0.419,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.006",
+        "min": [
+          -7.565,
+          0.441,
+          6.1495
+        ],
+        "max": [
+          -6.235,
+          0.649,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.007",
+        "min": [
+          -7.565,
+          0.671,
+          6.1495
+        ],
+        "max": [
+          -6.235,
+          0.879,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.008",
+        "min": [
+          -7.565,
+          0.901,
+          6.1495
+        ],
+        "max": [
+          -6.235,
+          1.109,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.009",
+        "min": [
+          -7.565,
+          1.131,
+          6.1495
+        ],
+        "max": [
+          -6.235,
+          1.339,
+          6.1745
+        ]
+      },
+      {
+        "name": "Cabinet plinth.001",
+        "min": [
+          -7.565,
+          0.0,
+          6.225
+        ],
+        "max": [
+          -6.235,
+          0.15,
+          6.775
+        ]
+      },
+      {
+        "name": "Folded steel cabinet.002",
+        "min": [
+          -6.115,
+          0.1,
+          6.175
+        ],
+        "max": [
+          -4.685,
+          1.4,
+          6.825
+        ]
+      },
+      {
+        "name": "Raised worktop lip.002",
+        "min": [
+          -6.14,
+          1.3975,
+          6.15
+        ],
+        "max": [
+          -4.66,
+          1.4425,
+          6.85
+        ]
+      },
+      {
+        "name": "Black top protector.002",
+        "min": [
+          -6.0975,
+          1.4425,
+          6.19
+        ],
+        "max": [
+          -4.7025,
+          1.4575,
+          6.81
+        ]
+      },
+      {
+        "name": "Inset drawer.010",
+        "min": [
+          -6.065,
+          0.211,
+          6.1495
+        ],
+        "max": [
+          -4.735,
+          0.419,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.011",
+        "min": [
+          -6.065,
+          0.441,
+          6.1495
+        ],
+        "max": [
+          -4.735,
+          0.649,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.012",
+        "min": [
+          -6.065,
+          0.671,
+          6.1495
+        ],
+        "max": [
+          -4.735,
+          0.879,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.013",
+        "min": [
+          -6.065,
+          0.901,
+          6.1495
+        ],
+        "max": [
+          -4.735,
+          1.109,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.014",
+        "min": [
+          -6.065,
+          1.131,
+          6.1495
+        ],
+        "max": [
+          -4.735,
+          1.339,
+          6.1745
+        ]
+      },
+      {
+        "name": "Cabinet plinth.002",
+        "min": [
+          -6.065,
+          0.0,
+          6.225
+        ],
+        "max": [
+          -4.735,
+          0.15,
+          6.775
+        ]
+      },
+      {
+        "name": "Hangar gantry column",
+        "min": [
+          -8.21,
+          0.0,
+          1.575
+        ],
+        "max": [
+          -7.79,
+          5.5,
+          2.025
+        ]
+      },
+      {
+        "name": "Gantry column foot",
+        "min": [
+          -8.43,
+          0.0,
+          1.375
+        ],
+        "max": [
+          -7.57,
+          0.16,
+          2.225
+        ]
+      },
+      {
+        "name": "Gantry upright inset",
+        "min": [
+          -8.06,
+          0.4,
+          1.5475
+        ],
+        "max": [
+          -7.94,
+          5.0,
+          1.5725
+        ]
+      },
+      {
+        "name": "Flagship equipment wing.001",
+        "min": [
+          4.7,
+          0.0,
+          6.825
+        ],
+        "max": [
+          9.1,
+          5.8,
+          7.475
+        ]
+      },
+      {
+        "name": "Equipment cassette.003",
+        "min": [
+          4.91,
+          1.65,
+          6.74
+        ],
+        "max": [
+          6.19,
+          5.35,
+          6.82
+        ]
+      },
+      {
+        "name": "Equipment cassette.004",
+        "min": [
+          6.26,
+          1.65,
+          6.74
+        ],
+        "max": [
+          7.54,
+          5.35,
+          6.82
+        ]
+      },
+      {
+        "name": "Equipment cassette.005",
+        "min": [
+          7.61,
+          1.65,
+          6.74
+        ],
+        "max": [
+          8.89,
+          5.35,
+          6.82
+        ]
+      },
+      {
+        "name": "Folded steel cabinet.003",
+        "min": [
+          4.685,
+          0.1,
+          6.175
+        ],
+        "max": [
+          6.115,
+          1.4,
+          6.825
+        ]
+      },
+      {
+        "name": "Raised worktop lip.003",
+        "min": [
+          4.66,
+          1.3975,
+          6.15
+        ],
+        "max": [
+          6.14,
+          1.4425,
+          6.85
+        ]
+      },
+      {
+        "name": "Black top protector.003",
+        "min": [
+          4.7025,
+          1.4425,
+          6.19
+        ],
+        "max": [
+          6.0975,
+          1.4575,
+          6.81
+        ]
+      },
+      {
+        "name": "Inset drawer.015",
+        "min": [
+          4.735,
+          0.211,
+          6.1495
+        ],
+        "max": [
+          6.065,
+          0.419,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.016",
+        "min": [
+          4.735,
+          0.441,
+          6.1495
+        ],
+        "max": [
+          6.065,
+          0.649,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.017",
+        "min": [
+          4.735,
+          0.671,
+          6.1495
+        ],
+        "max": [
+          6.065,
+          0.879,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.018",
+        "min": [
+          4.735,
+          0.901,
+          6.1495
+        ],
+        "max": [
+          6.065,
+          1.109,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.019",
+        "min": [
+          4.735,
+          1.131,
+          6.1495
+        ],
+        "max": [
+          6.065,
+          1.339,
+          6.1745
+        ]
+      },
+      {
+        "name": "Cabinet plinth.003",
+        "min": [
+          4.735,
+          0.0,
+          6.225
+        ],
+        "max": [
+          6.065,
+          0.15,
+          6.775
+        ]
+      },
+      {
+        "name": "Folded steel cabinet.004",
+        "min": [
+          6.185,
+          0.1,
+          6.175
+        ],
+        "max": [
+          7.615,
+          1.4,
+          6.825
+        ]
+      },
+      {
+        "name": "Raised worktop lip.004",
+        "min": [
+          6.16,
+          1.3975,
+          6.15
+        ],
+        "max": [
+          7.64,
+          1.4425,
+          6.85
+        ]
+      },
+      {
+        "name": "Black top protector.004",
+        "min": [
+          6.2025,
+          1.4425,
+          6.19
+        ],
+        "max": [
+          7.5975,
+          1.4575,
+          6.81
+        ]
+      },
+      {
+        "name": "Inset drawer.020",
+        "min": [
+          6.235,
+          0.211,
+          6.1495
+        ],
+        "max": [
+          7.565,
+          0.419,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.021",
+        "min": [
+          6.235,
+          0.441,
+          6.1495
+        ],
+        "max": [
+          7.565,
+          0.649,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.022",
+        "min": [
+          6.235,
+          0.671,
+          6.1495
+        ],
+        "max": [
+          7.565,
+          0.879,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.023",
+        "min": [
+          6.235,
+          0.901,
+          6.1495
+        ],
+        "max": [
+          7.565,
+          1.109,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.024",
+        "min": [
+          6.235,
+          1.131,
+          6.1495
+        ],
+        "max": [
+          7.565,
+          1.339,
+          6.1745
+        ]
+      },
+      {
+        "name": "Cabinet plinth.004",
+        "min": [
+          6.235,
+          0.0,
+          6.225
+        ],
+        "max": [
+          7.565,
+          0.15,
+          6.775
+        ]
+      },
+      {
+        "name": "Folded steel cabinet.005",
+        "min": [
+          7.685,
+          0.1,
+          6.175
+        ],
+        "max": [
+          9.115,
+          1.4,
+          6.825
+        ]
+      },
+      {
+        "name": "Raised worktop lip.005",
+        "min": [
+          7.66,
+          1.3975,
+          6.15
+        ],
+        "max": [
+          9.14,
+          1.4425,
+          6.85
+        ]
+      },
+      {
+        "name": "Black top protector.005",
+        "min": [
+          7.7025,
+          1.4425,
+          6.19
+        ],
+        "max": [
+          9.0975,
+          1.4575,
+          6.81
+        ]
+      },
+      {
+        "name": "Inset drawer.025",
+        "min": [
+          7.735,
+          0.211,
+          6.1495
+        ],
+        "max": [
+          9.065,
+          0.419,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.026",
+        "min": [
+          7.735,
+          0.441,
+          6.1495
+        ],
+        "max": [
+          9.065,
+          0.649,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.027",
+        "min": [
+          7.735,
+          0.671,
+          6.1495
+        ],
+        "max": [
+          9.065,
+          0.879,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.028",
+        "min": [
+          7.735,
+          0.901,
+          6.1495
+        ],
+        "max": [
+          9.065,
+          1.109,
+          6.1745
+        ]
+      },
+      {
+        "name": "Inset drawer.029",
+        "min": [
+          7.735,
+          1.131,
+          6.1495
+        ],
+        "max": [
+          9.065,
+          1.339,
+          6.1745
+        ]
+      },
+      {
+        "name": "Cabinet plinth.005",
+        "min": [
+          7.735,
+          0.0,
+          6.225
+        ],
+        "max": [
+          9.065,
+          0.15,
+          6.775
+        ]
+      },
+      {
+        "name": "Hangar gantry column.001",
+        "min": [
+          7.79,
+          0.0,
+          1.575
+        ],
+        "max": [
+          8.21,
+          5.5,
+          2.025
+        ]
+      },
+      {
+        "name": "Gantry column foot.001",
+        "min": [
+          7.57,
+          0.0,
+          1.375
+        ],
+        "max": [
+          8.43,
+          0.16,
+          2.225
+        ]
+      },
+      {
+        "name": "Gantry upright inset.001",
+        "min": [
+          7.94,
+          0.4,
+          1.5475
+        ],
+        "max": [
+          8.06,
+          5.0,
+          1.5725
+        ]
+      },
+      {
+        "name": "Hangar upper bridge",
+        "min": [
+          -8.3,
+          5.46,
+          1.55
+        ],
+        "max": [
+          8.3,
+          5.94,
+          2.05
+        ]
+      },
+      {
+        "name": "Bridge inset",
+        "min": [
+          -7.95,
+          5.52,
+          1.5075
+        ],
+        "max": [
+          7.95,
+          5.68,
+          1.5325
+        ]
+      },
+      {
+        "name": "Champfered overhead luminaire frame",
+        "min": [
+          -7.44022,
+          4.71382,
+          -3.8
+        ],
+        "max": [
+          7.44022,
+          5.59285,
+          -3.6
+        ]
+      },
+      {
+        "name": "Continuous optical diffuser",
+        "min": [
+          -7.41528,
+          4.69225,
+          -3.763
+        ],
+        "max": [
+          7.41528,
+          5.46028,
+          -3.687
+        ]
+      },
+      {
+        "name": "Champfered overhead luminaire frame.001",
+        "min": [
+          -7.44022,
+          4.71382,
+          0.1
+        ],
+        "max": [
+          7.44022,
+          5.59285,
+          0.3
+        ]
+      },
+      {
+        "name": "Continuous optical diffuser.001",
+        "min": [
+          -7.41528,
+          4.69225,
+          0.137
+        ],
+        "max": [
+          7.41528,
+          5.46028,
+          0.213
+        ]
+      },
+      {
+        "name": "Champfered overhead luminaire frame.002",
+        "min": [
+          -7.44022,
+          4.71382,
+          4.3
+        ],
+        "max": [
+          7.44022,
+          5.59285,
+          4.5
+        ]
+      },
+      {
+        "name": "Continuous optical diffuser.002",
+        "min": [
+          -7.41528,
+          4.69225,
+          4.337
+        ],
+        "max": [
+          7.41528,
+          5.46028,
+          4.413
+        ]
+      },
+      {
+        "name": "Technical island base",
+        "min": [
+          -7.3,
+          0.0,
+          2.875
+        ],
+        "max": [
+          -4.9,
+          1.2,
+          3.725
+        ]
+      },
+      {
+        "name": "Island machined work surface",
+        "min": [
+          -7.33,
+          1.1925,
+          2.85
+        ],
+        "max": [
+          -4.87,
+          1.2675,
+          3.75
+        ]
+      },
+      {
+        "name": "Island storage door",
+        "min": [
+          -7.2,
+          0.215,
+          2.8375
+        ],
+        "max": [
+          -6.5,
+          1.145,
+          2.8725
+        ]
+      },
+      {
+        "name": "Island storage door.001",
+        "min": [
+          -6.45,
+          0.215,
+          2.8375
+        ],
+        "max": [
+          -5.75,
+          1.145,
+          2.8725
+        ]
+      },
+      {
+        "name": "Island storage door.002",
+        "min": [
+          -5.7,
+          0.215,
+          2.8375
+        ],
+        "max": [
+          -5.0,
+          1.145,
+          2.8725
+        ]
+      },
+      {
+        "name": "Diagnostic display housing",
+        "min": [
+          -7.04,
+          1.6,
+          3.505
+        ],
+        "max": [
+          -5.16,
+          2.5,
+          3.595
+        ]
+      },
+      {
+        "name": "Anti-glare display",
+        "min": [
+          -7.0,
+          1.64,
+          3.494
+        ],
+        "max": [
+          -5.2,
+          2.46,
+          3.504
+        ]
+      },
+      {
+        "name": "Integrated monitor pillar",
+        "min": [
+          -6.16,
+          1.2,
+          3.51
+        ],
+        "max": [
+          -6.04,
+          2.0,
+          3.63
+        ]
+      },
+      {
+        "name": "Technical island base.001",
+        "min": [
+          4.9,
+          0.0,
+          2.875
+        ],
+        "max": [
+          7.3,
+          1.2,
+          3.725
+        ]
+      },
+      {
+        "name": "Island machined work surface.001",
+        "min": [
+          4.87,
+          1.1925,
+          2.85
+        ],
+        "max": [
+          7.33,
+          1.2675,
+          3.75
+        ]
+      },
+      {
+        "name": "Island storage door.003",
+        "min": [
+          5.0,
+          0.215,
+          2.8375
+        ],
+        "max": [
+          5.7,
+          1.145,
+          2.8725
+        ]
+      },
+      {
+        "name": "Island storage door.004",
+        "min": [
+          5.75,
+          0.215,
+          2.8375
+        ],
+        "max": [
+          6.45,
+          1.145,
+          2.8725
+        ]
+      },
+      {
+        "name": "Island storage door.005",
+        "min": [
+          6.5,
+          0.215,
+          2.8375
+        ],
+        "max": [
+          7.2,
+          1.145,
+          2.8725
+        ]
+      },
+      {
+        "name": "Diagnostic display housing.001",
+        "min": [
+          5.16,
+          1.6,
+          3.505
+        ],
+        "max": [
+          7.04,
+          2.5,
+          3.595
+        ]
+      },
+      {
+        "name": "Anti-glare display.001",
+        "min": [
+          5.2,
+          1.64,
+          3.494
+        ],
+        "max": [
+          7.0,
+          2.46,
+          3.504
+        ]
+      },
+      {
+        "name": "Integrated monitor pillar.001",
+        "min": [
+          6.04,
+          1.2,
+          3.51
+        ],
+        "max": [
+          6.16,
+          2.0,
+          3.63
+        ]
+      },
+      {
+        "name": "Spare performance tyre",
+        "min": [
+          -9.07,
+          0.36,
+          5.04
+        ],
+        "max": [
+          -8.69,
+          1.08,
+          5.76
+        ]
+      },
+      {
+        "name": "Spare wheel hollow",
+        "min": [
+          -8.685,
+          0.51,
+          5.19
+        ],
+        "max": [
+          -8.68,
+          0.93,
+          5.61
+        ]
+      },
+      {
+        "name": "Spare wheel bead",
+        "min": [
+          -8.679,
+          0.575,
+          5.255
+        ],
+        "max": [
+          -8.674,
+          0.865,
+          5.545
+        ]
+      },
+      {
+        "name": "Spare performance tyre.001",
+        "min": [
+          -8.49,
+          0.36,
+          5.04
+        ],
+        "max": [
+          -8.11,
+          1.08,
+          5.76
+        ]
+      },
+      {
+        "name": "Spare wheel hollow.001",
+        "min": [
+          -8.105,
+          0.51,
+          5.19
+        ],
+        "max": [
+          -8.1,
+          0.93,
+          5.61
+        ]
+      },
+      {
+        "name": "Spare wheel bead.001",
+        "min": [
+          -8.099,
+          0.575,
+          5.255
+        ],
+        "max": [
+          -8.094,
+          0.865,
+          5.545
+        ]
+      },
+      {
+        "name": "Spare performance tyre.002",
+        "min": [
+          -7.91,
+          0.36,
+          5.04
+        ],
+        "max": [
+          -7.53,
+          1.08,
+          5.76
+        ]
+      },
+      {
+        "name": "Spare wheel hollow.002",
+        "min": [
+          -7.525,
+          0.51,
+          5.19
+        ],
+        "max": [
+          -7.52,
+          0.93,
+          5.61
+        ]
+      },
+      {
+        "name": "Spare wheel bead.002",
+        "min": [
+          -7.519,
+          0.575,
+          5.255
+        ],
+        "max": [
+          -7.514,
+          0.865,
+          5.545
+        ]
+      },
+      {
+        "name": "Spare performance tyre.003",
+        "min": [
+          -7.33,
+          0.36,
+          5.04
+        ],
+        "max": [
+          -6.95,
+          1.08,
+          5.76
+        ]
+      },
+      {
+        "name": "Spare wheel hollow.003",
+        "min": [
+          -6.945,
+          0.51,
+          5.19
+        ],
+        "max": [
+          -6.94,
+          0.93,
+          5.61
+        ]
+      },
+      {
+        "name": "Spare wheel bead.003",
+        "min": [
+          -6.939,
+          0.575,
+          5.255
+        ],
+        "max": [
+          -6.934,
+          0.865,
+          5.545
+        ]
+      },
+      {
+        "name": "Spare performance tyre.004",
+        "min": [
+          -9.07,
+          1.41,
+          5.04
+        ],
+        "max": [
+          -8.69,
+          2.13,
+          5.76
+        ]
+      },
+      {
+        "name": "Spare wheel hollow.004",
+        "min": [
+          -8.685,
+          1.56,
+          5.19
+        ],
+        "max": [
+          -8.68,
+          1.98,
+          5.61
+        ]
+      },
+      {
+        "name": "Spare wheel bead.004",
+        "min": [
+          -8.679,
+          1.625,
+          5.255
+        ],
+        "max": [
+          -8.674,
+          1.915,
+          5.545
+        ]
+      },
+      {
+        "name": "Spare performance tyre.005",
+        "min": [
+          -8.49,
+          1.41,
+          5.04
+        ],
+        "max": [
+          -8.11,
+          2.13,
+          5.76
+        ]
+      },
+      {
+        "name": "Spare wheel hollow.005",
+        "min": [
+          -8.105,
+          1.56,
+          5.19
+        ],
+        "max": [
+          -8.1,
+          1.98,
+          5.61
+        ]
+      },
+      {
+        "name": "Spare wheel bead.005",
+        "min": [
+          -8.099,
+          1.625,
+          5.255
+        ],
+        "max": [
+          -8.094,
+          1.915,
+          5.545
+        ]
+      },
+      {
+        "name": "Spare performance tyre.006",
+        "min": [
+          -7.91,
+          1.41,
+          5.04
+        ],
+        "max": [
+          -7.53,
+          2.13,
+          5.76
+        ]
+      },
+      {
+        "name": "Spare wheel hollow.006",
+        "min": [
+          -7.525,
+          1.56,
+          5.19
+        ],
+        "max": [
+          -7.52,
+          1.98,
+          5.61
+        ]
+      },
+      {
+        "name": "Spare wheel bead.006",
+        "min": [
+          -7.519,
+          1.625,
+          5.255
+        ],
+        "max": [
+          -7.514,
+          1.915,
+          5.545
+        ]
+      },
+      {
+        "name": "Spare performance tyre.007",
+        "min": [
+          -7.33,
+          1.41,
+          5.04
+        ],
+        "max": [
+          -6.95,
+          2.13,
+          5.76
+        ]
+      },
+      {
+        "name": "Spare wheel hollow.007",
+        "min": [
+          -6.945,
+          1.56,
+          5.19
+        ],
+        "max": [
+          -6.94,
+          1.98,
+          5.61
+        ]
+      },
+      {
+        "name": "Spare wheel bead.007",
+        "min": [
+          -6.939,
+          1.625,
+          5.255
+        ],
+        "max": [
+          -6.934,
+          1.915,
+          5.545
+        ]
+      },
+      {
+        "name": "Folded steel cabinet.006",
+        "min": [
+          4.425,
+          0.1,
+          4.775
+        ],
+        "max": [
+          5.375,
+          0.88,
+          5.425
+        ]
+      },
+      {
+        "name": "Raised worktop lip.006",
+        "min": [
+          4.4,
+          0.8775,
+          4.75
+        ],
+        "max": [
+          5.4,
+          0.9225,
+          5.45
+        ]
+      },
+      {
+        "name": "Black top protector.006",
+        "min": [
+          4.4425,
+          0.9225,
+          4.79
+        ],
+        "max": [
+          5.3575,
+          0.9375,
+          5.41
+        ]
+      },
+      {
+        "name": "Inset drawer.030",
+        "min": [
+          4.475,
+          0.211,
+          4.7495
+        ],
+        "max": [
+          5.325,
+          0.3465,
+          4.7745
+        ]
+      },
+      {
+        "name": "Inset drawer.031",
+        "min": [
+          4.475,
+          0.3685,
+          4.7495
+        ],
+        "max": [
+          5.325,
+          0.504,
+          4.7745
+        ]
+      },
+      {
+        "name": "Inset drawer.032",
+        "min": [
+          4.475,
+          0.526,
+          4.7495
+        ],
+        "max": [
+          5.325,
+          0.6615,
+          4.7745
+        ]
+      },
+      {
+        "name": "Inset drawer.033",
+        "min": [
+          4.475,
+          0.6835,
+          4.7495
+        ],
+        "max": [
+          5.325,
+          0.819,
+          4.7745
+        ]
+      },
+      {
+        "name": "Cabinet plinth.006",
+        "min": [
+          4.475,
+          0.0,
+          4.825
+        ],
+        "max": [
+          5.325,
+          0.15,
+          5.375
+        ]
+      },
+      {
+        "name": "Trolley push handle",
+        "min": [
+          5.38393,
+          0.68661,
+          4.818
+        ],
+        "max": [
+          5.51915,
+          0.83795,
+          5.382
+        ]
+      },
+      {
+        "name": "Extinguisher bottle",
+        "min": [
+          9.275,
+          0.35,
+          6.675
+        ],
+        "max": [
+          9.525,
+          1.0,
+          6.925
+        ]
+      },
+      {
+        "name": "Extinguisher instructions",
+        "min": [
+          9.335,
+          0.595,
+          6.6745
+        ],
+        "max": [
+          9.465,
+          0.865,
+          6.6815
+        ]
+      },
+      {
+        "name": "Extinguisher hose",
+        "min": [
+          9.44356,
+          0.44942,
+          6.784
+        ],
+        "max": [
+          9.61299,
+          1.05379,
+          6.816
+        ]
+      },
+      {
+        "name": "Safety sign",
+        "min": [
+          9.25,
+          1.43,
+          6.841
+        ],
+        "max": [
+          9.55,
+          1.77,
+          6.859
+        ]
+      },
+      {
+        "name": "Hangar header plate",
+        "min": [
+          -3.75,
+          5.69,
+          7.1
+        ],
+        "max": [
+          3.75,
+          6.27,
+          7.18
+        ]
+      },
+      {
+        "name": "Bay numeral",
+        "min": [
+          -3.4626,
+          5.77622,
+          7.0798
+        ],
+        "max": [
+          -3.06738,
+          6.07022,
+          7.0802
+        ]
+      },
+      {
+        "name": "Flagship identification",
+        "min": [
+          -1.9947,
+          5.86811,
+          7.0698
+        ],
+        "max": [
+          0.84345,
+          6.01511,
+          7.0702
+        ]
+      },
+      {
+        "name": "Interior side impact protection",
+        "min": [
+          -9.8675,
+          0.0,
+          -8.95
+        ],
+        "max": [
+          -9.8025,
+          0.54,
+          -0.05
+        ]
+      },
+      {
+        "name": "Interior side dado cap",
+        "min": [
+          -9.8575,
+          0.5425,
+          -8.95
+        ],
+        "max": [
+          -9.7825,
+          0.5775,
+          -0.05
+        ]
+      },
+      {
+        "name": "Interior side service panel",
+        "min": [
+          -9.8475,
+          0.775,
+          -8.81
+        ],
+        "max": [
+          -9.7825,
+          3.525,
+          -6.19
+        ]
+      },
+      {
+        "name": "Interior side service panel.001",
+        "min": [
+          -9.8475,
+          0.775,
+          -6.01
+        ],
+        "max": [
+          -9.7825,
+          3.525,
+          -3.39
+        ]
+      },
+      {
+        "name": "Interior side service panel.002",
+        "min": [
+          -9.8475,
+          0.775,
+          -3.21
+        ],
+        "max": [
+          -9.7825,
+          3.525,
+          -0.59
+        ]
+      },
+      {
+        "name": "Interior surface electrical conduit",
+        "min": [
+          -9.789,
+          1.8,
+          -7.82078
+        ],
+        "max": [
+          -9.741,
+          3.82078,
+          5.5
+        ]
+      },
+      {
+        "name": "Interior overhead cable tray",
+        "min": [
+          -9.21,
+          5.975,
+          -8.35
+        ],
+        "max": [
+          -8.89,
+          6.065,
+          7.15
+        ]
+      },
+      {
+        "name": "Interior side ventilation housing",
+        "min": [
+          -9.82,
+          4.29,
+          -6.325
+        ],
+        "max": [
+          -9.56,
+          5.01,
+          -4.875
+        ]
+      },
+      {
+        "name": "Interior side impact protection.001",
+        "min": [
+          9.8025,
+          0.0,
+          -8.95
+        ],
+        "max": [
+          9.8675,
+          0.54,
+          -0.05
+        ]
+      },
+      {
+        "name": "Interior side dado cap.001",
+        "min": [
+          9.7825,
+          0.5425,
+          -8.95
+        ],
+        "max": [
+          9.8575,
+          0.5775,
+          -0.05
+        ]
+      },
+      {
+        "name": "Interior side service panel.003",
+        "min": [
+          9.7825,
+          0.775,
+          -8.81
+        ],
+        "max": [
+          9.8475,
+          3.525,
+          -6.19
+        ]
+      },
+      {
+        "name": "Interior side service panel.004",
+        "min": [
+          9.7825,
+          0.775,
+          -6.01
+        ],
+        "max": [
+          9.8475,
+          3.525,
+          -3.39
+        ]
+      },
+      {
+        "name": "Interior side service panel.005",
+        "min": [
+          9.7825,
+          0.775,
+          -3.21
+        ],
+        "max": [
+          9.8475,
+          3.525,
+          -0.59
+        ]
+      },
+      {
+        "name": "Interior surface electrical conduit.001",
+        "min": [
+          9.741,
+          1.8,
+          -7.82078
+        ],
+        "max": [
+          9.789,
+          3.82078,
+          5.5
+        ]
+      },
+      {
+        "name": "Interior overhead cable tray.001",
+        "min": [
+          8.89,
+          5.975,
+          -8.35
+        ],
+        "max": [
+          9.21,
+          6.065,
+          7.15
+        ]
+      },
+      {
+        "name": "Interior side ventilation housing.001",
+        "min": [
+          9.56,
+          4.29,
+          -6.325
+        ],
+        "max": [
+          9.82,
+          5.01,
+          -4.875
+        ]
+      },
+      {
+        "name": "Interior entrance dark reveal",
+        "min": [
+          -3.99,
+          -0.09,
+          -8.96
+        ],
+        "max": [
+          3.99,
+          4.94,
+          -8.86
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf",
+        "min": [
+          -3.8,
+          0.011,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          0.42991,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.001",
+        "min": [
+          -3.8,
+          0.45191,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          0.87082,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.002",
+        "min": [
+          -3.8,
+          0.89282,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          1.31173,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.003",
+        "min": [
+          -3.8,
+          1.33373,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          1.75264,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.004",
+        "min": [
+          -3.8,
+          1.77464,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          2.19355,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.005",
+        "min": [
+          -3.8,
+          2.21555,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          2.63445,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.006",
+        "min": [
+          -3.8,
+          2.65645,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          3.07536,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.007",
+        "min": [
+          -3.8,
+          3.09736,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          3.51627,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.008",
+        "min": [
+          -3.8,
+          3.53827,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          3.95718,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.009",
+        "min": [
+          -3.8,
+          3.97918,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          4.39809,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance sectional leaf.010",
+        "min": [
+          -3.8,
+          4.42009,
+          -8.8625
+        ],
+        "max": [
+          3.8,
+          4.839,
+          -8.7975
+        ]
+      },
+      {
+        "name": "Interior entrance vertical guide",
+        "min": [
+          -3.98,
+          0.0,
+          -8.805
+        ],
+        "max": [
+          -3.88,
+          4.85,
+          -8.655
+        ]
+      },
+      {
+        "name": "Interior entrance jamb",
+        "min": [
+          -4.14,
+          -0.075,
+          -8.935
+        ],
+        "max": [
+          -4.02,
+          4.925,
+          -8.745
+        ]
+      },
+      {
+        "name": "Interior entrance lower guard",
+        "min": [
+          -4.17,
+          0.0,
+          -8.72
+        ],
+        "max": [
+          -3.99,
+          0.96,
+          -8.62
+        ]
+      },
+      {
+        "name": "Interior entrance vertical guide.001",
+        "min": [
+          3.88,
+          0.0,
+          -8.805
+        ],
+        "max": [
+          3.98,
+          4.85,
+          -8.655
+        ]
+      },
+      {
+        "name": "Interior entrance jamb.001",
+        "min": [
+          4.02,
+          -0.075,
+          -8.935
+        ],
+        "max": [
+          4.14,
+          4.925,
+          -8.745
+        ]
+      },
+      {
+        "name": "Interior entrance lower guard.001",
+        "min": [
+          3.99,
+          0.0,
+          -8.72
+        ],
+        "max": [
+          4.17,
+          0.96,
+          -8.62
+        ]
+      },
+      {
+        "name": "Interior entrance header",
+        "min": [
+          -4.15,
+          4.89,
+          -8.91
+        ],
+        "max": [
+          4.15,
+          5.09,
+          -8.65
+        ]
+      },
+      {
+        "name": "Interior entrance inspection frame",
+        "min": [
+          -2.93,
+          3.0,
+          -8.8
+        ],
+        "max": [
+          -1.27,
+          3.48,
+          -8.74
+        ]
+      },
+      {
+        "name": "Interior entrance inspection glazing",
+        "min": [
+          -2.855,
+          3.07,
+          -8.7395
+        ],
+        "max": [
+          -1.345,
+          3.41,
+          -8.7245
+        ]
+      },
+      {
+        "name": "Interior entrance inspection frame.001",
+        "min": [
+          -0.83,
+          3.0,
+          -8.8
+        ],
+        "max": [
+          0.83,
+          3.48,
+          -8.74
+        ]
+      },
+      {
+        "name": "Interior entrance inspection glazing.001",
+        "min": [
+          -0.755,
+          3.07,
+          -8.7395
+        ],
+        "max": [
+          0.755,
+          3.41,
+          -8.7245
+        ]
+      },
+      {
+        "name": "Interior entrance inspection frame.002",
+        "min": [
+          1.27,
+          3.0,
+          -8.8
+        ],
+        "max": [
+          2.93,
+          3.48,
+          -8.74
+        ]
+      },
+      {
+        "name": "Interior entrance inspection glazing.002",
+        "min": [
+          1.345,
+          3.07,
+          -8.7395
+        ],
+        "max": [
+          2.855,
+          3.41,
+          -8.7245
+        ]
+      },
+      {
+        "name": "Interior service door reveal",
+        "min": [
+          -7.925,
+          0.0,
+          -8.955
+        ],
+        "max": [
+          -6.375,
+          2.72,
+          -8.825
+        ]
+      },
+      {
+        "name": "Interior service door leaf",
+        "min": [
+          -7.82,
+          0.02,
+          -8.825
+        ],
+        "max": [
+          -6.48,
+          2.62,
+          -8.755
+        ]
+      },
+      {
+        "name": "Interior service door kick plate",
+        "min": [
+          -7.77,
+          0.035,
+          -8.753
+        ],
+        "max": [
+          -6.53,
+          0.585,
+          -8.737
+        ]
+      },
+      {
+        "name": "Interior service door upper inset",
+        "min": [
+          -7.475,
+          1.745,
+          -8.75
+        ],
+        "max": [
+          -6.825,
+          2.355,
+          -8.73
+        ]
+      },
+      {
+        "name": "Interior service door glazing",
+        "min": [
+          -7.42,
+          1.8,
+          -8.7275
+        ],
+        "max": [
+          -6.88,
+          2.3,
+          -8.7185
+        ]
+      },
+      {
+        "name": "Interior service closer",
+        "min": [
+          -6.885,
+          2.495,
+          -8.755
+        ],
+        "max": [
+          -6.555,
+          2.605,
+          -8.665
+        ]
+      },
+      {
+        "name": "Interior electrical cabinet",
+        "min": [
+          4.85,
+          1.035,
+          -8.85
+        ],
+        "max": [
+          5.75,
+          2.345,
+          -8.61
+        ]
+      },
+      {
+        "name": "Interior electrical cabinet gasket",
+        "min": [
+          4.905,
+          1.09,
+          -8.6025
+        ],
+        "max": [
+          5.695,
+          2.29,
+          -8.5775
+        ]
+      },
+      {
+        "name": "Interior electrical cabinet lid",
+        "min": [
+          4.925,
+          1.11,
+          -8.5825
+        ],
+        "max": [
+          5.675,
+          2.27,
+          -8.5575
+        ]
+      },
+      {
+        "name": "Interior cabinet feed",
+        "min": [
+          5.278,
+          2.37,
+          -8.77905
+        ],
+        "max": [
+          8.9,
+          3.772,
+          -8.74095
+        ]
+      },
+      {
+        "name": "Interior electrical cabinet.001",
+        "min": [
+          6.0,
+          1.035,
+          -8.85
+        ],
+        "max": [
+          6.9,
+          2.345,
+          -8.61
+        ]
+      },
+      {
+        "name": "Interior electrical cabinet gasket.001",
+        "min": [
+          6.055,
+          1.09,
+          -8.6025
+        ],
+        "max": [
+          6.845,
+          2.29,
+          -8.5775
+        ]
+      },
+      {
+        "name": "Interior electrical cabinet lid.001",
+        "min": [
+          6.075,
+          1.11,
+          -8.5825
+        ],
+        "max": [
+          6.825,
+          2.27,
+          -8.5575
+        ]
+      },
+      {
+        "name": "Interior entrance control",
+        "min": [
+          4.255,
+          1.255,
+          -8.765
+        ],
+        "max": [
+          4.485,
+          1.685,
+          -8.595
+        ]
+      },
+      {
+        "name": "Interior entrance luminaire casing",
+        "min": [
+          -6.55,
+          5.785,
+          -6.715
+        ],
+        "max": [
+          -3.45,
+          5.915,
+          -6.485
+        ]
+      },
+      {
+        "name": "Interior entrance luminaire diffuser",
+        "min": [
+          -6.48,
+          5.769,
+          -6.675
+        ],
+        "max": [
+          -3.52,
+          5.785,
+          -6.525
+        ]
+      },
+      {
+        "name": "Interior entrance luminaire casing.001",
+        "min": [
+          -1.55,
+          5.785,
+          -6.715
+        ],
+        "max": [
+          1.55,
+          5.915,
+          -6.485
+        ]
+      },
+      {
+        "name": "Interior entrance luminaire diffuser.001",
+        "min": [
+          -1.48,
+          5.769,
+          -6.675
+        ],
+        "max": [
+          1.48,
+          5.785,
+          -6.525
+        ]
+      },
+      {
+        "name": "Interior entrance luminaire casing.002",
+        "min": [
+          3.45,
+          5.785,
+          -6.715
+        ],
+        "max": [
+          6.55,
+          5.915,
+          -6.485
+        ]
+      },
+      {
+        "name": "Interior entrance luminaire diffuser.002",
+        "min": [
+          3.52,
+          5.769,
+          -6.675
+        ],
+        "max": [
+          6.48,
+          5.785,
+          -6.525
+        ]
+      },
+      {
+        "name": "Interior flagship architectural pier",
+        "min": [
+          -9.015,
+          0.03,
+          -8.9
+        ],
+        "max": [
+          -8.785,
+          6.21,
+          -8.48
+        ]
+      },
+      {
+        "name": "Interior flagship architectural pier.001",
+        "min": [
+          -4.715,
+          0.03,
+          -8.9
+        ],
+        "max": [
+          -4.485,
+          6.21,
+          -8.48
+        ]
+      },
+      {
+        "name": "Interior flagship architectural pier.002",
+        "min": [
+          4.485,
+          0.03,
+          -8.9
+        ],
+        "max": [
+          4.715,
+          6.21,
+          -8.48
+        ]
+      },
+      {
+        "name": "Interior flagship architectural pier.003",
+        "min": [
+          8.785,
+          0.03,
+          -8.9
+        ],
+        "max": [
+          9.015,
+          6.21,
+          -8.48
+        ]
+      },
+      {
+        "name": "Interior flagship entrance crown",
+        "min": [
+          -9.0,
+          5.47,
+          -8.86
+        ],
+        "max": [
+          9.0,
+          5.83,
+          -8.5
+        ]
+      },
+      {
+        "name": "Interior flagship crown inset",
+        "min": [
+          -8.75,
+          5.59,
+          -8.496
+        ],
+        "max": [
+          8.75,
+          5.71,
+          -8.48
+        ]
+      },
+      {
+        "name": "Interior flagship upper service channel",
+        "min": [
+          -9.66,
+          3.935,
+          -8.0
+        ],
+        "max": [
+          -9.56,
+          4.105,
+          1.4
+        ]
+      },
+      {
+        "name": "Interior flagship upper service channel.001",
+        "min": [
+          9.56,
+          3.935,
+          -8.0
+        ],
+        "max": [
+          9.66,
+          4.105,
+          1.4
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel",
+        "min": [
+          -9.7775,
+          0.31,
+          -8.525
+        ],
+        "max": [
+          -9.7125,
+          1.51,
+          -6.975
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel.001",
+        "min": [
+          -9.7775,
+          0.31,
+          -6.925
+        ],
+        "max": [
+          -9.7125,
+          1.51,
+          -5.375
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel.002",
+        "min": [
+          -9.7775,
+          0.31,
+          -5.325
+        ],
+        "max": [
+          -9.7125,
+          1.51,
+          -3.775
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel.003",
+        "min": [
+          -9.7775,
+          0.31,
+          -3.725
+        ],
+        "max": [
+          -9.7125,
+          1.51,
+          -2.175
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel.004",
+        "min": [
+          -9.7775,
+          0.31,
+          -2.125
+        ],
+        "max": [
+          -9.7125,
+          1.51,
+          -0.575
+        ]
+      },
+      {
+        "name": "Arrival wall protective top cap",
+        "min": [
+          -9.7525,
+          1.5175,
+          -8.565
+        ],
+        "max": [
+          -9.6575,
+          1.5625,
+          -0.535
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel.005",
+        "min": [
+          9.7125,
+          0.31,
+          -8.525
+        ],
+        "max": [
+          9.7775,
+          1.51,
+          -6.975
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel.006",
+        "min": [
+          9.7125,
+          0.31,
+          -6.925
+        ],
+        "max": [
+          9.7775,
+          1.51,
+          -5.375
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel.007",
+        "min": [
+          9.7125,
+          0.31,
+          -5.325
+        ],
+        "max": [
+          9.7775,
+          1.51,
+          -3.775
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel.008",
+        "min": [
+          9.7125,
+          0.31,
+          -3.725
+        ],
+        "max": [
+          9.7775,
+          1.51,
+          -2.175
+        ]
+      },
+      {
+        "name": "Arrival lower wall impact panel.009",
+        "min": [
+          9.7125,
+          0.31,
+          -2.125
+        ],
+        "max": [
+          9.7775,
+          1.51,
+          -0.575
+        ]
+      },
+      {
+        "name": "Arrival wall protective top cap.001",
+        "min": [
+          9.6575,
+          1.5175,
+          -8.565
+        ],
+        "max": [
+          9.7525,
+          1.5625,
+          -0.535
+        ]
+      },
+      {
+        "name": "Arrival charging pedestal foot",
+        "min": [
+          -9.465,
+          0.0,
+          -7.55
+        ],
+        "max": [
+          -8.975,
+          0.14,
+          -6.69
+        ]
+      },
+      {
+        "name": "Arrival charging pedestal spine",
+        "min": [
+          -9.425,
+          0.07,
+          -7.45
+        ],
+        "max": [
+          -9.135,
+          1.49,
+          -6.79
+        ]
+      },
+      {
+        "name": "Arrival charger sloped upper cap",
+        "min": [
+          -9.435,
+          1.47,
+          -7.46
+        ],
+        "max": [
+          -9.095,
+          1.57,
+          -6.78
+        ]
+      },
+      {
+        "name": "Arrival charging interface surround",
+        "min": [
+          -9.1325,
+          0.98,
+          -7.405
+        ],
+        "max": [
+          -9.0975,
+          1.44,
+          -6.835
+        ]
+      },
+      {
+        "name": "Arrival charging status screen",
+        "min": [
+          -9.097,
+          1.19,
+          -7.365
+        ],
+        "max": [
+          -9.085,
+          1.41,
+          -6.875
+        ]
+      },
+      {
+        "name": "Arrival charger lower protective face",
+        "min": [
+          -9.1315,
+          0.21,
+          -7.42
+        ],
+        "max": [
+          -9.1065,
+          0.87,
+          -6.82
+        ]
+      },
+      {
+        "name": "Arrival charging service cable",
+        "min": [
+          -9.27074,
+          0.22724,
+          -7.82211
+        ],
+        "max": [
+          -9.07613,
+          1.05404,
+          -7.27677
+        ]
+      },
+      {
+        "name": "Arrival charging service cable.001",
+        "min": [
+          -9.27074,
+          0.22724,
+          -6.96323
+        ],
+        "max": [
+          -9.07613,
+          1.05404,
+          -6.41789
+        ]
+      },
+      {
+        "name": "Arrival charging impact hoop",
+        "min": [
+          -8.915,
+          0.04,
+          -7.685
+        ],
+        "max": [
+          -8.845,
+          0.7317,
+          -6.555
+        ]
+      },
+      {
+        "name": "Arrival integrated charger canopy",
+        "min": [
+          -9.515,
+          1.6875,
+          -7.67
+        ],
+        "max": [
+          -8.945,
+          1.7525,
+          -6.57
+        ]
+      },
+      {
+        "name": "Arrival fleet charger status mast",
+        "min": [
+          -9.47,
+          1.51,
+          -7.17
+        ],
+        "max": [
+          -9.37,
+          2.53,
+          -7.07
+        ]
+      },
+      {
+        "name": "Arrival fleet status head",
+        "min": [
+          -9.435,
+          2.41,
+          -7.39
+        ],
+        "max": [
+          -9.305,
+          2.63,
+          -6.85
+        ]
+      },
+      {
+        "name": "Arrival gate motor mounting plate",
+        "min": [
+          -5.315,
+          3.655,
+          -8.775
+        ],
+        "max": [
+          -4.585,
+          4.305,
+          -8.705
+        ]
+      },
+      {
+        "name": "Arrival gate geared motor",
+        "min": [
+          -5.19,
+          3.875,
+          -8.7
+        ],
+        "max": [
+          -4.71,
+          4.265,
+          -8.36
+        ]
+      },
+      {
+        "name": "Arrival gate motor gearbox",
+        "min": [
+          -4.77,
+          3.91,
+          -8.7
+        ],
+        "max": [
+          -4.58,
+          4.25,
+          -8.36
+        ]
+      },
+      {
+        "name": "Arrival gate drive output shaft",
+        "min": [
+          -4.6,
+          4.037,
+          -8.573
+        ],
+        "max": [
+          -3.55,
+          4.123,
+          -8.487
+        ]
+      },
+      {
+        "name": "Arrival gate manual chain",
+        "min": [
+          -5.114,
+          1.17901,
+          -8.48212
+        ],
+        "max": [
+          -4.786,
+          3.85,
+          -8.45788
+        ]
+      },
+      {
+        "name": "Arrival chain keeper",
+        "min": [
+          -5.16,
+          1.42,
+          -8.625
+        ],
+        "max": [
+          -4.74,
+          1.58,
+          -8.515
+        ]
+      },
+      {
+        "name": "Arrival gate motor power conduit",
+        "min": [
+          -5.372,
+          1.1,
+          -8.73905
+        ],
+        "max": [
+          -3.53,
+          4.502,
+          -8.70095
+        ]
+      },
+      {
+        "name": "Arrival gate emergency isolation",
+        "min": [
+          -5.465,
+          1.195,
+          -8.695
+        ],
+        "max": [
+          -5.235,
+          1.505,
+          -8.565
+        ]
+      },
+      {
+        "name": "Arrival exhaust grille casing",
+        "min": [
+          9.47,
+          2.435,
+          -6.775
+        ],
+        "max": [
+          9.69,
+          3.485,
+          -4.125
+        ]
+      },
+      {
+        "name": "Arrival exhaust grille throat",
+        "min": [
+          9.447,
+          2.51,
+          -6.69
+        ],
+        "max": [
+          9.463,
+          3.41,
+          -4.21
+        ]
+      },
+      {
+        "name": "Arrival exhaust louver blade",
+        "min": [
+          9.335,
+          2.5625,
+          -6.69
+        ],
+        "max": [
+          9.475,
+          2.5975,
+          -4.21
+        ]
+      },
+      {
+        "name": "Arrival exhaust louver blade.001",
+        "min": [
+          9.335,
+          2.6875,
+          -6.69
+        ],
+        "max": [
+          9.475,
+          2.7225,
+          -4.21
+        ]
+      },
+      {
+        "name": "Arrival exhaust louver blade.002",
+        "min": [
+          9.335,
+          2.8125,
+          -6.69
+        ],
+        "max": [
+          9.475,
+          2.8475,
+          -4.21
+        ]
+      },
+      {
+        "name": "Arrival exhaust louver blade.003",
+        "min": [
+          9.335,
+          2.9375,
+          -6.69
+        ],
+        "max": [
+          9.475,
+          2.9725,
+          -4.21
+        ]
+      },
+      {
+        "name": "Arrival exhaust louver blade.004",
+        "min": [
+          9.335,
+          3.0625,
+          -6.69
+        ],
+        "max": [
+          9.475,
+          3.0975,
+          -4.21
+        ]
+      },
+      {
+        "name": "Arrival exhaust louver blade.005",
+        "min": [
+          9.335,
+          3.1875,
+          -6.69
+        ],
+        "max": [
+          9.475,
+          3.2225,
+          -4.21
+        ]
+      },
+      {
+        "name": "Arrival exhaust louver blade.006",
+        "min": [
+          9.335,
+          3.3125,
+          -6.69
+        ],
+        "max": [
+          9.475,
+          3.3475,
+          -4.21
+        ]
+      },
+      {
+        "name": "Arrival replaceable ventilation filter",
+        "min": [
+          9.47,
+          3.625,
+          -6.775
+        ],
+        "max": [
+          9.71,
+          4.475,
+          -4.125
+        ]
+      },
+      {
+        "name": "Arrival clean air distribution trunk",
+        "min": [
+          9.42,
+          4.88,
+          -7.45
+        ],
+        "max": [
+          9.76,
+          5.24,
+          -3.45
+        ]
+      },
+      {
+        "name": "Arrival clean air duct coupling",
+        "min": [
+          9.4,
+          4.855,
+          -3.9675
+        ],
+        "max": [
+          9.78,
+          5.265,
+          -3.9325
+        ]
+      },
+      {
+        "name": "Arrival clean air duct coupling.001",
+        "min": [
+          9.4,
+          4.855,
+          -4.9675
+        ],
+        "max": [
+          9.78,
+          5.265,
+          -4.9325
+        ]
+      },
+      {
+        "name": "Arrival clean air duct coupling.002",
+        "min": [
+          9.4,
+          4.855,
+          -5.9675
+        ],
+        "max": [
+          9.78,
+          5.265,
+          -5.9325
+        ]
+      },
+      {
+        "name": "Arrival clean air duct coupling.003",
+        "min": [
+          9.4,
+          4.855,
+          -6.9675
+        ],
+        "max": [
+          9.78,
+          5.265,
+          -6.9325
+        ]
+      },
+      {
+        "name": "Arrival regulated service manifold",
+        "min": [
+          9.47,
+          1.765,
+          -6.775
+        ],
+        "max": [
+          9.63,
+          2.115,
+          -4.125
+        ]
+      },
+      {
+        "name": "Arrival ventilation plenum",
+        "min": [
+          -9.66,
+          4.19,
+          -6.275
+        ],
+        "max": [
+          -9.36,
+          5.11,
+          -2.625
+        ]
+      },
+      {
+        "name": "Arrival ventilation dark throat",
+        "min": [
+          -9.3545,
+          4.25,
+          -6.205
+        ],
+        "max": [
+          -9.3295,
+          5.05,
+          -2.695
+        ]
+      },
+      {
+        "name": "Arrival intake louver blade",
+        "min": [
+          -9.36675,
+          4.26687,
+          -6.185
+        ],
+        "max": [
+          -9.18326,
+          4.35313,
+          -2.715
+        ]
+      },
+      {
+        "name": "Arrival intake louver blade.001",
+        "min": [
+          -9.36675,
+          4.36187,
+          -6.185
+        ],
+        "max": [
+          -9.18326,
+          4.44813,
+          -2.715
+        ]
+      },
+      {
+        "name": "Arrival intake louver blade.002",
+        "min": [
+          -9.36675,
+          4.45687,
+          -6.185
+        ],
+        "max": [
+          -9.18326,
+          4.54313,
+          -2.715
+        ]
+      },
+      {
+        "name": "Arrival intake louver blade.003",
+        "min": [
+          -9.36675,
+          4.55187,
+          -6.185
+        ],
+        "max": [
+          -9.18326,
+          4.63813,
+          -2.715
+        ]
+      },
+      {
+        "name": "Arrival intake louver blade.004",
+        "min": [
+          -9.36675,
+          4.64687,
+          -6.185
+        ],
+        "max": [
+          -9.18326,
+          4.73313,
+          -2.715
+        ]
+      },
+      {
+        "name": "Arrival intake louver blade.005",
+        "min": [
+          -9.36675,
+          4.74187,
+          -6.185
+        ],
+        "max": [
+          -9.18326,
+          4.82813,
+          -2.715
+        ]
+      },
+      {
+        "name": "Arrival intake louver blade.006",
+        "min": [
+          -9.36675,
+          4.83687,
+          -6.185
+        ],
+        "max": [
+          -9.18326,
+          4.92313,
+          -2.715
+        ]
+      },
+      {
+        "name": "Arrival intake louver blade.007",
+        "min": [
+          -9.36675,
+          4.93187,
+          -6.185
+        ],
+        "max": [
+          -9.18326,
+          5.01813,
+          -2.715
+        ]
+      },
+      {
+        "name": "Arrival overhead extraction trunk",
+        "min": [
+          -9.735,
+          5.31,
+          -6.385
+        ],
+        "max": [
+          -9.345,
+          5.69,
+          -2.515
+        ]
+      },
+      {
+        "name": "Arrival duct slip joint",
+        "min": [
+          -9.745,
+          5.29,
+          -6.183
+        ],
+        "max": [
+          -9.315,
+          5.71,
+          -6.148
+        ]
+      },
+      {
+        "name": "Arrival duct slip joint.001",
+        "min": [
+          -9.745,
+          5.29,
+          -5.32525
+        ],
+        "max": [
+          -9.315,
+          5.71,
+          -5.29025
+        ]
+      },
+      {
+        "name": "Arrival duct slip joint.002",
+        "min": [
+          -9.745,
+          5.29,
+          -4.4675
+        ],
+        "max": [
+          -9.315,
+          5.71,
+          -4.4325
+        ]
+      },
+      {
+        "name": "Arrival duct slip joint.003",
+        "min": [
+          -9.745,
+          5.29,
+          -3.60975
+        ],
+        "max": [
+          -9.315,
+          5.71,
+          -3.57475
+        ]
+      },
+      {
+        "name": "Arrival duct slip joint.004",
+        "min": [
+          -9.745,
+          5.29,
+          -2.752
+        ],
+        "max": [
+          -9.315,
+          5.71,
+          -2.717
+        ]
+      },
+      {
+        "name": "Arrival vertical extraction riser",
+        "min": [
+          -9.735,
+          5.69,
+          -5.984
+        ],
+        "max": [
+          -9.345,
+          6.29,
+          -5.544
+        ]
+      },
+      {
+        "name": "Arrival duct upper elbow",
+        "min": [
+          -9.735,
+          6.09,
+          -6.094
+        ],
+        "max": [
+          -9.305,
+          6.29,
+          -5.434
+        ]
+      },
+      {
+        "name": "Arrival riser wall strap",
+        "min": [
+          -9.755,
+          5.7575,
+          -6.014
+        ],
+        "max": [
+          -9.305,
+          5.8025,
+          -5.514
+        ]
+      },
+      {
+        "name": "Arrival riser wall strap.001",
+        "min": [
+          -9.755,
+          6.1175,
+          -6.014
+        ],
+        "max": [
+          -9.305,
+          6.1625,
+          -5.514
+        ]
+      },
+      {
+        "name": "Arrival intake mounting foot.001",
+        "min": [
+          -9.805,
+          4.31,
+          -3.2625
+        ],
+        "max": [
+          -9.675,
+          4.99,
+          -3.0825
+        ]
+      },
+      {
+        "name": "Arrival television chassis",
+        "min": [
+          -9.3,
+          1.41,
+          -6.46
+        ],
+        "max": [
+          -9.04,
+          3.89,
+          -2.14
+        ]
+      },
+      {
+        "name": "Arrival television wall mounting plate",
+        "min": [
+          -9.76,
+          2.3,
+          -5.72
+        ],
+        "max": [
+          -9.68,
+          3.0,
+          -5.48
+        ]
+      },
+      {
+        "name": "Arrival television rigid mounting arm",
+        "min": [
+          -9.69,
+          2.6,
+          -5.66
+        ],
+        "max": [
+          -9.29,
+          2.7,
+          -5.54
+        ]
+      },
+      {
+        "name": "Arrival television wall mounting plate.001",
+        "min": [
+          -9.76,
+          2.3,
+          -3.12
+        ],
+        "max": [
+          -9.68,
+          3.0,
+          -2.88
+        ]
+      },
+      {
+        "name": "Arrival television rigid mounting arm.001",
+        "min": [
+          -9.69,
+          2.6,
+          -3.06
+        ],
+        "max": [
+          -9.29,
+          2.7,
+          -2.94
+        ]
+      },
+      {
+        "name": "Arrival television horizontal bezel",
+        "min": [
+          -9.065,
+          1.37,
+          -6.49
+        ],
+        "max": [
+          -8.965,
+          1.46,
+          -2.11
+        ]
+      },
+      {
+        "name": "Arrival television horizontal bezel.001",
+        "min": [
+          -9.065,
+          3.84,
+          -6.49
+        ],
+        "max": [
+          -8.965,
+          3.93,
+          -2.11
+        ]
+      },
+      {
+        "name": "Arrival television vertical bezel",
+        "min": [
+          -9.065,
+          1.38,
+          -6.49
+        ],
+        "max": [
+          -8.965,
+          3.92,
+          -6.4
+        ]
+      },
+      {
+        "name": "Arrival television vertical bezel.001",
+        "min": [
+          -9.065,
+          1.38,
+          -2.2
+        ],
+        "max": [
+          -8.965,
+          3.92,
+          -2.11
+        ]
+      },
+      {
+        "name": "Arrival television power cable",
+        "min": [
+          -9.667,
+          1.02,
+          -5.677
+        ],
+        "max": [
+          -9.2997,
+          1.65352,
+          -5.643
+        ]
+      }
+    ]
+  },
+  "interior_completion_version": 1,
+  "preserved_rear_geometry_sha256": "b73f94e91a1fc8145e9444fad8e36ea5fe7ba50fe2aa5d6c7a3f1a1c657fe386",
+  "user_provided_textures": [
+    "roadster-screen-poster.jpg"
+  ],
+  "screen_media_provenance": "art/garage/screen/supplied-video-provenance.json",
+  "screen_poster_swap": {
+    "method": "Exact image bufferView replacement, no geometry export or rebatching",
+    "source_before_sha256": "97bafb1f70ac4c1398b193a46efb41c7dc5c884ac29555b55177165229c33f63",
+    "source_after_sha256": "313b5030694560fa4c17561112b1733e549091078a650da7131628184813e920",
+    "glb_before_sha256": "87d709e3e98a3e9c8630f3438c829ff46e09a885a2cfb14bb7d2a533e2700e0f",
+    "glb_after_sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
+    "poster_sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+    "poster_bytes": 20303,
+    "all_geometry_transforms_uvs_shaders_settings_unchanged": true,
+    "garage_camera_unchanged": true,
+    "other_image_bytes_unchanged": true,
+    "all_other_glb_buffer_views_byte_identical": true,
+    "attribution_only_metadata_updated": [
+      "root.asset_provenance",
+      "garage_screen_display.extras.screen_asset"
+    ],
+    "preserved_fingerprint": {
+      "meshes": "a7fc93f6c4bbdaf7d7a6c475c27b8ef06d623977d7529fd68c588d11c430827e",
+      "objects": "32b94285f61a0fedbcca2f96f79d0b2161e8027284ae56c5700cc5f6be892b10",
+      "materials": "8733c6e21c6ccd2b3bd0014ba170a985b04d7e26b2bfe48223f3dceb8822ae56",
+      "armatures": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+      "statistics": {
+        "objects": 944,
+        "meshes": 939,
+        "vertices": 24468,
+        "faces": 21124,
+        "triangles": 43274,
+        "materials": 20,
+        "armatures": 0,
+        "actions": 0
+      }
+    }
   }
 }

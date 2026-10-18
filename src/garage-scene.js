@@ -1,8 +1,10 @@
 import * as T from '../public/vendor/three.js';
 import { applyVehicleAppearance } from './owned-vehicles.js';
 import { VehiclePaintTransition } from './paint-transition.js';
-import { GarageCameraMotion, frameCockpitCustomization } from './garage-camera-motion.js';
+import { GarageCameraMotion, frameCockpitCustomization, garageCameraLimits, garageBoxCorners, constrainGarageCamera } from './garage-camera-motion.js';
 import { setPlayerInteriorView } from './car.js';
+import { textureAnisotropy } from './render-settings.js';
+import { GarageScreenPlayer } from './garage-screen-player.js';
 
 /**
  * Display an authored workshop and the selected real vehicle on the existing
@@ -12,14 +14,19 @@ import { setPlayerInteriorView } from './car.js';
  * every frame, and the vehicle itself is excluded from that bake.
  */
 export class GarageScene {
-  /** @param {{renderer:T.WebGLRenderer,makeVehicle:Function,onStatus?:Function}} options Shared renderer and owned showcase-car factory. */
-  constructor({ renderer, makeVehicle, onStatus = () => {} }) {
+  /** @param {{renderer:T.WebGLRenderer,makeVehicle:Function,onStatus?:Function,compact?:boolean}} options Shared renderer, owned showcase-car factory and bounded mobile texture budget. */
+  constructor({ renderer, makeVehicle, onStatus = () => {}, compact = false }) {
     this.renderer = renderer; this.makeVehicle = makeVehicle; this.onStatus = onStatus;
+    this.textureSampling = textureAnisotropy(renderer.capabilities?.getMaxAnisotropy?.(), compact);
+    this.screenDisplay = new GarageScreenPlayer({onChange:()=>this.onStatus({screenFrame:true})});
     this.scene = new T.Scene(); this.scene.background = new T.Color('#20282b');
     this.camera = new T.PerspectiveCamera(38, 1, .1, 80);
     this.scene.add(new T.HemisphereLight('#e6eff0', '#575047', 1.3));
-    this.key = new T.DirectionalLight('#fff0d6', 3.0); this.key.position.set(-4, 7, -3);
+    this.key = new T.DirectionalLight('#fff0d6', 3.0); this.key.position.set(-4, 5.7, -3);
     this.key.castShadow = true; this.key.shadow.mapSize.set(1024, 1024);
+    // The TV changes pixels, not occluders. Rebuild this static light map only
+    // when authored geometry, visibility, parking or GPU context actually changes.
+    this.key.shadow.autoUpdate=false;this.key.shadow.needsUpdate=true;
     Object.assign(this.key.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: .1, far: 24 });
     this.key.shadow.normalBias = .025; this.key.shadow.bias = -.0002;
     this.scene.add(this.key, this.key.target);
@@ -29,7 +36,7 @@ export class GarageScene {
     this.vehicle = null; this.vehicleKey = ''; this.environmentTarget = null; this.inspection='overview'; this.orbitOffset=0;
     this.loadingTier=null;this.failedTier=null;this.environmentDirty=false;this.parkedVehicles=[];this.parkedKey='';
     this.vehicleId=null;this.paintTransition=null;this.rimTransitions=[];this.cameraMotion=new GarageCameraMotion();this.reducedMotion=false;
-    this.onContextRestored=()=>{this.environmentDirty=true;this.onStatus({contextRestored:true});};
+    this.onContextRestored=()=>{this.environmentDirty=true;this.key.shadow.needsUpdate=true;this.onStatus({contextRestored:true});};
     renderer.domElement?.addEventListener('webglcontextrestored',this.onContextRestored);
     this.target = new T.Vector3(0, .83, 0); this.lastWidth = 0; this.lastHeight = 0;
   }
@@ -45,18 +52,27 @@ export class GarageScene {
       if (!this.cache.has(tier)) {
         const url = new URL(`../public/assets/garage/tier${tier}.glb`, import.meta.url).href;
         this.cache.set(tier,this.loader.loadAsync(url).then(gltf => {
-          gltf.scene.traverse(node => { if (node.isMesh) { node.castShadow = !/Original_mottled_concrete/.test(node.name); node.receiveShadow = true; } });
+          const textures=new Set();
+          gltf.scene.traverse(node => { if (node.isMesh) {
+            node.castShadow = !/Original_mottled_concrete/.test(node.name); node.receiveShadow = true;
+            for(const material of Array.isArray(node.material)?node.material:[node.material])
+              for(const value of Object.values(material||{})) if(value?.isTexture&&!value.isRenderTargetTexture)textures.add(value);
+          } });
+          // Preserve authored colour spaces and trilinear mipmaps. Extra sampling
+          // is bounded (4 compact / 8 desktop) and only improves grazing surfaces.
+          for(const texture of textures){texture.anisotropy=this.textureSampling;texture.needsUpdate=true;}
           return gltf.scene;
         }).catch(error => { this.cache.delete(tier); throw error; }));
       }
       const room = await this.cache.get(tier);
+      await this.screenDisplay.attach(room);
       if (this.disposed || generation !== this.generation) return false;
       const previous=this.room;
       if(previous)this.scene.remove(previous);
-      this.scene.add(room);this.room=room;
+      this.scene.add(room);this.room=room;this.cameraLimits=null;
       try { this.rebuildEnvironment(); }
       catch(error){this.scene.remove(room);this.room=previous;if(previous)this.scene.add(previous);throw error;}
-      this.tier=tier;this.ready=true;this.loadingTier=null;this.failedTier=null;this.setParking(this.parkingRecords||[]);
+      this.screenDisplay.setRoom(room);this.tier=tier;this.ready=true;this.loadingTier=null;this.failedTier=null;this.setParking(this.parkingRecords||[]);
       this.onStatus({loading:false,tier});return true;
     } catch(error) {
       if(!this.disposed&&generation===this.generation){this.loadingTier=null;this.failedTier=tier;this.onStatus({loading:false,tier,error:String(error.message||error)});}
@@ -69,19 +85,20 @@ export class GarageScene {
     const cars=[this.vehicle,...(this.parkedVehicles||[])].filter(Boolean),visibility=cars.map(car=>car.visible);
     const previous=this.scene.environment,generator=new T.PMREMGenerator(this.renderer);
     for(const car of cars)car.visible=false;
-    this.scene.environment=null;
+    this.scene.environment=null;this.key.shadow.needsUpdate=true;
     try{
       const next=generator.fromScene(this.scene,.04,.1,80);
       this.environmentTarget?.dispose();this.environmentTarget=next;this.scene.environment=next.texture;this.scene.environmentIntensity=.72;
       this.environmentDirty=false;
     }catch(error){this.scene.environment=previous;throw error;}
-    finally{generator.dispose();cars.forEach((car,index)=>{car.visible=visibility[index];});}
+    finally{generator.dispose();cars.forEach((car,index)=>{car.visible=visibility[index];});this.key.shadow.needsUpdate=true;}
   }
 
   /** Keep the owned car/materials during cosmetics edits; replace only for a different model. */
   setVehicle(id, appearance = {}) {
     const key = JSON.stringify([id, appearance]);
     if (key === this.vehicleKey) return;
+    this.key.shadow.needsUpdate=true;
     if(this.vehicle&&id===this.vehicleId&&this.vehicle.userData.appearance){
       applyVehicleAppearance(this.vehicle,appearance);
       this.paintTransition?.retarget({reducedMotion:this.reducedMotion});
@@ -104,11 +121,12 @@ export class GarageScene {
   }
 
   /** Request frames only for an active finite wipe; hidden/offscreen/reduced-motion views settle. */
-  advance(dt,{visible=true,reducedMotion=false}={}){
+  advance(dt,{visible=true,reducedMotion=false,mediaActive=true}={}){
     this.reducedMotion=reducedMotion;
     let changed=this.paintTransition?.advance(dt,{visible,reducedMotion})||false;
     for(const wipe of this.rimTransitions)changed=wipe.advance(dt,{visible,reducedMotion})||changed;
-    return this.cameraMotion.advance(dt,{visible,reducedMotion})||changed;
+    const mediaChanged=this.screenDisplay.advance(dt,{visible,reducedMotion,mediaActive});
+    return this.cameraMotion.advance(dt,{visible,reducedMotion})||mediaChanged||changed;
   }
 
   get animating(){return this.paintTransition?.animating||this.rimTransitions.some(wipe=>wipe.animating)||this.cameraMotion.active||false;}
@@ -125,9 +143,9 @@ export class GarageScene {
 
   /** Populate only measured clear side bays with actually owned cars; level four adds equipment, not fictitious extra floor space. */
   setParking(owned){
-    this.parkingRecords=Array.isArray(owned)?owned:[];
+    this.cameraLimits=null;this.parkingRecords=Array.isArray(owned)?owned:[];
     const records=this.parkingRecords.slice(0,this.tier<2?0:this.tier===2?1:2);
-    const key=JSON.stringify(records);if(key===this.parkedKey)return;
+    const key=JSON.stringify(records);if(key===this.parkedKey)return;this.key.shadow.needsUpdate=true;
     for(const car of this.parkedVehicles){this.scene.remove(car);for(const material of car.userData.ownedAppearanceMaterials||[])material.dispose();}
     this.parkedVehicles=[];this.parkedKey=key;
     records.forEach((record,index)=>{const car=this.makeVehicle(record.id,record.appearance||{});car.position.set(index?6.2:-6.2,record.id==='rocket'?.006:(car.userData.groundY||.006),-.8);this.scene.add(car);this.parkedVehicles.push(car);});
@@ -139,16 +157,28 @@ export class GarageScene {
     let next=allowed.includes(raw)?raw:'overview';
     if(next==='cockpit'&&this.vehicle?.userData.ownedVehicleId!=='rocket')next='overview';
     if(next===this.inspection)return next;
+    this.key.shadow.needsUpdate=true;
     if(this.lastWidth>0)this.cameraMotion.begin(this.camera,{reducedMotion:this.reducedMotion});
-    this.inspection=next;this.orbitOffset=0;
+    this.inspection=next;this.orbitOffset=0;this.dragRadius=null;
     this.yaw=next==='rear'?2.5:-.63;this.pitch=.24;
     return this.inspection;
   }
 
-  /** Apply deliberate bounded orbit input in pixels; no continuous decorative vehicle rotation. */
+  /** Direct manipulation: a foreground exterior surface follows the pointer; the car itself never rotates. */
   orbit(dx, dy) {
-    const center=this.inspection==='rear'?2.5:-.63;this.yaw = Math.max(center-.65, Math.min(center+.65, this.yaw - (Number(dx) || 0) * .004));this.orbitOffset=Math.max(-.4,Math.min(.4,this.orbitOffset-(Number(dx)||0)*.003));
-    this.pitch = Math.max(.13, Math.min(.48, this.pitch + (Number(dy) || 0) * .003));
+    const horizontal=Number(dx)||0,vertical=Number(dy)||0;
+    if(this.cameraMotion.active&&this.inspection!=='cockpit'){
+      const target=this.inspection==='wheels'?new T.Box3().setFromObject(this.vehicle.getObjectByName('wheel_fl')||this.vehicle,true).getCenter(new T.Vector3()):this.target;
+      const delta=this.camera.position.clone().sub(target),radius=Math.hypot(delta.x,delta.z);
+      this.yaw=Math.atan2(delta.x,-delta.z);this.pitch=Math.asin(Math.max(-1,Math.min(1,delta.y/Math.max(.01,radius))));this.dragRadius=radius;
+      this.cameraMotion.active=false;
+    }
+    this.yaw+=horizontal*.004;
+    if(this.inspection==='wheels')this.yaw=Math.max(-1.28,Math.min(.02,this.yaw));
+    else this.yaw=Math.atan2(Math.sin(this.yaw),Math.cos(this.yaw));
+    // Inside, moving the look target left moves the actual wheel/tablet surface right.
+    this.orbitOffset=Math.max(-.4,Math.min(.4,this.orbitOffset-horizontal*.003));
+    this.pitch=Math.max(.13,Math.min(.48,this.pitch+vertical*.003));
   }
 
   /** Render one parked showcase frame, restoring the road exposure after the shared renderer call. */
@@ -160,8 +190,12 @@ export class GarageScene {
       this.camera.aspect = aspect; this.camera.fov = aspect < 1 ? 49 : 38; this.camera.updateProjectionMatrix();
       this.lastWidth = width; this.lastHeight = height;
     }
+    // The car-fit region excludes the transparent title strip. The TV is still
+    // genuinely visible there, particularly on short landscape phones. Only
+    // the opaque side panels restrict its horizontal world viewport.
+    this.screenRegion=region?{x:region.x,y:0,width:region.width,height}:{x:0,y:0,width,height};
     setPlayerInteriorView(this.vehicle,this.inspection==='cockpit');
-    this.camera.near=this.inspection==='cockpit'?.025:.08;this.camera.updateProjectionMatrix();
+    this.camera.near=this.inspection==='cockpit'?.025:.08;this.camera.updateProjectionMatrix();this.cameraContext=null;
     const target=this.target.clone();
     let focus=this.vehicle;
     if(this.inspection==='wheels'){
@@ -175,28 +209,20 @@ export class GarageScene {
         this.camera.clearViewOffset();
         this.camera.position.fromArray(data.reference_eye_game_m||data.inspection_eye_game_m).applyMatrix4(frame.matrixWorld);
         frameCockpitCustomization(this.camera,this.vehicle,data,frame,width,height,region,this.orbitOffset);
+        this.camera.userData.garageExterior=false;this.camera.userData.garageLookTarget=null;
         this.camera.updateMatrixWorld();return this.drawScene();
       }
     }
-    this.camera.fov=aspect<1?49:38;this.camera.updateProjectionMatrix();
-    let radius = (this.vehicleLength || 4.7) * (aspect < 1 ? 1.95 : 1.75) * this.zoom;
+    const minimumFov=aspect<1?49:38;
+    const limits=this.cameraLimits||(this.cameraLimits=garageCameraLimits(this.room,this.parkedVehicles));
+    let radius=Math.min((this.vehicleLength||4.7)*(aspect<1?1.95:1.75)*this.zoom,limits.orbitRadius);
     if(this.inspection==='wheels')radius=1.9;
+    if(this.dragRadius)radius=Math.min(this.dragRadius,limits.orbitRadius);
     this.camera.position.copy(target).add(new T.Vector3(Math.sin(this.yaw)*radius,Math.sin(this.pitch)*radius,-Math.cos(this.yaw)*radius));
-    this.camera.lookAt(target); this.camera.updateMatrixWorld();
-    this.camera.clearViewOffset();
-    if(region&&region.width>40&&region.height>40){
-      const box=new T.Box3().setFromObject(focus,true),points=[];
-      for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z])points.push(new T.Vector3(x,y,z));
-      let projected;
-      for(let i=0;i<3;i++){
-        projected=points.map(point=>point.clone().project(this.camera));
-        const px=projected.map(p=>(p.x+1)*width/2),py=projected.map(p=>(1-p.y)*height/2);
-        const left=Math.min(...px),right=Math.max(...px),top=Math.min(...py),bottom=Math.max(...py);
-        const scale=Math.max((right-left)/region.width,(bottom-top)/region.height);
-        if(scale<=1.025||i===2){this.camera.setViewOffset(width,height,(left+right)/2-(region.x+region.width/2),(top+bottom)/2-(region.y+region.height/2),width,height);break;}
-        radius*=scale*1.035;this.camera.position.copy(target).add(new T.Vector3(Math.sin(this.yaw)*radius,Math.sin(this.pitch)*radius,-Math.cos(this.yaw)*radius));this.camera.lookAt(target);this.camera.updateMatrixWorld();
-      }
-    }
+    const vehicleBounds=new T.Box3().setFromObject(this.vehicle,true);
+    this.cameraContext={limits,pivot:this.target.clone(),target,vehicleBounds,points:garageBoxCorners(focus===this.vehicle?vehicleBounds:new T.Box3().setFromObject(focus,true)),width,height,region,minimumFov};
+    constrainGarageCamera(this.camera,this.cameraContext);
+
     return this.drawScene();
   }
 
@@ -204,14 +230,14 @@ export class GarageScene {
   drawScene(){
     const exposure = this.renderer.toneMappingExposure;
     this.renderer.toneMappingExposure = .84;
-    try{this.paintTransition?.updateCoordinates();for(const wipe of this.rimTransitions)wipe.updateCoordinates();this.cameraMotion.apply(this.camera,this.lastWidth,this.lastHeight);this.renderer.render(this.scene,this.camera);}finally{this.renderer.toneMappingExposure=exposure;}
+    try{this.paintTransition?.updateCoordinates();for(const wipe of this.rimTransitions)wipe.updateCoordinates();this.cameraMotion.apply(this.camera,this.lastWidth,this.lastHeight,this.cameraContext);this.screenDisplay.updateVisibility(this.camera,this.lastWidth,this.lastHeight,this.screenRegion);this.renderer.render(this.scene,this.camera);}finally{this.renderer.toneMappingExposure=exposure;}
     return true;
   }
 
   /** Release exclusively owned room GPU assets once; vehicle source buffers remain with the road asset cache. */
   dispose() {
     if (this.disposed) return; this.disposed = true; ++this.generation;
-    this.paintTransition?.dispose();for(const wipe of this.rimTransitions)wipe.dispose();
+    this.paintTransition?.dispose();for(const wipe of this.rimTransitions)wipe.dispose();this.screenDisplay.dispose();
     this.renderer.domElement?.removeEventListener('webglcontextrestored',this.onContextRestored);
     this.environmentTarget?.dispose(); this.key.shadow.map?.dispose();
     const geometries = new Set(), materials = new Set(), textures = new Set();
@@ -219,7 +245,8 @@ export class GarageScene {
       room.traverse(node => {
         if (!node.isMesh) return;
         geometries.add(node.geometry);
-        for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+        for (const material of [...(Array.isArray(node.material) ? node.material : [node.material]),...(node.userData.garageScreenOriginalMaterials||[])]) {
+          if(material.userData?.garageScreenOwned)continue;
           materials.add(material); for (const value of Object.values(material)) if (value?.isTexture) textures.add(value);
         }
       });

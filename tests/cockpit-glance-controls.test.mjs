@@ -195,7 +195,8 @@ test('pause, modal, menu, result, crash, roll and external-camera boundaries for
 
 test('actual lifecycle clear resets gaze along with held driving controls at blur/visibility boundaries', () => {
   const { sandbox: s } = harness();
-  let releases = 0, thumbClears = 0;
+  let releases = 0, thumbClears = 0, orbitCancels = 0;
+  s.garageOrbitInput = { cancel() { orbitCancels++; } };
   s.thumbDrive = { clear() { thumbClears++; } };
   s.game.releaseControls = () => { releases++; };
   const clear = applicationFunction('clearInput');
@@ -203,7 +204,7 @@ test('actual lifecycle clear resets gaze along with held driving controls at blu
   s.input.key('KeyW', true); s.document.emit('keydown', { code: 'KeyZ' });
   s.clearInput();
   assert.equal(s.glance.direction, 0); assert.equal(s.glance.sources.size, 0);
-  assert.equal(s.input.read().throttle, 0); assert.equal(releases, 1); assert.equal(thumbClears, 1);
+  assert.equal(s.input.read().throttle, 0); assert.equal(releases, 1); assert.equal(thumbClears, 1); assert.equal(orbitCancels, 1);
   assert.match(main, /window\.addEventListener\('blur', \(\) => \{ clearInput\(\); gesture = null; pauseRun\('blur'\); \}\)/);
   assert.match(main, /if \(document\.hidden\) \{ clearInput\(\); gesture = null; pauseRun\('hidden'\); \}/);
   assert.match(main, /const\s+lifecycle\s*=\s*createLifecycle\(\(\)\s*=>\s*\{\s*clearInput\(\)/);

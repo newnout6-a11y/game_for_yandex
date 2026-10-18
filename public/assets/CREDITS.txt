@@ -158,3 +158,13 @@ Roadster is the user's chosen title. Original artwork does not establish rights
 to the title or Tesla-associated reference design; public commercial release,
 platform approval, real payments and publication remain separate gates.
 Detailed provenance and limitations: CREDITS.md and docs/GARAGE_COSMETIC_ASSETS.md.
+
+Garage television: user-supplied third-party Tesla footage (2026-10-18)
+The Kickflip | Roadster, credited to Tesla. Reference:
+https://www.youtube.com/watch?v=r5vsHHPVhJg
+assets/garage/roadster-screen-loop.mp4 retains all 1,052 source video frames
+at 640x360, 24000/1001 fps, 43.877167 seconds. Audio removed; no video crop,
+retiming or re-encoding. roadster-screen-poster.jpg is a frame at 14.2 seconds.
+Not original game footage, a physics proof, or a Tesla endorsement.
+User supply does not establish a commercial redistribution license.
+Technical provenance: art/garage/screen/supplied-video-provenance.json.

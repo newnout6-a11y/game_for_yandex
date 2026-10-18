@@ -688,3 +688,47 @@ test('upgrade buttons retain the displayed next-level intent rather than silentl
  assert.deepEqual(h.actions.at(-1),{type:'upgradeEngineering',branch:'drive',expectedLevel:3});
  h.click(h.button('upgradeGarage'));assert.deepEqual(h.actions.at(-1),{type:'upgradeGarage',expectedLevel:3});
 });
+
+test('selected car heading remains dynamic and accessible in the lower-right title dock', () => {
+  const h=harness();
+  for(const selectedVehicle of ['rocket','hatch','sedan','suv','van']) {
+    h.render({screen:'garage',tab:'fleet',selectedVehicle});
+    const title=h.root.querySelector('[data-gs-heading]'),dock=h.root.querySelector('.gs-vehicle-title-dock');
+    assert.ok(dock.contains(title));assert.equal(title.tagName,'H1');assert.equal(title.tabIndex,-1);
+    assert.equal(title.textContent,h.ui.view.selected.name);assert.equal(h.root.querySelectorAll('[data-gs-heading]').length,1);
+    const spacer=h.root.querySelector('.gs-title-reservation');assert.equal(spacer.getAttribute('aria-hidden'),'true');assert.equal(spacer.textContent,title.textContent);
+    const stage=h.root.querySelector('.gs-stage');assert.ok(stage.querySelector('.gs-stage-bottom').contains(dock));assert.equal(h.root.querySelector('.gs-workbench-column'),null);assert.equal(h.root.querySelector('.gs-garage').children[2],h.root.querySelector('.gs-workbench'));assert.equal(h.root.querySelectorAll('.gs-vehicle-title').length,1);
+    assert.ok(h.root.querySelector('.gs-brand').textContent.includes('Roadster'));
+  }
+});
+
+test('fleet cards expose five real-model canvases rather than reused car icons', () => {
+  const h=harness();let targets;h.ui.onMiniatures=value=>{targets=value;};h.render({tab:'fleet'});
+  assert.deepEqual(targets.map(x=>x.id),['rocket','hatch','sedan','suv','van']);
+  for(const target of targets){assert.equal(target.canvas.tagName,'CANVAS');assert.equal(target.canvas.width,320);assert.equal(target.canvas.height,180);assert.equal(target.canvas.parentElement.querySelector('svg'),null);assert.equal(target.canvas.parentElement.getAttribute('aria-hidden'),'true');}
+  assert.equal(h.root.querySelectorAll('[data-fleet-id]').length,5);assert.equal(h.actions.length,0);
+});
+test('fleet miniature appearance is saved owned equipment, while locked cars remain stock', () => {
+  const profile=createProfile({now:123});profile.cosmetics.owned.push('paint_copper','rim_copper');profile.loadouts.rocket.cosmetics={'body.paint':'paint_copper','wheels.finish':'rim_copper'};profile.loadouts.hatch={cosmetics:{'body.paint':'paint_copper'}};
+  const h=harness(profile);h.render({tab:'fleet'});const targets=h.ui.getFleetMiniatureTargets();
+  assert.deepEqual(targets[0].appearance,profile.loadouts.rocket.cosmetics);assert.notEqual(targets[0].appearance,profile.loadouts.rocket.cosmetics);assert.deepEqual(targets[1].appearance,{});assert.equal(h.actions.length,0);
+});
+test('fleet hover, keyboard focus and touch request visual turns without acquiring or selecting cars', () => {
+  const h=harness();const calls=[];h.ui.onMiniatureInteraction=(...value)=>calls.push(value);h.render({tab:'fleet'});calls.length=0;
+  const row=h.root.querySelector('[data-fleet-id="hatch"]'),canvas=row.querySelector('canvas');
+  h.ui.handleMiniatureInteraction({type:'pointerover',pointerType:'mouse',target:canvas});assert.deepEqual(calls.at(-1),['hatch','hover']);
+  const count=calls.length;h.ui.handleMiniatureInteraction({type:'pointerout',pointerType:'mouse',target:canvas,relatedTarget:row});assert.equal(calls.length,count);
+  h.ui.handleMiniatureInteraction({type:'pointerout',pointerType:'mouse',target:row});assert.deepEqual(calls.at(-1),[null,'hover']);
+  h.ui.handleMiniatureInteraction({type:'focusin',target:row});assert.deepEqual(calls.at(-1),['hatch','focus']);
+  h.ui.handleMiniatureInteraction({type:'focusout',target:row});assert.deepEqual(calls.at(-1),[null,'focus']);
+  h.ui.handleMiniatureInteraction({type:'pointerdown',pointerType:'touch',target:canvas});assert.deepEqual(calls.at(-1),['hatch','touch']);assert.equal(h.actions.length,0);
+});
+test('fleet interaction respects overlays and clears models when the catalog unmounts', () => {
+  const h=harness();const turns=[],targets=[];h.ui.onMiniatureInteraction=id=>turns.push(id);h.ui.onMiniatures=value=>targets.push(value);h.render({tab:'fleet'});
+  const row=h.root.querySelector('[data-fleet-id="rocket"]'),event={type:'pointerover',target:row};const count=turns.length;
+  h.ui.setBusy(true);h.ui.handleMiniatureInteraction(event);assert.equal(turns.length,count);h.ui.setBusy(false);
+  h.ui.settingsOpen=true;h.ui.handleMiniatureInteraction(event);assert.equal(turns.length,count);h.ui.settingsOpen=false;
+  h.ui.setVisible(false);assert.equal(turns.at(-1),null);h.ui.handleMiniatureInteraction(event);assert.equal(turns.at(-1),null);
+  h.ui.setVisible(true);h.render({tab:'style'});assert.deepEqual(targets.at(-1),[]);assert.equal(turns.at(-1),null);
+  h.ui.dispose();assert.deepEqual(targets.at(-1),[]);for(const key of ['pointerover','pointerout','pointerdown','focusin','focusout'])assert.equal(h.root.listeners[key],undefined);
+});

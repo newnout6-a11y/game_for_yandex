@@ -1,0 +1,45 @@
+{
+  "status": "user-supplied-local-integration",
+  "title": "The Kickflip | Roadster",
+  "credited_creator": "Tesla",
+  "reference_url": "https://www.youtube.com/watch?v=r5vsHHPVhJg",
+  "input": {
+    "delivery": "User-provided MP4",
+    "bytes": 2244172,
+    "sha256": "323613fa17f6affcb2d04e9620e877ce28ab0d2cbcb3dffa3a8c628946f5b085",
+    "container_duration_s": 43.932154
+  },
+  "transformation": {
+    "video": "stream copy; all frames retained; no crop, resize, retiming or re-encoding",
+    "audio": "removed",
+    "fast_start": true,
+    "poster_time_s": 14.2
+  },
+  "video": {
+    "width": 640,
+    "height": 360,
+    "frame_rate": "24000/1001",
+    "pixel_format": "yuv420p",
+    "duration_s": 43.877167,
+    "frames": 1052,
+    "decoded_frames_identical": true,
+    "audio_streams": 0
+  },
+  "rights": {
+    "authorship": "Third-party Tesla footage supplied by the user, not original game artwork.",
+    "redistribution_license": "Not asserted or inferred from user possession; public release approval is separate.",
+    "endorsement": "No affiliation or endorsement is claimed."
+  },
+  "files": [
+    {
+      "path": "public/assets/garage/roadster-screen-loop.mp4",
+      "bytes": 1707750,
+      "sha256": "ad8377d176e7c8ca152d982e35eaff15b97a35014747cc783f3baa53d064e7f5"
+    },
+    {
+      "path": "public/assets/garage/roadster-screen-poster.jpg",
+      "bytes": 20303,
+      "sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424"
+    }
+  ]
+}
