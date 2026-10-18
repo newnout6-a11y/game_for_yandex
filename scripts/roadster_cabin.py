@@ -6,7 +6,8 @@ are in game metres (+X right, +Y up, -Z front). Call build_cabin(api) after the
 host's geometry helpers exist. This module never clears, batches, exports, or
 renders a scene, and never creates external glazing or a driver.
 
-Small original tiled maps and a hand-drawn infotainment UI are generated with
+Small original tiled maps and an infotainment UI using an offline render of the
+current authored Rocket are generated with
 NumPy into art/textures/roadster-cabin-*.png, packed in the .blend, and exported
 by Blender's standard glTF material pipeline. No photograph is mapped onto the
 car. Carbon, upholstery, roof apertures, seat shells and all controls have depth.
@@ -129,8 +130,41 @@ def _make_maps(directory):
     }
 
 
+def _composite_tablet_rocket(canvas):
+    """Alpha-compose the offline Blender Rocket render in linear-light RGB.
+
+    The checked-in PNG is a 680 by 201 pixel antialiased render of the current
+    authored vehicle, not a separate hand-drawn approximation. Blender byte-image
+    pixels retain encoded sRGB here, so explicitly decode both layers, blend in
+    linear light, then encode once for _save_image. Live telemetry is untouched.
+    Rebuild with: blender --background --python scripts/render_tablet_rocket.py
+    """
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        'art', 'textures', 'roadster-tablet-rocket.png')
+    if not os.path.isfile(path):
+        raise FileNotFoundError('Missing offline Rocket render: ' + path)
+    image = bpy.data.images.load(path, check_existing=False)
+    try:
+        if tuple(image.size) != (680, 201):
+            raise ValueError('Rocket artwork must remain 680 by 201 pixels')
+        image.colorspace_settings.name = 'sRGB'
+        rgba = np.empty(680 * 201 * 4, dtype=np.float32)
+        image.pixels.foreach_get(rgba)
+        rgba = rgba.reshape((201, 680, 4))[::-1]
+        alpha = rgba[:, :, 3:4]
+        region = canvas[247:448, 300:980]
+        foreground = np.where(rgba[:, :, :3] <= .04045, rgba[:, :, :3] / 12.92,
+                              ((rgba[:, :, :3] + .055) / 1.055) ** 2.4)
+        background = np.where(region <= .04045, region / 12.92, ((region + .055) / 1.055) ** 2.4)
+        blended = foreground * alpha + background * (1 - alpha)
+        region[:] = np.where(blended <= .0031308, blended * 12.92,
+                             1.055 * np.maximum(blended, 0) ** (1 / 2.4) - .055)
+    finally:
+        bpy.data.images.remove(image)
+
+
 def _screen_art():
-    """Original 16:10 cockpit UI with a consistent orthographic side-profile diagram; all layout positions are texture pixels, not perspective geometry."""
+    """Original 16:10 cockpit UI with an authentic offline-rendered Rocket."""
     w, h = 1024, 640
     canvas = np.zeros((h, w, 3), dtype=np.float32)
     gy = np.linspace(0, 1, h)[:, None, None]
@@ -138,29 +172,6 @@ def _screen_art():
     def rect(x0, y0, x1, y1, color):
         """Overwrite an axis-aligned pixel rectangle in the enclosing RGB UI canvas; clip its bounds to the image."""
         canvas[max(0,int(y0)):min(h,int(y1)), max(0,int(x0)):min(w,int(x1))] = color
-    def poly(points, color):
-        """Rasterize a closed UI polygon from pixel XY vertices into the canvas using scanline spans; return nothing."""
-        pts = np.array(points, dtype=float)
-        for y in range(max(0, int(pts[:, 1].min())), min(h, int(pts[:, 1].max())+1)):
-            hits = []
-            for a, b in zip(pts, np.roll(pts, -1, axis=0)):
-                if (a[1] <= y < b[1]) or (b[1] <= y < a[1]):
-                    hits.append(a[0] + (y-a[1])*(b[0]-a[0])/(b[1]-a[1]))
-            hits.sort()
-            for a, b in zip(hits[0::2], hits[1::2]):
-                rect(a, y, b+1, y+1, color)
-    def line(points, color, width=2):
-        """Stroke consecutive pixel XY points into the UI canvas with a square brush of the requested pixel width."""
-        for a, b in zip(points, points[1:]):
-            n = max(1, int(max(abs(b[0]-a[0]), abs(b[1]-a[1]))))
-            for t in np.linspace(0, 1, n+1):
-                x, y = np.array(a)*(1-t)+np.array(b)*t
-                rect(x-width/2, y-width/2, x+width/2+1, y+width/2+1, color)
-    def ellipse(cx, cy, rx, ry, color):
-        """Fill a UI ellipse whose center and radii are pixels, modifying the enclosing RGB canvas in place."""
-        for y in range(max(0,int(cy-ry)), min(h,int(cy+ry+1))):
-            dx = rx*sqrt(max(0, 1-((y-cy)/ry)**2))
-            rect(cx-dx,y,cx+dx,y+1,color)
     def text(x,y,value,scale=2,color=(.66,.69,.71)):
         """Draw the module's original bitmap glyphs at pixel XY with integer pixel scaling and advance each character."""
         for ch in value:
@@ -179,43 +190,10 @@ def _screen_art():
     text(34,243,'P',3,red); text(75,243,'R N D',2,muted)
     text(34,306,'RANGE',2,muted); text(34,338,'620 KM',3,white)
     text(34,405,'READY',2,(.38,.62,.46))
-    # One orthographic profile: both wheels share a baseline and radius, and
-    # every body/glazing edge belongs to that same projection. This intentionally
-    # avoids a fake perspective rendering with mismatched axles or sheared panels.
-    # The diagram is original status artwork, not a photographed dashboard UI.
+    # Static status illustration rendered from art/roadster.blend. Its authored
+    # parked/stowed pose does not claim live vehicle or rear-camera telemetry.
     rect(251,93,253,479,(.10,.115,.13))
-    ellipse(632,398,301,18,(.009,.012,.016))
-    wheel_y=366;wheel_r=39
-    for x in [440,823]:ellipse(x,wheel_y,wheel_r+4,wheel_r+4,(.007,.009,.012))
-    body=[(326,348),(355,327),(423,309),(511,301),(564,254),
-          (685,247),(748,270),(807,300),(878,312),(921,333),
-          (931,364),(897,383),(361,383),(327,367)]
-    poly(body,(.35,.38,.41))
-    poly([(327,349),(449,343),(551,332),(784,332),(923,345),
-          (931,364),(897,383),(361,383),(327,367)],(.20,.23,.26))
-    poly([(426,311),(515,305),(559,266),(574,257),(682,252),
-          (741,275),(783,302),(758,309),(540,313)],(.095,.12,.15))
-    poly([(533,302),(572,263),(619,260),(619,302)],(.032,.055,.075))
-    poly([(628,259),(680,257),(734,278),(770,300),(628,302)],(.022,.039,.054))
-    line([(353,328),(423,312),(514,305),(564,254),(685,247),
-          (748,270),(807,300),(878,312)],(.58,.62,.65),3)
-    line([(547,317),(543,365),(743,365),(761,317)],(.10,.13,.16),2)
-    line([(723,323),(748,323)],(.54,.58,.61),3)
-    line([(337,348),(382,344)],(.83,.91,.96),4)
-    line([(901,330),(920,336)],red,4)
-    line([(342,370),(397,370)],(.025,.035,.045),6)
-    line([(868,372),(911,365)],(.025,.035,.045),6)
-    line([(486,378),(778,378)],(.08,.10,.12),5)
-    # Grounded wheel silhouettes, circular spokes and consistent arch gaps.
-    for x in [440,823]:
-        ellipse(x,wheel_y,wheel_r+3,wheel_r+3,(.012,.016,.021))
-        ellipse(x,wheel_y,wheel_r,wheel_r,(.023,.030,.039))
-        ellipse(x,wheel_y,27,27,(.39,.43,.47))
-        ellipse(x,wheel_y,23,23,(.048,.063,.079))
-        for a in np.linspace(0,2*pi,10,endpoint=False):
-            line([(x+8*cos(a),wheel_y+8*sin(a)),
-                  (x+25*cos(a+.12),wheel_y+25*sin(a+.12))],(.48,.53,.57),3)
-        ellipse(x,wheel_y,6,6,(.39,.44,.48))
+    _composite_tablet_rocket(canvas)
     text(350,177,'VEHICLE STATUS',2,muted)
     text(350,212,'PARKED',3,white)
     text(370,460,'VEHICLE',2,white); text(550,460,'CHARGING',2,muted); text(760,460,'CONTROLS',2,muted)
@@ -640,7 +618,7 @@ def build_cabin(api):
         'visibility_probe_count_per_steering_pose':7938,
         'visibility_steering_angles_radians':[-1.2,0,1.2],
         'visibility_probe_count':23814,
-        'ui_artwork':'Original orthographic side-profile status graphic; no factory software or live telemetry claim.'
+        'ui_artwork':'Offline Blender render of this authored Rocket in parked/stowed pose; live game instruments remain separate; no factory UI claim.'
     }
 
     # Original game addition requested by the user: a separate small right-side

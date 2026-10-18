@@ -2,7 +2,7 @@ import * as T from '../public/vendor/three.js';
 
 const WIDTH = 1024, HEIGHT = 640, INTERVAL = .1;
 // Exact texture-pixel regions from scripts/roadster_cabin.py::_screen_art.
-// The profile illustration starts at y=247 and is never painted over.
+// The offline-rendered Rocket illustration starts below y=247 and is never painted over.
 const REGIONS = {
   speed: [28, 85, 212, 121],
   gear: [28, 234, 212, 40],
