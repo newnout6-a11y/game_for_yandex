@@ -3,7 +3,7 @@ export class DrivingInput {
   /**
    * Create independent input-source ownership so one finger/key release cannot cancel another.
    */
-  constructor() { this.held = new Map(); }
+  constructor() { this.held = new Map(); this.analog = new Map(); }
   /**
    * Add or release one physical input source; unknown actions are ignored.
    * @param {string} action - Logical steering, pedal, boost, flight or roll action.
@@ -13,6 +13,12 @@ export class DrivingInput {
   set(action, source, down) {
     if (!['left','right','gas','brake','boost','flight','rollLeft','rollRight'].includes(action)) return;
     if (down) this.held.set(source, action); else this.held.delete(source);
+  }
+  /** Store finite bounded analog axes for one independent touch source; zero releases that source. */
+  setAnalog(source, controls = {}) {
+    const clamp=(value,min,max)=>Number.isFinite(value)?Math.min(max,Math.max(min,value)):0;
+    const sample={steer:clamp(controls.steer,-1,1),throttle:clamp(controls.throttle,0,1),brake:clamp(controls.brake,0,1)};
+    if(sample.steer||sample.throttle||sample.brake)this.analog.set(source,sample);else this.analog.delete(source);
   }
   /**
    * Translate KeyboardEvent.code into a logical action without consuming unrelated keys.
@@ -28,7 +34,7 @@ export class DrivingInput {
    * Release one source after pointer cancellation or capture loss.
    * @param {string} source - The exact identifier previously passed to set.
    */
-  release(source) { this.held.delete(source); }
+  release(source) { this.held.delete(source); this.analog.delete(source); }
   /**
    * Check whether any source still holds the requested action.
    * @param {string} action - Logical control name.
@@ -39,9 +45,9 @@ export class DrivingInput {
    * Return a fresh simulation control sample without mutating held inputs.
    * @returns {Object} Signed steer/roll axes (-1, 0, +1), binary pedals and boolean boost/flight.
    */
-  read() { return { steer:Number(this.active('right'))-Number(this.active('left')), throttle:Number(this.active('gas')), brake:Number(this.active('brake')), boost:this.active('boost'), flight:this.active('flight'), roll:Number(this.active('rollRight'))-Number(this.active('rollLeft')) }; }
+  read() { const samples=[...this.analog.values()],last=samples.at(-1)||{}; return { steer:(Number(this.active('right'))-Number(this.active('left')))||(last.steer||0), throttle:Math.max(Number(this.active('gas')),...samples.map(s=>s.throttle)), brake:Math.max(Number(this.active('brake')),...samples.map(s=>s.brake)), boost:this.active('boost'), flight:this.active('flight'), roll:Number(this.active('rollRight'))-Number(this.active('rollLeft')) }; }
   /**
    * Release every key and pointer source when pausing, crashing, blurring or starting a run.
    */
-  clear() { this.held.clear(); }
+  clear() { this.held.clear(); this.analog.clear(); }
 }

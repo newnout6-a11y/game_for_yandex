@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "brand": "Roadster",
+  "cars": [
+    "rocket"
+  ],
+  "sourceRoadsterSha256": "d71068fb3da4771f1a5945f03d078cd97a4cac4f0884442cda9c7c732722100e",
+  "sourceScript": "scripts/create_steering_cosmetics.py",
+  "mount": {
+    "parent": "steering_yoke",
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "quaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "scale": [
+      1,
+      1,
+      1
+    ],
+    "axis": "local Z",
+    "originalPivotTranslation": [
+      -0.43000003695487976,
+      0.7950000762939453,
+      -0.20500001311302185
+    ],
+    "originalPivotQuaternion": [
+      0,
+      0,
+      0,
+      1
+    ],
+    "hideOnlyOriginalMeshes": [
+      "steering_yoke_rc_black",
+      "steering_yoke_rc_carbon",
+      "steering_yoke_rc_ivory",
+      "steering_yoke_rc_liner",
+      "steering_yoke_rc_metal"
+    ],
+    "preserveOriginalPivot": true,
+    "preserveStationaryColumnTabletAndControls": true
+  },
+  "coordinateConvention": "Existing steering_yoke local metres, +Y up, +Z towards driver; no runtime rescale",
+  "provenance": "Original authored Blender grip, hub, spokes, paddles, seam and trim geometry. No downloaded or purchased assets. Accepted Roadster used only for read-only fitting.",
+  "assets": [
+    {
+      "id": "steering_round",
+      "asset": "steering-round.glb",
+      "root": "cosmetic_steering_round",
+      "editableSource": "art/cosmetics/steering-round.blend",
+      "editableParts": 49,
+      "drawBatches": 4,
+      "triangles": 5608,
+      "boundsPivotLocalM": {
+        "min": [
+          -0.19147071242332458,
+          -0.18649999797344208,
+          -0.0430000014603138
+        ],
+        "max": [
+          0.1915000081062317,
+          0.1873999983072281,
+          0.03400000184774399
+        ]
+      },
+      "bytes": 262948,
+      "sha256": "f10a6de81b71f9281ff1a845752d0b89fd4a73415527190161cb2c56e3a0cfd7"
+    },
+    {
+      "id": "steering_yoke",
+      "asset": "steering-yoke.glb",
+      "root": "cosmetic_steering_yoke",
+      "editableSource": "art/cosmetics/steering-yoke.blend",
+      "editableParts": 49,
+      "drawBatches": 4,
+      "triangles": 5488,
+      "boundsPivotLocalM": {
+        "min": [
+          -0.22429393231868744,
+          -0.1459999978542328,
+          -0.0430000014603138
+        ],
+        "max": [
+          0.22429393231868744,
+          0.1251221001148224,
+          0.03400000184774399
+        ]
+      },
+      "bytes": 263972,
+      "sha256": "f52ae0fcda9e7bca98bbd8830c10e300292cdbfa54f8f5cf827a1d7d984c553b"
+    }
+  ]
+}

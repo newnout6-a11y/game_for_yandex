@@ -18,17 +18,18 @@ export const PLAYER_BODY_TRAVEL = .018;
  * @returns {{heading:number,x:number,forward:number,rearDistance:number,yawRate:number}}
  * Exact arc endpoint displacement and wheel-path clock increment; no input mutation.
  */
-export function integratePlayerArc(heading, speed, curvature, dt) {
+export function integratePlayerArc(heading, speed, curvature, dt, rearOffset = PLAYER_REAR_OFFSET) {
+  const offset = Number.isFinite(rearOffset) && rearOffset > 0 && rearOffset < 4 ? rearOffset : PLAYER_REAR_OFFSET;
   const h = Number.isFinite(heading) ? heading : 0;
   const k = Number.isFinite(curvature) ? curvature : 0;
   const step = Math.max(0, Number.isFinite(dt) ? dt : 0);
-  const v = Math.max(0, Number.isFinite(speed) ? speed : 0) / Math.hypot(1, k * PLAYER_REAR_OFFSET);
+  const v = Math.max(0, Number.isFinite(speed) ? speed : 0) / Math.hypot(1, k * offset);
   const rearDistance = v * step, turn = rearDistance * k, next = h + turn;
   let x, forward;
   if (Math.abs(k) < 1e-8) { x = Math.sin(h) * rearDistance; forward = Math.cos(h) * rearDistance; }
   else { x = (Math.cos(h) - Math.cos(next)) / k; forward = (Math.sin(next) - Math.sin(h)) / k; }
-  x += PLAYER_REAR_OFFSET * (Math.sin(next) - Math.sin(h));
-  forward += PLAYER_REAR_OFFSET * (Math.cos(next) - Math.cos(h));
+  x += offset * (Math.sin(next) - Math.sin(h));
+  forward += offset * (Math.cos(next) - Math.cos(h));
   return { heading: next, x, forward, rearDistance, yawRate: v * k };
 }
 
@@ -43,15 +44,18 @@ export function integratePlayerArc(heading, speed, curvature, dt) {
  */
 export function updatePlayerPath(state, steering, dt) {
   const speed = Math.max(0, state.speed || 0), input = clamp(Number.isFinite(steering) ? steering : 0, -1, 1);
+  const wheelbase = state.playerWheelbase || PLAYER_WHEELBASE;
+  const lateralLimit = state.maxLateralAcceleration || PLAYER_MAX_LATERAL_ACCELERATION;
+  const slew = Math.max(.5, Math.min(1.3, state.steeringSlewMultiplier || 1));
   const targetHeading = input * .201 / (1 + Math.max(0, speed - 30) * .012);
-  const maxCurvature = Math.min(Math.tan(.3) / PLAYER_WHEELBASE, PLAYER_MAX_LATERAL_ACCELERATION / Math.max(1, speed * speed));
+  const maxCurvature = Math.min(Math.tan(.3) / wheelbase, lateralLimit / Math.max(1, speed * speed));
   const wantedCurvature = speed > .15 ? (targetHeading - (state.heading || 0)) * 5 / speed : input * maxCurvature;
-  const targetAngle = Math.atan(clamp(wantedCurvature, -maxCurvature, maxCurvature) * PLAYER_WHEELBASE);
-  state.steerAngle = (state.steerAngle || 0) + clamp(targetAngle - (state.steerAngle || 0), -1.25 * dt/(1+speed/25), 1.25 * dt/(1+speed/25));
+  const targetAngle = Math.atan(clamp(wantedCurvature, -maxCurvature, maxCurvature) * wheelbase);
+  state.steerAngle = (state.steerAngle || 0) + clamp(targetAngle - (state.steerAngle || 0), -1.25 * slew * dt/(1+speed/25), 1.25 * slew * dt/(1+speed/25));
   // A speed increase cannot retain an angle that exceeds the lateral budget.
-  state.steerAngle = clamp(state.steerAngle, -Math.atan(maxCurvature * PLAYER_WHEELBASE), Math.atan(maxCurvature * PLAYER_WHEELBASE));
-  state.curvature = Math.tan(state.steerAngle) / PLAYER_WHEELBASE;
-  const arc = integratePlayerArc(state.heading || 0, speed, state.curvature, dt);
+  state.steerAngle = clamp(state.steerAngle, -Math.atan(maxCurvature * wheelbase), Math.atan(maxCurvature * wheelbase));
+  state.curvature = Math.tan(state.steerAngle) / wheelbase;
+  const arc = integratePlayerArc(state.heading || 0, speed, state.curvature, dt, state.playerRearOffset);
   const nextX = state.x + arc.x / 3.5;
   state.x = clamp(nextX, -.24, 2.24);
   state.heading = arc.heading;

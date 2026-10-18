@@ -1,0 +1,442 @@
+{
+  "purpose": "Remove numerically collapsed Blender/GLB triangles without altering visible workshop geometry.",
+  "relative_cross_squared_threshold": 1e-16,
+  "test": "For each triangle, squared cross-product magnitude must exceed squared longest-edge length squared times 1e-16. Checks use Float64 arithmetic on Float32 exported local positions.",
+  "source_coordinate_check": "Editable local positions and material-batch coordinate projection are both checked before saving .blend files.",
+  "source_comparison": [
+    {
+      "tier": 1,
+      "objects_unchanged": true,
+      "scene_settings_and_lighting_unchanged": true,
+      "differences": [
+        {
+          "object": "Black top protector",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Black top protector.001",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 90,
+          "polygons_before": 54,
+          "polygons_after": 48
+        },
+        {
+          "object": "Black top protector.002",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Extinguisher instructions",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Service plaque",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 856,
+          "triangles_after": 852,
+          "polygons_before": 629,
+          "polygons_after": 625
+        }
+      ]
+    },
+    {
+      "tier": 2,
+      "objects_unchanged": true,
+      "scene_settings_and_lighting_unchanged": true,
+      "differences": [
+        {
+          "object": "Black top protector",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Black top protector.001",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Black top protector.002",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Extinguisher instructions",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        }
+      ]
+    },
+    {
+      "tier": 3,
+      "objects_unchanged": true,
+      "scene_settings_and_lighting_unchanged": true,
+      "differences": [
+        {
+          "object": "Black top protector",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 100,
+          "polygons_before": 54,
+          "polygons_after": 50
+        },
+        {
+          "object": "Black top protector.001",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 100,
+          "polygons_before": 54,
+          "polygons_after": 50
+        },
+        {
+          "object": "Black top protector.002",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 100,
+          "polygons_before": 54,
+          "polygons_after": 50
+        },
+        {
+          "object": "Black top protector.003",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 100,
+          "polygons_before": 54,
+          "polygons_after": 50
+        },
+        {
+          "object": "Black top protector.004",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 100,
+          "polygons_before": 54,
+          "polygons_after": 50
+        },
+        {
+          "object": "Black top protector.005",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 100,
+          "polygons_before": 54,
+          "polygons_after": 50
+        },
+        {
+          "object": "Engineering wall title",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 668,
+          "triangles_after": 664,
+          "polygons_before": 487,
+          "polygons_after": 483
+        },
+        {
+          "object": "Black top protector.006",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Extinguisher instructions",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 92,
+          "polygons_before": 54,
+          "polygons_after": 46
+        },
+        {
+          "object": "Floor datum legend",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 712,
+          "triangles_after": 708,
+          "polygons_before": 527,
+          "polygons_after": 523
+        }
+      ]
+    },
+    {
+      "tier": 4,
+      "objects_unchanged": true,
+      "scene_settings_and_lighting_unchanged": true,
+      "differences": [
+        {
+          "object": "Black top protector",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Black top protector.001",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Black top protector.002",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Black top protector.003",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Black top protector.004",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Black top protector.005",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Black top protector.006",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 84,
+          "polygons_before": 54,
+          "polygons_after": 42
+        },
+        {
+          "object": "Extinguisher instructions",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 108,
+          "triangles_after": 100,
+          "polygons_before": 54,
+          "polygons_after": 50
+        },
+        {
+          "object": "Bay numeral",
+          "vertex_positions_unchanged": true,
+          "matrix_unchanged": true,
+          "triangles_before": 124,
+          "triangles_after": 120,
+          "polygons_before": 93,
+          "polygons_after": 89
+        }
+      ]
+    }
+  ],
+  "export_comparison": [
+    {
+      "tier": 1,
+      "materials_unchanged": true,
+      "nodes_unchanged": true,
+      "embedded_images_unchanged": true,
+      "mesh_comparison": [
+        {
+          "mesh": "Cone.243",
+          "before_degenerate_triangles": 28,
+          "after_degenerate_triangles": 0,
+          "removed_noncollapsed_geometry": 0,
+          "added_noncollapsed_geometry": 0,
+          "removed_nondegenerate_attributes": 0,
+          "added_nondegenerate_attributes": 0
+        },
+        {
+          "mesh": "Cube.280",
+          "before_degenerate_triangles": 66,
+          "after_degenerate_triangles": 0,
+          "removed_noncollapsed_geometry": 0,
+          "added_noncollapsed_geometry": 0,
+          "removed_nondegenerate_attributes": 0,
+          "added_nondegenerate_attributes": 0
+        }
+      ],
+      "baseline_sha256": "826b9c7f3b607809c4768b13eb6f56c4f090775ee4674609d5a94690438872df",
+      "cleaned_sha256": "ce588642f831f54efa968a3ddd3dc26206f5ac742063dc2b9b6230f1453817b8"
+    },
+    {
+      "tier": 2,
+      "materials_unchanged": true,
+      "nodes_unchanged": true,
+      "embedded_images_unchanged": true,
+      "mesh_comparison": [
+        {
+          "mesh": "Cone.388",
+          "before_degenerate_triangles": 24,
+          "after_degenerate_triangles": 0,
+          "removed_noncollapsed_geometry": 0,
+          "added_noncollapsed_geometry": 0,
+          "removed_nondegenerate_attributes": 0,
+          "added_nondegenerate_attributes": 0
+        },
+        {
+          "mesh": "Cube.168",
+          "before_degenerate_triangles": 72,
+          "after_degenerate_triangles": 0,
+          "removed_noncollapsed_geometry": 0,
+          "added_noncollapsed_geometry": 0,
+          "removed_nondegenerate_attributes": 0,
+          "added_nondegenerate_attributes": 0
+        }
+      ],
+      "baseline_sha256": "a44f64409808f74ce0b59cc7da77d01e44346a990fbd1aaa9d046b6dc3df63f1",
+      "cleaned_sha256": "011fde566940377b35f95bb0eddd3204cb6de8ec654b13c0035242e52d080f89"
+    },
+    {
+      "tier": 3,
+      "materials_unchanged": true,
+      "nodes_unchanged": true,
+      "embedded_images_unchanged": true,
+      "mesh_comparison": [
+        {
+          "mesh": "Cube.483",
+          "before_degenerate_triangles": 4,
+          "after_degenerate_triangles": 0,
+          "removed_noncollapsed_geometry": 0,
+          "added_noncollapsed_geometry": 0,
+          "removed_nondegenerate_attributes": 0,
+          "added_nondegenerate_attributes": 0
+        },
+        {
+          "mesh": "Engineering wall title",
+          "before_degenerate_triangles": 16,
+          "after_degenerate_triangles": 0,
+          "removed_noncollapsed_geometry": 4,
+          "added_noncollapsed_geometry": 0,
+          "removed_nondegenerate_attributes": 4,
+          "added_nondegenerate_attributes": 0
+        },
+        {
+          "mesh": "Cube.625",
+          "before_degenerate_triangles": 72,
+          "after_degenerate_triangles": 0,
+          "removed_noncollapsed_geometry": 0,
+          "added_noncollapsed_geometry": 0,
+          "removed_nondegenerate_attributes": 0,
+          "added_nondegenerate_attributes": 0
+        }
+      ],
+      "baseline_sha256": "bf7c58dd8afb92b6d1a53b63b99383e28cd7040485bc4cf3b11c7af62dec3cb3",
+      "cleaned_sha256": "4d9bdc94fff95685580d2b81b5bdc246a436256179eb34ed43302108715ee98d"
+    },
+    {
+      "tier": 4,
+      "materials_unchanged": true,
+      "nodes_unchanged": true,
+      "embedded_images_unchanged": true,
+      "mesh_comparison": [
+        {
+          "mesh": "Cube.431",
+          "before_degenerate_triangles": 11,
+          "after_degenerate_triangles": 0,
+          "removed_noncollapsed_geometry": 1,
+          "added_noncollapsed_geometry": 0,
+          "removed_nondegenerate_attributes": 1,
+          "added_nondegenerate_attributes": 0
+        },
+        {
+          "mesh": "Cube.180",
+          "before_degenerate_triangles": 168,
+          "after_degenerate_triangles": 0,
+          "removed_noncollapsed_geometry": 0,
+          "added_noncollapsed_geometry": 0,
+          "removed_nondegenerate_attributes": 0,
+          "added_nondegenerate_attributes": 0
+        }
+      ],
+      "baseline_sha256": "fb61ac35b93bf4844247b7c1a10b5d70f395791bf3132430dfa72f4dc9e5d8a9",
+      "cleaned_sha256": "ecc25cf9165a47ff579d56fc8f9e17cbab2c636dabf4bb2da0589059dd9a6d3d"
+    }
+  ],
+  "extra_source_degenerate_triangles": {
+    "tier3": {
+      "triangles": 4,
+      "object": "Extinguisher instructions",
+      "reason": "Exactly collapsed source-space bevel triangles became nonzero Float32 batching artifacts."
+    },
+    "tier4": {
+      "triangles": 1,
+      "object": "Bay numeral",
+      "reason": "An exactly collinear source-space numeral triangle became a nonzero Float32 batching artifact."
+    }
+  },
+  "all_surviving_export_triangles_preserve_positions_normals_uvs": true,
+  "source_degenerate_triangles_after": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "export_degenerate_triangles_after": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "removed_triangles_by_tier": [
+    94,
+    96,
+    96,
+    180
+  ]
+}

@@ -4,8 +4,29 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { createStorage, sanitizeSave, STORAGE_KEY } from '../src/storage.js';
 import { UI, cameraShortcutAllowed } from '../src/ui.js';
+import { vehicleDefinition } from '../src/progression-catalog.js';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+
+
+/** Extract one real function using balanced braces, tolerating compact formatting. */
+function applicationFunction(name) {
+  const start = new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{').exec(main);
+  assert.ok(start, 'production function exists: ' + name);
+  let depth = 0, quote = null, escaped = false, lineComment = false, blockComment = false;
+  for (let at = main.indexOf('{', start.index); at < main.length; at++) {
+    const char = main[at], next = main[at + 1];
+    if (lineComment) { if (char === '\n') lineComment = false; continue; }
+    if (blockComment) { if (char === '*' && next === '/') { blockComment = false; at++; } continue; }
+    if (quote) { if (escaped) escaped = false; else if (char === '\\') escaped = true; else if (char === quote) quote = null; continue; }
+    if (char === '/' && next === '/') { lineComment = true; at++; continue; }
+    if (char === '/' && next === '*') { blockComment = true; at++; continue; }
+    if (char === "'" || char === '"' || char === '`') { quote = char; continue; }
+    if (char === '{') depth++;
+    if (char === '}' && --depth === 0) return main.slice(start.index, at + 1);
+  }
+  assert.fail('unterminated production function: ' + name);
+}
 
 /** Run a synchronous UI method with a minimal document, restoring the real global even on failure. */
 function withDocument(elements, operation) {
@@ -115,39 +136,64 @@ test('pause has its own native toggle without releasing modal focus protection o
 });
 
 test('real application camera action persists and renders only its preference, with lifecycle and modal guards', () => {
-  // Isolate the actual application function to exercise its side effects without a WebGL or SDK boot.
-  const action = main.match(/function toggleCamera\(\) \{[\s\S]*?\n\}/)?.[0];
+  // Load the real shared settings path too; only UI, storage and cloud boundaries are synthetic.
+  const action = ['toggleCamera', 'updateSettings', 'hydrateStoredSettings', 'changed'].map(applicationFunction).join('\n');
   assert.ok(action, 'application exposes one guarded camera action');
-  const calls = [];
+  const calls = [], profileCalls = [], cloudCalls = [];
+  const profileSettings = { cameraMode: 'chase', sound: false, renderQuality: 'auto', route: 'ring', difficulty: 'flow' };
+  const simulationState = new Proxy({ vehicleId: 'rocket' }, { get(target, key) { if (key === 'vehicleId') return target[key]; throw new Error('camera must not read simulation dynamics: ' + String(key)); }, set(target, key, value) { assert.equal(key, 'vehicleId'); target[key] = value; return true; } });
   const sandbox = {
-    screen: 'playing', busy: false, settings: { cameraMode: 'chase' },
+    screen: 'playing', busy: false, settings: { ...profileSettings }, appliedSelectedId: 'rocket',
+    appliedSettingsKey: JSON.stringify(profileSettings), garageDirty: false,
     storage: { settings: patch => calls.push(['save', patch.cameraMode]) },
-    renderer: { setCameraMode: mode => calls.push(['render', mode]) },
-    ui: { overlay: { hidden: true }, modalType: null, camera: mode => calls.push(['ui', mode]), notice: text => calls.push(['notice', text]) },
-    game: new Proxy({}, { get() { throw new Error('camera must not access simulation'); } }),
+    profileStore: {
+      get: () => ({ selectedVehicleId: 'rocket', settings: { ...profileSettings } }),
+      dispatch(action) { assert.equal(action.type, 'UPDATE_SETTINGS'); profileCalls.push(action.settings.cameraMode); Object.assign(profileSettings, action.settings); return { ok: true, changed: true }; },
+    },
+    platform: { queueSave: profile => cloudCalls.push(profile.settings.cameraMode) },
+    refreshGarage() {}, garageUI: { notice() { assert.fail('accepted fixture preferences must not be rejected'); } },
+    audio: { enabled: false },
+    vehicleDefinition,
+    renderer: { setCameraMode: mode => calls.push(['render', mode]), setQuality() {}, setRoute() {} },
+    ui: { overlay: { hidden: true }, modalType: null, camera: mode => calls.push(['ui', mode]), sound() {}, notice: text => calls.push(['notice', text]) },
+    game: new Proxy({}, { get(_target, key) { if (key === 'state') return simulationState; throw new Error('camera must not change simulation'); } }),
     input: new Proxy({}, { get() { throw new Error('camera must not access held input'); } }),
     lifecycle: new Proxy({}, { get() { throw new Error('camera must not change lifecycle'); } }),
   };
   vm.createContext(sandbox); vm.runInContext(action, sandbox);
   sandbox.toggleCamera();
   assert.equal(sandbox.settings.cameraMode, 'cockpit');
-  assert.deepEqual(calls.slice(0, 3), [['save', 'cockpit'], ['render', 'cockpit'], ['ui', 'cockpit']]);
+  assert.deepEqual(calls.slice(0, 3), [['render', 'cockpit'], ['save', 'cockpit'], ['ui', 'cockpit']]);
+  assert.deepEqual(profileCalls, ['cockpit'], 'v2 profile and legacy preference both persist');
+  assert.deepEqual(cloudCalls, ['cockpit'], 'accepted camera preference queues its current profile');
   calls.length = 0;
   sandbox.screen = 'paused'; sandbox.ui.overlay.hidden = false; sandbox.ui.modalType = 'pause';
   sandbox.toggleCamera();
   assert.equal(sandbox.settings.cameraMode, 'chase');
+  assert.deepEqual(calls.slice(0, 3), [['render', 'chase'], ['save', 'chase'], ['ui', 'chase']]);
   assert.equal(calls[1][1], 'chase');
+  assert.deepEqual(profileCalls, ['cockpit', 'chase']);
+  assert.deepEqual(cloudCalls, ['cockpit', 'chase']);
   for (const scenario of [
     { screen: 'menu', modal: null, busy: false },
     { screen: 'results', modal: 'results', busy: false },
     { screen: 'paused', modal: 'help', busy: false },
     { screen: 'playing', modal: null, busy: true },
   ]) {
-    calls.length = 0;
+    calls.length = 0; profileCalls.length = 0; cloudCalls.length = 0;
     sandbox.screen = scenario.screen; sandbox.busy = scenario.busy;
     sandbox.ui.modalType = scenario.modal; sandbox.ui.overlay.hidden = !scenario.modal;
     sandbox.toggleCamera();
     assert.deepEqual(calls, [], JSON.stringify(scenario));
+    assert.deepEqual(profileCalls, [], 'blocked camera actions cannot write v2 settings');
+    assert.deepEqual(cloudCalls, [], 'blocked camera actions cannot queue cloud writes');
+    assert.equal(sandbox.settings.cameraMode, 'chase');
+  }
+  sandbox.screen = 'playing'; sandbox.busy = false; sandbox.ui.overlay.hidden = true; sandbox.ui.modalType = null;
+  for (const id of ['hatch', 'sedan', 'suv', 'van']) {
+    calls.length = 0; profileCalls.length = 0; cloudCalls.length = 0; simulationState.vehicleId = id; sandbox.toggleCamera();
+    assert.deepEqual(calls, [], id + ' has no authored cockpit'); assert.deepEqual(profileCalls, []);
+    assert.deepEqual(cloudCalls, []);
     assert.equal(sandbox.settings.cameraMode, 'chase');
   }
 });
@@ -173,7 +219,7 @@ test('camera controls are 44px minimum, keyboard-wired, discoverable on phones a
   assert.match(theme, /--control-size: 2\.75rem;/);
   assert.match(css, /\.camera-button \{[^}]*min-width: var\(--control-size\); min-height: var\(--control-size\);/);
   assert.match(css, /button:focus-visible/);
-  assert.match(main, /cameraMode: settings\.cameraMode/);
+  assert.match(main, /cameraMode:\s*settings\.cameraMode/);
   assert.match(main, /byId\('cameraBtn'\)\.addEventListener\('click', toggleCamera\)/);
   assert.match(main, /cameraShortcutAllowed\(event, screen, !ui\.overlay\.hidden\)/);
   assert.match(html, /id="runHint"[^>]*>[^\n]*C — камера/);
@@ -196,7 +242,7 @@ test('narrow header fits the 280px floor without shrinking any of its four mobil
   assert.match(narrow, /\.brand \{[^}]*min-width: var\(--control-size\); min-height: var\(--control-size\);[^}]*flex-shrink: 0;/);
   assert.match(narrow, /\.toolbar, \.toolbar \.icon-button \{ flex-shrink: 0; \}/);
   assert.match(narrow, /\.topbar \{ gap: var\(--space-2\); \}/);
-  assert.match(html, /<a class="brand"[^>]*aria-label="ПОТОК — главное меню"><svg/, 'logo keeps its accessible menu name');
+  assert.match(html, /<a class="brand"[^>]*aria-label="Roadster — главное меню"><svg/, 'logo keeps its accessible menu name');
   assert.match(css, /\.toolbar \{ gap: 0; \}/, 'phone toolbar has no inter-button gap');
   assert.match(css, /\.fullscreen-button \{ display: none; \}/, 'phone toolbar contains four controls, not five');
   /** Resolve only the scalar rem/px tokens used by the compact header at the default 16px root. */

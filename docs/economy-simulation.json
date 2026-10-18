@@ -1,0 +1,365 @@
+{
+  "kind": "synthetic_economy_sensitivity_test_not_player_analytics",
+  "seedFamily": "10000 + index*97",
+  "playersPerCell": 1000,
+  "profileAssumptions": [
+    {
+      "id": "new_driver",
+      "label": "New driver",
+      "medianDistanceM": 800,
+      "dispersion": 0.4,
+      "averageSpeedMps": 24,
+      "eventSuccess": 0.55,
+      "landingsPerKm": 0.5,
+      "turnaroundSeconds": 20
+    },
+    {
+      "id": "developing",
+      "label": "Developing driver",
+      "medianDistanceM": 1800,
+      "dispersion": 0.4,
+      "averageSpeedMps": 34,
+      "eventSuccess": 0.75,
+      "landingsPerKm": 0.75,
+      "turnaroundSeconds": 20
+    },
+    {
+      "id": "confident",
+      "label": "Confident driver",
+      "medianDistanceM": 3600,
+      "dispersion": 0.35,
+      "averageSpeedMps": 40,
+      "eventSuccess": 0.9,
+      "landingsPerKm": 1,
+      "turnaroundSeconds": 20
+    }
+  ],
+  "policy": "Claims collected after every run; paint 150, first drive stage 120, hatch, garage2, drive2, sedan, garage3, SUV, garage4, van. No stock record or clean/airborne mission bonuses modelled. 30s per voluntary ad; opted-in case watches ads after randomly selected 50% of qualifying runs.",
+  "checks": "Formula boundaries, malformed input, landing cap, XP cap, ad cap, cumulative reward equality, price totals and unique IDs passed",
+  "rows": [
+    {
+      "skill": "new_driver",
+      "ads": "none",
+      "target": "hatch",
+      "runsMedian": 8,
+      "minutesP10": 7.3,
+      "minutesMedian": 8.3,
+      "minutesP90": 10.6
+    },
+    {
+      "skill": "new_driver",
+      "ads": "none",
+      "target": "garage_level_2",
+      "runsMedian": 12,
+      "minutesP10": 11.2,
+      "minutesMedian": 12.7,
+      "minutesP90": 13.9
+    },
+    {
+      "skill": "new_driver",
+      "ads": "none",
+      "target": "sedan",
+      "runsMedian": 27,
+      "minutesP10": 26.2,
+      "minutesMedian": 28.6,
+      "minutesP90": 30.7
+    },
+    {
+      "skill": "new_driver",
+      "ads": "none",
+      "target": "garage_level_4",
+      "runsMedian": 102,
+      "minutesP10": 104.9,
+      "minutesMedian": 109.5,
+      "minutesP90": 113.4
+    },
+    {
+      "skill": "new_driver",
+      "ads": "none",
+      "target": "van",
+      "runsMedian": 138,
+      "minutesP10": 142.7,
+      "minutesMedian": 147.8,
+      "minutesP90": 152
+    },
+    {
+      "skill": "new_driver",
+      "ads": "none",
+      "target": "season_20",
+      "runsMedian": 177,
+      "minutesP10": 182.1,
+      "minutesMedian": 188.6,
+      "minutesP90": 196
+    },
+    {
+      "skill": "new_driver",
+      "ads": "optional_50_percent_runs",
+      "target": "hatch",
+      "runsMedian": 8,
+      "minutesP10": 8.5,
+      "minutesMedian": 10.1,
+      "minutesP90": 12
+    },
+    {
+      "skill": "new_driver",
+      "ads": "optional_50_percent_runs",
+      "target": "garage_level_2",
+      "runsMedian": 12,
+      "minutesP10": 12.6,
+      "minutesMedian": 15.1,
+      "minutesP90": 17
+    },
+    {
+      "skill": "new_driver",
+      "ads": "optional_50_percent_runs",
+      "target": "sedan",
+      "runsMedian": 24,
+      "minutesP10": 28.2,
+      "minutesMedian": 31.1,
+      "minutesP90": 33.9
+    },
+    {
+      "skill": "new_driver",
+      "ads": "optional_50_percent_runs",
+      "target": "garage_level_4",
+      "runsMedian": 94,
+      "minutesP10": 115.9,
+      "minutesMedian": 121.6,
+      "minutesP90": 126.7
+    },
+    {
+      "skill": "new_driver",
+      "ads": "optional_50_percent_runs",
+      "target": "van",
+      "runsMedian": 128,
+      "minutesP10": 158.3,
+      "minutesMedian": 165.3,
+      "minutesP90": 172.4
+    },
+    {
+      "skill": "new_driver",
+      "ads": "optional_50_percent_runs",
+      "target": "season_20",
+      "runsMedian": 177,
+      "minutesP10": 218,
+      "minutesMedian": 227.2,
+      "minutesP90": 237.3
+    },
+    {
+      "skill": "developing",
+      "ads": "none",
+      "target": "hatch",
+      "runsMedian": 3,
+      "minutesP10": 3.8,
+      "minutesMedian": 4.6,
+      "minutesP90": 5.5
+    },
+    {
+      "skill": "developing",
+      "ads": "none",
+      "target": "garage_level_2",
+      "runsMedian": 4,
+      "minutesP10": 5.3,
+      "minutesMedian": 6.3,
+      "minutesP90": 7.5
+    },
+    {
+      "skill": "developing",
+      "ads": "none",
+      "target": "sedan",
+      "runsMedian": 10,
+      "minutesP10": 13.1,
+      "minutesMedian": 14,
+      "minutesP90": 15.2
+    },
+    {
+      "skill": "developing",
+      "ads": "none",
+      "target": "garage_level_4",
+      "runsMedian": 37,
+      "minutesP10": 51.2,
+      "minutesMedian": 53,
+      "minutesP90": 55.1
+    },
+    {
+      "skill": "developing",
+      "ads": "none",
+      "target": "van",
+      "runsMedian": 50,
+      "minutesP10": 69.1,
+      "minutesMedian": 71.3,
+      "minutesP90": 73.7
+    },
+    {
+      "skill": "developing",
+      "ads": "none",
+      "target": "season_20",
+      "runsMedian": 59,
+      "minutesP10": 81.5,
+      "minutesMedian": 84.4,
+      "minutesP90": 87.3
+    },
+    {
+      "skill": "developing",
+      "ads": "optional_50_percent_runs",
+      "target": "hatch",
+      "runsMedian": 3,
+      "minutesP10": 4,
+      "minutesMedian": 5.1,
+      "minutesP90": 6.5
+    },
+    {
+      "skill": "developing",
+      "ads": "optional_50_percent_runs",
+      "target": "garage_level_2",
+      "runsMedian": 4,
+      "minutesP10": 5.7,
+      "minutesMedian": 7,
+      "minutesP90": 8.6
+    },
+    {
+      "skill": "developing",
+      "ads": "optional_50_percent_runs",
+      "target": "sedan",
+      "runsMedian": 9,
+      "minutesP10": 14.1,
+      "minutesMedian": 15.6,
+      "minutesP90": 17.4
+    },
+    {
+      "skill": "developing",
+      "ads": "optional_50_percent_runs",
+      "target": "garage_level_4",
+      "runsMedian": 35,
+      "minutesP10": 55.8,
+      "minutesMedian": 58.4,
+      "minutesP90": 61.5
+    },
+    {
+      "skill": "developing",
+      "ads": "optional_50_percent_runs",
+      "target": "van",
+      "runsMedian": 47,
+      "minutesP10": 75.6,
+      "minutesMedian": 78.6,
+      "minutesP90": 82.3
+    },
+    {
+      "skill": "developing",
+      "ads": "optional_50_percent_runs",
+      "target": "season_20",
+      "runsMedian": 59,
+      "minutesP10": 94.8,
+      "minutesMedian": 99,
+      "minutesP90": 103.8
+    },
+    {
+      "skill": "confident",
+      "ads": "none",
+      "target": "hatch",
+      "runsMedian": 2,
+      "minutesP10": 2.9,
+      "minutesMedian": 3.8,
+      "minutesP90": 4.8
+    },
+    {
+      "skill": "confident",
+      "ads": "none",
+      "target": "garage_level_2",
+      "runsMedian": 2,
+      "minutesP10": 3.8,
+      "minutesMedian": 4.6,
+      "minutesP90": 5.8
+    },
+    {
+      "skill": "confident",
+      "ads": "none",
+      "target": "sedan",
+      "runsMedian": 5,
+      "minutesP10": 9.5,
+      "minutesMedian": 10.4,
+      "minutesP90": 11.5
+    },
+    {
+      "skill": "confident",
+      "ads": "none",
+      "target": "garage_level_4",
+      "runsMedian": 18,
+      "minutesP10": 35.6,
+      "minutesMedian": 36.7,
+      "minutesP90": 38.1
+    },
+    {
+      "skill": "confident",
+      "ads": "none",
+      "target": "van",
+      "runsMedian": 24,
+      "minutesP10": 48.2,
+      "minutesMedian": 49.5,
+      "minutesP90": 50.9
+    },
+    {
+      "skill": "confident",
+      "ads": "none",
+      "target": "season_20",
+      "runsMedian": 27,
+      "minutesP10": 55.3,
+      "minutesMedian": 56.7,
+      "minutesP90": 58.3
+    },
+    {
+      "skill": "confident",
+      "ads": "optional_50_percent_runs",
+      "target": "hatch",
+      "runsMedian": 2,
+      "minutesP10": 3.1,
+      "minutesMedian": 4.2,
+      "minutesP90": 5.3
+    },
+    {
+      "skill": "confident",
+      "ads": "optional_50_percent_runs",
+      "target": "garage_level_2",
+      "runsMedian": 2,
+      "minutesP10": 4.1,
+      "minutesMedian": 5,
+      "minutesP90": 6.3
+    },
+    {
+      "skill": "confident",
+      "ads": "optional_50_percent_runs",
+      "target": "sedan",
+      "runsMedian": 5,
+      "minutesP10": 9.9,
+      "minutesMedian": 11.1,
+      "minutesP90": 12.3
+    },
+    {
+      "skill": "confident",
+      "ads": "optional_50_percent_runs",
+      "target": "garage_level_4",
+      "runsMedian": 17,
+      "minutesP10": 37.9,
+      "minutesMedian": 39.7,
+      "minutesP90": 41.6
+    },
+    {
+      "skill": "confident",
+      "ads": "optional_50_percent_runs",
+      "target": "van",
+      "runsMedian": 23,
+      "minutesP10": 51.4,
+      "minutesMedian": 53.4,
+      "minutesP90": 55.3
+    },
+    {
+      "skill": "confident",
+      "ads": "optional_50_percent_runs",
+      "target": "season_20",
+      "runsMedian": 27,
+      "minutesP10": 61,
+      "minutesMedian": 63.6,
+      "minutesP90": 66.2
+    }
+  ]
+}

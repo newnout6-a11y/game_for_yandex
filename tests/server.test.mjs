@@ -6,7 +6,7 @@ test('local server serves modules with correct MIME and does not expose tools or
   const server = startServer({ port: 0 }); await once(server, 'listening');
   t.after(() => new Promise(resolve => server.close(resolve)));
   const url = 'http://127.0.0.1:' + server.address().port;
-  const home = await fetch(url); assert.equal(home.status, 200); assert.match(await home.text(), /ПОТОК/);
+  const home = await fetch(url); assert.equal(home.status, 200); assert.match(await home.text(), /Roadster/);
   const module = await fetch(url + '/src/main.js'); assert.equal(module.status, 200); assert.match(module.headers.get('content-type'), /javascript/);
   for (const [route,type] of [['/public/assets/car.glb','model/gltf-binary'],['/public/assets/grass_diff.jpg','image/jpeg'],['/public/vendor/draco/draco_decoder.wasm','application/wasm']]) {
     const asset = await fetch(url + route); assert.equal(asset.status,200); assert.equal(asset.headers.get('content-type'),type); await asset.arrayBuffer();

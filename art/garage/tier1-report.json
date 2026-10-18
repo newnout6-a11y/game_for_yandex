@@ -1,0 +1,48 @@
+{
+  "tier": 1,
+  "root": "GARAGE_TIER_01",
+  "source": "art/garage/tier1.blend",
+  "glb": "public/assets/garage/tier1.glb",
+  "editable_parts": 673,
+  "draw_batches": 17,
+  "triangles": 33202,
+  "vertices": 18864,
+  "bounds_m": {
+    "min": [
+      -10.12,
+      -0.245,
+      -9.2
+    ],
+    "max": [
+      10.12,
+      6.6,
+      8.8
+    ]
+  },
+  "bytes": 4393932,
+  "sha256": "6b77c8f1c6d177a34d8ed9f0031079dc6f99be50e63a1fdd3a10adac3473d105",
+  "original_textures": [
+    "original-concrete-grain.png",
+    "original-concrete-roughness.png",
+    "original-rose-velocity-mural.png"
+  ],
+  "clear_car_zone": {
+    "x": [
+      -2,
+      2
+    ],
+    "z": [
+      -3.6,
+      3.6
+    ],
+    "floor_top_y": -0.005
+  },
+  "contains_car": false,
+  "runtime_lights": 0,
+  "degenerate_cleanup": {
+    "relative_cross_squared_threshold": 1e-16,
+    "removed_triangles": 0,
+    "parts": [],
+    "export_collapsed_triangles": 0
+  }
+}

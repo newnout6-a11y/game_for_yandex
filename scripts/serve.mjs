@@ -44,6 +44,6 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT || 4173);
   const server = startServer({ port });
-  server.on('listening', () => console.log('ПОТОК: http://127.0.0.1:' + port));
+  server.on('listening', () => console.log('Roadster: http://127.0.0.1:' + port));
   server.on('error', error => { console.error(error.message); process.exitCode = 1; });
 }

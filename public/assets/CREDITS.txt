@@ -110,3 +110,51 @@ Swept wheel-house clearance refinement (2026-10-17)
 Original Blender-authored hollow liners, formed arch walls and sealed floor transitions sized against the animated wheel envelope. Passenger body travel is bounded by measured arch compression limits. No external geometry was used.
 
 Player live rear views: original reconstructed Blender mirror panes/backings and game-specific rear-right camera display. Left uses an original authored convex glass and bounded scene-reflection approximation; cabin uses planar scene reflection; right camera screen is user-selected and is not represented as documented factory hardware. See docs/PLAYER_MIRRORS_UPDATE.md.
+
+Roadster original garage environments and Rose Velocity mural (2026-10-18)
+Four original Blender rooms: assets/garage/tier1.glb through tier4.glb.
+Editable sources: art/garage/tier1.blend through tier4.blend.
+Generator: scripts/create_garage.py. Provenance: art/garage/provenance.json.
+Original local concrete grain/roughness maps and service graphics; no purchased
+room pack, downloaded model, manufacturer CAD or embedded vehicle.
+Rose Velocity: original plum/magenta/rose/blush wall artwork, applied to actual
+wall patches in all four room sources and embedded in each room GLB.
+Editable original: art/garage/mural/rose-velocity.svg.
+Generator and author manifest: art/garage/mural/create_mural.py and manifest.json.
+Runtime image: assets/garage/original-rose-velocity-mural.png, 1024x512.
+Original strokes and seeded aerosol/porosity/chips; no third-party photograph,
+logo, text or copied artwork. Original room architecture remains unchanged.
+
+Roadster original exterior cosmetics (2026-10-18)
+Six Blender GLBs in assets/garage-cosmetics/: body-splitter, body-louver,
+wheel-turbine-left/right and rim-copper-left/right.
+Editable sources: art/garage-cosmetics/*.blend.
+Generator: scripts/create_garage_cosmetics.py.
+Attachment, source hashes and budgets: assets/garage-cosmetics/manifest.json.
+Original fitted Rocket-only geometry, no external model or texture; turbine
+pieces are covers and copper pieces are rings, not replacement factory wheels.
+Original tyres, brakes, physics and accepted vehicle source are retained.
+Titanium/rose rim finishes, light/smoke glazing tint, stitch and instrument
+palettes use isolated existing original materials, not downloaded textures.
+
+Roadster original fictional steering alternatives (2026-10-18)
+Runtime: assets/cosmetics/steering-round.glb and steering-yoke.glb.
+Editable sources: art/cosmetics/steering-round.blend and steering-yoke.blend.
+Generator: scripts/create_steering_cosmetics.py.
+Mount, budgets and hashes: assets/cosmetics/steering-manifest.json.
+Original Blender grip, hub, spoke, paddle, seam and trim geometry; no downloaded
+or purchased model, external texture, manufacturer CAD or manufacturer logo.
+Fictional game accessories for Rocket only, not factory Tesla variants.
+They reuse the existing steering pivot and animation, hiding only the five
+original rotating wheel meshes; stationary column, tablet and controls remain.
+Source Rocket is used read-only for fitting. Sampled geometric checks are not
+mechanical certification, endorsement or commercial vehicle-design clearance.
+
+Roadster original graphic identity (2026-10-18)
+Local editable SVGs: public/brand/roadster-emblem.svg, roadster-wordmark.svg
+and road-wing-grid.svg. Original paths/composition, no manufacturer logo or
+external image; system font fallbacks, no redistributed font file.
+Roadster is the user's chosen title. Original artwork does not establish rights
+to the title or Tesla-associated reference design; public commercial release,
+platform approval, real payments and publication remain separate gates.
+Detailed provenance and limitations: CREDITS.md and docs/GARAGE_COSMETIC_ASSETS.md.

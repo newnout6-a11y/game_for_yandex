@@ -4,18 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101313">
-  <meta name="description" content="ПОТОК — загородная аркадная гонка. Обходи трафик на родстере, собирай энергию и взлетай над трассой в аркадном режиме полёта.">
-  <title>ПОТОК — поймай свой ритм</title>
-  <link rel="icon" href="./public/favicon.svg" type="image/svg+xml">
+  <meta name="description" content="Roadster — дорога, мастерская и небо. Обходи трафик на родстере, собирай энергию и взлетай над трассой в аркадном режиме полёта.">
+  <title>Roadster — держи трассу, забирай небо</title>
+  <link rel="icon" href="./public/brand/roadster-emblem.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles/theme.css">
   <link rel="stylesheet" href="./styles/app.css">
+  <link rel="stylesheet" href="./styles/garage.css">
+  <link rel="stylesheet" href="./styles/orientation-gate.css">
+  <link rel="stylesheet" href="./styles/thumb-drive.css">
 </head>
 <body>
 <main id="app" data-screen="menu">
   <canvas id="scene" aria-label="Дневные загородные трассы: горное озеро, хвойный перевал и побережье. W или стрелка вверх — газ; S или стрелка вниз — тормоз; A/D или стрелки — руль; пробел — нитро; удерживай F для аркадного полёта; Q/E — боковой кувырок в воздухе; C — переключить камеру; удерживать Z/X — взгляд на боковые зеркала в кабине." role="img"></canvas>
+  <div id="garageShell"></div>
   <div class="scene-shade" aria-hidden="true"></div>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="ПОТОК — главное меню"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="M5 28 15 8h7L12 28Zm14 0L29 8h3L22 28Z" fill="currentColor"/></svg><span>ПОТОК</span></a>
+    <a class="brand" href="./" aria-label="Roadster — главное меню"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="M5 28 15 8h7L12 28Zm14 0L29 8h3L22 28Z" fill="currentColor"/></svg><span>Roadster</span></a>
     <div class="header-center"><span class="live-dot"></span><span id="routeLabel">ГОРНОЕ ОЗЕРО</span></div>
     <nav class="toolbar" aria-label="Настройки игры">
       <button class="icon-button" id="soundBtn" aria-label="Включить звук" aria-pressed="false" title="Звук"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11 5-6 5H2v4h3l6 5V5Zm5 4 5 6m0-6-5 6"/></svg></button>
@@ -28,7 +32,7 @@
 
   <section id="menu" class="menu-screen" aria-labelledby="menuTitle">
     <div class="hero">
-      <h1 id="menuTitle">ПОТОК</h1>
+      <h1 id="menuTitle">Roadster</h1>
       <p class="hero-copy">Родстер. Открытая дорога. Новый уровень свободы.</p><p class="vehicle-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 15 2-5h10l2 5M4 15h16v4H4Zm3 4v2m10-2v2M8 5l4-3 4 3M12 2v5"/></svg><span>ROADSTER <span class="badge-divider">/</span> РЕЖИМ ПОЛЁТА</span></p>
       <div class="start-row"><button id="playBtn" class="button primary">Выехать <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button><span class="start-hint"><kbd>ENTER</kbd></span></div>
       <p id="loadStatus" class="hero-copy" role="status">Загрузка трассы…</p><div class="record"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v7a4 4 0 0 1-8 0V3Zm0 2H4v3a4 4 0 0 0 4 4m8-7h4v3a4 4 0 0 1-4 4m-4 2v5m-4 2h8"/></svg><span>Личный рекорд</span><strong id="menuBest">0</strong><span class="record-unit">очков</span></div>
@@ -71,7 +75,7 @@
       <button class="glance-button" id="lookLeftBtn" type="button" aria-label="Удерживать взгляд в левое зеркало" aria-describedby="glanceHint" aria-keyshortcuts="Z" aria-pressed="false" disabled><span aria-hidden="true">‹</span><span>ВЗГЛЯД</span></button>
       <button class="glance-button" id="lookRightBtn" type="button" aria-label="Удерживать взгляд в правое зеркало" aria-describedby="glanceHint" aria-keyshortcuts="X" aria-pressed="false" disabled><span>ВЗГЛЯД</span><span aria-hidden="true">›</span></button>
     </div>
-    <div class="touch-controls"><div class="steer-pair"><button class="drive-button" id="leftBtn" aria-label="Удерживать руль влево">←</button><button class="drive-button" id="rightBtn" aria-label="Удерживать руль вправо">→</button></div><div class="ability-pair"><button class="roll-button" id="rollLeftBtn" aria-label="Боковой кувырок влево" aria-describedby="rollHint" aria-keyshortcuts="Q" aria-disabled="true" aria-pressed="false"><span class="roll-icon" aria-hidden="true">↶</span><span>КУВЫРОК</span></button><button class="roll-button" id="rollRightBtn" aria-label="Боковой кувырок вправо" aria-describedby="rollHint" aria-keyshortcuts="E" aria-disabled="true" aria-pressed="false"><span class="roll-icon" aria-hidden="true">↷</span><span>КУВЫРОК</span></button><button class="flight-button" id="flightBtn" aria-label="Удерживать для полёта" aria-describedby="flightHint" aria-keyshortcuts="F" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 5v14M5 19h14"/></svg><span>ПОЛЁТ</span></button><button class="boost-button" id="boostBtn" aria-label="Удерживать нитро" aria-keyshortcuts="Space" aria-pressed="false">НИТРО</button></div><div class="pedal-pair"><button class="pedal brake-pedal" id="brakeBtn" aria-label="Удерживать тормоз">ТОРМОЗ</button><button class="pedal gas-pedal" id="gasBtn" aria-label="Удерживать газ">ГАЗ</button></div></div>
+    <div class="touch-controls"><div class="steer-pair"><button class="drive-button" id="leftBtn" aria-label="Удерживать руль влево">←</button><button class="drive-button" id="rightBtn" aria-label="Удерживать руль вправо">→</button></div><div class="ability-pair"><button class="roll-button" id="rollLeftBtn" aria-label="Боковой кувырок влево" aria-describedby="rollHint" aria-keyshortcuts="Q" aria-disabled="true" aria-pressed="false"><span class="roll-icon" aria-hidden="true">↶</span><span>КУВЫРОК</span></button><button class="roll-button" id="rollRightBtn" aria-label="Боковой кувырок вправо" aria-describedby="rollHint" aria-keyshortcuts="E" aria-disabled="true" aria-pressed="false"><span class="roll-icon" aria-hidden="true">↷</span><span>КУВЫРОК</span></button><button class="flight-button" id="flightBtn" aria-label="Удерживать для полёта" aria-describedby="flightHint" aria-keyshortcuts="F" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 5v14M5 19h14"/></svg><span>ПОЛЁТ</span></button><button class="boost-button" id="boostBtn" aria-label="Удерживать нитро" aria-keyshortcuts="Space" aria-pressed="false">НИТРО</button></div><div class="pedal-pair"><button class="pedal brake-pedal" id="brakeBtn" aria-label="Удерживать тормоз">ТОРМОЗ</button><button class="pedal gas-pedal" id="gasBtn" aria-label="Удерживать газ">ГАЗ</button></div><div id="thumbDrive"></div></div>
   </section>
 
   <div id="overlay" class="modal-backdrop" hidden><section id="dialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" tabindex="-1"></section></div>

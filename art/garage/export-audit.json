@@ -1,0 +1,114 @@
+[
+  {
+    "tier": 1,
+    "glb_bytes": 4393932,
+    "sha256": "6b77c8f1c6d177a34d8ed9f0031079dc6f99be50e63a1fdd3a10adac3473d105",
+    "primitives": 17,
+    "triangles": 33202,
+    "materials": 17,
+    "embedded_images": 3,
+    "cameras": 0,
+    "runtime_lights": 0,
+    "bounds_m": {
+      "min": [
+        -10.12,
+        -0.245,
+        -9.2
+      ],
+      "max": [
+        10.12,
+        6.6,
+        8.8
+      ]
+    },
+    "root_present": true,
+    "car_envelope_violations": [],
+    "degenerate_triangles": [],
+    "degenerate_relative_cross_squared_threshold": 1e-16,
+    "passed": true
+  },
+  {
+    "tier": 2,
+    "glb_bytes": 4832924,
+    "sha256": "31f7621b8929e596ecd342effbb2c6577926bc70ba2e9beb095db79e5482c5da",
+    "primitives": 20,
+    "triangles": 40164,
+    "materials": 20,
+    "embedded_images": 3,
+    "cameras": 0,
+    "runtime_lights": 0,
+    "bounds_m": {
+      "min": [
+        -10.12,
+        -0.245,
+        -9.2
+      ],
+      "max": [
+        10.12,
+        6.6,
+        8.8
+      ]
+    },
+    "root_present": true,
+    "car_envelope_violations": [],
+    "degenerate_triangles": [],
+    "degenerate_relative_cross_squared_threshold": 1e-16,
+    "passed": true
+  },
+  {
+    "tier": 3,
+    "glb_bytes": 4224948,
+    "sha256": "8d3a7788c2d24a008c731810d9bc06ea7d38d627694466c01bc2bc8a65523de3",
+    "primitives": 18,
+    "triangles": 26936,
+    "materials": 18,
+    "embedded_images": 3,
+    "cameras": 0,
+    "runtime_lights": 0,
+    "bounds_m": {
+      "min": [
+        -10.12,
+        -0.245,
+        -9.2
+      ],
+      "max": [
+        10.12,
+        6.6,
+        8.8
+      ]
+    },
+    "root_present": true,
+    "car_envelope_violations": [],
+    "degenerate_triangles": [],
+    "degenerate_relative_cross_squared_threshold": 1e-16,
+    "passed": true
+  },
+  {
+    "tier": 4,
+    "glb_bytes": 4593108,
+    "sha256": "fecaddad8b4d862640a0d9451f7bcbb022784b9077b3709d1d13d33fcd18c5d3",
+    "primitives": 19,
+    "triangles": 31824,
+    "materials": 19,
+    "embedded_images": 3,
+    "cameras": 0,
+    "runtime_lights": 0,
+    "bounds_m": {
+      "min": [
+        -10.12,
+        -0.245,
+        -9.2
+      ],
+      "max": [
+        10.12,
+        6.6,
+        8.8
+      ]
+    },
+    "root_present": true,
+    "car_envelope_violations": [],
+    "degenerate_triangles": [],
+    "degenerate_relative_cross_squared_threshold": 1e-16,
+    "passed": true
+  }
+]

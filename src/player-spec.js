@@ -4,3 +4,10 @@
 // full-size left mirror. Axles stay centred; the asymmetric mirror reaches
 // X=-1.170m, so both collision and lane reservations retain 1.18m half-width.
 export const PLAYER_BOUNDS = Object.freeze({ length: 4.7, width: 2.36, height: 1.35 });
+
+/** Resolve a configured owned vehicle's finite SI collision envelope, retaining the accepted Rocket fallback. */
+export function playerBoundsFor(state) {
+  const bounds = state?.playerBounds;
+  return bounds && ['length', 'width', 'height'].every(key => Number.isFinite(bounds[key]) && bounds[key] > .5 && bounds[key] < 7)
+    ? bounds : PLAYER_BOUNDS;
+}

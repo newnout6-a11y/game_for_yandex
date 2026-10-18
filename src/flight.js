@@ -40,7 +40,7 @@ export function updateFlight(s, dt, controls, onEvent = () => {}) {
   s.rollCooldown = Math.max(0, (s.rollCooldown || 0) - dt);
   s.touchdownPulse = Math.max(0, (s.touchdownPulse || 0) - dt * 2.8);
   const fuelRequired = previousAltitude > 0 ? .0001 : FLIGHT.landingReserveCost;
-  s.flightReady = s.speed >= FLIGHT.minimumSpeed && s.nitro >= fuelRequired && s.flightCooldown <= 0;
+  s.flightReady = s.flightAllowed !== false && s.speed >= FLIGHT.minimumSpeed && s.nitro >= fuelRequired && s.flightCooldown <= 0;
   s.flying = Boolean(controls.flight && !controls.brake && s.flightReady);
   if (s.flying && previousAltitude === 0) {
     s.nitro = Math.max(0, s.nitro - FLIGHT.landingReserveCost);
@@ -59,7 +59,7 @@ export function updateFlight(s, dt, controls, onEvent = () => {}) {
     onEvent('roll');
   }
   if (s.flying) {
-    s.nitro = Math.max(0, s.nitro - FLIGHT.drain * dt);
+    s.nitro = Math.max(0, s.nitro - FLIGHT.drain * Math.max(.9,Math.min(1,Number.isFinite(s.flightDrainMultiplier)?s.flightDrainMultiplier:1)) * dt);
     if (s.nitro === 0) s.flying = false;
   }
 

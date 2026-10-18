@@ -1,6 +1,6 @@
 import { trafficLateral } from './traffic-behavior.js';
 import { trafficDefinition } from './traffic-catalog.js';
-import { PLAYER_BOUNDS } from './player-spec.js';
+import { PLAYER_BOUNDS, playerBoundsFor } from './player-spec.js';
 
 export { PLAYER_BOUNDS };
 export const LANE_WIDTH = 3.5;
@@ -188,24 +188,24 @@ export function updateTrailerKinematics(car,distance,dt) {
  * @param {number} [rollAngle=0] - Barrel-roll angle in radians.
  * @returns {number} Nonnegative lower-body road clearance in metres.
  */
-export function playerBottom(altitude, rollAngle = 0) {
+export function playerBottom(altitude, rollAngle = 0, bounds = PLAYER_BOUNDS) {
   // The render pivot is 0.58m above the road. Include the whole rolled width,
   // not a constant low passenger-car roof height for every vehicle.
-  const c = Math.cos(rollAngle), s = Math.sin(rollAngle), h = PLAYER_BOUNDS.height;
-  return Math.max(0, altitude + .58 + (h / 2 - .58) * c - Math.abs(c) * h / 2 - Math.abs(s) * PLAYER_BOUNDS.width / 2);
+  const c = Math.cos(rollAngle), s = Math.sin(rollAngle), h = bounds.height;
+  return Math.max(0, altitude + .58 + (h / 2 - .58) * c - Math.abs(c) * h / 2 - Math.abs(s) * bounds.width / 2);
 }
 /**
  * Returns combined longitudinal half-extents for player/traffic encounter checks.
  * @param {Object} car - Traffic entity with a catalogue kind.
  * @returns {number} Half the sum of both body lengths in metres.
  */
-export function playerTrafficDepth(car) { return (PLAYER_BOUNDS.length + trafficDefinition(car.kind).length) / 2; }
+export function playerTrafficDepth(car, bounds = PLAYER_BOUNDS) { return (bounds.length + trafficDefinition(car.kind).length) / 2; }
 /**
  * Returns combined lateral half-extents for unrotated player/traffic checks.
  * @param {Object} car - Traffic entity with a catalogue kind.
  * @returns {number} Half the sum of both body widths in metres, not lane units.
  */
-export function playerTrafficWidth(car) { return (PLAYER_BOUNDS.width + trafficDefinition(car.kind).width) / 2; }
+export function playerTrafficWidth(car, bounds = PLAYER_BOUNDS) { return (bounds.width + trafficDefinition(car.kind).width) / 2; }
 
 /**
  * Builds an oriented ground-plane rectangle with cached orthonormal axes.
@@ -277,14 +277,14 @@ export function trafficCollisionParts(car, distance) {
  * @returns {boolean} Whether any traffic part overlaps the player's swept body.
  */
 export function trafficHitsPlayer(car, state, previousX = state.x, previousZ = car.z) {
-  const spec = trafficDefinition(car.kind);
-  if (playerBottom(state.altitude, state.rollAngle) >= spec.height + .08) return false;
+  const spec = trafficDefinition(car.kind), bounds = playerBoundsFor(state);
+  if (playerBottom(state.altitude, state.rollAngle, bounds) >= spec.height + .08) return false;
   // At 120Hz, sweep translation conservatively between samples. This prevents
   // narrow corner misses without replacing the vehicle by a lane-wide box.
   const x = ((state.x + previousX) / 2 - 1) * LANE_WIDTH;
   const roll = state.rollAngle || 0;
-  const sweptWidth = Math.abs(Math.cos(roll)) * PLAYER_BOUNDS.width + Math.abs(Math.sin(roll)) * PLAYER_BOUNDS.height + Math.abs(state.x - previousX) * LANE_WIDTH;
-  const sweptLength = PLAYER_BOUNDS.length + Math.abs(car.z - previousZ);
+  const sweptWidth = Math.abs(Math.cos(roll)) * bounds.width + Math.abs(Math.sin(roll)) * bounds.height + Math.abs(state.x - previousX) * LANE_WIDTH;
+  const sweptLength = bounds.length + Math.abs(car.z - previousZ);
   const player = rectangle(x, 0, sweptWidth, sweptLength, -(state.heading || 0));
   const current=trafficLateral(car),prior=Number.isFinite(car.previousLateral)?car.previousLateral:current;
   return trafficCollisionParts({ ...car, x:(current+prior)/2, z: (car.z + previousZ) / 2 }, state.distance).some(part=>{part.halfWidth+=Math.abs(current-prior)*LANE_WIDTH/2;return rectanglesOverlap(player,part);});

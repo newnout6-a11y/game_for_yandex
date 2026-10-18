@@ -1,9 +1,9 @@
 {
-  "name": "potok-arcade",
+  "name": "roadster-garage",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "ПОТОК — аркадная гонка для Яндекс Игр",
+  "description": "Roadster — гонка и мастерская для Яндекс Игр",
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "test": "node --test tests/*.test.mjs",

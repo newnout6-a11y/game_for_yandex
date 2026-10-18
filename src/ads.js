@@ -1,71 +1,73 @@
 /**
- * Create a single-flight Yandex ad adapter that owns only the lifecycle's ad pause.
- * SDK errors, unavailable APIs and timeouts resolve to a result instead of throwing.
- * @param {Object} options - SDK facade, pause lifecycle, eligibility callback and timeoutMs in milliseconds.
- * @returns {Object} Rewarded/interstitial promise methods and live rewarded availability.
+ * Single-flight Yandex adapter. Terminal callbacks release only the ad's pause owner.
+ * An application timeout cannot cancel an SDK request: it reports pending recovery,
+ * retains its lock/pause and exposes a completion promise for the eventual terminal result.
  */
 export function createAds({ sdk, lifecycle, canShow, timeoutMs = 90000 }) {
-  let locked = false;
-  /**
-   * Request an eligible ad and settle exactly once, releasing the ad lock and pause.
-   * A reward is granted only by onRewarded, never by successful close alone.
-   * @param {'rewarded'|'interstitial'} kind - SDK ad family to invoke.
-   * @returns {Promise<{ok:boolean,rewarded:boolean,code:string}>} Terminal callback/timeout outcome.
-   */
+  let active = null;
+  /** Request a real eligible SDK ad; missing capabilities and synchronous failures are contained. */
   function show(kind) {
-    const adv = sdk.get()?.adv;
+    let adv;
     const method = kind === 'rewarded' ? 'showRewardedVideo' : 'showFullscreenAdv';
-    if (locked || !canShow() || !adv?.[method]) return Promise.resolve({ ok: false, rewarded: false, code: 'UNAVAILABLE' });
-    locked = true;
+    try {
+      adv = sdk.get()?.adv;
+      if (active || !canShow() || typeof adv?.[method] !== 'function') return Promise.resolve({ ok: false, rewarded: false, shown: false, pending: false, code: 'UNAVAILABLE' });
+    } catch {
+      return Promise.resolve({ ok: false, rewarded: false, shown: false, pending: false, code: 'UNAVAILABLE' });
+    }
+    const request = { kind, shown: false, rewarded: false, timedOut: false };
+    active = request;
     lifecycle.pause('ad');
+    let resolveCompletion;
+    const completion = new Promise(resolve => { resolveCompletion = resolve; });
     return new Promise(resolve => {
       let settled = false;
-      let rewarded = false;
       let timer;
-      /**
-       * Finalize the first terminal callback; late SDK callbacks cannot unlock or resolve twice.
-       * @param {string} code - CLOSED, TIMEOUT, ERROR or OFFLINE terminal reason.
-       */
+      /** Settle the physical SDK operation exactly once, including after a reported timeout. */
       const finish = code => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        locked = false;
+        if (active === request) active = null;
         lifecycle.resume('ad');
-        resolve({ ok: code === 'CLOSED', rewarded, code });
+        const outcome = { ok: code === 'CLOSED', rewarded: request.rewarded, shown: request.shown, pending: false, code };
+        resolveCompletion(outcome);
+        resolve(outcome);
       };
-      timer = setTimeout(() => finish('TIMEOUT'), timeoutMs);
+      timer = setTimeout(() => {
+        if (settled) return;
+        request.timedOut = true;
+        // This is a status, not a cancellation or grant: the SDK may still open an ad.
+        resolve({ ok: false, rewarded: false, shown: request.shown, pending: true, code: 'TIMEOUT_PENDING', completion });
+      }, timeoutMs);
       try {
         adv[method]({ callbacks: {
-          /** The lifecycle was paused before requesting the SDK; opening requires no second pause. */
-          onOpen: () => {},
-          /** Accept only an unsettled rewarded-video grant; late callbacks and interstitials cannot award energy. */
-          onRewarded: () => { if (!settled && kind === 'rewarded') rewarded = true; },
-          /** Complete with CLOSED while preserving whether a separate reward callback actually arrived. */
-          onClose: () => finish('CLOSED'),
-          /** Release the ad pause/lock after the SDK reports a playback error. */
+          /** An opened ad is a real exposure, even if its eventual close reports an error. */
+          onOpen: () => { if (!settled) request.shown = true; },
+          /** Reward authority is independent of close status and forbidden for interstitials. */
+          onRewarded: () => { if (!settled && kind === 'rewarded') request.rewarded = true; },
+          /** Explicit wasShown is a fallback exposure signal; false cannot undo an observed open. */
+          onClose: wasShown => { if (settled) return; request.shown ||= wasShown === true; finish('CLOSED'); },
+          /** An SDK terminal error means the pending operation has ended, unlike our timer. */
           onError: () => finish('ERROR'),
-          /** Release the ad pause/lock when the platform cannot play an ad offline. */
+          /** An SDK offline callback permits normal game continuity without an impression. */
           onOffline: () => finish('OFFLINE'),
         } });
       } catch { finish('ERROR'); }
     });
   }
   return {
-    /**
-     * Request a reward-bearing video through the shared eligibility and lock checks.
-     * @returns {Promise<Object>} Result whose rewarded flag is authoritative.
-     */
+    /** Request optional video; only the terminal result's rewarded flag authorizes a grant. */
     rewarded: () => show('rewarded'),
-    /**
-     * Request a fullscreen ad without granting a reward.
-     * @returns {Promise<Object>} Close, unavailable, error or timeout result.
-     */
+    /** Request a fullscreen ad; only shown:true is an exposure, not CLOSED/ok by itself. */
     interstitial: () => show('interstitial'),
-    /**
-     * Report whether the initialized SDK exposes rewarded video, independent of the current screen.
-     * @returns {boolean} Platform capability; canShow is checked when an ad is requested.
-     */
-    get available() { return Boolean(sdk.get()?.adv?.showRewardedVideo); },
+    /** True while an SDK operation still owns the ad pause, including after a local timeout. */
+    get pending() { return active !== null; },
+    /** Detached recovery status with no SDK callbacks or mutable internal state. */
+    get status() { return active ? { kind: active.kind, pending: true, timedOut: active.timedOut, shown: active.shown } : { pending: false, timedOut: false, shown: false }; },
+    /** Report a real initialized rewarded capability, without assuming the current screen is eligible. */
+    get available() { try { return typeof sdk.get()?.adv?.showRewardedVideo === 'function'; } catch { return false; } },
+    /** Report a real initialized fullscreen capability, not merely presence of the SDK object. */
+    get interstitialAvailable() { try { return typeof sdk.get()?.adv?.showFullscreenAdv === 'function'; } catch { return false; } },
   };
 }

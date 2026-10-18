@@ -11,7 +11,9 @@ import { createTrafficCar, normalizeTrafficKind, installTrafficTemplates, resetT
 import { trafficDefinition } from './traffic-catalog.js';
 import { trafficLateral } from './traffic-behavior.js';
 import { trafficPose, trailerYaw } from './traffic-physics.js';
+import { createOwnedVehicle, prepareVehicleAppearance, applyVehicleAppearance, loadGarageCosmetics } from './owned-vehicles.js';
 import { createThrusterEffects } from './thrusters.js';
+import { createRoadsidePromos } from './roadside-promos.js';
 import { buildScenicLandscape, updateScenicLandscape, scenicTerrainHeight } from './landscape.js';
 
 let bendDistance = NaN, bendCoefficient = 0;
@@ -67,6 +69,7 @@ export class RoadRenderer {
     this.assets = await loadAssets(onProgress, { anisotropy: textureAnisotropy(this.renderer.capabilities.getMaxAnisotropy(), this.compact) });
     const a = this.assets, r = this.renderer;
     installTrafficTemplates(a.traffic);
+    this.cosmeticCapabilities=await loadGarageCosmetics(a);
     // Neutral daylight key plus broad sky/road bounce. No camera-mounted fill
     // and no extra shadow pass: the underbody follows the same world lighting.
     this.daylightFill = new T.HemisphereLight('#dcecff', '#a6a393', 1.55);
@@ -87,7 +90,7 @@ export class RoadRenderer {
     this.scene.environment = this.environmentTarget.texture;
     reflectionSource.dispose(); pmrem.dispose();
     this.scene.environmentIntensity = 1.15;
-    this.player = createCar(a.car); this.scene.add(this.player);
+    this.player = createCar(a.car); this.rocketPlayer = this.player; this.playerVehicleId = 'rocket'; this.ownedPlayers = new Map([['rocket', this.player]]); this.player.userData.cosmeticTemplates=a.cosmetics; prepareVehicleAppearance(this.player, 'rocket'); this.scene.add(this.player);
     this.cockpitView = createCockpitView(this.player); this.cockpitDisplay = createCockpitDisplay(this.player);
     this.rearCameraDisplay = createRearCameraDisplay(this.player);
     this.playerMirrors = createPlayerMirrors(r, this.scene, this.player, {compact:this.compact,reducedMotion:this.reducedMotion,onContextChange:()=>this.handleMirrorContextChange()});
@@ -104,6 +107,17 @@ export class RoadRenderer {
     this.buildEventObjects();
     this.loaded = true; this.needsRender = true; this.resize();
   }
+  /** Select an already-loaded owned model outside gameplay; the Rocket's cockpit/mirrors stay attached to its original instance. */
+  selectOwnedVehicle(id='rocket', cosmetics={}) {
+    if(!this.loaded)return false;
+    let next=this.ownedPlayers.get(id);
+    if(!next){next=createOwnedVehicle(this.assets,id,cosmetics);this.addContact(next);next.userData.contactShadow.material=this.contactMaterial.clone();next.remove(next.userData.contactShadow);this.scene.add(next.userData.contactShadow);this.ownedPlayers.set(id,next);}
+    if(this.player!==next){this.scene.remove(this.player);this.player.userData.contactShadow.visible=false;this.player=next;this.scene.add(next);this.playerState=null;this.flightEffects.clear();}
+    this.playerVehicleId=id;applyVehicleAppearance(next,cosmetics);next.visible=true;next.userData.contactShadow.visible=true;
+    this.cockpitDisplay.setTheme?.(next.userData.cockpitTheme);this.needsRender=true;this.lookDirection=0;this.lookYaw=0;return true;
+  }
+  /** Create an independent parked showcase instance sharing only immutable buffers with the gameplay assets. */
+  createShowcaseVehicle(id='rocket', cosmetics={}) { return createOwnedVehicle(this.assets,id,cosmetics); }
   /**
    * Attach a planar soft contact shadow and expose it on the vehicle userData.
    * @param {T.Object3D} car - Mutable vehicle receiving the new local-space shadow at Y=0.025 metres.
@@ -178,7 +192,7 @@ export class RoadRenderer {
    * Construct scenic resources once, sharing the renderer's assets, scene and road bend.
    * @returns {void} Stores the returned subsystem indirectly in this.scenery.
    */
-  buildLandscape() { buildScenicLandscape(this,roadBend); }
+  buildLandscape() { buildScenicLandscape(this,roadBend);this.roadsidePromos=createRoadsidePromos(this.scene,{bend:roadBend}); }
   /**
    * Select the scenic route palette and invalidate otherwise skippable rendering.
    * @param {string} route - Route identifier; unknown palettes fall back to the ring colors.
@@ -358,7 +372,7 @@ export class RoadRenderer {
     if(paused&&!menu&&this.wasPaused&&!this.needsRender&&this.pausedFor>.6&&!this.particles.length&&!this.impact)return;
     this.pausedFor=paused&&!menu?(this.pausedFor||0)+dt:0;this.wasPaused=paused&&!menu;
     if (!menu && this.playerState !== state) {
-      this.playerState = state; resetPlayerMotion(this.player);
+      this.playerState = state; if(this.playerVehicleId==='rocket')resetPlayerMotion(this.player);else resetTrafficMotion(this.player);
       this.cockpitView.returnDelay = 0; this.cockpitDisplay.invalidate(); this.playerMirrors?.invalidate(); this.lookDirection = 0; this.lookYaw = 0;
     }
     this.needsRender=false;this.wasMenu=menu;this.time+=paused?0:dt;
@@ -381,7 +395,7 @@ export class RoadRenderer {
       dash.updateMatrix();this.dashes.setMatrixAt(i,dash.matrix);
     }
     this.dashes.instanceMatrix.needsUpdate=true;
-    updateScenicLandscape(this,distance,this.route);
+    updateScenicLandscape(this,distance,this.route);this.roadsidePromos.update(distance,this.route);
     const desiredX=menu?1.8:(state.x-1)*3.5;
     const altitude=menu?0:(state.altitude||0);
     this.player.position.set(desiredX,.012+altitude,0);
@@ -389,7 +403,9 @@ export class RoadRenderer {
     this.player.rotation.order='YXZ';
     this.player.rotation.z=menu?0:(state.rollAngle||0);
     this.player.rotation.x=menu?0:(state.flying?-.035:0);
-    animatePlayerBody(this.player, menu ? {} : state);
+    const rocket=this.playerVehicleId==='rocket';
+    if(rocket)animatePlayerBody(this.player, menu ? {} : state);
+    else this.player.position.y=this.player.userData.groundY;
     // Keep the cabin centre on the flight path, not the model's ground-level origin.
     if (!menu && state.rollAngle) {
       this.rollPivot.set(0,.58,0).applyEuler(this.player.rotation);
@@ -397,12 +413,13 @@ export class RoadRenderer {
       this.player.position.y+=.58-this.rollPivot.y;
       this.player.position.z-=this.rollPivot.z;
     }
-    animatePlayerCar(this.player, menu ? distance : (state.rearDistance ?? distance), menu ? 0 : (state.steerAngle || 0), state.braking, menu ? 0 : (state.curvature ?? null));
-    animatePlayerHardware(this.player, menu ? { phase: 'menu', speed: 0 } : state, paused ? 0 : dt);
+    if(rocket)animatePlayerCar(this.player, menu ? distance : (state.rearDistance ?? distance), menu ? 0 : (state.steerAngle || 0), state.braking, menu ? 0 : (state.curvature ?? null));
+    if(rocket)animatePlayerHardware(this.player, menu ? { phase: 'menu', speed: 0 } : state, paused ? 0 : dt);
+    else animateTrafficCar(this.player,{kind:this.playerVehicleId,z:0,heading:0,speed:menu?0:state.speed,acceleration:menu?0:state.acceleration,laneCurvature:menu?0:state.curvature,travelDistance:menu?0:state.rearDistance,braking:state.braking},distance,paused?0:dt);
     const contact=this.player.userData.contactShadow;
-    contact.position.set(desiredX,.028,0);contact.scale.setScalar(1+altitude*.15);contact.material.opacity=.62-altitude*.1;
+    contact.position.set(desiredX,.028,0);contact.scale.set(rocket?1+altitude*.15:this.player.userData.width/2.1,rocket?1+altitude*.15:this.player.userData.length/4.7,1);contact.material.opacity=.62-altitude*.1;
     this.player.updateMatrixWorld(true);
-    this.flightEffects.update(menu ? { phase:'menu', altitude:0, thrusterPower:0, distance } : state, paused ? 0 : dt, this.time);
+    this.flightEffects.update(menu || !rocket ? { phase:'menu', altitude:0, thrusterPower:0, distance } : state, paused ? 0 : dt, this.time);
     this.player.visible=this.cameraMode==='cockpit'||state.invincible<=0||Math.floor(this.time*9)%2===0||menu;
     this.syncTrafficState(state,menu);
     const active=new Set();
@@ -441,20 +458,21 @@ export class RoadRenderer {
     }
     for(const[id,mesh]of this.pickups)if(!pickIds.has(id)){this.scene.remove(mesh);this.pickupPool.push(mesh);this.pickups.delete(id);}
     this.renderEvents(state,menu);
+    if(!rocket&&this.player.userData.brakeMaterial)this.player.userData.brakeMaterial.emissiveIntensity=state.braking?1.2:.05;
     updateChase(this.view,state,{phone,menu,dt,paused,reducedMotion:this.reducedMotion});
-    const inside = this.cameraMode === 'cockpit' && shouldUseCockpit(state, menu, this.cockpitView, paused?0:dt);
+    const inside = rocket && this.cameraMode === 'cockpit' && shouldUseCockpit(state, menu, this.cockpitView, paused?0:dt);
     this.effectiveCameraMode = inside ? 'cockpit' : 'chase';
     if (!inside || paused) { this.lookDirection = 0; this.lookYaw = 0; }
     else {
       const target = -this.lookDirection * COCKPIT_GLANCE_YAW;
       this.lookYaw = this.reducedMotion ? target : this.lookYaw + (target-this.lookYaw)*(1-Math.exp(-Math.max(0,dt)*12));
     }
-    setPlayerInteriorView(this.player, inside);
-    if (this.cameraMode === 'cockpit' || menu) this.cockpitDisplay.update(menu ? {phase:'menu',speed:0,nitro:60,distance:0} : state, paused?0:dt);
+    setPlayerInteriorView(this.rocketPlayer, inside);
+    if (rocket && (this.cameraMode === 'cockpit' || menu)) this.cockpitDisplay.update(menu ? {phase:'menu',speed:0,nitro:60,distance:0} : state, paused?0:dt);
     if (inside) updateCockpitCamera(this.camera, this.cockpitView, state, {aspect:this.camera.aspect,reducedMotion:this.reducedMotion,lookYaw:this.lookYaw});
     else {
       if(this.camera.fov!==this.view.fov || this.camera.near!==.15){this.camera.fov=this.view.fov;this.camera.near=.15;this.camera.updateProjectionMatrix();}
-      this.camera.up.set(0,1,0);this.camera.position.set(this.view.x,this.view.y+altitude*.78,this.view.z);
+      this.camera.up.set(0,1,0);this.camera.position.set(this.view.x,this.view.y+altitude*.78+(rocket?0:Math.max(0,(state.playerBounds?.height||1.2)-1.2)*.65),this.view.z+(rocket?0:Math.max(0,(state.playerBounds?.length||4.7)-4.7)*.75));
       this.camera.lookAt(this.view.lookX,this.view.lookY+altitude*.62,this.view.lookZ);
     }
     this.impact=Math.max(0,this.impact-dt*2);

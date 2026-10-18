@@ -1,4 +1,5 @@
 import { CONFIG, DIFFICULTIES } from './config.js';
+import { playerConfiguration } from './player-configuration.js';
 import { clamp, lerp, seededRandom } from './util.js';
 import { createFlightState, updateFlight } from './flight.js';
 import { trafficDefinition, chooseTrafficKind, trafficCenterGap } from './traffic-catalog.js';
@@ -29,15 +30,19 @@ export class Game {
    * and, where applicable, its combo or event-result payload.
    */
   constructor({ random = seededRandom(), onEvent = () => {} } = {}) { this.random=random;this.onEvent=onEvent;this.reset(); }
-  /**
-   * Replaces run state and resets entity IDs and swipe pulses without reseeding RNG.
-   * Unknown difficulties fall back to flow; the returned state starts ready at rest.
-   * @param {string} [difficulty='flow'] - Key from DIFFICULTIES.
-   * @returns {Object} The new mutable state also stored on this instance.
-   */
+  /** Apply next-run catalog parameters only in ready state; a paused/crashed run may still resume with its original envelope. */
+  configureVehicle(id='rocket', modifiers={}) {
+    if (this.state && this.state.phase !== 'ready') return false;
+    this.playerConfig = playerConfiguration(id, modifiers); return true;
+  }
+  /** Replace run state with the selected bounded car configuration, without reseeding the traffic RNG. */
   reset(difficulty='flow') {
+    this.playerConfig ||= playerConfiguration();
+    const vehicle = this.playerConfig;
     this.difficulty=Object.hasOwn(DIFFICULTIES,difficulty)?difficulty:'flow';
     this.state={
+      vehicleId:vehicle.id,playerBounds:vehicle.bounds,playerAccelerationBound:vehicle.acceleration,playerBrakingBound:vehicle.brakeDeceleration,playerWheelbase:vehicle.wheelbase,playerRearOffset:vehicle.rearOffset,
+      maxLateralAcceleration:vehicle.maxLateralAcceleration,steeringSlewMultiplier:vehicle.steeringSlewMultiplier,flightAllowed:vehicle.flight,flightDrainMultiplier:vehicle.flightDrainMultiplier,
       bodyPitch:0,bodyRoll:0,bodyHeave:0,bodyPitchVelocity:0,bodyRollVelocity:0,bodyHeaveVelocity:0,
       phase:'ready',lane:1,x:1,heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,rearDistance:0,wheelDistance:0,acceleration:0,throttle:0,braking:false,
       distance:0,score:0,elapsed:0,speed:0,nitro:60,boosting:false,
@@ -109,14 +114,14 @@ export class Game {
     this.pulseTime=Math.max(0,this.pulseTime-dt);
     const steering=c.steer||(this.pulseTime>0?this.pulse:0);
     s.throttle=c.brake>0?0:c.throttle;s.braking=c.brake>0;
-    updateFlight(s,dt,c,this.onEvent);
+    updateFlight(s,dt,s.flightAllowed ? c : {...c,flight:false,roll:0},this.onEvent);
     s.boosting=c.boost&&!s.flying&&s.altitude<.2&&s.throttle>0&&!s.braking&&s.speed>5&&s.nitro>0;
     if(s.boosting)s.nitro=Math.max(0,s.nitro-CONFIG.nitroDrain*dt);
-    const maxSpeed=CONFIG.maxSpeed*this.rules.speed*(s.boosting?1.27:1);
-    const drive=s.throttle*(CONFIG.acceleration+(s.boosting?7:0));
+    const maxSpeed=this.playerConfig.maxSpeed*this.rules.speed*(s.boosting?1.27:1);
+    const drive=s.throttle*(this.playerConfig.acceleration+(s.boosting?7:0));
     const resistance=s.speed>0?CONFIG.coastDeceleration+s.speed*s.speed*.0012:0;
     const beforeSpeed=s.speed;
-    s.speed=clamp(s.speed+(drive-resistance-CONFIG.brakeDeceleration*c.brake)*dt,0,Math.max(beforeSpeed,maxSpeed));
+    s.speed=clamp(s.speed+(drive-resistance-this.playerConfig.brakeDeceleration*c.brake)*dt,0,Math.max(beforeSpeed,maxSpeed));
     // Releasing boost/accelerator reduces speed gradually rather than cutting it.
     if(s.speed>maxSpeed)s.speed=Math.max(maxSpeed,s.speed-dt*3);
     s.acceleration=(s.speed-beforeSpeed)/dt;
@@ -127,7 +132,7 @@ export class Game {
     if(s.distance>=s.nextSpawn){this.spawnWave();s.nextSpawn+=CONFIG.spawnDistance*this.rules.spacing;}
     if(!s.traffic.length&&s.speed>10&&Number.isFinite(s.nextSpawn)){this.spawnWave(160);s.nextSpawn=s.distance+CONFIG.spawnDistance;}
     this.updateEvent(dt);
-    const flightClearance=playerBottom(s.altitude,s.rollAngle);
+    const flightClearance=playerBottom(s.altitude,s.rollAngle,s.playerBounds);
     // Front-to-back ordering gives each follower its updated leader position.
     // One sort replaces repeated filtering/sorting for every traffic vehicle.
     for(const car of s.traffic){car.previousLateral=trafficLateral(car);car.previousZ=car.z;}
@@ -135,7 +140,7 @@ export class Game {
     const trafficOrder=[...s.traffic].sort((a,b)=>b.z-a.z),laneLeader=new Map();
     for(const car of trafficOrder){
       const before=car.z,beforeSpeed=car.speed,spec=trafficDefinition(car.kind),clearHeight=spec.height+.08;
-      const depth=playerTrafficDepth(car),width=playerTrafficWidth(car)/LANE_WIDTH;
+      const depth=playerTrafficDepth(car,s.playerBounds),width=playerTrafficWidth(car,s.playerBounds)/LANE_WIDTH;
       if(car.eventId&&s.roadEvent?.id===car.eventId&&s.roadEvent.remaining<115)car.eventBraking=true;
       const occupied=occupiedTrafficLanes(car),carX=trafficLateral(car);
       const following=before<0&&(Math.abs(carX-s.x)<width||(car.laneChange&&occupied.includes(Math.round(s.x))))&&flightClearance<clearHeight;
@@ -171,7 +176,9 @@ export class Game {
     }
     for(const obstacle of s.obstacles){
       const before=obstacle.z;obstacle.z-=travelled;
-      if(!obstacle.hit&&Math.min(before,obstacle.z)<=2.8&&Math.max(before,obstacle.z)>=-2.8&&Math.abs(s.x-obstacle.x)<(obstacle.kind==='barrier'?.72:.36)&&s.invincible<=0&&flightClearance<1.65){
+      const obstacleDepth = 2.8 + (s.playerBounds.length - 4.7)/2;
+      const obstacleWidth = (obstacle.kind==='barrier'?.72:.36) + (s.playerBounds.width - 2.36)/7;
+      if(!obstacle.hit&&Math.min(before,obstacle.z)<=obstacleDepth&&Math.max(before,obstacle.z)>=-obstacleDepth&&Math.abs(s.x-obstacle.x)<obstacleWidth&&s.invincible<=0&&flightClearance<1.65){
         if(obstacle.kind==='barrier'){this.crash();return;}
         obstacle.hit=true;s.speed*=.8;s.score=Math.max(0,s.score-50);if(s.roadEvent)s.roadEvent.clean=false;this.onEvent('cone');
       }
