@@ -441,7 +441,7 @@ export class RoadRenderer {
     }
     for(const[id,mesh]of this.pickups)if(!pickIds.has(id)){this.scene.remove(mesh);this.pickupPool.push(mesh);this.pickups.delete(id);}
     this.renderEvents(state,menu);
-    updateChase(this.view,state,{phone,menu,dt:paused?0:dt,reducedMotion:this.reducedMotion});
+    updateChase(this.view,state,{phone,menu,dt,paused,reducedMotion:this.reducedMotion});
     const inside = this.cameraMode === 'cockpit' && shouldUseCockpit(state, menu, this.cockpitView, paused?0:dt);
     this.effectiveCameraMode = inside ? 'cockpit' : 'chase';
     if (!inside || paused) { this.lookDirection = 0; this.lookYaw = 0; }
