@@ -1,0 +1,101 @@
+{
+  "scope": "Geometry clearance only. Does not establish camera composition, vehicle access/turning routes, dynamic doors, or simultaneous instantiation in runtime.",
+  "extra_slots": [
+    {
+      "tier": 2,
+      "id": "left",
+      "x": -6.2,
+      "z": -0.8,
+      "rotationY": 0,
+      "y": 0,
+      "bounds_xz": [
+        -7.29,
+        -5.11,
+        -3.6100000000000003,
+        2.01
+      ],
+      "maximum_length": 5.62,
+      "maximum_width": 2.18,
+      "tested_height": 2.6,
+      "authored_geometry_conflicts": [],
+      "passed": true
+    },
+    {
+      "tier": 3,
+      "id": "left",
+      "x": -6.2,
+      "z": -0.8,
+      "rotationY": 0,
+      "y": 0,
+      "bounds_xz": [
+        -7.29,
+        -5.11,
+        -3.6100000000000003,
+        2.01
+      ],
+      "maximum_length": 5.62,
+      "maximum_width": 2.18,
+      "tested_height": 2.6,
+      "authored_geometry_conflicts": [],
+      "passed": true
+    },
+    {
+      "tier": 3,
+      "id": "right",
+      "x": 6.2,
+      "z": -0.8,
+      "rotationY": 0,
+      "y": 0,
+      "bounds_xz": [
+        5.11,
+        7.29,
+        -3.6100000000000003,
+        2.01
+      ],
+      "maximum_length": 5.62,
+      "maximum_width": 2.18,
+      "tested_height": 2.6,
+      "authored_geometry_conflicts": [],
+      "passed": true
+    },
+    {
+      "tier": 4,
+      "id": "left",
+      "x": -6.2,
+      "z": -0.8,
+      "rotationY": 0,
+      "y": 0,
+      "bounds_xz": [
+        -7.29,
+        -5.11,
+        -3.6100000000000003,
+        2.01
+      ],
+      "maximum_length": 5.62,
+      "maximum_width": 2.18,
+      "tested_height": 2.6,
+      "authored_geometry_conflicts": [],
+      "passed": true
+    },
+    {
+      "tier": 4,
+      "id": "right",
+      "x": 6.2,
+      "z": -0.8,
+      "rotationY": 0,
+      "y": 0,
+      "bounds_xz": [
+        5.11,
+        7.29,
+        -3.6100000000000003,
+        2.01
+      ],
+      "maximum_length": 5.62,
+      "maximum_width": 2.18,
+      "tested_height": 2.6,
+      "authored_geometry_conflicts": [],
+      "passed": true
+    }
+  ],
+  "tier4_note": "Approved counts are 1/2/3/3, including the central selected car. Insert other actually owned cars into the side bays. No foreground parking is authorized or required."
+}

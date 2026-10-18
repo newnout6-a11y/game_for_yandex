@@ -1,0 +1,85 @@
+[
+  {
+    "source": "body-louver.blend",
+    "root": "cosmetic_body_louver",
+    "editableMeshParts": 12,
+    "onlyOriginalCosmeticObjects": true,
+    "embeddedImages": 0,
+    "parts": [
+      {
+        "part": "Raised rear-deck louver 01",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Raised rear-deck louver 02",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Raised rear-deck louver 03",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Raised rear-deck louver 04",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Raised rear-deck louver 05",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Raised rear-deck louver 06",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Deck louver end rail",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Deck louver end rail.001",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Deck louver side mounting rail",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Copper deck louver edge inlay",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Deck louver side mounting rail.001",
+        "nonManifoldEdges": 0
+      },
+      {
+        "part": "Copper deck louver edge inlay.001",
+        "nonManifoldEdges": 0
+      }
+    ]
+  },
+  {
+    "source": "rim-copper-left.blend",
+    "root": "cosmetic_rim_copper_left",
+    "editableMeshParts": 1,
+    "onlyOriginalCosmeticObjects": true,
+    "embeddedImages": 0,
+    "parts": [
+      {
+        "part": "Copper removable outer rim accent",
+        "nonManifoldEdges": 0
+      }
+    ]
+  },
+  {
+    "source": "rim-copper-right.blend",
+    "root": "cosmetic_rim_copper_right",
+    "editableMeshParts": 1,
+    "onlyOriginalCosmeticObjects": true,
+    "embeddedImages": 0,
+    "parts": [
+      {
+        "part": "Copper removable outer rim accent",
+        "nonManifoldEdges": 0
+      }
+    ]
+  }
+]

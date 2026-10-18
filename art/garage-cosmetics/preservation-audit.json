@@ -1,0 +1,51 @@
+[
+  {
+    "file": "public/assets/roadster.glb",
+    "sha256": "d71068fb3da4771f1a5945f03d078cd97a4cac4f0884442cda9c7c732722100e",
+    "unchanged": true
+  },
+  {
+    "file": "art/roadster.blend",
+    "sha256": "4c48dfb2c98d76747b20a5daeb951d343112ace1a7f77af984f8e2f8b005e6eb",
+    "unchanged": true
+  },
+  {
+    "file": "public/assets/garage-cosmetics/body-splitter.glb",
+    "sha256": "7eda497d53d7ef9747280aaf288f4446bcfb5cb436aacf81f4acd13a8fe76f62",
+    "unchanged": true
+  },
+  {
+    "file": "public/assets/garage-cosmetics/wheel-turbine-left.glb",
+    "sha256": "6376a784024eb3ef3eea9be9a25cb688e787f4fa8d152d72ce64020ebf38b752",
+    "unchanged": true
+  },
+  {
+    "file": "public/assets/garage-cosmetics/wheel-turbine-right.glb",
+    "sha256": "c325ea1cf79fda7b3c2657475cb16cb96896eb6a8cadf92a779f5f75a937d787",
+    "unchanged": true
+  },
+  {
+    "file": "art/garage-cosmetics/body-splitter.blend",
+    "sha256": "a1af70f1f9b3d7eba11cfce8469de06e5c03d738e2fe5af81b25b1009afc9326",
+    "unchanged": false,
+    "prePortabilitySha256": "18aa0d9c424df3816bda6bc416ca49a4972e1c66fe73de8e444d95dee8039841",
+    "geometryAndMaterialsUnchanged": true,
+    "change": "Packed/relative source paths and editor metadata only; verified by Blender save/reopen fingerprints."
+  },
+  {
+    "file": "art/garage-cosmetics/wheel-turbine-left.blend",
+    "sha256": "77ac8fbaa2a2d3978ec4d0e9b077e6abcebe542a6142f88d1aeeef8ffc4e554b",
+    "unchanged": false,
+    "prePortabilitySha256": "bfa2320b9d530ff7b273276bd7c6def122adcd7be17999d0eb932c8e4d555eb7",
+    "geometryAndMaterialsUnchanged": true,
+    "change": "Packed/relative source paths and editor metadata only; verified by Blender save/reopen fingerprints."
+  },
+  {
+    "file": "art/garage-cosmetics/wheel-turbine-right.blend",
+    "sha256": "9eb23c04ba51b89d6154cb746a8c5dd50dd097d268a6759b1a3be0d41b05ad8d",
+    "unchanged": false,
+    "prePortabilitySha256": "0f6d67d5a658bc6929024612106b158b519b0e20e412d2596bd188c5489a6a9d",
+    "geometryAndMaterialsUnchanged": true,
+    "change": "Packed/relative source paths and editor metadata only; verified by Blender save/reopen fingerprints."
+  }
+]

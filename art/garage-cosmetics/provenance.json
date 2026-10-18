@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 1,
+  "brand": "Roadster",
+  "cars": [
+    "rocket"
+  ],
+  "sourceRoadsterSha256": "d71068fb3da4771f1a5945f03d078cd97a4cac4f0884442cda9c7c732722100e",
+  "sourceRoadsterScale": 0.9866073727607727,
+  "coordinateConvention": "Source Roadster local, +Y up, -Z front, X wheel axle; no runtime rescale",
+  "body": {
+    "id": "body_splitter",
+    "slot": "body.addon",
+    "asset": "body-splitter.glb",
+    "root": "cosmetic_body_splitter",
+    "parent": "player_sprung_body",
+    "transform": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
+  },
+  "wheels": {
+    "id": "wheel_turbine",
+    "slot": "wheels.geometry",
+    "left": "wheel-turbine-left.glb",
+    "right": "wheel-turbine-right.glb",
+    "parents": [
+      "wheel_spin_fl",
+      "wheel_spin_fr",
+      "wheel_spin_rl",
+      "wheel_spin_rr"
+    ],
+    "transform": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "preserveExistingWheels": true,
+    "coverMaximumRadiusSourceM": 0.282,
+    "acceptedTyreRadiusSourceM": 0.3830000078417506
+  },
+  "cockpit": {
+    "id": "cockpit_stitch",
+    "slot": "cockpit.trim",
+    "mode": "existing_authored_material_tint",
+    "material": "RC_Ivory_Double_Stitch",
+    "mesh": "detail_rc_stitch",
+    "colorSrgb": "#c77643",
+    "requiresNewGeometry": false
+  },
+  "bodyLouver": {
+    "id": "body_louver",
+    "capability": "body.louver",
+    "slot": "body.addon",
+    "asset": "body-louver.glb",
+    "root": "cosmetic_body_louver",
+    "parent": "player_sprung_body",
+    "transform": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "preserveExistingDeck": true
+  },
+  "rims": {
+    "id": "rim_copper",
+    "capability": "rims.copperAccent",
+    "slot": "wheels.finish",
+    "left": "rim-copper-left.glb",
+    "right": "rim-copper-right.glb",
+    "parents": [
+      "wheel_spin_fl",
+      "wheel_spin_fr",
+      "wheel_spin_rl",
+      "wheel_spin_rr"
+    ],
+    "transform": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "preserveExistingWheels": true,
+    "minimumRadiusSourceM": 0.2846,
+    "maximumRadiusSourceM": 0.2922,
+    "compatibleWheelGeometry": [
+      "stock",
+      "wheel_turbine"
+    ]
+  },
+  "capabilities": [
+    "body.splitter",
+    "body.louver",
+    "wheels.turbine",
+    "rims.copperAccent",
+    "cockpit.stitch"
+  ],
+  "unsupported": [],
+  "assets": [
+    {
+      "asset": "body-splitter.glb",
+      "root": "cosmetic_body_splitter",
+      "editableParts": 9,
+      "drawBatches": 3,
+      "triangles": 1040,
+      "bytes": 43872,
+      "boundsSourceM": {
+        "min": [
+          -0.9041759967803955,
+          0.20100000500679016,
+          -2.3396642208099365
+        ],
+        "max": [
+          0.9041759967803955,
+          0.23999999463558197,
+          -2.187999963760376
+        ]
+      },
+      "sha256": "7eda497d53d7ef9747280aaf288f4446bcfb5cb436aacf81f4acd13a8fe76f62"
+    },
+    {
+      "asset": "wheel-turbine-left.glb",
+      "root": "cosmetic_wheel_turbine_left",
+      "editableParts": 20,
+      "drawBatches": 2,
+      "triangles": 1790,
+      "bytes": 45652,
+      "boundsSourceM": {
+        "min": [
+          -0.1850000023841858,
+          -0.28200000524520874,
+          -0.28200000524520874
+        ],
+        "max": [
+          -0.15700000524520874,
+          0.28200000524520874,
+          0.28200000524520874
+        ]
+      },
+      "sha256": "6376a784024eb3ef3eea9be9a25cb688e787f4fa8d152d72ce64020ebf38b752"
+    },
+    {
+      "asset": "wheel-turbine-right.glb",
+      "root": "cosmetic_wheel_turbine_right",
+      "editableParts": 20,
+      "drawBatches": 2,
+      "triangles": 1790,
+      "bytes": 45656,
+      "boundsSourceM": {
+        "min": [
+          0.15700000524520874,
+          -0.28200000524520874,
+          -0.28200000524520874
+        ],
+        "max": [
+          0.1850000023841858,
+          0.28200000524520874,
+          0.28200000524520874
+        ]
+      },
+      "sha256": "c325ea1cf79fda7b3c2657475cb16cb96896eb6a8cadf92a779f5f75a937d787"
+    },
+    {
+      "asset": "body-louver.glb",
+      "root": "cosmetic_body_louver",
+      "editableParts": 12,
+      "drawBatches": 2,
+      "triangles": 1532,
+      "bytes": 62944,
+      "boundsSourceM": {
+        "min": [
+          -0.5630000233650208,
+          0.8495108485221863,
+          1.4930000305175781
+        ],
+        "max": [
+          0.5630000233650208,
+          0.8858065009117126,
+          1.7309999465942383
+        ]
+      },
+      "sha256": "ea5164816c953d78f8ffcfaab4774f2799da440e035bf55bfab4040d34b60281"
+    },
+    {
+      "asset": "rim-copper-left.glb",
+      "root": "cosmetic_rim_copper_left",
+      "editableParts": 1,
+      "drawBatches": 1,
+      "triangles": 864,
+      "bytes": 17600,
+      "boundsSourceM": {
+        "min": [
+          -0.16500000655651093,
+          -0.2921999990940094,
+          -0.2921999990940094
+        ],
+        "max": [
+          -0.15860000252723694,
+          0.2921999990940094,
+          0.2921999990940094
+        ]
+      },
+      "sha256": "470ea3477d88d9fc24757a70fc12382691247eeb516b0de92cbc9f7bf98b31dc"
+    },
+    {
+      "asset": "rim-copper-right.glb",
+      "root": "cosmetic_rim_copper_right",
+      "editableParts": 1,
+      "drawBatches": 1,
+      "triangles": 864,
+      "bytes": 17600,
+      "boundsSourceM": {
+        "min": [
+          0.15860000252723694,
+          -0.2921999990940094,
+          -0.2921999990940094
+        ],
+        "max": [
+          0.16500000655651093,
+          0.2921999990940094,
+          0.2921999990940094
+        ]
+      },
+      "sha256": "dfab3d3cd18ea6aa66896e0971a9754cec44b9ee881222578a94236c6cac70b4"
+    }
+  ],
+  "provenance": "Original Blender-authored cosmetic geometry, no purchased/downloaded assets. Accepted Roadster only imported for read-only fitting/previews; its rights status is unchanged."
+}

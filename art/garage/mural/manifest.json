@@ -1,0 +1,38 @@
+{
+  "title": "Rose Velocity",
+  "authoring": "Original hand-authored SVG paths with deterministic aerosol, porosity and chips.",
+  "source": "art/garage/mural/create_mural.py",
+  "editable_vector": "art/garage/mural/rose-velocity.svg",
+  "texture": "public/assets/garage/original-rose-velocity-mural.png",
+  "size_px": [
+    1024,
+    512
+  ],
+  "palette": [
+    "plum",
+    "magenta",
+    "rose",
+    "blush"
+  ],
+  "seed": 27519,
+  "external_assets": [],
+  "text_or_logos": false,
+  "license": "Original project artwork; no third-party content.",
+  "files": [
+    {
+      "path": "art/garage/mural/create_mural.py",
+      "bytes": 10014,
+      "sha256": "7a9a8fb41aa3a9b90f01a466f4a2ed366ca71d68d2685927d2dd3050bee625a0"
+    },
+    {
+      "path": "art/garage/mural/rose-velocity.svg",
+      "bytes": 14504,
+      "sha256": "c746bd04bf20ef4b248ac03c0b592098dcc539d84ad8fa9eec47eddbf288ab83"
+    },
+    {
+      "path": "public/assets/garage/original-rose-velocity-mural.png",
+      "bytes": 587374,
+      "sha256": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+[
+  {
+    "tier": 1,
+    "baseline_sha256": "ce588642f831f54efa968a3ddd3dc26206f5ac742063dc2b9b6230f1453817b8",
+    "current_sha256": "6b77c8f1c6d177a34d8ed9f0031079dc6f99be50e63a1fdd3a10adac3473d105",
+    "original_meshes_checked": 16,
+    "original_mesh_geometry_uv_normals_indices_transforms_unchanged": true,
+    "changed_original_meshes": [],
+    "original_materials_unchanged": true,
+    "changed_original_materials": [],
+    "added_batches": [
+      "Tier1_Original_rose_velocity_mural"
+    ],
+    "mural_triangles": 16,
+    "texture_size_px": [
+      1024,
+      512
+    ],
+    "paint_offset_m": 0.002,
+    "collision_role": "none",
+    "passed": true
+  },
+  {
+    "tier": 2,
+    "baseline_sha256": "011fde566940377b35f95bb0eddd3204cb6de8ec654b13c0035242e52d080f89",
+    "current_sha256": "31f7621b8929e596ecd342effbb2c6577926bc70ba2e9beb095db79e5482c5da",
+    "original_meshes_checked": 19,
+    "original_mesh_geometry_uv_normals_indices_transforms_unchanged": true,
+    "changed_original_meshes": [],
+    "original_materials_unchanged": true,
+    "changed_original_materials": [],
+    "added_batches": [
+      "Tier2_Original_rose_velocity_mural"
+    ],
+    "mural_triangles": 16,
+    "texture_size_px": [
+      1024,
+      512
+    ],
+    "paint_offset_m": 0.002,
+    "collision_role": "none",
+    "passed": true
+  },
+  {
+    "tier": 3,
+    "baseline_sha256": "4d9bdc94fff95685580d2b81b5bdc246a436256179eb34ed43302108715ee98d",
+    "current_sha256": "8d3a7788c2d24a008c731810d9bc06ea7d38d627694466c01bc2bc8a65523de3",
+    "original_meshes_checked": 17,
+    "original_mesh_geometry_uv_normals_indices_transforms_unchanged": true,
+    "changed_original_meshes": [],
+    "original_materials_unchanged": true,
+    "changed_original_materials": [],
+    "added_batches": [
+      "Tier3_Original_rose_velocity_mural"
+    ],
+    "mural_triangles": 40,
+    "texture_size_px": [
+      1024,
+      512
+    ],
+    "paint_offset_m": 0.002,
+    "collision_role": "none",
+    "passed": true
+  },
+  {
+    "tier": 4,
+    "baseline_sha256": "ecc25cf9165a47ff579d56fc8f9e17cbab2c636dabf4bb2da0589059dd9a6d3d",
+    "current_sha256": "fecaddad8b4d862640a0d9451f7bcbb022784b9077b3709d1d13d33fcd18c5d3",
+    "original_meshes_checked": 18,
+    "original_mesh_geometry_uv_normals_indices_transforms_unchanged": true,
+    "changed_original_meshes": [],
+    "original_materials_unchanged": true,
+    "changed_original_materials": [],
+    "added_batches": [
+      "Tier4_Original_rose_velocity_mural"
+    ],
+    "mural_triangles": 28,
+    "texture_size_px": [
+      1024,
+      512
+    ],
+    "paint_offset_m": 0.002,
+    "collision_role": "none",
+    "passed": true
+  }
+]

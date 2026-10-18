@@ -1,0 +1,274 @@
+{
+  "asset_family": "Original four-tier garage environments",
+  "authoring_tool": "Blender 4.3.2",
+  "created_utc_date": "2026-10-18",
+  "external_assets_used_in_exports": [],
+  "transport_assets_modified": false,
+  "original_content": [
+    "All garage geometry and assembly details",
+    "Concrete colour and roughness textures",
+    "Diagnostic graphics and service markings",
+    "Rose Velocity original rose/magenta/plum wall mural, hand-authored SVG and seeded aerosol/porosity texture"
+  ],
+  "source": "scripts/create_garage.py",
+  "coordinate_system": "Metres, +Y up, -Z front in GLB",
+  "preview_car_note": "Preview images import the existing roadster for scale after export; it is absent from GLBs and editable garage sources.",
+  "files": [
+    {
+      "path": "scripts/create_garage.py",
+      "sha256": "c7be859ae4833c99e0c819aca7c692420bf82639f4f81ae66756ce378b0f78e0",
+      "bytes": 44228
+    },
+    {
+      "path": "art/garage/tier1.blend",
+      "sha256": "ae1a934910460c50e83bf092bf3038bcda11fdb542732f4e5c8015a5fd0d7660",
+      "bytes": 7805444
+    },
+    {
+      "path": "art/garage/tier2.blend",
+      "sha256": "d5cbc3a8ef672e80e95802d5667c8529c29115218950634a8e5bed3e0e816a41",
+      "bytes": 8645884
+    },
+    {
+      "path": "art/garage/tier3.blend",
+      "sha256": "e8e103594decf8a5e5da6e2cf73b20da28996a332cd4edc9849e7514b5290a2e",
+      "bytes": 6487624
+    },
+    {
+      "path": "art/garage/tier4.blend",
+      "sha256": "d021a3b69358b070f3686a2709c0edfbd0cb8348c99d8244071efd046515be4f",
+      "bytes": 7355756
+    },
+    {
+      "path": "public/assets/garage/original-concrete-grain.png",
+      "sha256": "d054dda0a071e76b3ae800bf3070675f9943c13fc318e79bb7c6e3b753acc396",
+      "bytes": 816362
+    },
+    {
+      "path": "public/assets/garage/original-concrete-roughness.png",
+      "sha256": "898f9b2706009655d122182d3577cbc046e28d3f4d4af5f90addf63ae7417bfd",
+      "bytes": 728905
+    },
+    {
+      "path": "public/assets/garage/original-rose-velocity-mural.png",
+      "sha256": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd",
+      "bytes": 587374
+    },
+    {
+      "path": "art/garage/mural/create_mural.py",
+      "sha256": "7a9a8fb41aa3a9b90f01a466f4a2ed366ca71d68d2685927d2dd3050bee625a0",
+      "bytes": 10014
+    },
+    {
+      "path": "art/garage/mural/rose-velocity.svg",
+      "sha256": "c746bd04bf20ef4b248ac03c0b592098dcc539d84ad8fa9eec47eddbf288ab83",
+      "bytes": 14504
+    },
+    {
+      "path": "art/garage/mural/manifest.json",
+      "sha256": "9775fa659977cbb9e0a8c0dfd68040aab547b4bbb76a2710adab9e53eb7de38a",
+      "bytes": 1095
+    },
+    {
+      "path": "scripts/sanitize_blend_sources.py",
+      "sha256": "fcbf4ff594c2030a4b2d9733c19f32a22fab09fc8d0625d76b9b57caee50840f",
+      "bytes": 12547
+    }
+  ],
+  "exports": [
+    {
+      "tier": 1,
+      "glb_bytes": 4393932,
+      "sha256": "6b77c8f1c6d177a34d8ed9f0031079dc6f99be50e63a1fdd3a10adac3473d105",
+      "primitives": 17,
+      "triangles": 33202,
+      "materials": 17,
+      "embedded_images": 3,
+      "cameras": 0,
+      "runtime_lights": 0,
+      "bounds_m": {
+        "min": [
+          -10.12,
+          -0.245,
+          -9.2
+        ],
+        "max": [
+          10.12,
+          6.6,
+          8.8
+        ]
+      },
+      "root_present": true,
+      "car_envelope_violations": [],
+      "degenerate_triangles": [],
+      "degenerate_relative_cross_squared_threshold": 1e-16,
+      "passed": true
+    },
+    {
+      "tier": 2,
+      "glb_bytes": 4832924,
+      "sha256": "31f7621b8929e596ecd342effbb2c6577926bc70ba2e9beb095db79e5482c5da",
+      "primitives": 20,
+      "triangles": 40164,
+      "materials": 20,
+      "embedded_images": 3,
+      "cameras": 0,
+      "runtime_lights": 0,
+      "bounds_m": {
+        "min": [
+          -10.12,
+          -0.245,
+          -9.2
+        ],
+        "max": [
+          10.12,
+          6.6,
+          8.8
+        ]
+      },
+      "root_present": true,
+      "car_envelope_violations": [],
+      "degenerate_triangles": [],
+      "degenerate_relative_cross_squared_threshold": 1e-16,
+      "passed": true
+    },
+    {
+      "tier": 3,
+      "glb_bytes": 4224948,
+      "sha256": "8d3a7788c2d24a008c731810d9bc06ea7d38d627694466c01bc2bc8a65523de3",
+      "primitives": 18,
+      "triangles": 26936,
+      "materials": 18,
+      "embedded_images": 3,
+      "cameras": 0,
+      "runtime_lights": 0,
+      "bounds_m": {
+        "min": [
+          -10.12,
+          -0.245,
+          -9.2
+        ],
+        "max": [
+          10.12,
+          6.6,
+          8.8
+        ]
+      },
+      "root_present": true,
+      "car_envelope_violations": [],
+      "degenerate_triangles": [],
+      "degenerate_relative_cross_squared_threshold": 1e-16,
+      "passed": true
+    },
+    {
+      "tier": 4,
+      "glb_bytes": 4593108,
+      "sha256": "fecaddad8b4d862640a0d9451f7bcbb022784b9077b3709d1d13d33fcd18c5d3",
+      "primitives": 19,
+      "triangles": 31824,
+      "materials": 19,
+      "embedded_images": 3,
+      "cameras": 0,
+      "runtime_lights": 0,
+      "bounds_m": {
+        "min": [
+          -10.12,
+          -0.245,
+          -9.2
+        ],
+        "max": [
+          10.12,
+          6.6,
+          8.8
+        ]
+      },
+      "root_present": true,
+      "car_envelope_violations": [],
+      "degenerate_triangles": [],
+      "degenerate_relative_cross_squared_threshold": 1e-16,
+      "passed": true
+    }
+  ],
+  "parking_audit": "art/garage/parking-envelope-audit.json",
+  "approved_display_capacity": [
+    1,
+    2,
+    3,
+    3
+  ],
+  "previews": [
+    {
+      "path": "art/garage/previews/tier1.png",
+      "sha256": "d3a2f978dab76a25e910de92c0104abdaea1c18f2aee974d5caa1bd2dc9a3a02",
+      "note": "Pre-mural architectural reference with existing roadster for scale; the current mural is shown separately in art/garage/mural/rose-velocity-preview.jpg and actual runtime captures."
+    },
+    {
+      "path": "art/garage/previews/tier2.png",
+      "sha256": "c12988454ffe052391c8a1e67e431f51c02ca5dec1e31147f2c759c69eed375e",
+      "note": "Pre-mural architectural reference with existing roadster for scale; the current mural is shown separately in art/garage/mural/rose-velocity-preview.jpg and actual runtime captures."
+    },
+    {
+      "path": "art/garage/previews/tier3.png",
+      "sha256": "06e9118db5a6155c2c69ef749c86451008c31df17b01677f1010a4af91618cc5",
+      "note": "Pre-mural architectural reference with existing roadster for scale; the current mural is shown separately in art/garage/mural/rose-velocity-preview.jpg and actual runtime captures."
+    },
+    {
+      "path": "art/garage/previews/tier4.png",
+      "sha256": "a7d0b76dc61cb4aa47bde539fee3e0e66b2ba0e8efff8aee075a91b3197254e2",
+      "note": "Pre-mural architectural reference with existing roadster for scale; the current mural is shown separately in art/garage/mural/rose-velocity-preview.jpg and actual runtime captures."
+    }
+  ],
+  "mesh_cleanup": {
+    "method": "Only polygons containing numerically collapsed triangles were triangulated and their collapsed faces removed in editable Blender sources before export; vertex positions, named components, materials, UVs, lights and architecture retained.",
+    "relative_cross_squared_threshold": 1e-16,
+    "source_and_export_coordinate_frames_checked": true,
+    "removed_triangles_by_tier": [
+      94,
+      96,
+      96,
+      180
+    ],
+    "export_degenerate_triangles": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "extra_source_degenerate_triangles": {
+      "tier3": {
+        "triangles": 4,
+        "object": "Extinguisher instructions",
+        "reason": "Exactly collapsed source-space bevel triangles became nonzero Float32 batching artifacts."
+      },
+      "tier4": {
+        "triangles": 1,
+        "object": "Bay numeral",
+        "reason": "An exactly collinear source-space numeral triangle became a nonzero Float32 batching artifact."
+      }
+    },
+    "audit": "art/garage/mesh-cleanup-audit.json"
+  },
+  "mural": {
+    "title": "Rose Velocity",
+    "manifest": "art/garage/mural/manifest.json",
+    "editable_source": "art/garage/mural/rose-velocity.svg",
+    "generator": "art/garage/mural/create_mural.py",
+    "architecture_preservation_audit": "art/garage/mural/architecture-preservation-audit.json",
+    "single_extra_draw_batch": true,
+    "paint_offset_m": 0.002,
+    "original_architecture_lighting_car_unchanged": true,
+    "texture_dimensions_px": [
+      1024,
+      512
+    ],
+    "texture_filter": "Bilinear magnification and mipmapped minification via glTF sampler",
+    "collision_role": "none"
+  },
+  "source_portability": {
+    "date": "2026-10-18",
+    "helper": "scripts/sanitize_blend_sources.py",
+    "textures": "Packed bytes preserved; file references are relative to each editable source.",
+    "preservation": "Saved and reopened in Blender; geometry, material values, node graphs, hierarchy, object transforms and packed texture bytes unchanged. Runtime GLBs were not regenerated.",
+    "scope": "Only the twelve new garage and cosmetic sources; previously published vehicle sources are untouched."
+  }
+}
