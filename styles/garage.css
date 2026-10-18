@@ -875,6 +875,14 @@
 }
 .garage-shell[data-screen='garage'] { background: linear-gradient(90deg, #171923a6, transparent 37%, transparent 76%, #17192318); }
 .garage-shell .gs-header { background: linear-gradient(#1a1b29f2, #1a1b29a6); border-color: #b4a7c526; }
+/* Open the garage roof between the original edge controls; keep all header geometry. */
+.garage-shell[data-screen='garage'] .gs-header { background: transparent; border-bottom-color: transparent; }
+.garage-shell[data-screen='garage'] .gs-header :is(.gs-brand-type, .gs-balance) { text-shadow: 0 1px 3px #10111bb3; }
+/* Lift only the car name into the newly open roof, without moving the stage or its controls. */
+.garage-shell[data-screen='garage'] .gs-vehicle-title { transform: translateY(-20px); }
+@media (max-height: 500px) {
+  .garage-shell[data-screen='garage'] .gs-vehicle-title { transform: translateY(-8px); }
+}
 .garage-shell .gs-footer { background: #191b28ed; border-color: #b4a7c526; }
 .garage-shell .gs-currency-mark { border-color: #df95bc57; }
 .garage-shell .gs-primary { color: #291f31; }
