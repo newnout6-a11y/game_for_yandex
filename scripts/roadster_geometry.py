@@ -8,6 +8,7 @@ import math
 from math import sin, cos, pi, sqrt
 import bpy, bmesh
 from mathutils import Vector, Quaternion
+from mathutils.geometry import delaunay_2d_cdt
 
 
 def build_exterior(api):
@@ -38,6 +39,40 @@ def build_exterior(api):
         bpy.ops.object.select_all(action='DESELECT');ob.select_set(True);bpy.context.view_layer.objects.active=ob
         bpy.ops.object.modifier_apply(modifier=mod.name);ob.select_set(False)
 
+    def finish_sheet(ob,thickness,normal_fn=None):
+        """Keep a formed skin's normals independent of its manufactured rim.
+
+        Solidify's narrow returns must not bend a broad paint/glass highlight by
+        45–55 degrees. Capture the open skin first, then shade its inside with
+        the opposite normal and its thickness walls with geometric normals.
+        This is selective normal authoring, not a silhouette-rounding modifier.
+        """
+        refined=ob.get('material_group') in ('body','glass','optical')
+        if refined and not normal_fn:
+            bm=bmesh.new();bm.from_mesh(ob.data)
+            bmesh.ops.remove_doubles(bm,verts=list(bm.verts),dist=.000001)
+            bmesh.ops.dissolve_degenerate(bm,edges=list(bm.edges),dist=.0000001)
+            bmesh.ops.delete(bm,geom=[f for f in bm.faces if f.calc_area()<1e-13],context='FACES_ONLY')
+            bm.normal_update();bm.to_mesh(ob.data);bm.free();ob.data.update()
+        count=len(ob.data.polygons);nv=len(ob.data.vertices)
+        skin=[tuple(vertex.normal) for vertex in ob.data.vertices] if refined else []
+        if thickness:
+            mod=ob.modifiers.new('Manufactured wall thickness','SOLIDIFY');mod.thickness=thickness;mod.offset=-1
+            mod.use_even_offset=False;apply_modifier(ob,mod)
+        if normal_fn or refined:
+            normals=[]
+            for poly in ob.data.polygons:
+                outer=poly.index<count;inner=thickness and count<=poly.index<2*count
+                poly.use_smooth=bool(outer or inner)
+                for vi in poly.vertices:
+                    if outer or inner:
+                        q=ob.data.vertices[vi%nv].co
+                        n=v(normal_fn((q.x,q.z,-q.y))).normalized() if normal_fn else Vector(skin[vi%nv])
+                        normals.append(tuple(n if outer else -n))
+                    else:normals.append(tuple(poly.normal))
+            ob.data.normals_split_custom_set(normals);ob['authored_normals']=True
+        return ob
+
     def surface(name,rows,mat='body',thickness=.012,outward=(0,1,0),smooth=True,normal_fn=None):
         """Close an ordered quad surface with an inward solidify shell."""
         ni=len(rows);nj=len(rows[0]);verts=[p for row in rows for p in row]
@@ -50,19 +85,7 @@ def build_exterior(api):
             area_normal+=(b-a).cross(c-a)
         if area_normal.dot(Vector(outward))<0:faces=[tuple(reversed(f)) for f in faces]
         ob=mesh(name,verts,faces,mat,smooth=smooth)
-        if thickness:
-            mod=ob.modifiers.new('Manufactured wall thickness','SOLIDIFY');mod.thickness=thickness;mod.offset=-1
-            mod.use_even_offset=False;apply_modifier(ob,mod)
-        if normal_fn:
-            normals=[]
-            for poly in ob.data.polygons:
-                center=poly.center;target=v(normal_fn((center.x,center.z,-center.y))).normalized();dot=poly.normal.dot(target)
-                for vi in poly.vertices:
-                    q=ob.data.vertices[vi].co
-                    n=v(normal_fn((q.x,q.z,-q.y))).normalized()
-                    normals.append(tuple(n if dot>.55 else -n if dot<-.55 else poly.normal))
-            ob.data.normals_split_custom_set(normals);ob['authored_normals']=True
-        return ob
+        return finish_sheet(ob,thickness,normal_fn)
 
     def polygon_shell(name,pts,mat,thickness=.012,outward=(0,1,0),bevel=.0):
         """Close a game-metre polygon inward from the requested outward direction."""
@@ -117,28 +140,39 @@ def build_exterior(api):
                 u=i/count;row=[]
                 for j in range(13):
                     t=j/12
-                    # Fender-edge points migrate inward beneath axle center.
+                    # A shared vertical boundary prevents sheets from folding
+                    # into the lower arch return or separating between samples.
                     za=start;zb=end
                     if part=='front_corner':
                         za=start+.100*(1-t)**1.4
-                        zb=(axles[0]-rim_end)*(1-t)+(axles[0]-.47)*t
-                    elif part=='door_skin':
-                        za=(axles[0]+rim_end)*(1-t)+(axles[0]+.47)*t
-                        zb=(axles[1]-rim_end)*(1-t)+(axles[1]-.47)*t
-                    else:za=(axles[1]+rim_end)*(1-t)+(axles[1]+.47)*t
                     z=za+(zb-za)*u;y=bottom+(interp(z,H)-bottom)*t
                     row.append((s*side_x(z,y),y,z))
                 rows.append(row)
             surface(side+'_'+part,rows,thickness=.014,outward=(s,0,0),normal_fn=side_normal)
         for c,axle in zip(axles,('front','rear')):
-            rows=[]
+            # Triangulate the actual concave U-boundary in the side's Y/Z
+            # domain. The previous arch-to-top quad map folded at the two low
+            # returns. Merely reversing those quads would leave overlapping
+            # skin. Constraints retain every original arch sample and use the
+            # same 13 seam samples as the neighboring side sheets.
+            boundary=[(c-.47,bottom)]
             for i in range(61):
-                u=i/60;zb,yb=arch_boundary(c,u);zt=c-.47+.94*u;row=[]
-                for j in range(9):
-                    t=j/8;z=zb*(1-t)+zt*t;yt=interp(zt,H);y=yb*(1-t)+yt*t
-                    row.append((s*side_x(z,y),y,z))
-                rows.append(row)
-            surface(side+'_'+axle+'_fender',rows,thickness=.014,outward=(s,0,0),normal_fn=side_normal)
+                boundary.append(arch_boundary(c,i/60))
+            boundary.extend((c+.47,bottom+(interp(c+.47,H)-bottom)*j/12) for j in range(13))
+            boundary.extend((z,interp(z,H)) for z in [c+.47-.94*i/60 for i in range(1,61)])
+            boundary.extend((c-.47,bottom+(interp(c-.47,H)-bottom)*j/12) for j in range(11,0,-1))
+            coords=[Vector(p) for p in boundary]
+            for i in range(1,60):
+                z=c-.47+.94*i/60
+                for j in range(1,17):
+                    y=bottom+(interp(z,H)-bottom)*j/17
+                    if (z-c)**2+(y-wheel_y)**2>arch**2+1e-8:coords.append(Vector((z,y)))
+            points,_,faces,_,_,_=delaunay_2d_cdt(coords,[],[list(range(len(boundary)))],1,1e-8)
+            verts=[(s*side_x(z,y),y,z) for z,y in points]
+            # A CCW polygon in (Z,Y) points toward -X in game coordinates.
+            if s>0:faces=[tuple(reversed(face)) for face in faces]
+            ob=mesh(side+'_'+axle+'_fender',verts,faces,'body',smooth=True)
+            finish_sheet(ob,.014,side_normal)
             # Rolled painted lip and deep black inner liner, not a floating ring.
             rows=[];liner=[]
             for i in range(101):
@@ -175,8 +209,29 @@ def build_exterior(api):
         beam(side+'_camera_mount',(s*.842,.878,-.67),(s*.992,.894,-.64),.021,.021,'carbon')
         # Lens and housing have a tapered, wing-like silhouette instead of a box.
         pts=[(s*.985,.873,-.71),(s*1.088,.876,-.69),(s*1.097,.913,-.64),(s*1.043,.928,-.65),(s*.997,.911,-.69)]
-        polygon_shell(side+'_camera_housing',pts,'body',.045,(0,1,0),.010)
-        box(side+'_camera_lens',(s*1.059,.900,-.622),(.066,.020,.006),'screen',.005)
+        housing=polygon_shell(side+'_camera_housing',pts,'body',.045,(0,1,0),.010)
+        # A real flat mirror replaces the black lens-shaped stand-in. It sits
+        # in a shallow recess wholly inside the existing wing-like pod, rather
+        # than hanging a large generic mirror from the vehicle's silhouette.
+        # The left-side driving eye needs different left/right adjustment.
+        # Symmetric normals made the left pane reflect the car's own door.
+        if s<0:
+            # See the neighboring rear lane through the true narrow pane,
+            # rather than widening its runtime field of view into a fake feed.
+            normal=Vector((.18402486546566232,.07152338515905333,.9803158951408136))
+            center=Vector((-1.04475,.887065,-.6340339384077607))-normal*.002
+        else:
+            normal=Vector((-.35,.04,sqrt(1-.35**2-.04**2)))
+            center=Vector((s*1.045,.887,-.635))+normal*.003
+        tangent=Vector((normal.z,0,-normal.x)).normalized();up=normal.cross(tangent)
+        pocket=[center+tangent*x+up*y for x,y in [(-.0275,-.008),(.0275,-.008),(.0275,.008),(-.0275,.008)]]
+        verts=[tuple(p+normal*d) for d in [-.0008,.060] for p in pocket]
+        faces=[(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
+        cutter=mesh(side+'_mirror_recess_tool',verts,faces,'body')
+        mod=housing.modifiers.new('Seated reflective pane recess','BOOLEAN');mod.operation='DIFFERENCE';mod.solver='EXACT';mod.object=cutter
+        apply_modifier(housing,mod);objects.remove(cutter);bpy.data.objects.remove(cutter,do_unlink=True)
+        points=[tuple(center+tangent*x+up*y) for x,y in [(-.0265,-.007),(.0265,-.007),(.0265,.007),(-.0265,.007)]]
+        api['mirror_pane'](side,points,normal)
 
     def pocket_edge(x, trailing=False):
         """Return the inferred pocket boundary around the stowed 8-degree airfoil."""
@@ -287,8 +342,7 @@ def build_exterior(api):
                     if j<i:faces.append((a+j,b+j+1,a+j+1))
             if s<0:faces=[tuple(reversed(f)) for f in faces]
             ob=mesh(name,verts,faces,mat,smooth=True)
-            mod=ob.modifiers.new('Optical lens thickness','SOLIDIFY');mod.thickness=.005;mod.offset=-1;apply_modifier(ob,mod)
-            return ob
+            return finish_sheet(ob,.005)
         optical_patch('headlamp_optical_cover',[(.668,-2.310),(.552,-1.205),(.890,-1.205)],'optical',.007,24)
         # A narrow bright brow and separated tapered projector ribs sit inside
         # the smoked triangle; the complete patch is not a glowing white sticker.

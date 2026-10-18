@@ -1,8 +1,12 @@
 import * as T from '../public/vendor/three.js';
-import { createCar, animatePlayerCar, animatePlayerHardware } from './car.js';
+import { createCar, animatePlayerCar, animatePlayerHardware, animatePlayerBody, resetPlayerMotion, setPlayerInteriorView } from './car.js';
 import { loadAssets, createSkyReflectionSource } from './assets.js';
-import { renderDimensions, textureAnisotropy } from './render-settings.js';
+import { renderDimensions, textureAnisotropy, normalizeRenderQuality, renderShadowSettings } from './render-settings.js';
 import { updateChase } from './motion.js';
+import { normalizeCameraMode, createCockpitView, shouldUseCockpit, updateCockpitCamera, COCKPIT_GLANCE_YAW } from './camera-view.js';
+import { createCockpitDisplay } from './cockpit-display.js';
+import { createRearCameraDisplay } from './rear-camera-display.js';
+import { createPlayerMirrors } from './player-mirrors.js';
 import { createTrafficCar, normalizeTrafficKind, installTrafficTemplates, resetTrafficMotion, animateTrafficCar } from './traffic.js';
 import { trafficDefinition } from './traffic-catalog.js';
 import { trafficLateral } from './traffic-behavior.js';
@@ -35,7 +39,8 @@ export class RoadRenderer {
    * @param {HTMLCanvasElement} canvas - Canvas owned by this renderer for WebGL output.
    * @param {function(number): void} onProgress - Asset request-completion percentage callback.
    */
-  constructor(canvas, onProgress) {
+  constructor(canvas, onProgress, { quality = 'auto', onRenderSettings = () => {}, cameraMode = 'chase' } = {}) {
+    this.quality = normalizeRenderQuality(quality); this.onRenderSettings = onRenderSettings; this.cameraMode = normalizeCameraMode(cameraMode); this.effectiveCameraMode = 'chase'; this.lookDirection = 0; this.lookYaw = 0;
     this.canvas = canvas; this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.compact = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 600;
@@ -67,7 +72,7 @@ export class RoadRenderer {
     this.daylightFill = new T.HemisphereLight('#dcecff', '#a6a393', 1.55);
     this.scene.add(this.daylightFill);
     this.sun = new T.DirectionalLight('#fff8ee', 2.35); this.sun.position.set(-55, 85, 45);
-    this.sun.castShadow = true; this.sun.shadow.mapSize.set(1024,1024);
+    this.sun.castShadow = true; this.sun.shadow.mapSize.set(1024,1024); this.applyShadowQuality();
     Object.assign(this.sun.shadow.camera, { left: -45, right: 45, top: 65, bottom: -65, near: 1, far: 230 });
     this.sun.shadow.bias = -.00025; this.sun.shadow.normalBias = .035; this.sun.shadow.radius = 3;
     this.sun.target.position.set(0,0,-28); this.scene.add(this.sun, this.sun.target);
@@ -83,6 +88,9 @@ export class RoadRenderer {
     reflectionSource.dispose(); pmrem.dispose();
     this.scene.environmentIntensity = 1.15;
     this.player = createCar(a.car); this.scene.add(this.player);
+    this.cockpitView = createCockpitView(this.player); this.cockpitDisplay = createCockpitDisplay(this.player);
+    this.rearCameraDisplay = createRearCameraDisplay(this.player);
+    this.playerMirrors = createPlayerMirrors(r, this.scene, this.player, {compact:this.compact,reducedMotion:this.reducedMotion,onContextChange:()=>this.handleMirrorContextChange()});
     const shadowCanvas = document.createElement('canvas'); shadowCanvas.width = shadowCanvas.height = 128;
     const ctx = shadowCanvas.getContext('2d'), gradient = ctx.createRadialGradient(64,64,5,64,64,64);
     gradient.addColorStop(0,'rgba(0,0,0,.55)'); gradient.addColorStop(.48,'rgba(0,0,0,.2)'); gradient.addColorStop(1,'rgba(0,0,0,0)');
@@ -116,7 +124,7 @@ export class RoadRenderer {
   }
   /**
    * Add a longitudinal road strip with immutable base vertices for repeated bending.
-   * The mesh spans scene Z=-650..50 metres and uses a conservative fixed sphere to avoid
+   * The mesh spans scene Z=-650..80 metres and uses a conservative fixed sphere to avoid
    * per-frame bounds scans. The supplied material remains shared, not cloned.
    * @param {number} width - Strip width in metres along X.
    * @param {T.Material} material - Surface material to reuse.
@@ -124,12 +132,12 @@ export class RoadRenderer {
    * @returns {T.Mesh} New scene mesh also appended to this.strips.
    */
   strip(width, material, start = 0) {
-    const geometry = new T.PlaneGeometry(width, 700, 1, 140);
-    geometry.rotateX(-Math.PI/2); geometry.translate(start, .01, -300);
+    const geometry = new T.PlaneGeometry(width, 730, 1, 146);
+    geometry.rotateX(-Math.PI/2); geometry.translate(start, .01, -285);
     const mesh = new T.Mesh(geometry, material); mesh.receiveShadow = true;
     mesh.userData.base = geometry.attributes.position.array.slice();
     // Conservative bound includes the maximum road bend; no per-frame vertex scan.
-    geometry.boundingSphere = new T.Sphere(new T.Vector3(0, 0, -300), 460);
+    geometry.boundingSphere = new T.Sphere(new T.Vector3(0, 0, -285), 475);
     this.scene.add(mesh);
     this.strips.push(mesh); return mesh;
   }
@@ -142,17 +150,17 @@ export class RoadRenderer {
     const road = new T.MeshStandardMaterial({ map:a.asphalt, normalMap:a.asphaltNormal, roughness:1, normalScale:new T.Vector2(.28,.28), color:'#bababa' });
     const mesh = this.strip(11.1, road);
     const uv = mesh.geometry.attributes.uv;
-    for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*2.8,uv.getY(i)*105);
+    for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*2.8,uv.getY(i)*109.5);
     const shoulder = new T.MeshStandardMaterial({ map:a.ground, roughness:1, color:'#b1a68b' });
     for(const side of [-1,1]) {
       const ground = this.strip(2.7,shoulder,side*6.85); ground.position.y=-.03;
-      const guv=ground.geometry.attributes.uv; for(let i=0;i<guv.count;i++) guv.setXY(i,guv.getX(i)*1.2,guv.getY(i)*140);
+      const guv=ground.geometry.attributes.uv; for(let i=0;i<guv.count;i++) guv.setXY(i,guv.getX(i)*1.2,guv.getY(i)*146);
     }
     const white = new T.MeshStandardMaterial({ color:'#e6e4d9', roughness:.94 });
     for(const x of [-5.3,5.3]) { const stripe=this.strip(.13,white,x); stripe.position.y=.012; }
     this.dashSeeds=[];
     const dashGeometry = new T.PlaneGeometry(.13,4.5); dashGeometry.rotateX(-Math.PI/2);
-    for(const x of [-1.75,1.75]) for(let z=-650;z<55;z+=12) this.dashSeeds.push({x,z});
+    for(const x of [-1.75,1.75]) for(let z=-650;z<82;z+=12) this.dashSeeds.push({x,z});
     this.dashes=new T.InstancedMesh(dashGeometry,white,this.dashSeeds.length);
     this.dashes.name='lane-markings'; this.dashes.frustumCulled=false;
     this.dashes.instanceMatrix.setUsage(T.DynamicDrawUsage);
@@ -257,13 +265,37 @@ export class RoadRenderer {
    * Synchronize CSS viewport sizing, bounded drawing-buffer resolution and camera aspect.
    * @returns {void} Reads current browser dimensions/DPR, updates compact mode and requests a redraw.
    */
+  setQuality(value) { this.quality = normalizeRenderQuality(value); this.resize(); }
+  /** Replace the existing shadow target only when its selected resource bucket changes. */
+  applyShadowQuality() {
+    if (!this.sun) return;
+    const size = renderShadowSettings(this.quality, this.compact).mapSize, shadow = this.sun.shadow;
+    if (shadow.mapSize.x === size && shadow.mapSize.y === size) return;
+    shadow.map?.dispose(); shadow.map = null; shadow.mapSize.set(size, size); shadow.needsUpdate = true;
+    this.needsRender = true;
+  }
+  /** Select a persisted camera mode without advancing paused physics or display clocks. */
+  setCameraMode(value) {
+    this.cameraMode = normalizeCameraMode(value); this.needsRender = true;
+    if (this.cameraMode === 'cockpit') this.cockpitDisplay?.invalidate();
+    this.playerMirrors?.invalidate();
+    this.lookDirection = 0; this.lookYaw = 0;
+  }
+  /** Hold a deliberate seated glance; negative means left, positive right. */
+  setLookDirection(direction) {
+    this.lookDirection = Number.isFinite(direction) ? Math.sign(direction) : 0;
+    this.needsRender = true;
+  }
+  /** Apply viewport and selected render budgets without resizing unchanged buffers. */
   resize() {
     const w=innerWidth,h=innerHeight;
     this.canvas.style.width=w+'px';this.canvas.style.height=h+'px';
     this.compact = matchMedia('(pointer: coarse)').matches || Math.min(w,h)<600;
-    const size=renderDimensions(w,h,devicePixelRatio||1,this.compact);
+    const size=renderDimensions(w,h,devicePixelRatio||1,this.compact,this.quality);
+    this.applyShadowQuality();
     if(this.canvas.width!==size.width||this.canvas.height!==size.height)this.renderer.setSize(size.width,size.height,false);
     this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.needsRender=true;
+    this.onRenderSettings?.({quality:this.quality,width:size.width,height:size.height,compact:this.compact});
   }
   /**
    * Remove one live traffic vehicle and retain it in its kind-specific reuse pool.
@@ -303,6 +335,11 @@ export class RoadRenderer {
     if(car&&car.userData.kind!==kind){this.recycleTraffic(id,car);return undefined;}
     return car;
   }
+  /** Detach invalid camera targets and bypass the settled-pause guard after context events. */
+  handleMirrorContextChange() {
+    this.rearCameraDisplay?.setTexture(null);
+    this.needsRender = true;
+  }
   /**
    * Render one visual frame from external gameplay state, or a low-cost menu scene.
    * Keeps the player near Z=0 while distance scrolls road, terrain and detached effects; manages
@@ -320,6 +357,10 @@ export class RoadRenderer {
     if(menu&&this.reducedMotion&&!this.needsRender&&this.wasMenu)return;
     if(paused&&!menu&&this.wasPaused&&!this.needsRender&&this.pausedFor>.6&&!this.particles.length&&!this.impact)return;
     this.pausedFor=paused&&!menu?(this.pausedFor||0)+dt:0;this.wasPaused=paused&&!menu;
+    if (!menu && this.playerState !== state) {
+      this.playerState = state; resetPlayerMotion(this.player);
+      this.cockpitView.returnDelay = 0; this.cockpitDisplay.invalidate(); this.playerMirrors?.invalidate(); this.lookDirection = 0; this.lookYaw = 0;
+    }
     this.needsRender=false;this.wasMenu=menu;this.time+=paused?0:dt;
     if(menu&&!this.reducedMotion)this.menuDistance+=dt*4;
     const distance=menu?this.menuDistance:state.distance, phone=this.camera.aspect<.8;
@@ -334,7 +375,7 @@ export class RoadRenderer {
     for(const map of [this.assets.grass])map.offset.y=-distance/18;
     for(let i=0;i<this.dashSeeds.length;i++){
       const seed=this.dashSeeds[i],dash=this.dashTransform;
-      const z=((seed.z+distance)%708+708)%708-650;
+      const z=((seed.z+distance)%732+732)%732-650;
       dash.position.set(seed.x+roadBend(z,distance),.045,z);
       dash.rotation.y=-Math.atan((roadBend(z-1,distance)-roadBend(z+1,distance))/2);
       dash.updateMatrix();this.dashes.setMatrixAt(i,dash.matrix);
@@ -343,11 +384,12 @@ export class RoadRenderer {
     updateScenicLandscape(this,distance,this.route);
     const desiredX=menu?1.8:(state.x-1)*3.5;
     const altitude=menu?0:(state.altitude||0);
-    this.player.position.set(desiredX,.035+altitude+(menu?0:Math.sin(distance*2)*.003*Math.min(1,state.speed/30)),0);
+    this.player.position.set(desiredX,.012+altitude,0);
     this.player.rotation.y=menu?-.22:-(state.heading||0);
     this.player.rotation.order='YXZ';
-    this.player.rotation.z=menu?0:(state.rollAngle||0)+(state.steerAngle||0)*Math.min(1,state.speed/30)*-.09;
-    this.player.rotation.x=menu?0:Math.max(-.025,Math.min(.025,-(state.acceleration||0)*.0012))+(state.flying?-.035:0);
+    this.player.rotation.z=menu?0:(state.rollAngle||0);
+    this.player.rotation.x=menu?0:(state.flying?-.035:0);
+    animatePlayerBody(this.player, menu ? {} : state);
     // Keep the cabin centre on the flight path, not the model's ground-level origin.
     if (!menu && state.rollAngle) {
       this.rollPivot.set(0,.58,0).applyEuler(this.player.rotation);
@@ -355,13 +397,13 @@ export class RoadRenderer {
       this.player.position.y+=.58-this.rollPivot.y;
       this.player.position.z-=this.rollPivot.z;
     }
-    animatePlayerCar(this.player, distance, menu ? 0 : (state.steerAngle || 0), state.braking);
+    animatePlayerCar(this.player, menu ? distance : (state.rearDistance ?? distance), menu ? 0 : (state.steerAngle || 0), state.braking, menu ? 0 : (state.curvature ?? null));
     animatePlayerHardware(this.player, menu ? { phase: 'menu', speed: 0 } : state, paused ? 0 : dt);
     const contact=this.player.userData.contactShadow;
     contact.position.set(desiredX,.028,0);contact.scale.setScalar(1+altitude*.15);contact.material.opacity=.62-altitude*.1;
     this.player.updateMatrixWorld(true);
     this.flightEffects.update(menu ? { phase:'menu', altitude:0, thrusterPower:0, distance } : state, paused ? 0 : dt, this.time);
-    this.player.visible=state.invincible<=0||Math.floor(this.time*9)%2===0||menu;
+    this.player.visible=this.cameraMode==='cockpit'||state.invincible<=0||Math.floor(this.time*9)%2===0||menu;
     this.syncTrafficState(state,menu);
     const active=new Set();
     const traffic=menu?[{id:'m1',lane:0,z:45,color:2,kind:'suv'},{id:'m2',lane:2,z:76,color:3,kind:'van'},{id:'m3',lane:1,z:120,color:0,kind:'sedan'}]:state.traffic;
@@ -399,16 +441,33 @@ export class RoadRenderer {
     }
     for(const[id,mesh]of this.pickups)if(!pickIds.has(id)){this.scene.remove(mesh);this.pickupPool.push(mesh);this.pickups.delete(id);}
     this.renderEvents(state,menu);
-    updateChase(this.view,state,{phone,menu,dt});
-    if(this.camera.fov!==this.view.fov){this.camera.fov=this.view.fov;this.camera.updateProjectionMatrix();}
-    this.camera.position.set(this.view.x,this.view.y+altitude*.78,this.view.z);this.camera.lookAt(this.view.lookX,this.view.lookY+altitude*.62,this.view.lookZ);
+    updateChase(this.view,state,{phone,menu,dt:paused?0:dt,reducedMotion:this.reducedMotion});
+    const inside = this.cameraMode === 'cockpit' && shouldUseCockpit(state, menu, this.cockpitView, paused?0:dt);
+    this.effectiveCameraMode = inside ? 'cockpit' : 'chase';
+    if (!inside || paused) { this.lookDirection = 0; this.lookYaw = 0; }
+    else {
+      const target = -this.lookDirection * COCKPIT_GLANCE_YAW;
+      this.lookYaw = this.reducedMotion ? target : this.lookYaw + (target-this.lookYaw)*(1-Math.exp(-Math.max(0,dt)*12));
+    }
+    setPlayerInteriorView(this.player, inside);
+    if (this.cameraMode === 'cockpit' || menu) this.cockpitDisplay.update(menu ? {phase:'menu',speed:0,nitro:60,distance:0} : state, paused?0:dt);
+    if (inside) updateCockpitCamera(this.camera, this.cockpitView, state, {aspect:this.camera.aspect,reducedMotion:this.reducedMotion,lookYaw:this.lookYaw});
+    else {
+      if(this.camera.fov!==this.view.fov || this.camera.near!==.15){this.camera.fov=this.view.fov;this.camera.near=.15;this.camera.updateProjectionMatrix();}
+      this.camera.up.set(0,1,0);this.camera.position.set(this.view.x,this.view.y+altitude*.78,this.view.z);
+      this.camera.lookAt(this.view.lookX,this.view.lookY+altitude*.62,this.view.lookZ);
+    }
     this.impact=Math.max(0,this.impact-dt*2);
-    if(this.impact&&!this.reducedMotion){this.camera.position.x+=Math.sin(this.impact*53)*this.impact*.12;this.camera.position.y+=Math.cos(this.impact*61)*this.impact*.08;}
+    if(this.impact&&!this.reducedMotion&&!inside){this.camera.position.x+=Math.sin(this.impact*53)*this.impact*.12;this.camera.position.y+=Math.cos(this.impact*61)*this.impact*.08;}
     for(const p of [...this.particles]){
       p.life-=dt;p.v.y-=dt*9;p.mesh.position.addScaledVector(p.v,dt);
       if(p.mesh.position.y<.03){p.mesh.position.y=.03;p.v.y=Math.abs(p.v.y)*.25;}
       if(p.life<=0){this.scene.remove(p.mesh);this.particles.splice(this.particles.indexOf(p),1);}
     }
+    // Reflect the same completed scene and real eye, without recursion or a
+    // second shadow update. Inactive/offscreen panes keep their authored fallback.
+    this.playerMirrors.update(this.camera, {dt:paused?0:dt,mode:this.effectiveCameraMode,paused,quality:this.quality,compact:this.compact});
+    this.rearCameraDisplay.setTexture(this.effectiveCameraMode === 'cockpit' ? this.playerMirrors.rightCameraTexture : null);
     this.renderer.render(this.scene,this.camera);
   }
 }

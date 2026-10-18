@@ -12,6 +12,7 @@ const root = path.resolve(process.env.ROADSTER_GALLERY_ROOT || process.cwd());
 const assetBytes = await readFile(path.join(root, 'public/assets/roadster.glb'));
 const assetSha256 = createHash('sha256').update(assetBytes).digest('hex');
 const out = process.env.ROADSTER_GALLERY_OUT || `output/roadster-fidelity-${stage}`;
+const viewport = {width:Number(process.env.ROADSTER_GALLERY_WIDTH)||1440,height:Number(process.env.ROADSTER_GALLERY_HEIGHT)||1000};
 const views = (process.env.ROADSTER_GALLERY_VIEWS || 'front,rear,side,top,wheel,cabin,dashboard,underbody').split(',');
 await mkdir(out, { recursive: true });
 const server = startServer({ port: 0, root }); await once(server, 'listening');
@@ -22,7 +23,7 @@ const browser = await chromium.launch({
 });
 const errors = [], records = [];
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
   // Freeze the exact bytes read above while Blender may export the next candidate.
   // The production GLTFLoader still parses those unchanged bytes and embedded maps.
   await page.route('**/public/assets/roadster.glb', route => route.fulfill({ body: assetBytes, contentType: 'model/gltf-binary' }));
@@ -44,6 +45,7 @@ try {
   await page.evaluate(async authoredPaint => {
     const T = await import('./public/vendor/three.js'), { createCar, setPlayerAeroPose } = await import('./src/car.js');
     const w = window.__roadsterWorld, scene = new T.Scene();
+    w.setQuality?.('ultra');
     scene.background = new T.Color('#bccbd2'); scene.environment = w.scene.environment; scene.environmentIntensity = 1.15;
     scene.add(new T.HemisphereLight('#e0efff', '#a5a394', 1.55));
     const key = new T.DirectionalLight('#fff7ec', 2.35); key.position.set(-8, 11, -5); key.castShadow = true;
@@ -52,7 +54,7 @@ try {
     const floor = new T.Mesh(new T.PlaneGeometry(80, 80), new T.MeshStandardMaterial({ color: '#a6b0b6', roughness: .92 }));
     floor.rotation.x = -Math.PI / 2; floor.position.y = -.009; floor.receiveShadow = true; scene.add(floor);
     const car = createCar(w.assets.car, authoredPaint ? null : '#b9c4cc'); scene.add(car); car.updateMatrixWorld(true);
-    const camera = new T.PerspectiveCamera(34, 1440 / 1000, .025, 100);
+    const camera = new T.PerspectiveCamera(34, innerWidth / innerHeight, .025, 100);
     const caption = document.createElement('div'); caption.id = 'roadster-caption'; document.body.append(caption);
     window.__roadsterGallery = { T, scene, car, camera, floor, setPlayerAeroPose }; w.renderer.info.autoReset = false;
   }, Boolean(process.env.ROADSTER_AUTHORED_PAINT));
@@ -61,6 +63,7 @@ try {
     const record = await page.evaluate(({ view, stage }) => {
       const { T, scene, car, camera, floor, setPlayerAeroPose } = window.__roadsterGallery, renderer = window.__roadsterWorld.renderer;
       const poses = {
+        panel: [[3.1,1.45,-3.8],[.55,.77,-1.18],36],
         front: [[5.8, 2.6, -7.8], [0, .65, -.15], 34],
         stowed: [[5.8, 2.6, -7.8], [0, .65, -.15], 34],
         stowedrear: [[0, 1.65, 8.8], [0, .67, .2], 32],

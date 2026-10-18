@@ -280,6 +280,9 @@ def build_cabin(api):
     newmat('rc_console_glass','RC_Dark_Console_Touch_Glass',(.006,.008,.012),0,.43)
     M['rc_console_glass'].node_tree.nodes.get('Principled BSDF').inputs['Specular IOR Level'].default_value=.12
     newmat('rc_ui','RC_Original_Landscape_UI',(.02,.025,.03),.02,.32,.45,texture='ui')
+    # User-requested separate right camera monitor, not the central tablet UI.
+    newmat('right_rear_display','RC_Right_Rear_Camera',(.006,.009,.012),0,.55)
+    M['right_rear_display'].use_backface_culling=True
     # Texture-space density is in repeats per metre, not object-scale guesses.
     density={'rc_carbon':16,'rc_ivory':10,'rc_perforated':12.5,'rc_suede':5}
 
@@ -640,6 +643,58 @@ def build_cabin(api):
         'ui_artwork':'Original orthographic side-profile status graphic; no factory software or live telemetry claim.'
     }
 
+    # Original game addition requested by the user: a separate small right-side
+    # rear-camera monitor. Its actual surface faces the fixed authored driver eye.
+    # The central tablet, passenger vessel and exterior right pod stay unchanged.
+    rear_c=Vector((.600,1.040,-.540))
+    rear_eye=Vector((-.43,1.04,.33))
+    rear_n=(rear_eye-rear_c).normalized()
+    rear_r=Vector((rear_n.z,0,-rear_n.x)).normalized()
+    rear_u=rear_n.cross(rear_r).normalized()
+    def rear_display_transform(x,y,d):
+        """Map the independent right monitor's orthonormal plane into game metres."""
+        return tuple(rear_c+rear_r*x+rear_u*y+rear_n*d)
+    rear_outer=rounded_rect(.095,.051,.004,5)
+    rear_inner=rounded_rect(.0905,.0455,.0005,5)
+    ring('RC_Right_Rear_Display_Bezel',rear_outer,rear_inner,
+         rear_display_transform,-.007,'rc_black')
+    rear_back=[rear_display_transform(x,y,-.007) for x,y in rear_outer]
+    mesh('RC_Right_Rear_Display_Closed_Back',rear_back,
+         [tuple(reversed(range(len(rear_back))))],'rc_black')
+    rear_pts=[rear_display_transform(x,y,.0008)
+              for x,y in [(-.090,-.045),(.090,-.045),(.090,.045),(-.090,.045)]]
+    rear_screen=mesh('RC_Right_Rear_Camera_Active_Display',rear_pts,
+                     [(0,1,2,3)],'right_rear_display')
+    rear_screen['authored_normals']=True
+    rear_screen.data.normals_split_custom_set([tuple(v(rear_n))]*4)
+    rear_screen['rightRearDisplay']={
+        'point':list(rear_c+rear_n*.0008),'normal':list(rear_n),
+        'right':list(rear_r),'up':list(rear_u),'active_dimensions_m':[.180,.090],
+        'reference_eye_game_m':list(rear_eye),'uv_origin':'top_left_in_gltf',
+        'purpose':'Original user-requested right rear-camera display; not factory placement evidence'
+    }
+    rear_screen['display_role']='separate_right_rear_camera'
+    rear_screen['active_aspect_ratio']=2.0
+    uv=rear_screen.data.uv_layers.new(name='RC_Right_Rear_Camera_UV')
+    for loop,co in zip(uv.data,[(0,0),(1,0),(1,1),(0,1)]):loop.uv=co
+    # A short physical bracket joins the BACK of the screen to the unchanged
+    # right A-pillar centerline. Both endpoints overlap their supported parts.
+    t=.70
+    pillar_anchor=Vector((.775,.836,-1.180))*(1-t)**2+Vector((.718,1.035,-.735))*2*t*(1-t)+Vector((.653,1.176,-.293))*t*t
+    beam('RC_Right_Rear_Display_A_Pillar_Bracket',tuple(pillar_anchor),
+         rear_display_transform(.066,.031,-.006),.012,.010,'rc_black')
+    # Real shallow, original bezel lettering; no canvas or central-UI overlay.
+    name='RC_Right_Rear_Display_Label'
+    curve=bpy.data.curves.new(name,'FONT');curve.body='RIGHT REAR';curve.align_x='CENTER';curve.align_y='CENTER'
+    curve.size=.0032;curve.extrude=.00010;curve.resolution_u=2
+    rear_label=bpy.data.objects.new(name,curve);bpy.context.collection.objects.link(rear_label)
+    curve.materials.append(M['rc_metal'])
+    bpy.ops.object.select_all(action='DESELECT');rear_label.select_set(True);bpy.context.view_layer.objects.active=rear_label
+    bpy.ops.object.convert(target='MESH');rear_label=bpy.context.object;rear_label.select_set(False)
+    for vertex in rear_label.data.vertices:
+        p=vertex.co.copy();vertex.co=v(rear_display_transform(p.x,p.y-.0482,p.z+.0003))
+    rear_label['material_group']='rc_metal';objects.append(rear_label)
+
     # The longer profile-matched windshield has a real closed interior cowl
     # between its base and the unchanged dashboard, not an empty gap.
     cowl=[]
@@ -670,10 +725,27 @@ def build_cabin(api):
     box('RC_Overhead_Recessed_Control',(0,1.149,-.226),(.045,.005,.049),'rc_black',.004)
     # Compact faceted interior mirror, mounted beneath the front header.
     beam('RC_Rearview_Mirror_Stem',(0,1.165,-.320),(0,1.091,-.469),.026,.024,'rc_black')
-    for s in [-1,1]:beam('RC_Rearview_Triangular_Bracket',(0,1.115,-.431),(s*.083,1.047,-.499),.009,.008,'rc_metal')
+    # The user's functional mirror request requires a physically aimed pane,
+    # not a fixed rear-camera image. Aim the existing small bezel toward the
+    # driver and a clear rear-glazing sightline; this is reconstructed mounting,
+    # not a claim of factory placement. Its stem and all dashboard parts stay.
+    mirror_origin=Vector((-.00022,1.04328,-.4892))
+    mirror_center=mirror_origin+Vector((0,.025,0))
+    # Aim the reflected center ray level through the rear glazing rather than
+    # upward into sky above following traffic. Pane, bezel and rear bracket
+    # share this physical rotation; the accepted 25 mm lift stays unchanged.
+    mirror_normal=((Vector((-.43,1.04,.33))-mirror_center).normalized()+Vector((0,0,1))).normalized()
+    mirror_rotation=Vector((0,0,1)).rotation_difference(mirror_normal)
+    def mirror_transform(point):
+        """Rotate the existing mirror assembly about its reflective face center."""
+        return tuple(mirror_center+mirror_rotation@(Vector(point)-mirror_origin))
+    for s in [-1,1]:beam('RC_Rearview_Triangular_Bracket',(0,1.115,-.431),mirror_transform((s*.083,1.047,-.515)),.009,.008,'rc_metal')
     mirror=[(-.118,1.064),(.118,1.064),(.094,1.022),(-.095,1.022)]
-    extrude_xy('RC_Faceted_Rearview_Mirror',mirror,-.517,-.490,'rc_black',.004)
-    extrude_xy('RC_Rearview_Mirror_Reflector',[(x*.88,(y-1.044)*.72+1.044) for x,y in mirror],-.487,-.485,'dark_alloy',.001)
+    bezel=extrude_xy('RC_Faceted_Rearview_Mirror',mirror,-.517,-.490,'rc_black',.004)
+    for vertex in bezel.data.vertices:
+        q=vertex.co;point=mirror_transform((q.x,q.z,-q.y));vertex.co=Vector((point[0],-point[2],point[1]))
+    points=[mirror_transform((x*.88,(y-1.044)*.72+1.044,-.4892)) for x,y in mirror]
+    api['mirror_pane']('center',points,mirror_normal)
 
     # Bring tall seat portions forward beneath the actual descending rear glazing.
     # The confirmed one-seat Rocket packaging remains a reconstruction, not an

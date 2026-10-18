@@ -411,12 +411,13 @@ test('actual tire/rim triangles clear every opaque chassis batch at sampled lega
 });
 
 test('authored wing clears its deck pocket and nested sleeves throughout sampled runtime deployment', () => {
-  const car = createCar(scene), chassis = car.getObjectByName('Roadster');
+  const car = createCar(scene), chassis = car.userData.bodyRig;
   car.updateMatrixWorld(true);
   const fixed = [];
   for (const mesh of chassis.children) {
     if (mesh.isMesh && !mesh.material.transparent) fixed.push(...triangles(mesh, mesh.matrixWorld));
   }
+  assert.ok(fixed.length > 100000, 'Wing clearance must include the detailed sprung chassis, not an empty former parent');
   const bvh = tree(fixed), moving = new Set(), failures = [];
   for (const part of car.userData.aero) {
     for (const mesh of part.node.children) if (mesh.isMesh) moving.add(mesh);

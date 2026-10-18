@@ -21,9 +21,9 @@ test('anisotropy is bounded by hardware and mobile texture cost tier',()=>{
 });
 test('road markings share one instanced draw without losing dashes or strip bounds',()=>{
  const w=Object.create(RoadRenderer.prototype);w.scene=new T.Scene();w.assets={asphalt:new T.Texture(),asphaltNormal:new T.Texture(),ground:new T.Texture()};w.buildRoad();
- assert.equal(w.dashes.isInstancedMesh,true);assert.equal(w.dashes.count,118);assert.equal(w.dashSeeds.length,118);assert.equal(w.scene.children.length,6);
+ assert.equal(w.dashes.isInstancedMesh,true);assert.equal(w.dashes.count,122);assert.equal(w.dashSeeds.length,122);assert.equal(w.scene.children.length,6);
  assert.equal(w.dashes.instanceMatrix.usage,T.DynamicDrawUsage);
- for(const strip of w.strips)assert.ok(strip.geometry.boundingSphere.radius>=440);
+ for(const strip of w.strips){assert.ok(strip.geometry.boundingSphere.radius>=475);const p=strip.geometry.attributes.position;let min=Infinity,max=-Infinity;for(let i=0;i<p.count;i++){min=Math.min(min,p.getZ(i));max=Math.max(max,p.getZ(i));}assert.equal(min,-650);assert.equal(max,80);}
 });
 test('cached road bend preserves exact shape for changing and repeated distances',()=>{
  for(const d of [0,100,100,1e7,100,-300])for(const z of [-650,-200,-1,0,5])assert.equal(roadBend(z,d),Math.sin(d/1100+.35)*.00055*Math.min(z,0)**2);
@@ -57,4 +57,14 @@ test('same-ID kind replacement returns the old model to its own pool before crea
  assert.equal(w.trafficForItem(2,'boxtruck'),truck);
  assert.equal(w.trafficForItem(2,'firetruck'),undefined);assert.equal(w.traffic.has(2),false);
  assert.deepEqual(w.trafficPool.get('boxtruck'),[truck]);assert.equal(w.trafficPool.has('firetruck'),false);
+});
+
+
+test('mirror context events detach borrowed pixels and reopen the settled-pause redraw gate',()=>{
+ const w=Object.create(RoadRenderer.prototype),bound=[];
+ Object.assign(w,{loaded:true,wasPaused:true,pausedFor:1,needsRender:false,particles:[],impact:0,rearCameraDisplay:{setTexture(texture){bound.push(texture);}}});
+ w.handleMirrorContextChange();assert.deepEqual(bound,[null]);assert.equal(w.needsRender,true);
+ // A sentinel immediately after the pause gate proves restoration is not skipped.
+ Object.defineProperty(w,'playerState',{get(){throw new Error('redraw reached');}});
+ assert.throws(()=>w.render({}, {paused:true,dt:0}),/redraw reached/);
 });

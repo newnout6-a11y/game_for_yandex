@@ -59,6 +59,9 @@ M['spring_gold']=material('suspension_anodized_gold',(.56,.32,.095),.78,.26)
 M['plate']=material('rear_license_plate',(.17,.18,.19),.05,.64)
 M['optical']=material('optical_smoked_lens',(.032,.036,.042),.08,.30)
 M['brake_carbon']=material('brake_carbon_ceramic',(.022,.025,.028),.18,.70)
+for role in ('left','right','center'):
+    M['mirror_'+role]=material('mirror_'+role,(.72,.76,.80),.95,.04)
+    M['mirror_'+role].use_backface_culling=True
 objects=[]
 
 def mesh(name, verts, faces, mat, parent=None, bevel=0, smooth=False):
@@ -89,6 +92,23 @@ def box(name, c, dims, mat, bevel=.01, parent=None):
     ps=[(x-a,y-b,z-d),(x+a,y-b,z-d),(x+a,y+b,z-d),(x-a,y+b,z-d),
         (x-a,y-b,z+d),(x+a,y-b,z+d),(x+a,y+b,z+d),(x-a,y+b,z+d)]
     return mesh(name,ps,[(0,3,2,1),(4,5,6,7),(0,1,5,4),(3,7,6,2),(0,4,7,3),(1,2,6,5)],mat,parent,bevel)
+
+def mirror_pane(role,points,normal):
+    """Author an isolated flat reflector and its exported mesh-local plane.
+
+    Geometry and extras both use game metres; the glTF exporter rotates mesh
+    coordinates from Blender back to those game axes. Runtime may project the
+    real world into this existing pane, but never creates a replacement mesh.
+    """
+    n=Vector(normal).normalized();face=list(range(len(points)))
+    if (Vector(points[1])-Vector(points[0])).cross(Vector(points[2])-Vector(points[0])).dot(n)<0:face.reverse()
+    ob=mesh('mirror_'+role+'_reflective_pane',points,[face],'mirror_'+role)
+    ob.data.normals_split_custom_set([tuple(v(n)) for _ in ob.data.loops])
+    ob['authored_normals']=True;ob['mirrorRole']=role
+    center=sum((Vector(p) for p in points),Vector())/len(points)
+    ob['mirrorPlane']={'point':list(center),'normal':list(n)}
+    ob['mirrorAuthoring']='Flat Blender-authored pane seated in the existing mirror housing'
+    return ob
 
 def beam(name,a,b,width,depth,mat,parent=None):
     # Rectangular section whose local length is aimed along the segment.
