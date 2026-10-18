@@ -11,7 +11,7 @@ const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 
 /** Extract one real function using balanced braces, tolerating compact formatting. */
 function applicationFunction(name) {
-  const start = new RegExp('function\\s+' + name + '\\s*\\(\\s*\\)\\s*\\{').exec(main);
+  const start = new RegExp('function\\s+' + name + '\\s*\\([^)]*\\)\\s*\\{').exec(main);
   assert.ok(start, 'production function exists: ' + name);
   let depth = 0, quote = null, escaped = false, lineComment = false, blockComment = false;
   for (let at = main.indexOf('{', start.index); at < main.length; at++) {
@@ -136,18 +136,26 @@ test('pause has its own native toggle without releasing modal focus protection o
 });
 
 test('real application camera action persists and renders only its preference, with lifecycle and modal guards', () => {
-  // Isolate the actual application function to exercise its side effects without a WebGL or SDK boot.
-  const action = applicationFunction('toggleCamera');
+  // Load the real shared settings path too; only UI, storage and cloud boundaries are synthetic.
+  const action = ['toggleCamera', 'updateSettings', 'hydrateStoredSettings', 'changed'].map(applicationFunction).join('\n');
   assert.ok(action, 'application exposes one guarded camera action');
-  const calls = [], profileCalls = [];
+  const calls = [], profileCalls = [], cloudCalls = [];
+  const profileSettings = { cameraMode: 'chase', sound: false, renderQuality: 'auto', route: 'ring', difficulty: 'flow' };
   const simulationState = new Proxy({ vehicleId: 'rocket' }, { get(target, key) { if (key === 'vehicleId') return target[key]; throw new Error('camera must not read simulation dynamics: ' + String(key)); }, set(target, key, value) { assert.equal(key, 'vehicleId'); target[key] = value; return true; } });
   const sandbox = {
-    screen: 'playing', busy: false, settings: { cameraMode: 'chase' },
+    screen: 'playing', busy: false, settings: { ...profileSettings }, appliedSelectedId: 'rocket',
+    appliedSettingsKey: JSON.stringify(profileSettings), garageDirty: false,
     storage: { settings: patch => calls.push(['save', patch.cameraMode]) },
-    profileStore: { dispatch(action) { assert.equal(action.type, 'UPDATE_SETTINGS'); profileCalls.push(action.settings.cameraMode); return { ok: true }; } },
+    profileStore: {
+      get: () => ({ selectedVehicleId: 'rocket', settings: { ...profileSettings } }),
+      dispatch(action) { assert.equal(action.type, 'UPDATE_SETTINGS'); profileCalls.push(action.settings.cameraMode); Object.assign(profileSettings, action.settings); return { ok: true, changed: true }; },
+    },
+    platform: { queueSave: profile => cloudCalls.push(profile.settings.cameraMode) },
+    refreshGarage() {}, garageUI: { notice() { assert.fail('accepted fixture preferences must not be rejected'); } },
+    audio: { enabled: false },
     vehicleDefinition,
-    renderer: { setCameraMode: mode => calls.push(['render', mode]) },
-    ui: { overlay: { hidden: true }, modalType: null, camera: mode => calls.push(['ui', mode]), notice: text => calls.push(['notice', text]) },
+    renderer: { setCameraMode: mode => calls.push(['render', mode]), setQuality() {}, setRoute() {} },
+    ui: { overlay: { hidden: true }, modalType: null, camera: mode => calls.push(['ui', mode]), sound() {}, notice: text => calls.push(['notice', text]) },
     game: new Proxy({}, { get(_target, key) { if (key === 'state') return simulationState; throw new Error('camera must not change simulation'); } }),
     input: new Proxy({}, { get() { throw new Error('camera must not access held input'); } }),
     lifecycle: new Proxy({}, { get() { throw new Error('camera must not change lifecycle'); } }),
@@ -155,32 +163,37 @@ test('real application camera action persists and renders only its preference, w
   vm.createContext(sandbox); vm.runInContext(action, sandbox);
   sandbox.toggleCamera();
   assert.equal(sandbox.settings.cameraMode, 'cockpit');
-  assert.deepEqual(calls.slice(0, 3), [['save', 'cockpit'], ['render', 'cockpit'], ['ui', 'cockpit']]);
+  assert.deepEqual(calls.slice(0, 3), [['render', 'cockpit'], ['save', 'cockpit'], ['ui', 'cockpit']]);
   assert.deepEqual(profileCalls, ['cockpit'], 'v2 profile and legacy preference both persist');
+  assert.deepEqual(cloudCalls, ['cockpit'], 'accepted camera preference queues its current profile');
   calls.length = 0;
   sandbox.screen = 'paused'; sandbox.ui.overlay.hidden = false; sandbox.ui.modalType = 'pause';
   sandbox.toggleCamera();
   assert.equal(sandbox.settings.cameraMode, 'chase');
+  assert.deepEqual(calls.slice(0, 3), [['render', 'chase'], ['save', 'chase'], ['ui', 'chase']]);
   assert.equal(calls[1][1], 'chase');
   assert.deepEqual(profileCalls, ['cockpit', 'chase']);
+  assert.deepEqual(cloudCalls, ['cockpit', 'chase']);
   for (const scenario of [
     { screen: 'menu', modal: null, busy: false },
     { screen: 'results', modal: 'results', busy: false },
     { screen: 'paused', modal: 'help', busy: false },
     { screen: 'playing', modal: null, busy: true },
   ]) {
-    calls.length = 0; profileCalls.length = 0;
+    calls.length = 0; profileCalls.length = 0; cloudCalls.length = 0;
     sandbox.screen = scenario.screen; sandbox.busy = scenario.busy;
     sandbox.ui.modalType = scenario.modal; sandbox.ui.overlay.hidden = !scenario.modal;
     sandbox.toggleCamera();
     assert.deepEqual(calls, [], JSON.stringify(scenario));
     assert.deepEqual(profileCalls, [], 'blocked camera actions cannot write v2 settings');
+    assert.deepEqual(cloudCalls, [], 'blocked camera actions cannot queue cloud writes');
     assert.equal(sandbox.settings.cameraMode, 'chase');
   }
   sandbox.screen = 'playing'; sandbox.busy = false; sandbox.ui.overlay.hidden = true; sandbox.ui.modalType = null;
   for (const id of ['hatch', 'sedan', 'suv', 'van']) {
-    calls.length = 0; profileCalls.length = 0; simulationState.vehicleId = id; sandbox.toggleCamera();
+    calls.length = 0; profileCalls.length = 0; cloudCalls.length = 0; simulationState.vehicleId = id; sandbox.toggleCamera();
     assert.deepEqual(calls, [], id + ' has no authored cockpit'); assert.deepEqual(profileCalls, []);
+    assert.deepEqual(cloudCalls, []);
     assert.equal(sandbox.settings.cameraMode, 'chase');
   }
 });

@@ -21,7 +21,7 @@ function decode(text,options) {
  * `provider` may be a Storage object or a lazy function returning one. No SDK calls occur here.
  */
 export function createProgressionStorage({provider=()=>globalThis.localStorage,now=()=>Date.now(),idFactory=()=>globalThis.crypto?.randomUUID?.()||`local_${Date.now()}_${Math.random().toString(36).slice(2)}`,capabilities={}}={}) {
-  let source=null,previousValid=null,data;
+  let source=null,previousValid=null,data,replacementEpoch=0;
   const state={localSaved:false,readOnly:false,recovered:false,migrated:false,source:'new',error:null,backupError:null,cloud:'not-managed',futureVersion:null};
   /** Obtain a finite timestamp even when an injected environment clock is unavailable. */
   function timestamp(){try{const value=now();return Number.isFinite(value)&&value>=0?Math.floor(value):0;}catch{return 0;}}
@@ -51,6 +51,8 @@ export function createProgressionStorage({provider=()=>globalThis.localStorage,n
   return {
     /** Return a detached profile; changes made by UI code cannot alter the stored wallet. */
     get:()=>structuredClone(data),dispatch,status,
+    /** Session-local lineage token; every accepted whole-profile replacement invalidates older asynchronous actions, even with identical IDs. */
+    getReplacementEpoch:()=>replacementEpoch,
     /** Enable only named authored capabilities after the renderer verifies its assets; ownership is unchanged. */
     setCapabilities(next){if(!next||typeof next!=='object'||Array.isArray(next)||![Object.prototype,null].includes(Object.getPrototypeOf(next)))return {ok:false,reason:'invalid-capabilities'};const supported=new Set(COSMETICS.map(item=>item.requiredCapability).filter(Boolean));capabilities=Object.fromEntries(Object.entries(next).filter(([key,value])=>supported.has(key)&&value===true));return {ok:true,capabilities:{...capabilities}};},
     /** Return current authored capability gates as an independent view for the garage presenter. */
@@ -65,7 +67,7 @@ export function createProgressionStorage({provider=()=>globalThis.localStorage,n
      * Replace, never merge, an explicitly selected cloud snapshot after the caller resolves identity/conflict.
      * Raw unknown versions and malformed wallet values are rejected, preserving the existing local profile.
      */
-    replaceFromCloud(raw){if(state.readOnly)return {ok:false,changed:false,reason:'future-version-read-only',profile:structuredClone(data),persistence:status()};if(raw?.schemaVersion!==PROFILE_VERSION||!Number.isSafeInteger(raw?.wallet?.credits)||raw.wallet.credits<0||raw.wallet.credits>LIMITS.credits)return {ok:false,changed:false,reason:'invalid-cloud-profile',profile:structuredClone(data),persistence:status()};const replacement=sanitizeProfile(raw);if(!replacement||byteLength(JSON.stringify(replacement))>LIMITS.profileBytes)return {ok:false,changed:false,reason:'invalid-cloud-profile',profile:structuredClone(data),persistence:status()};data=replacement;state.source='cloud-replacement';persist();return {ok:true,changed:true,profile:structuredClone(data),persistence:status()};},
+    replaceFromCloud(raw){if(state.readOnly)return {ok:false,changed:false,reason:'future-version-read-only',profile:structuredClone(data),persistence:status()};if(raw?.schemaVersion!==PROFILE_VERSION||!Number.isSafeInteger(raw?.wallet?.credits)||raw.wallet.credits<0||raw.wallet.credits>LIMITS.credits)return {ok:false,changed:false,reason:'invalid-cloud-profile',profile:structuredClone(data),persistence:status()};const replacement=sanitizeProfile(raw);if(!replacement||byteLength(JSON.stringify(replacement))>LIMITS.profileBytes)return {ok:false,changed:false,reason:'invalid-cloud-profile',profile:structuredClone(data),persistence:status()};data=replacement;replacementEpoch++;state.source='cloud-replacement';persist();return {ok:true,changed:true,profile:structuredClone(data),persistence:status()};},
     /** Retry a failed local write without repeating a purchase, claim, settlement or revision increment. */
     flush(){persist();return status();},
   };

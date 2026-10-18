@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import { Game } from '../src/game.js';
 import { RunTelemetry } from '../src/run-telemetry.js';
-import { createProgressionStorage } from '../src/progression-storage.js';
+import { createProgressionStorage, PROGRESSION_STORAGE_KEY } from '../src/progression-storage.js';
 import { createProfile, deriveGarageView, getEngineeringModifiers, LIMITS } from '../src/progression.js';
 import { CATALOG, ADS, vehicleDefinition } from '../src/progression-catalog.js';
 import { createStorage } from '../src/storage.js';
@@ -12,14 +12,29 @@ import { createLifecycle } from '../src/lifecycle.js';
 import { createAdCadence } from '../src/ad-cadence.js';
 import { loadOwnGames, openOwnGame } from '../src/own-games.js';
 import { createAds } from '../src/ads.js';
+import { createPlatformServices as createRealPlatformServices, CLOUD_PROFILE_KEY } from '../src/platform-services.js';
 
 /** Run the actual browser controller against deterministic UI/GPU/platform boundaries. */
-async function controller({ cloudProfile = null, initialProfile = null, failUpgrade = false, portrait=false, sdkApi=null } = {}) {
-  let orientationHandler=()=>{},readyCalls=0;
-  const saved = new Map(), listeners = new Map(), nodes = new Map(), requests = [];
-  const localStorage = { getItem:key=>saved.get(key)||null, setItem:(key,value)=>saved.set(key,value) };
+async function controller({ cloudProfile = null, initialProfile = null, initialStorage = {}, failUpgrade = false, portrait=false, sdkApi=null, useRealPlatform=false } = {}) {
+  let orientationHandler=()=>{},readyCalls=0,platformChanged=()=>{};
+  let rejectSettings=false,failStorageWrites=false,failCloudWrites=false,platformServices=null;
+  let platformState={generation:0,identity:null};
+  const cloudSaves=[],cloudWrites=[];
+  const saved = new Map(Object.entries(initialStorage)), listeners = new Map(), nodes = new Map(), requests = [];
+  const localStorage = { getItem:key=>saved.get(key)||null, setItem(key,value){if(failStorageWrites){const error=new Error('quota');error.name='QuotaExceededError';throw error;}saved.set(key,value);} };
   const profileStore = createProgressionStorage({provider:localStorage,idFactory:(()=>{let n=0;return ()=>`run_${++n}`;})()});
   if (initialProfile) profileStore.replaceFromCloud(initialProfile);
+  let remoteProfile=profileStore.get();
+  // Only the SDK transport is synthetic; these optional tests use the real cloud adapter.
+  const platformSdk=useRealPlatform?{...sdkApi,getPlayer:()=>({
+    getUniqueID:()=> 'fixture_guest',isAuthorized:()=>false,
+    getData:async()=>({[CLOUD_PROFILE_KEY]:{formatVersion:1,accountId:'fixture_guest',profile:structuredClone(remoteProfile)}}),
+    async setData(payload,durable){
+      cloudWrites.push({payload:structuredClone(payload),durable});
+      if(failCloudWrites)throw new Error('test-only cloud write failure');
+      remoteProfile=structuredClone(payload[CLOUD_PROFILE_KEY].profile);
+    },
+  })}:sdkApi;
   const node = id => {
     if (!nodes.has(id)) nodes.set(id, {hidden:false, disabled:false, dataset:{}, style:{}, attributes:{},
       addEventListener(name, callback) { listeners.set(`${id}:${name}`,callback); },
@@ -29,7 +44,7 @@ async function controller({ cloudProfile = null, initialProfile = null, failUpgr
   };
   class UI {
     constructor() { this.overlay={hidden:true}; this.modalType=null; }
-    setScreen() {} menu() {} renderSettings() {} toast() {} camera() {} sound() {} glance() {} hud() {}
+    setScreen() {} menu() {} renderSettings() {} toast() {} camera(value) {this.cameraMode=value;} sound(value) {this.soundEnabled=value;} glance() {} hud() {}
     notice(message) { this.lastNotice=message; }
     close() { this.overlay.hidden=true;this.modalType=null; }
     pause() { this.overlay.hidden=false;this.modalType='pause'; }
@@ -62,23 +77,28 @@ async function controller({ cloudProfile = null, initialProfile = null, failUpgr
   class DrivingInput { clear() {} key() {} read() { return {}; } active() {return false;} set() {} release() {} }
   class CockpitGlanceControls { constructor(){this.direction=0;} clear() {} setEnabled(value) {this.enabled=value;} release() {} }
   class GameAudio { constructor(enabled){this.enabled=enabled;} update() {} tone() {} async unlock() {} }
-  const sdk={get:()=>sdkApi,on(){},ready(){readyCalls++;},gameplay(){}};
+  const sdk={init:async()=>platformSdk,get:()=>platformSdk,on(){},ready(){readyCalls++;},gameplay(){}};
   const context=vm.createContext({console,structuredClone,TextEncoder,Promise,Map,Set,Math,Number,Object,JSON,
-    document:{getElementById:node,querySelector:node,querySelectorAll:()=>[],addEventListener(name,callback){listeners.set(`document:${name}`,callback);},hidden:false,documentElement:{}},
+    document:{getElementById:node,querySelector:node,querySelectorAll:selector=>selector==='[data-route]'?[Object.assign(node('route-neon'),{dataset:{route:'neon'}})]:selector==='[data-difficulty]'?[Object.assign(node('difficulty-rush'),{dataset:{difficulty:'rush'}})]:[],addEventListener(name,callback){listeners.set(`document:${name}`,callback);},hidden:false,documentElement:{}},
     window:{addEventListener(name,callback){listeners.set(`window:${name}`,callback);}},
     performance:{now:()=>0},innerWidth:1200,innerHeight:800,requestAnimationFrame(){},
     matchMedia:()=>({matches:false,addEventListener(){}}),location:{reload(){}},
     Game,RunTelemetry,deriveGarageView,getEngineeringModifiers,LIMITS,CATALOG,ADS,vehicleDefinition,
-    createStorage:()=>createStorage(()=>localStorage),createProgressionStorage:()=>({...profileStore,dispatch:action=>profileStore.dispatch(structuredClone(action))}),
+    createStorage:()=>createStorage(()=>localStorage),createProgressionStorage:()=>({...profileStore,dispatch:action=>rejectSettings&&action.type==='UPDATE_SETTINGS'?{ok:false,changed:false,reason:'future-version-read-only',profile:profileStore.get(),persistence:profileStore.status()}:profileStore.dispatch(structuredClone(action))}),
     createThumbDrive:()=>({setEnabled(){},clear(){}}),createOrientationGate:({onChange})=>{orientationHandler=onChange;onChange(portrait);return {blocked:portrait};},createSdk:()=>sdk,createLifecycle,createAds,createAdCadence,loadOwnGames,openOwnGame,
-    createPlatformServices:({onState})=>({getState:()=>({}),async init(){if(cloudProfile){profileStore.replaceFromCloud(cloudProfile);onState();}},queueSave(){},async authorize(){},async resolveCloudConflict(){}}),
+    createPlatformServices:options=>{
+      const {onState}=options;platformChanged=onState;
+      if(useRealPlatform)return platformServices=createRealPlatformServices({...options,minSaveIntervalMs:0});
+      return {getState:()=>structuredClone(platformState),async init(){if(cloudProfile){profileStore.replaceFromCloud(cloudProfile);onState();}},queueSave(snapshot){cloudSaves.push(structuredClone(snapshot));},async authorize(){},async resolveCloudConflict(){}};
+    },
     UI,GarageUI,RoadRenderer,GarageScene,DrivingInput,CockpitGlanceControls,GameAudio,
     cameraShortcutAllowed:()=>false,glanceShortcutAllowed:()=>false,normalizeRenderQuality:value=>value,observeRenderPixelRatio() {},
   });
   const source=(await readFile(new URL('../src/main.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
-  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,lifecycle,garageDirty}}};',context,{filename:'src/main.js'});
+  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,ui,storage,lifecycle,garageDirty}}};',context,{filename:'src/main.js'});
+  if(useRealPlatform)await platformServices.init();
   for(let i=0;i<5;i++)await Promise.resolve();
-  return {api:context.controller,profileStore,requests,listeners,nodes,setOrientation:value=>orientationHandler(value),get readyCalls(){return readyCalls;}};
+  return {api:context.controller,profileStore,requests,listeners,nodes,cloudSaves,cloudWrites,platformServices,storageValues:saved,rejectSettings(){rejectSettings=true;},failStorageWrites(){failStorageWrites=true;},failCloudWrites(){failCloudWrites=true;},replaceCloud(profile){const result=profileStore.replaceFromCloud(profile);platformChanged();return result;},setPlatformState(patch){platformState={...platformState,...patch};platformChanged();},setOrientation:value=>orientationHandler(value),get readyCalls(){return readyCalls;}};
 }
 
 /** Import ownership through the same sanitizer as a legitimate saved/cloud profile. */
@@ -275,4 +295,192 @@ test('a capped wallet never offers an ad for a zero-credit result bonus',async()
  Object.assign(h.api.state.game.state,{distance:600,elapsed:45,phase:'crashed'});h.api.showResults();
  assert.equal(h.api.state.runResult.bonusCredits,0);assert.equal(h.api.state.runResult.bonusEligible,false);
  assert.equal(h.api.state.runResult.receipt.credits,0);assert.equal(h.api.state.runResult.receipt.xp,0);
+});
+
+/** Produce genuine qualifying telemetry without random traffic, using the real game integrator. */
+async function rewardedResults(h){
+ await h.api.startRun();const {game,telemetry}=h.api.state;
+ Object.assign(game.state,{traffic:[],nextSpawn:Infinity,nextEvent:Infinity});
+ for(let i=0;i<1000;i++){game.update(.05,{throttle:1});telemetry.observe(game.state,.05);}
+ game.crash();h.api.showResults();assert.equal(h.api.state.runResult.bonusEligible,true);
+}
+
+test('a rewarded bonus cannot dereference or settle a result replaced by another cloud profile',async()=>{
+ let callbacks;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){callbacks=o.callbacks;}}}});await rewardedResults(h);
+ const pending=h.api.handleGarageAction({type:'rewardedBonus'});callbacks.onOpen();
+ h.replaceCloud(createProfile({id:'different_account_profile'}));const replacement=h.profileStore.get();
+ callbacks.onRewarded();callbacks.onClose(true);await pending;
+ assert.deepEqual(h.profileStore.get(),replacement);assert.equal(h.api.state.runResult,null);assert.equal(h.api.state.screen,'hub');
+ assert.equal(h.api.state.busy,false);assert.equal(h.api.state.lifecycle.has('ad'),false);
+});
+
+test('an identical-ID cloud replacement invalidates the old result transaction too',async()=>{
+ let callbacks;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){callbacks=o.callbacks;}}}});await rewardedResults(h);
+ const pending=h.api.handleGarageAction({type:'rewardedBonus'}),replacement=h.profileStore.get();h.replaceCloud(replacement);
+ callbacks.onRewarded();callbacks.onClose(true);await pending;
+ assert.deepEqual(h.profileStore.get(),replacement);assert.equal(h.api.state.runResult,null);assert.equal(h.api.state.screen,'hub');
+});
+
+test('a rewarded bonus rejects a changed platform identity generation even before cloud replacement',async()=>{
+ let callbacks;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){callbacks=o.callbacks;}}}});await rewardedResults(h);
+ const before=h.profileStore.get(),pending=h.api.handleGarageAction({type:'rewardedBonus'});
+ h.setPlatformState({generation:1,identity:{id:'next_account'}});callbacks.onRewarded();callbacks.onClose(true);await pending;
+ assert.deepEqual(h.profileStore.get(),before);assert.equal(h.api.state.runResult.bonusClaimed,false);assert.equal(h.api.state.busy,false);
+});
+
+test('a current rewarded result grants once and keeps the originating run receipt',async()=>{
+ let callbacks;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){callbacks=o.callbacks;}}}});await rewardedResults(h);
+ const before=h.profileStore.get().wallet.credits,identity={...h.api.state.runResult.runIdentity},bonus=h.api.state.runResult.bonusCredits;
+ const pending=h.api.handleGarageAction({type:'rewardedBonus'}),revision=h.profileStore.get().revision;
+ // An ordinary accepted preference/save emission is not an account or profile replacement.
+ await h.listeners.get('soundBtn:click')();h.setPlatformState({});
+ assert.equal(h.profileStore.get().settings.sound,true);assert.equal(h.profileStore.get().revision,revision+1);
+ callbacks.onRewarded();callbacks.onClose(true);await pending;
+ assert.equal(h.profileStore.get().wallet.credits,before+bonus);assert.equal(h.api.state.runResult.bonusClaimed,true);
+ assert.deepEqual(structuredClone(h.api.state.runResult.runIdentity),identity);await h.api.handleGarageAction({type:'rewardedBonus'});
+ assert.equal(h.profileStore.get().wallet.credits,before+bonus);assert.equal(h.api.state.busy,false);
+});
+
+test('rewarded SDK error releases only ad ownership and never grants or resumes another pause',async()=>{
+ let callbacks;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){callbacks=o.callbacks;}}}});await rewardedResults(h);
+ const before=h.profileStore.get(),pending=h.api.handleGarageAction({type:'rewardedBonus'});h.setOrientation(true);callbacks.onError();await pending;
+ assert.deepEqual(h.profileStore.get(),before);assert.equal(h.api.state.busy,false);assert.equal(h.api.state.lifecycle.has('ad'),false);
+ assert.equal(h.api.state.lifecycle.has('orientation'),true);assert.equal(h.api.state.screen,'results');
+});
+
+test('rewarded revive cannot revive a replaced cloud run or clear the new profile',async()=>{
+ let callbacks;const h=await controller({sdkApi:{adv:{showRewardedVideo(o){callbacks=o.callbacks;}}}});await rewardedResults(h);
+ const pending=h.api.handleAction('revive');h.replaceCloud(createProfile({id:'replacement_before_revive'}));const before=h.profileStore.get();
+ callbacks.onRewarded();callbacks.onClose(true);await pending;
+ assert.deepEqual(h.profileStore.get(),before);assert.equal(h.api.state.run,null);assert.equal(h.api.state.screen,'hub');assert.equal(h.api.state.busy,false);
+});
+
+test('a timed-out rewarded request stays paused until its late terminal callback and cannot grant into a replacement profile',async t=>{
+  let callbacks,finished=false;
+  const h=await controller({sdkApi:{adv:{showRewardedVideo(options){callbacks=options.callbacks;}}}});
+  await rewardedResults(h);t.mock.timers.enable({apis:['setTimeout']});t.after(()=>callbacks?.onError());
+  const pending=h.api.handleGarageAction({type:'rewardedBonus'}).then(()=>{finished=true;});callbacks.onOpen();
+  t.mock.timers.tick(90000);await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.api.state.loading.adPending,true);assert.equal(h.api.state.busy,true);
+  assert.equal(h.api.state.lifecycle.has('ad'),true);assert.equal(finished,false);
+  h.replaceCloud(createProfile({id:'replacement_after_reward_timeout'}));
+  const replacement=h.profileStore.get(),queues=h.cloudSaves.length;
+  callbacks.onRewarded();await Promise.resolve();
+  assert.equal(h.api.state.busy,true);assert.equal(h.api.state.lifecycle.has('ad'),true);
+  assert.equal(finished,false);assert.deepEqual(h.profileStore.get(),replacement);
+  callbacks.onClose(true);await pending;
+  assert.equal(finished,true);assert.equal(h.api.state.loading.adPending,false);
+  assert.equal(h.api.state.busy,false);assert.equal(h.api.state.lifecycle.has('ad'),false);
+  assert.deepEqual(h.profileStore.get(),replacement);assert.equal(h.cloudSaves.length,queues);
+  assert.equal(h.api.state.run,null);assert.equal(h.api.state.runResult,null);assert.equal(h.api.state.screen,'hub');
+});
+
+/** Exercise every settings entry point, including the hidden legacy menu controls. */
+const settingsControls=[
+  {name:'camera button',event:'cameraBtn:click',key:'cameraMode',value:'cockpit'},
+  {name:'sound button',event:'soundBtn:click',key:'sound',value:true},
+  {name:'route button',event:'route-neon:click',key:'route',value:'neon'},
+  {name:'difficulty button',event:'difficulty-rush:click',key:'difficulty',value:'rush'},
+  {name:'quality selector',event:'renderQuality:change',key:'renderQuality',value:'high'},
+  {name:'garage settings',key:'cameraMode',value:'cockpit'},
+];
+/** Deliver an ordinary control event without bypassing the production controller handler. */
+async function changeSetting(h,control){
+  if(control.event)await h.listeners.get(control.event)({target:{value:control.value}});
+  else await h.api.handleGarageAction({type:'settings',key:control.key,value:control.value});
+}
+/** Observe all runtime settings mirrors separately from the accepted profile. */
+function settingsMirrors(h){
+  const {settings,storage,renderer,audio,ui}=h.api.state;
+  return {settings:structuredClone(settings),legacy:storage.get(),camera:renderer.cameraMode,
+    route:renderer.route,quality:renderer.quality,audio:audio.enabled,
+    cameraButton:ui.cameraMode,soundButton:ui.soundEnabled,notice:ui.lastNotice};
+}
+
+for(const control of settingsControls)test(`${control.name} queues its accepted profile and updates settings mirrors immediately`,async()=>{
+  const h=await controller();await h.api.startRun();
+  const queuesBefore=h.cloudSaves.length,revisionBefore=h.profileStore.get().revision;
+  await changeSetting(h,control);
+  const profile=h.profileStore.get(),{settings,storage,renderer,audio}=h.api.state;
+  assert.equal(profile.settings[control.key],control.value);
+  assert.equal(profile.revision,revisionBefore+1);
+  assert.equal(h.cloudSaves.length,queuesBefore+1,'the control must queue without another gameplay action');
+  assert.deepEqual(h.cloudSaves.at(-1),profile,'only the current accepted snapshot may be queued');
+  assert.equal(settings[control.key],control.value);assert.equal(storage.get()[control.key],control.value);
+  assert.equal(renderer.cameraMode,profile.settings.cameraMode);assert.equal(renderer.route,profile.settings.route);
+  assert.equal(renderer.quality,profile.settings.renderQuality);assert.equal(audio.enabled,profile.settings.sound);
+  // Leaving gameplay enables ordinary platform emissions to hydrate the profile again.
+  await h.api.handleAction('menu');h.setPlatformState({});await Promise.resolve();h.setPlatformState({});
+  assert.equal(h.api.state.settings[control.key],control.value);
+  assert.equal(h.api.state.garageUI.view.settings[control.key],control.value);
+});
+
+for(const control of settingsControls)test(`${control.name} leaves profile and settings mirrors unchanged when its reducer rejects`,async()=>{
+  const h=await controller();await h.api.startRun();
+  // A real future-schema profile cannot start; inject that same rejection after a valid run starts.
+  h.rejectSettings();
+  const profile=h.profileStore.get(),mirrors=settingsMirrors(h),saved=[...h.storageValues],queues=h.cloudSaves.length;
+  await changeSetting(h,control);
+  assert.deepEqual(h.profileStore.get(),profile);assert.deepEqual(settingsMirrors(h),mirrors);
+  assert.deepEqual([...h.storageValues],saved,'rejection must not write a conflicting legacy preference');
+  assert.equal(h.cloudSaves.length,queues);assert.match(h.api.state.garageUI.lastNotice,/более новой версией/);
+});
+
+test('a genuine future-schema profile rejects the sound handler without changing live or legacy preferences',async()=>{
+  const future=JSON.stringify({schemaVersion:999,unknown:'preserve this future save'});
+  const h=await controller({initialStorage:{[PROGRESSION_STORAGE_KEY]:future}});
+  assert.equal(h.profileStore.status().readOnly,true);
+  const profile=h.profileStore.get(),mirrors=settingsMirrors(h),saved=[...h.storageValues];
+  await h.listeners.get('soundBtn:click')();
+  assert.deepEqual(h.profileStore.get(),profile);assert.deepEqual(settingsMirrors(h),mirrors);
+  assert.deepEqual([...h.storageValues],saved);assert.equal(h.storageValues.get(PROGRESSION_STORAGE_KEY),future);
+  assert.equal(h.cloudSaves.length,0);assert.match(h.api.state.garageUI.lastNotice,/более новой версией/);
+});
+
+test('accepted settings still update runtime and queue cloud sync when local storage is full',async()=>{
+  const h=await controller();await h.api.startRun();h.failStorageWrites();
+  const queues=h.cloudSaves.length;
+  await h.listeners.get('soundBtn:click')();
+  assert.equal(h.profileStore.status().localSaved,false);assert.equal(h.profileStore.status().error,'storage-quota');
+  assert.equal(h.profileStore.get().settings.sound,true);assert.equal(h.api.state.settings.sound,true);
+  assert.equal(h.api.state.audio.enabled,true);assert.equal(h.api.state.ui.soundEnabled,true);
+  assert.equal(h.api.state.storage.get().sound,true,'legacy in-memory state remains consistent despite the failed disk write');
+  assert.equal(h.cloudSaves.length,queues+1);assert.deepEqual(h.cloudSaves.at(-1),h.profileStore.get());
+});
+
+test('unchanged settings do not create a profile revision or an extra cloud save',async()=>{
+  const h=await controller(),revision=h.profileStore.get().revision,queues=h.cloudSaves.length;
+  await h.api.handleGarageAction({type:'settings',key:'cameraMode',value:'chase'});
+  await h.listeners.get('renderQuality:change')({target:{value:'auto'}});
+  assert.equal(h.profileStore.get().revision,revision);assert.equal(h.cloudSaves.length,queues);
+});
+
+for(const control of settingsControls.slice(0,2))test(`${control.name} alone reaches a durable SDK write through the real cloud adapter`,async t=>{
+  const h=await controller({useRealPlatform:true});t.after(()=>h.platformServices.dispose());
+  await h.api.startRun();await h.platformServices.flush();
+  const writes=h.cloudWrites.length;
+  await changeSetting(h,control);
+  // Drain only scheduled work. Calling flush here could hide a missing controller queueSave.
+  await new Promise(resolve=>setImmediate(resolve));
+  const profile=h.profileStore.get(),state=h.platformServices.getState();
+  assert.equal(h.cloudWrites.length,writes+1);assert.equal(h.cloudWrites.at(-1).durable,true);
+  assert.deepEqual(h.cloudWrites.at(-1).payload[CLOUD_PROFILE_KEY].profile,profile);
+  assert.equal(profile.settings[control.key],control.value);assert.equal(state.cloud.status,'durable');
+  assert.equal(state.cloud.durableRevision,profile.revision);assert.equal(state.cloud.queuedRevision,null);
+});
+
+test('a settings cloud-write failure reports an error without reverting accepted local preferences',async t=>{
+  const h=await controller({useRealPlatform:true});t.after(()=>h.platformServices.dispose());
+  await h.api.startRun();await h.platformServices.flush();
+  const durableRevision=h.platformServices.getState().cloud.durableRevision,writes=h.cloudWrites.length;
+  h.failCloudWrites();await h.listeners.get('soundBtn:click')();
+  await new Promise(resolve=>setImmediate(resolve));
+  const profile=h.profileStore.get(),state=h.platformServices.getState();
+  assert.equal(h.cloudWrites.length,writes+1);assert.equal(h.cloudWrites.at(-1).durable,true);
+  assert.deepEqual(h.cloudWrites.at(-1).payload[CLOUD_PROFILE_KEY].profile,profile);
+  assert.equal(state.cloud.status,'error');assert.equal(state.cloud.error,'cloud-write-failed');
+  assert.equal(state.cloud.durableRevision,durableRevision);assert.equal(state.cloud.queuedRevision,profile.revision);
+  assert.equal(state.local.localSaved,true);assert.equal(profile.settings.sound,true);
+  assert.equal(h.api.state.settings.sound,true);assert.equal(h.api.state.audio.enabled,true);
+  assert.equal(h.api.state.storage.get().sound,true);
 });

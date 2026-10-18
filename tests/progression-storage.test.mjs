@@ -18,3 +18,20 @@ test('v1 same-shape migration preserves an existing wallet rather than repeating
 
 test('late authored capabilities enable only real item gates without resetting profile or wallet',()=>{const store=createProgressionStorage({provider:memory()});const before=store.get();assert.equal(store.dispatch({type:'BUY_COSMETIC',cosmeticId:'rim_copper'}).ok,false);assert.equal(store.setCapabilities({'rims.copperAccent':true,constructor:true,'body.louver':false}).ok,true);assert.deepEqual(store.get(),before);assert.deepEqual(store.getCapabilities(),{'rims.copperAccent':true});assert.equal(store.dispatch({type:'BUY_COSMETIC',cosmeticId:'rim_copper'}).ok,true);assert.equal(store.get().wallet.credits,0);});
 test('oversized unknown future schema remains untouched instead of treated as disposable corruption',()=>{const future=JSON.stringify({schemaVersion:99,unknown:'x'.repeat(200000)}),provider=memory({[KEY]:future}),store=createProgressionStorage({provider});assert.equal(store.status().readOnly,true);assert.equal(provider.getItem(KEY),future);});
+
+test('accepted whole-profile replacements advance a session epoch even when saved IDs and values are identical',()=>{
+ const provider=memory(),store=createProgressionStorage({provider});assert.equal(store.getReplacementEpoch(),0);
+ store.dispatch({type:'UPDATE_SETTINGS',settings:{sound:true}});store.flush();assert.equal(store.getReplacementEpoch(),0);
+ const same=store.get();assert.equal(store.replaceFromCloud(same).ok,true);assert.equal(store.getReplacementEpoch(),1);
+ assert.equal(store.replaceFromCloud(same).ok,true);assert.equal(store.getReplacementEpoch(),2);
+ assert.deepEqual(store.get(),same,'the runtime token must not invent a persisted profile revision');
+ const reopened=createProgressionStorage({provider});assert.equal(reopened.getReplacementEpoch(),0,'old asynchronous actions cannot survive a page reload');
+ assert.equal(Object.hasOwn(reopened.get(),'replacementEpoch'),false);
+});
+
+test('rejected cloud data does not advance the replacement epoch or alter the accepted profile',()=>{
+ const store=createProgressionStorage({provider:memory()}),before=store.get();
+ assert.equal(store.replaceFromCloud({...before,wallet:{credits:NaN}}).ok,false);assert.equal(store.getReplacementEpoch(),0);assert.deepEqual(store.get(),before);
+ const future=createProgressionStorage({provider:memory({[KEY]:JSON.stringify({schemaVersion:999})})});
+ assert.equal(future.replaceFromCloud(before).ok,false);assert.equal(future.getReplacementEpoch(),0);
+});
