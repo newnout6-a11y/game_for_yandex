@@ -205,33 +205,77 @@ def build_exterior(api):
         tube(side+'_door_panel_gap',dp,.0024,'carbon',segments=6)
         handle_z=.58;handle_y=.757;xx=side_x(handle_z,handle_y)
         box(side+'_flush_handle',(s*(xx+.002),handle_y,handle_z),(.009,.018,.130),'dark_alloy',.006)
-        # A restrained black camera stalk is retained on the actual shoulder.
-        beam(side+'_camera_mount',(s*.842,.878,-.67),(s*.992,.894,-.64),.021,.021,'carbon')
-        # Lens and housing have a tapered, wing-like silhouette instead of a box.
-        pts=[(s*.985,.873,-.71),(s*1.088,.876,-.69),(s*1.097,.913,-.64),(s*1.043,.928,-.65),(s*.997,.911,-.69)]
-        housing=polygon_shell(side+'_camera_housing',pts,'body',.045,(0,1,0),.010)
-        # A real flat mirror replaces the black lens-shaped stand-in. It sits
-        # in a shallow recess wholly inside the existing wing-like pod, rather
-        # than hanging a large generic mirror from the vehicle's silhouette.
-        # The left-side driving eye needs different left/right adjustment.
-        # Symmetric normals made the left pane reflect the car's own door.
+        # The driver needs a full automotive mirror, not the old camera-pod
+        # slit. The opposite compact camera/mirror assembly stays untouched.
         if s<0:
-            # See the neighboring rear lane through the true narrow pane,
-            # rather than widening its runtime field of view into a fake feed.
-            normal=Vector((.18402486546566232,.07152338515905333,.9803158951408136))
-            center=Vector((-1.04475,.887065,-.6340339384077607))-normal*.002
+            center=Vector((-1.08,.950,-.648));eye=Vector((-.43,1.04,.33))
+            # Physically adjust the full assembly after raising/enlarging it.
+            # This source-space target maps to about (-3.5, .8, 12) game metres:
+            # a rear-left lane vehicle, not sky above the following traffic.
+            aim_target=Vector((-3.547508,.817859,12.171997))
+            normal=((eye-center).normalized()+(aim_target-center).normalized()).normalized()
+            tangent=Vector((normal.z,0,-normal.x)).normalized();up=normal.cross(tangent)
+            width,height=.180,.095
+            radius=.65;sphere_center=center-normal*radius
+            # A modest raised, swept carbon stalk follows the original mounting
+            # point and actually intersects the inboard rear of the new shell.
+            beam(side+'_camera_mount',(-.842,.878,-.67),(-.990,.925,-.690),.027,.025,'carbon')
+            # 205 x 120 mm rounded housing, a tapered 58 mm-deep back, and a real
+            # recessed glass aperture. The shape is an editable closed mesh;
+            # no runtime shell, fake image plane, or invisible body workaround.
+            boundary=[]
+            for cx,cy,start_angle in [(.0905,.048,0),(-.0905,.048,90),(-.0905,-.048,180),(.0905,-.048,270)]:
+                for j in range(9):
+                    angle=math.radians(start_angle+j*90/8)
+                    boundary.append((cx+.012*cos(angle),cy+.012*sin(angle)))
+            count=len(boundary);verts=[]
+            for scale,depth in [(.77,-.060),(1,-.026),(1,-.002)]:
+                verts.extend(tuple(center+tangent*(x*scale)+up*(y*scale)+normal*depth) for x,y in boundary)
+            faces=[tuple(reversed(range(count))),tuple(range(2*count,3*count))]
+            faces.extend((ring*count+j,ring*count+(j+1)%count,(ring+1)*count+(j+1)%count,(ring+1)*count+j) for ring in range(2) for j in range(count))
+            housing=mesh(side+'_camera_housing',verts,faces,'body',bevel=.0025)
+            housing['mirrorHousingDimensions']=[.205,.120,.058]
+            housing['mirrorHousingRole']='Full-size left automotive mirror, reconstructed for driver readability'
+            # Bore a genuine swept optical recess through the front. Include
+            # both eye rays and reflected rays at every aperture sample, so a
+            # square housing lip cannot occlude the visible curved glass.
+            verts=[]
+            for iy in range(13):
+                y=-height/2-.00075+(height+.0015)*iy/12
+                for ix in range(25):
+                    x=-width/2-.00075+(width+.0015)*ix/24
+                    p=center+tangent*x+up*y+normal*(sqrt(radius*radius-x*x-y*y)-radius)
+                    local_normal=(p-sphere_center).normalized()
+                    toward_eye=(eye-p).normalized()
+                    reflected=(-toward_eye).reflect(local_normal)
+                    verts.extend(tuple(q) for q in (p-normal*.0025,p+toward_eye*.18,p+reflected*.18))
+            cutter=mesh(side+'_mirror_recess_tool',verts,[],'body')
+            bm=bmesh.new();bm.from_mesh(cutter.data)
+            hull=bmesh.ops.convex_hull(bm,input=list(bm.verts),use_existing_faces=False)
+            bmesh.ops.delete(bm,geom=list(set(hull['geom_interior'])|set(hull['geom_unused'])),context='VERTS')
+            bm.normal_update();bm.to_mesh(cutter.data);bm.free();cutter.data.update()
+            mod=housing.modifiers.new('Full-size curved glass optical recess','BOOLEAN');mod.operation='DIFFERENCE';mod.solver='EXACT';mod.object=cutter
+            apply_modifier(housing,mod);objects.remove(cutter);bpy.data.objects.remove(cutter,do_unlink=True)
+            points=[tuple(center+tangent*x+up*y) for x,y in [(-width/2,-height/2),(width/2,-height/2),(width/2,height/2),(-width/2,height/2)]]
+            glass=api['mirror_pane'](side,points,normal,curvature_radius=radius)
+            glass['mirrorApertureMeters']=[width,height]
+            glass['mirrorHousingDimensions']=[.205,.120,.058]
+
         else:
+            beam(side+'_camera_mount',(s*.842,.878,-.67),(s*.992,.894,-.64),.021,.021,'carbon')
+            pts=[(s*.985,.873,-.71),(s*1.088,.876,-.69),(s*1.097,.913,-.64),(s*1.043,.928,-.65),(s*.997,.911,-.69)]
+            housing=polygon_shell(side+'_camera_housing',pts,'body',.045,(0,1,0),.010)
             normal=Vector((-.35,.04,sqrt(1-.35**2-.04**2)))
             center=Vector((s*1.045,.887,-.635))+normal*.003
-        tangent=Vector((normal.z,0,-normal.x)).normalized();up=normal.cross(tangent)
-        pocket=[center+tangent*x+up*y for x,y in [(-.0275,-.008),(.0275,-.008),(.0275,.008),(-.0275,.008)]]
-        verts=[tuple(p+normal*d) for d in [-.0008,.060] for p in pocket]
-        faces=[(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
-        cutter=mesh(side+'_mirror_recess_tool',verts,faces,'body')
-        mod=housing.modifiers.new('Seated reflective pane recess','BOOLEAN');mod.operation='DIFFERENCE';mod.solver='EXACT';mod.object=cutter
-        apply_modifier(housing,mod);objects.remove(cutter);bpy.data.objects.remove(cutter,do_unlink=True)
-        points=[tuple(center+tangent*x+up*y) for x,y in [(-.0265,-.007),(.0265,-.007),(.0265,.007),(-.0265,.007)]]
-        api['mirror_pane'](side,points,normal)
+            tangent=Vector((normal.z,0,-normal.x)).normalized();up=normal.cross(tangent)
+            pocket=[center+tangent*x+up*y for x,y in [(-.0275,-.008),(.0275,-.008),(.0275,.008),(-.0275,.008)]]
+            verts=[tuple(p+normal*d) for d in [-.0008,.060] for p in pocket]
+            faces=[(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
+            cutter=mesh(side+'_mirror_recess_tool',verts,faces,'body')
+            mod=housing.modifiers.new('Seated reflective pane recess','BOOLEAN');mod.operation='DIFFERENCE';mod.solver='EXACT';mod.object=cutter
+            apply_modifier(housing,mod);objects.remove(cutter);bpy.data.objects.remove(cutter,do_unlink=True)
+            points=[tuple(center+tangent*x+up*y) for x,y in [(-.0265,-.007),(.0265,-.007),(.0265,.007),(-.0265,.007)]]
+            api['mirror_pane'](side,points,normal)
 
     def pocket_edge(x, trailing=False):
         """Return the inferred pocket boundary around the stowed 8-degree airfoil."""

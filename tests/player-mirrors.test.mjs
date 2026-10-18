@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as T from '../public/vendor/three.js';
 import {
   mirrorReflectionMatrix, createPlanarMirrorCamera, updatePlanarMirrorCamera, createPlayerMirrors, playerMirrorBudget,
+  createConvexMirrorCamera, updateConvexMirrorCamera,
 } from '../src/player-mirrors.js';
 import { createCar, animatePlayerBody, setPlayerAeroPose } from '../src/car.js';
 import { createCockpitView, updateCockpitCamera } from '../src/camera-view.js';
@@ -11,6 +12,21 @@ import { loadRoadsterGeometry } from './helpers/roadster-geometry.mjs';
 const near = (actual,expected,tolerance=1e-8) => assert.ok(Math.abs(actual-expected)<=tolerance,`${actual} ≈ ${expected}`);
 const vectorNear = (actual,expected,tolerance=1e-8) => actual.toArray().forEach((value,index)=>near(value,expected.toArray()[index],tolerance));
 const corners = [new T.Vector3(-1,-.35,0),new T.Vector3(1,-.35,0),new T.Vector3(1,.35,0),new T.Vector3(-1,.35,0)];
+
+/** Smooth spherical cap, matching the Blender metadata/geometry contract. */
+function convexGeometry(width=.085,height=.032,radius=.32) {
+  const geometry=new T.PlaneGeometry(width,height,12,6),position=geometry.attributes.position,normal=geometry.attributes.normal;
+  for(let i=0;i<position.count;i++) {
+    const x=position.getX(i),y=position.getY(i),z=Math.sqrt(radius*radius-x*x-y*y)-radius;
+    position.setZ(i,z);normal.setXYZ(i,x/radius,y/radius,(z+radius)/radius);
+  }
+  geometry.computeBoundingSphere();return geometry;
+}
+function convexSamples(geometry,matrix=new T.Matrix4()) {
+  const normals=new T.Matrix3().getNormalMatrix(matrix),position=geometry.attributes.position,normal=geometry.attributes.normal;
+  return Array.from({length:position.count},(_,i)=>({point:new T.Vector3().fromBufferAttribute(position,i).applyMatrix4(matrix),
+    normal:new T.Vector3().fromBufferAttribute(normal,i).applyNormalMatrix(normals).normalize()}));
+}
 
 /** Minimal renderer records real reflection cameras without pretending to test GPU pixels. */
 function fakeRenderer() {
@@ -44,6 +60,7 @@ function fixture(options={}) {
     const mesh=new T.Mesh(new T.PlaneGeometry(.6,.24),new T.MeshStandardMaterial({metalness:1,roughness:.18}));
     mesh.name='detail_mirror_'+role;mesh.userData.mirrorRole=role;
     mesh.userData.mirrorPlane={point:[0,0,0],normal:[0,0,1]};
+    if(options.convex && role==='left') {mesh.geometry=convexGeometry();mesh.userData.mirrorCurvature={type:'spherical-convex',radius:.32,center:[0,0,-.32]};}
     mesh.position.set((index-1)*.8,0,0);body.add(mesh);return mesh;
   });
   const originals=panes.map(pane=>pane.material),geometries=panes.map(pane=>pane.geometry);
@@ -247,24 +264,43 @@ test('rear objects moving left and right project through their physical reflecti
   f.mirrors.dispose();
 });
 
-test('authored Roadster panes remain flat and correctly reflected through actual sprung-body transforms',async()=>{
+test('authored Roadster optics follow their actual planar or convex glass through sprung-body transforms',async()=>{
   const {scene:template}=await loadRoadsterGeometry(),player=createCar(template),scene=new T.Scene();scene.add(player);
   const renderer=fakeRenderer(),mirrors=createPlayerMirrors(renderer,scene,player);
-  assert.equal(mirrors.diagnostics.paneCount,3,'Blender must export three separate flat reflective panes');
+  assert.equal(mirrors.diagnostics.paneCount,3,'Blender must export three separate validated reflective panes');
   assert.deepEqual(mirrors.diagnostics.rejected,[]);
   const rig=createCockpitView(player),camera=new T.PerspectiveCamera();
   updateCockpitCamera(camera,rig,{phase:'playing'},{aspect:16/9});
   mirrors.update(camera,{dt:0,mode:'cockpit',force:true});
+  const left=mirrors.diagnostics.panes.find(item=>item.role==='left');
+  assert.equal(left.kind,'spherical-convex','live Blender left glass must retain its real convex shape');
+  assert.equal(left.active,true);near(left.radius,.65);
+  assert.ok(left.angularSize[0]>36&&left.angularSize[0]<45,'full-size physical left field must cover useful rear-lane width');
+  assert.ok(left.angularSize[1]>18&&left.angularSize[1]<27,'full-size physical left field must show the rear car height');
   for(const role of ['left','right','center']) {
     const pane=player.getObjectByName('detail_mirror_'+role);assert.ok(pane);
     assert.equal(pane.userData.mirrorRole,role);assert.equal(pane.userData.mirrorPlane.normal.length,3);
-    assert.ok(mirrors.diagnostics.panes.find(item=>item.role===role).planeError<.00002);
+    const convex=Boolean(pane.userData.mirrorCurvature);
+    if(convex)assert.ok(mirrors.diagnostics.panes.find(item=>item.role===role).sphereError<.00002);
+    else assert.ok(mirrors.diagnostics.panes.find(item=>item.role===role).planeError<.00002);
     const center=new T.Vector3(...pane.userData.mirrorPlane.point).applyMatrix4(pane.matrixWorld);
     camera.lookAt(center);camera.updateMatrixWorld(true);mirrors.update(camera,{dt:0,paused:true,force:true});
     // Active means a projective texture was rendered, not that body geometry
     // cannot obscure the pane. Direct optical visibility is tested separately.
     const detail=mirrors.diagnostics.panes.find(item=>item.role===role);assert.equal(detail.active,true,role+' projection is rendered when the real eye looks at it');
     const plane=new T.Plane(new T.Vector3(...detail.worldPlane.slice(0,3)),detail.worldPlane[3]);
+    if(convex) {
+      assert.equal(role,'left','only the authored left pane uses convex approximation');
+      assert.equal(detail.kind,'spherical-convex');near(detail.radius,pane.userData.mirrorCurvature.radius);
+      vectorNear(new T.Vector3(...detail.camera),center.clone().addScaledVector(plane.normal,.002));
+      vectorNear(pane.material.uniforms.sourceEye.value,camera.position);
+      for(const sample of convexSamples(pane.geometry,pane.matrixWorld)) {
+        const direction=sample.point.clone().sub(camera.position).normalize().reflect(sample.normal);
+        const uv=new T.Vector4(...direction.toArray(),0).applyMatrix4(pane.material.uniforms.captureMatrix.value);
+        assert.ok(uv.x/uv.w>0&&uv.x/uv.w<1&&uv.y/uv.w>0&&uv.y/uv.w<1,'every authored convex ray fits its capture');
+      }
+      continue;
+    }
     vectorNear(new T.Vector3(...detail.camera),camera.position.clone().applyMatrix4(mirrorReflectionMatrix(plane)));
     const rayDirection=center.clone().sub(camera.position).normalize().reflect(plane.normal);
     assert.ok(rayDirection.z>.8,'authored '+role+' ray really sees behind the car');
@@ -282,7 +318,10 @@ test('authored Roadster panes remain flat and correctly reflected through actual
   updateCockpitCamera(camera,rig,{phase:'playing'},{aspect:16/9});mirrors.update(camera,{dt:.1,force:true});
   for(const detail of mirrors.diagnostics.panes.filter(item=>item.active)) {
     const plane=new T.Plane(new T.Vector3(...detail.worldPlane.slice(0,3)),detail.worldPlane[3]);
-    vectorNear(new T.Vector3(...detail.camera),camera.position.clone().applyMatrix4(mirrorReflectionMatrix(plane)));
+    if(detail.kind==='spherical-convex') {
+      const pane=player.getObjectByName(detail.name),center=new T.Vector3(...pane.userData.mirrorPlane.point).applyMatrix4(pane.matrixWorld);
+      vectorNear(new T.Vector3(...detail.camera),center.addScaledVector(plane.normal,.002));
+    } else vectorNear(new T.Vector3(...detail.camera),camera.position.clone().applyMatrix4(mirrorReflectionMatrix(plane)));
   }
   mirrors.dispose();
 });
@@ -317,19 +356,20 @@ test('actual left and center apertures are at least 95 percent visible from the 
   setPlayerAeroPose(player,0);updateCockpitCamera(camera,rig,{phase:'playing'},{aspect:16/9});player.updateMatrixWorld(true);
   const opaque=[];player.traverse(mesh=>{if(mesh.isMesh&&!mesh.material.transparent)opaque.push(mesh);});
   for(const role of ['left','center']) {
-    const pane=player.getObjectByName('detail_mirror_'+role),metadata=pane.userData.mirrorPlane;
-    const center=new T.Vector3(...metadata.point),normal=new T.Vector3(...metadata.normal).normalize();
-    const tangent=new T.Vector3(1,0,0).addScaledVector(normal,-normal.x).normalize(),up=new T.Vector3().crossVectors(normal,tangent);
-    const positions=pane.geometry.attributes.position,points=[];
-    for(let i=0;i<positions.count;i++) {
-      const point=new T.Vector3().fromBufferAttribute(positions,i);
-      if(!points.some(existing=>existing.distanceTo(point)<1e-7))points.push(point);
+    const pane=player.getObjectByName('detail_mirror_'+role),positions=pane.geometry.attributes.position,indices=pane.geometry.index;
+    const triangles=[];let totalArea=0;
+    for(let i=0;i+2<(indices?.count??positions.count);i+=3) {
+      const points=[0,1,2].map(offset=>new T.Vector3().fromBufferAttribute(positions,indices?indices.getX(i+offset):i+offset));
+      const area=new T.Vector3().crossVectors(points[1].clone().sub(points[0]),points[2].clone().sub(points[0])).length()/2;
+      totalArea+=area;triangles.push({points,cumulative:totalArea});
     }
-    assert.equal(points.length,4);
-    points.sort((a,b)=>Math.atan2(a.clone().sub(center).dot(up),a.clone().sub(center).dot(tangent))-Math.atan2(b.clone().sub(center).dot(up),b.clone().sub(center).dot(tangent)));
+    // Area-stratified samples support the real tessellated cap/polygon without
+    // treating a bounding rectangle outside the authored glass as mirror area.
     let visible=0;const blocked={};
-    for(let u=.05;u<1;u+=.1)for(let v=.05;v<1;v+=.1) {
-      const point=points[0].clone().lerp(points[1],u).lerp(points[3].clone().lerp(points[2],u),v).applyMatrix4(pane.matrixWorld);
+    for(let i=0;i<100;i++) {
+      const {points}=triangles.find(triangle=>triangle.cumulative>totalArea*(i+.5)/100);
+      let u=(.37+i*.61803398875)%1,v=(.19+i*.41421356237)%1;if(u+v>1){u=1-u;v=1-v;}
+      const point=points[0].clone().multiplyScalar(1-u-v).addScaledVector(points[1],u).addScaledVector(points[2],v).applyMatrix4(pane.matrixWorld);
       const direction=point.clone().sub(camera.position),distance=direction.length();
       const hit=new T.Raycaster(camera.position,direction.normalize(),.0001,distance+.001).intersectObjects(opaque,false)[0];
       if(hit?.object===pane)visible++;else blocked[hit?.object.name??'no-hit']=(blocked[hit?.object.name??'no-hit']??0)+1;
@@ -605,4 +645,123 @@ test('actual pod camera sees rear-right traffic without tank/pod obstruction whi
   assert.ok(capture.visible.includes(hits[0].object.name),'do not hide the player or vessel to fake a clear view');
   assert.ok(!capture.visible.includes('detail_right_rear_display'),'right display never samples its own active render target');
   mirrors.dispose();
+});
+
+test('convex capture is fitted to actual curved-normal eye rays with physical mirror handedness',()=>{
+  const geometry=convexGeometry(),samples=convexSamples(geometry),vertex=new T.Vector3(),plane=new T.Plane(new T.Vector3(0,0,1),0);
+  const eye=new T.PerspectiveCamera(60,1.5,.05,300);eye.position.set(0,0,1);eye.lookAt(vertex);eye.updateMatrixWorld(true);
+  const view=createConvexMirrorCamera();assert.equal(updateConvexMirrorCamera(eye,plane,vertex,samples,view),true);
+  vectorNear(view.camera.position,new T.Vector3(0,0,.002));near(view.camera.matrixWorld.determinant(),1);
+  assert.ok(view.angularSize.x>34&&view.angularSize.x<37,'85 mm / 320 mm curvature gives useful ~35 degree horizontal field, not a chosen camera FOV');
+  assert.ok(view.angularSize.y>12&&view.angularSize.y<15,'32 mm cap gives ~13 degree vertical field rather than a planar slit');
+  function uv(direction) {const value=new T.Vector4(...direction.toArray(),0).applyMatrix4(view.captureMatrix);return new T.Vector2(value.x/value.w,value.y/value.w);}
+  for(const sample of samples) {
+    const direction=sample.point.clone().sub(eye.position).normalize().reflect(sample.normal),texture=uv(direction);
+    assert.ok(texture.x>0&&texture.x<1&&texture.y>0&&texture.y<1,'every authored reflected direction fits the target');
+    const reconstructed=new T.Vector3(texture.x*2-1,texture.y*2-1,0).unproject(view.camera).sub(view.camera.position).normalize();
+    vectorNear(reconstructed,direction,1e-7);
+  }
+  const left=samples.find(sample=>sample.point.x<-.04&&Math.abs(sample.point.y)<1e-8),right=samples.find(sample=>sample.point.x>.04&&Math.abs(sample.point.y)<1e-8);
+  const leftRay=left.point.clone().sub(eye.position).normalize().reflect(left.normal),rightRay=right.point.clone().sub(eye.position).normalize().reflect(right.normal);
+  assert.ok(leftRay.x<rightRay.x,'left/right directions follow the real curved normals');
+  assert.ok(uv(leftRay).x>uv(rightRay).x,'right-handed capture projects rear direction with the required mirror reversal, no arbitrary UV flip');
+  const priorProjection=view.captureMatrix.clone();eye.position.x=.09;eye.updateMatrixWorld(true);
+  assert.equal(updateConvexMirrorCamera(eye,plane,vertex,samples,view),true);assert.ok(!view.captureMatrix.equals(priorProjection));
+  vectorNear(view.sourceEye,eye.position);
+  const expected=vertex.clone().sub(eye.position).normalize().reflect(plane.normal);
+  vectorNear(view.camera.getWorldDirection(new T.Vector3()),expected);
+  const rayBeforeGaze=samples[0].point.clone().sub(eye.position).normalize().reflect(samples[0].normal);
+  eye.lookAt(2,1,-2);eye.updateMatrixWorld(true);
+  assert.equal(updateConvexMirrorCamera(eye,plane,vertex,samples,view),true);
+  const direction=samples[0].point.clone().sub(eye.position).normalize().reflect(samples[0].normal),texture=uv(direction);
+  const reconstructed=new T.Vector3(texture.x*2-1,texture.y*2-1,0).unproject(view.camera).sub(view.camera.position).normalize();
+  vectorNear(reconstructed,direction,1e-7);vectorNear(direction,rayBeforeGaze);
+  eye.position.z=-1;eye.updateMatrixWorld(true);assert.equal(updateConvexMirrorCamera(eye,plane,vertex,samples,view),false);
+});
+
+test('convex live material keeps exact per-fragment ray inputs, owned geometry, scene body and three-pass budget',()=>{
+  const f=fixture({convex:true,screen:true}),body=new T.Mesh(new T.BoxGeometry(.2,.2,.2),new T.MeshStandardMaterial());
+  body.name='actual-player-body';body.position.set(-1,0,1);f.body.add(body);
+  assert.equal(f.mirrors.update(f.camera,{dt:0,mode:'cockpit'}),3);
+  const detail=f.mirrors.diagnostics.panes.find(pane=>pane.role==='left'),material=f.panes[0].material;
+  assert.equal(detail.kind,'spherical-convex');assert.equal(detail.radius,.32);assert.ok(detail.sphereError<1e-7);
+  assert.match(detail.approximation,/shared tangent-vertex capture approximates near-field parallax and occlusion/);
+  assert.equal(f.mirrors.diagnostics.convexPasses,1);assert.equal(f.mirrors.diagnostics.planarPasses,1);
+  assert.equal(f.mirrors.diagnostics.rightCamera.passes,1);assert.equal(f.mirrors.diagnostics.maxCapturePassesPerRefresh,3);
+  assert.equal(f.panes[0].geometry,f.geometries[0]);assert.match(material.fragmentShader,/reflect\(normalize\(surface - sourceEye\), normalWorld\)/);
+  assert.match(material.fragmentShader,/vec4\(outgoing, 0.0\)/);assert.equal(material.uniforms.textureMatrix,undefined,'never paste an unrelated flat camera feed onto the glass');
+  vectorNear(material.uniforms.sourceEye.value,f.camera.position);
+  assert.deepEqual(material.uniforms.captureModelMatrix.value.elements,f.panes[0].matrixWorld.elements);
+  for(const call of f.renderer.calls) {
+    assert.ok(call.visible.includes('actual-player-body'),'preserve real body/self-occlusion');
+    assert.ok(!call.visible.includes('detail_mirror_left'));assert.ok(!call.visible.includes('detail_right_rear_display'));
+  }
+  const frozenEye=material.uniforms.sourceEye.value.clone(),frozenMatrix=material.uniforms.captureModelMatrix.value.clone();
+  f.camera.position.x+=.1;f.body.rotation.z=.05;f.mirrors.update(f.camera,{dt:0,mode:'cockpit'});
+  vectorNear(material.uniforms.sourceEye.value,frozenEye);assert.ok(material.uniforms.captureModelMatrix.value.equals(frozenMatrix),'cached target and its optical snapshot remain coherent');
+  f.mirrors.update(f.camera,{dt:0,paused:true,mode:'cockpit',force:true});vectorNear(material.uniforms.sourceEye.value,f.camera.position);
+  assert.ok(!material.uniforms.captureModelMatrix.value.equals(frozenMatrix));f.mirrors.dispose();
+});
+
+test('convex first frame, cadence, render failure and context restoration preserve bounded resources',()=>{
+  const f=fixture({convex:true,screen:true}),pending=new T.DirectionalLight();pending.castShadow=true;f.scene.add(pending);
+  assert.equal(f.mirrors.update(f.camera,{dt:0,mode:'cockpit'}),3);
+  const initial=f.renderer.calls.find(call=>call.camera.name==='player-mirror-left'),material=f.panes[0].material;
+  assert.equal(initial.target.texture.name,'player-convex-mirror');assert.equal(initial.shadows[0].castShadow,false);
+  assert.equal(pending.castShadow,true);const target=initial.target;let disposed=0;target.addEventListener('dispose',()=>disposed++);
+  for(let frame=0;frame<60;frame++)f.mirrors.update(f.camera,{dt:1/60,mode:'cockpit'});
+  assert.equal(f.mirrors.diagnostics.convexPasses,16);
+  f.renderer.fail=true;f.mirrors.update(f.camera,{dt:0,mode:'cockpit',force:true});assert.equal(f.panes[0].material,f.originals[0]);
+  assert.equal(f.mirrors.diagnostics.panes[0].reason,'render-failed');f.renderer.fail=false;
+  f.renderer.listeners.get('webglcontextlost')();assert.equal(disposed,1);assert.equal(material.uniforms.reflection.value,null);
+  assert.equal(f.mirrors.update(f.camera,{dt:1,force:true,mode:'cockpit'}),0);
+  f.renderer.listeners.get('webglcontextrestored')();assert.equal(f.mirrors.update(f.camera,{dt:0,paused:true,mode:'cockpit'}),3);
+  const fresh=f.renderer.calls.filter(call=>call.camera.name==='player-mirror-left').at(-1).target;
+  assert.notEqual(fresh,target);assert.equal(fresh.texture.name,'player-convex-mirror');assert.equal(material.uniforms.reflection.value,fresh.texture);
+  assert.equal(f.panes[0].material,material);f.mirrors.dispose();assert.equal(disposed,1);
+});
+
+test('convex metadata cannot launder a flat pane, housing, wrong radius, reversed normals or center mirror',()=>{
+  const make=mutation=>{
+    const scene=new T.Scene(),player=new T.Group(),pane=new T.Mesh(convexGeometry(),new T.MeshStandardMaterial());scene.add(player);player.add(pane);
+    pane.name='detail_mirror_left';pane.userData={mirrorRole:'left',mirrorPlane:{point:[0,0,0],normal:[0,0,1]},mirrorCurvature:{type:'spherical-convex',radius:.32,center:[0,0,-.32]}};
+    mutation(pane);const mirrors=createPlayerMirrors(fakeRenderer(),scene,player);
+    assert.equal(mirrors.diagnostics.paneCount,0);assert.deepEqual(mirrors.diagnostics.rejected,[pane.name]);mirrors.dispose();
+  };
+  make(pane=>{pane.geometry=new T.PlaneGeometry(.085,.032,12,6);});
+  make(pane=>{pane.geometry=new T.BoxGeometry(.085,.032,.01);});
+  make(pane=>{pane.userData.mirrorCurvature.radius=.5;});
+  make(pane=>{pane.geometry.attributes.normal.setZ(0,-1);});
+  make(pane=>{pane.userData.mirrorCurvature.center[0]=.01;});
+  make(pane=>{pane.name='detail_mirror_center';pane.userData.mirrorRole='center';});
+});
+
+test('convex approximation is direction-exact at distance but explicitly not exact near-field parallax',()=>{
+  const samples=convexSamples(convexGeometry()),eye=new T.PerspectiveCamera(60,1,.05,200),plane=new T.Plane(new T.Vector3(0,0,1),0),view=createConvexMirrorCamera();
+  eye.position.set(0,0,1);eye.lookAt(0,0,0);eye.updateMatrixWorld(true);
+  assert.equal(updateConvexMirrorCamera(eye,plane,new T.Vector3(),samples,view),true);
+  const sample=samples[0],ray=sample.point.clone().sub(eye.position).normalize().reflect(sample.normal);
+  const far=sample.point.clone().addScaledVector(ray,15),nearby=sample.point.clone().addScaledVector(ray,.2);
+  const farProbeRay=far.clone().sub(view.camera.position).normalize(),nearProbeRay=nearby.clone().sub(view.camera.position).normalize();
+  assert.ok(ray.angleTo(farProbeRay)<.004,'a 15 m vehicle has sub-quarter-degree directional parallax error');
+  assert.ok(ray.angleTo(nearProbeRay)>.05,'near casing/wing parallax is not falsely presented as exact');
+});
+
+test('convex curved-fragment directions remain inside capture during sprung-body roll, pitch and nonuniform transform',()=>{
+  const geometry=convexGeometry(.075,.028),matrix=new T.Matrix4().compose(new T.Vector3(-1.05,.88,-.65),
+    new T.Quaternion().setFromEuler(new T.Euler(.04,.18,.21)),new T.Vector3(1.02,.99,1));
+  const normals=new T.Matrix3().getNormalMatrix(matrix),vertex=new T.Vector3().applyMatrix4(matrix);
+  const plane=new T.Plane(new T.Vector3(0,0,1),0).applyMatrix4(matrix),samples=convexSamples(geometry,matrix);
+  const eye=new T.PerspectiveCamera(60,1.5,.05,300);eye.position.set(-.35,1,.4);eye.lookAt(vertex);eye.rotateZ(.17);eye.updateMatrixWorld(true);
+  const view=createConvexMirrorCamera();assert.equal(updateConvexMirrorCamera(eye,plane,vertex,samples,view),true);
+  const position=geometry.attributes.position,normal=geometry.attributes.normal,indices=geometry.index;
+  for(let i=0;i<indices.count;i+=3)for(const weights of [[.2,.3,.5],[.6,.2,.2],[.2,.6,.2],[1/3,1/3,1/3]]) {
+    const point=new T.Vector3(),n=new T.Vector3();
+    weights.forEach((weight,j)=>{const index=indices.getX(i+j);point.addScaledVector(new T.Vector3().fromBufferAttribute(position,index),weight);n.addScaledVector(new T.Vector3().fromBufferAttribute(normal,index),weight);});
+    point.applyMatrix4(matrix);n.applyNormalMatrix(normals).normalize();
+    const direction=point.sub(eye.position).normalize().reflect(n),uv=new T.Vector4(...direction.toArray(),0).applyMatrix4(view.captureMatrix);
+    assert.ok(uv.w>0&&uv.x/uv.w>0&&uv.x/uv.w<1&&uv.y/uv.w>0&&uv.y/uv.w<1,'interpolated fragment ray stays inside its physically fitted target');
+    const reconstructed=new T.Vector3(2*uv.x/uv.w-1,2*uv.y/uv.w-1,0).unproject(view.camera).sub(view.camera.position).normalize();
+    vectorNear(reconstructed,direction,1e-7);
+  }
 });

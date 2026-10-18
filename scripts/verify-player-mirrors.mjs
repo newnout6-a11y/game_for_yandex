@@ -84,6 +84,6 @@ try{
   }
   assert.deepEqual(errors,[]);results.push({name,samples,layouts,recovery,errors});await context.close();
  }
- await writeFile(path.join(out,'qa.json'),JSON.stringify({assetSha256,method:'Actual production camera/player/traffic and mirror materials. Fixed rear-traffic scenario, controlled time, no hidden body; actual left/center planar reflection and user-selected digital right rear screen. Statistics include mirror and main passes, not hardware FPS.',results},null,2));
+ await writeFile(path.join(out,'qa.json'),JSON.stringify({assetSha256,method:'Actual production camera/player/traffic and mirror materials. Fixed rear-traffic scenario, controlled time, no hidden body; actual convex left reflection with shared-origin near-field approximation, exact planar center, and user-selected digital right rear screen. Statistics include mirror and main passes, not hardware FPS.',results},null,2));
  console.log('Mirror browser verification passed',out);
 }finally{await browser.close();await new Promise(r=>server.close(r));}

@@ -105,4 +105,4 @@ Original Blender-authored facial features, hair, clothing seams/cuffs and curled
 Swept wheel-house clearance refinement (2026-10-17)
 Original Blender-authored hollow liners, formed arch walls and sealed floor transitions sized against the animated wheel envelope. Passenger body travel is bounded by measured arch compression limits. No external geometry was used.
 
-Player live rear views: original reconstructed Blender mirror panes/backings and game-specific rear-right camera display. Left/cabin use scene reflections; right camera screen is user-selected and is not represented as documented factory hardware. See docs/PLAYER_MIRRORS_UPDATE.md.
+Player live rear views: original reconstructed Blender mirror panes/backings and game-specific rear-right camera display. Left uses an original authored convex glass and bounded scene-reflection approximation; cabin uses planar scene reflection; right camera screen is user-selected and is not represented as documented factory hardware. See docs/PLAYER_MIRRORS_UPDATE.md.

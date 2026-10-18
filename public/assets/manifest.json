@@ -105,11 +105,11 @@
   },
   {
     "file": "assets/roadster.glb",
-    "bytes": 6973120,
-    "sha256": "9bd2acfa967ddffb353ee97b8b246be4f3ba1cb949c46df5ed193e2ebec32195",
+    "bytes": 7011160,
+    "sha256": "615d379ccb873755881b9701e7117b4b27f8269253e12e10c691b66555643616",
     "license": "Original-project-artwork",
     "source": "project:scripts/create_roadster.py",
-    "changes": "Original reference-driven Blender reconstruction of the single-seat Rocket, with authored cabin maps, reconstructed passenger-space vessel, underfloor components, optical lamps, telescopic/folding wing, independent wheel/fan/yoke pivots and nozzle metadata. Visual reference reconstruction, not factory CAD, certified engineering or exact Tesla flight physics. No third-party mesh or photo texture copied.",
+    "changes": "Original reference-driven Blender reconstruction of the single-seat Rocket, with authored cabin maps, reconstructed passenger-space vessel, underfloor components, optical lamps, telescopic/folding wing, independent wheel/fan/yoke pivots and nozzle metadata. Visual reference reconstruction, not factory CAD, certified engineering or exact Tesla flight physics. No third-party mesh or photo texture copied. User-requested full-size left mirror: original 180 x 95 mm spherical convex glass, 205 x 120 mm housing and revised mount (radius 0.65 m); deliberately enlarged for game usability, not factory dimensions or optical specifications.",
     "editableSource": "art/roadster.blend"
   },
   {

@@ -65,6 +65,7 @@ test('exported player has a neutral sprung body rig without changing authored ge
   });
   const bounds = new T.Box3().setFromObject(scene, true), size = bounds.getSize(new T.Vector3());
   const scale = 4.7 / size.z, center = bounds.getCenter(new T.Vector3());
+  center.x = WHEEL_NAMES.reduce((sum, name) => sum + scene.getObjectByName(name).getWorldPosition(new T.Vector3()).x, 0) / 4;
   const normalization = new T.Matrix4().makeTranslation(-center.x * scale, -bounds.min.y * scale, -center.z * scale)
     .multiply(new T.Matrix4().makeScale(scale, scale, scale));
   const car = createCar(scene), body = car.userData.bodyRig, root = car.getObjectByName('Roadster');

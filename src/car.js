@@ -56,7 +56,19 @@ export function createCar(template, color = null) {
   if (!Number.isFinite(size.z) || size.z <= 0) throw new TypeError('Car model has no finite length');
   const scale = 4.7 / size.z; model.scale.multiplyScalar(scale);
   const scaled = new T.Box3().setFromObject(model, true), center = scaled.getCenter(new T.Vector3());
-  model.position.x -= center.x; model.position.z -= center.z; model.position.y -= scaled.min.y;
+  // A one-sided mirror is not the chassis centre. Anchor a valid four-wheel
+  // vehicle to its axle midpoints, so accessory changes cannot shift the driver
+  // or tyre contact patches. Generic/legacy fixtures retain bounds centring.
+  const axlePoints = ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr'].map(name => {
+    const wheel = model.getObjectByName(name);
+    return wheel?.getWorldPosition(new T.Vector3());
+  });
+  const validAxles = axlePoints.every(point => point && point.toArray().every(Number.isFinite))
+    && Math.abs(axlePoints[0].x - axlePoints[1].x) > .3
+    && Math.abs(axlePoints[2].x - axlePoints[3].x) > .3
+    && Math.abs((axlePoints[0].z + axlePoints[1].z - axlePoints[2].z - axlePoints[3].z) / 2) > 1;
+  const chassisCenterX = validAxles ? axlePoints.reduce((sum, point) => sum + point.x, 0) / 4 : center.x;
+  model.position.x -= chassisCenterX; model.position.z -= center.z; model.position.y -= scaled.min.y;
   car.add(model); car.updateMatrixWorld(true);
   const wheels = ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr'].map(name => model.getObjectByName(name)).filter(Boolean);
   const wheelRest = wheels.map(carrier => {

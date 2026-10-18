@@ -24,6 +24,39 @@ const FRAGMENT = /* glsl */`
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }`;
+const CONVEX_VERTEX = /* glsl */`
+  varying vec3 panePosition;
+  varying vec3 paneNormal;
+  #include <common>
+  #include <logdepthbuf_pars_vertex>
+  void main() {
+    panePosition = position;
+    paneNormal = normal;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    #include <logdepthbuf_vertex>
+  }`;
+const CONVEX_FRAGMENT = /* glsl */`
+  uniform sampler2D reflection;
+  uniform mat4 captureMatrix;
+  uniform mat4 captureModelMatrix;
+  uniform mat3 captureNormalMatrix;
+  uniform vec3 sourceEye;
+  varying vec3 panePosition;
+  varying vec3 paneNormal;
+  #include <logdepthbuf_pars_fragment>
+  void main() {
+    #include <logdepthbuf_fragment>
+    vec3 surface = (captureModelMatrix * vec4(panePosition, 1.0)).xyz;
+    vec3 normalWorld = normalize(captureNormalMatrix * paneNormal);
+    vec3 outgoing = reflect(normalize(surface - sourceEye), normalWorld);
+    // A direction (w=0), not a pane UV or a flat rear-camera video. The actual
+    // curved glass normal and driver eye determine every reflected sample.
+    vec4 projected = captureMatrix * vec4(outgoing, 0.0);
+    vec3 reflected = texture2D(reflection, projected.xy / projected.w).rgb;
+    gl_FragColor = vec4(reflected * vec3(.88, .91, .94), 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }`;
 
 /** Return the exact Euclidean reflection across a normalized world-space plane. */
 export function mirrorReflectionMatrix(plane, target = new T.Matrix4()) {
@@ -104,12 +137,104 @@ export function updatePlanarMirrorCamera(real, plane, corners, out) {
   return true;
 }
 
+/** Reusable state for one genuinely curved pane, still only one scene capture. */
+export function createConvexMirrorCamera() {
+  return Object.assign(createPlanarMirrorCamera(), {
+    captureMatrix:new T.Matrix4(), captureModelMatrix:new T.Matrix4(), captureNormalMatrix:new T.Matrix3(),
+    sourceEye:new T.Vector3(), angularSize:new T.Vector2(),
+  });
+}
+
+/**
+ * Fit one local scene probe to the actual reflected ray bundle of a convex cap.
+ * Normals/positions are authored mesh samples in world space, never an invented
+ * lens FOV. Every shader fragment independently reflects its eye-to-glass ray.
+ * A single perspective capture shares the tangent-vertex origin: directions are
+ * exact for the smooth authored normals, but nearby parallax and occlusion are
+ * approximate because different glass points are up to half an aperture apart.
+ * This is intentionally not advertised as an exact non-central ray tracer.
+ */
+export function updateConvexMirrorCamera(real, plane, vertex, samples, out) {
+  if (!real?.isPerspectiveCamera || samples.length < 3) return false;
+  real.updateWorldMatrix(true,false);
+  const {camera,eye,direction,up,target,corner}=out;
+  eye.setFromMatrixPosition(real.matrixWorld);
+  if (plane.distanceToPoint(eye)<=.001) return false;
+  direction.subVectors(vertex,eye).normalize().reflect(plane.normal);
+  if (!Number.isFinite(direction.lengthSq()) || direction.lengthSq()<.99) return false;
+  // Two millimetres outside the real glass, not an invisible remote camera.
+  camera.position.copy(vertex).addScaledVector(plane.normal,.002);
+  up.setFromMatrixColumn(real.matrixWorld,1).normalize();
+  if (Math.abs(up.dot(direction))>.98) up.setFromMatrixColumn(real.matrixWorld,0).normalize();
+  camera.up.copy(up);camera.lookAt(target.copy(camera.position).add(direction));
+  camera.near=.005;camera.far=Math.max(1,Math.min(real.far,400));camera.layers.mask=real.layers.mask;
+  camera.updateMatrixWorld(true);
+  let left=Infinity,right=-Infinity,bottom=Infinity,top=-Infinity;
+  for (const sample of samples) {
+    corner.subVectors(sample.point,eye).normalize().reflect(sample.normal).transformDirection(camera.matrixWorldInverse);
+    if (!Number.isFinite(corner.lengthSq()) || corner.z>=-EPSILON) return false;
+    const scale=camera.near/-corner.z;
+    left=Math.min(left,corner.x*scale);right=Math.max(right,corner.x*scale);
+    bottom=Math.min(bottom,corner.y*scale);top=Math.max(top,corner.y*scale);
+  }
+  if (right-left<=EPSILON || top-bottom<=EPSILON) return false;
+  // Small guard for interpolated normal extrema between authored mesh samples.
+  const padX=(right-left)*.04,padY=(top-bottom)*.04;
+  out.angularSize.set(T.MathUtils.radToDeg(Math.atan(right/camera.near)-Math.atan(left/camera.near)),
+    T.MathUtils.radToDeg(Math.atan(top/camera.near)-Math.atan(bottom/camera.near)));
+  camera.projectionMatrix.makePerspective(left-padX,right+padX,top+padY,bottom-padY,camera.near,camera.far);
+  camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+  out.baseProjection.copy(camera.projectionMatrix);
+  out.captureMatrix.copy(BIAS).multiply(camera.projectionMatrix).multiply(camera.matrixWorldInverse);
+  out.sourceEye.copy(eye);
+  return true;
+}
+
+const finiteVector = value => Array.isArray(value) && value.length===3 && value.every(Number.isFinite);
+
+/** Accept an explicitly authored spherical cap only after checking its real mesh. */
+function convexPaneGeometry(mesh) {
+  const curvature=mesh.userData.mirrorCurvature,metadata=mesh.userData.mirrorPlane;
+  const positions=mesh.geometry?.attributes.position,normals=mesh.geometry?.attributes.normal,indices=mesh.geometry?.index;
+  if (curvature?.type!=='spherical-convex' || !Number.isFinite(curvature.radius) || curvature.radius<=.001
+    || !finiteVector(curvature.center) || !finiteVector(metadata?.point) || !finiteVector(metadata?.normal)
+    || !positions || positions.count<9 || !normals || normals.count!==positions.count || Array.isArray(mesh.material)) return null;
+  const radius=curvature.radius,center=new T.Vector3(...curvature.center),vertex=new T.Vector3(...metadata.point);
+  const normal=new T.Vector3(...metadata.normal),radial=new T.Vector3(),a=new T.Vector3(),b=new T.Vector3(),c=new T.Vector3();
+  if (normal.lengthSq()<EPSILON) return null;
+  normal.normalize();radial.subVectors(vertex,center);
+  const tolerance=Math.max(.000002,radius*.0002);
+  if (Math.abs(radial.length()-radius)>tolerance || radial.normalize().dot(normal)<.99999) return null;
+  const plane=new T.Plane().setFromNormalAndCoplanarPoint(normal,vertex),samples=[];
+  let maxSphereError=0,maxPlaneError=0,normalSpread=0;
+  for (let i=0;i<positions.count;i++) {
+    const point=new T.Vector3().fromBufferAttribute(positions,i),authoredNormal=new T.Vector3().fromBufferAttribute(normals,i);
+    if (!Number.isFinite(point.lengthSq()) || !Number.isFinite(authoredNormal.lengthSq()) || authoredNormal.lengthSq()<EPSILON) return null;
+    radial.subVectors(point,center);maxSphereError=Math.max(maxSphereError,Math.abs(radial.length()-radius));
+    radial.normalize();authoredNormal.normalize();
+    if (radial.dot(normal)<.5 || radial.dot(authoredNormal)<.9995) return null;
+    maxPlaneError=Math.max(maxPlaneError,Math.abs(plane.distanceToPoint(point)));
+    normalSpread=Math.max(normalSpread,1-normal.dot(authoredNormal));
+    samples.push({point,normal:authoredNormal});
+  }
+  // Flat glass with curvature metadata is not a physical convex mirror.
+  if (maxSphereError>tolerance || maxPlaneError<.00001 || normalSpread<.00001) return null;
+  for (let i=0;i+2<(indices?.count??positions.count);i+=3) {
+    const ia=indices?indices.getX(i):i,ib=indices?indices.getX(i+1):i+1,ic=indices?indices.getX(i+2):i+2;
+    a.subVectors(samples[ib].point,samples[ia].point);b.subVectors(samples[ic].point,samples[ia].point);c.crossVectors(a,b);
+    if (c.lengthSq()>1e-18 && c.normalize().dot(samples[ia].normal)<.99) return null;
+  }
+  if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
+  return {kind:'spherical-convex',plane,vertex,samples,corners:[],radius,maxSphereError,maxPlaneError,sphere:mesh.geometry.boundingSphere.clone()};
+}
+
 /**
  * Read a genuinely flat mesh, never replace a housing or guess a rear camera.
  * Optional glTF extras mirrorPlane={point:[x,y,z],normal:[x,y,z]} are mesh-local.
  * With no extras, winding supplies the normal and actual vertices supply bounds.
  */
-function paneGeometry(mesh) {
+function paneGeometry(mesh, allowConvex=false) {
+  if (mesh.userData.mirrorCurvature) return allowConvex?convexPaneGeometry(mesh):null;
   const positions = mesh.geometry?.attributes.position;
   if (!positions || positions.count < 3 || Array.isArray(mesh.material)) return null;
   const indices = mesh.geometry.index, a = new T.Vector3(), b = new T.Vector3(), c = new T.Vector3();
@@ -146,7 +271,7 @@ function paneGeometry(mesh) {
   if (!Number.isFinite(size) || size < .001 || error > Math.max(.00001,size*.0001)) return null;
   const corners = [[minU,minV],[maxU,minV],[maxU,maxV],[minU,maxV]].map(([u,v]) => a.clone().addScaledVector(tangent,u).addScaledVector(bitangent,v));
   if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
-  return { plane, corners, sphere: mesh.geometry.boundingSphere.clone(), maxPlaneError: error };
+  return { kind:'planar',plane, corners, sphere: mesh.geometry.boundingSphere.clone(), maxPlaneError: error };
 }
 
 /** Return bounded physical texture size and cadence, independent of display DPR. */
@@ -200,7 +325,7 @@ function updateRightCamera(entry, layers) {
 }
 
 /**
- * Own the player's three planar mirrors only. No geometry or shared materials
+ * Own the player's three mirror panes only. No geometry or shared materials
  * are changed. Offscreen/backfacing/lost-context panes retain their authored
  * environment material, which is explicitly a non-live fallback. Visible panes
  * cost up to three additional scene renders at 15 Hz desktop or 10 Hz compact;
@@ -209,8 +334,11 @@ function updateRightCamera(entry, layers) {
  * pane pass, and only updates while the dedicated right display is in view.
  * It is not a planar mirror. At most three captures run per refresh in either
  * cockpit or external mode; the external right pane remains a real reflection.
- * The physical apertures are intentionally not magnified: the 53×14 mm side
- * panes show only a narrow slice of traffic, unlike the wider digital screen.
+ * The Blender-authored convex left glass uses its real curved normals and a
+ * single local-probe capture in place of its old planar pass. Its angular field
+ * comes from the curvature/eye, not a fixed camera lens or magnified pane UVs.
+ * Center/right planar optics remain exact; convex near-field parallax is the
+ * explicitly bounded single-origin approximation described above.
  * @returns {{update:function,invalidate:function,dispose:function,diagnostics:object,rightCameraTexture:T.Texture|null}}
  */
 export function createPlayerMirrors(renderer, scene, player, { compact = false, reducedMotion = false, onContextChange = null } = {}) {
@@ -238,17 +366,20 @@ export function createPlayerMirrors(renderer, scene, player, { compact = false, 
   if (renderer?.render && scene?.isScene && player?.isObject3D) player.traverse(mesh => {
     const role = mirrorRole(mesh);
     if (!mesh.isMesh || !role || roles.has(role)) return;
-    const geometry = paneGeometry(mesh);
+    const geometry = paneGeometry(mesh,role==='left');
     if (!geometry) { rejected.push(mesh.name); return; }
     roles.add(role);
-    const view = createPlanarMirrorCamera(), target = makeTarget();
+    const convex=geometry.kind==='spherical-convex';
+    const view = convex?createConvexMirrorCamera():createPlanarMirrorCamera(), target = makeTarget(convex?'player-convex-mirror':'player-planar-mirror');
     view.camera.name = 'player-mirror-'+role;
     const material = new T.ShaderMaterial({
-      name: 'player-live-mirror-'+role, side: T.FrontSide, vertexShader: VERTEX, fragmentShader: FRAGMENT,
-      uniforms: { reflection: {value:target.texture}, textureMatrix:{value:view.textureMatrix} },
+      name: 'player-live-mirror-'+role, side: T.FrontSide, vertexShader: convex?CONVEX_VERTEX:VERTEX, fragmentShader: convex?CONVEX_FRAGMENT:FRAGMENT,
+      uniforms: convex?{reflection:{value:target.texture},captureMatrix:{value:view.captureMatrix},captureModelMatrix:{value:view.captureModelMatrix},
+        captureNormalMatrix:{value:view.captureNormalMatrix},sourceEye:{value:view.sourceEye}}:{ reflection: {value:target.texture}, textureMatrix:{value:view.textureMatrix} },
     });
     entries.push({ mesh, role, geometry, original:mesh.material, material, target, view,
       worldPlane:new T.Plane(), worldCorners:geometry.corners.map(point=>point.clone()),
+      worldVertex:convex?geometry.vertex.clone():null,worldSamples:convex?geometry.samples.map(sample=>({point:sample.point.clone(),normal:sample.normal.clone()})):null,
       elapsed:1, dirty:true, hasFrame:false, active:false, passes:0, errors:0, reason:'not-yet-rendered' });
   });
 
@@ -290,7 +421,7 @@ export function createPlayerMirrors(renderer, scene, player, { compact = false, 
     if (disposed || !contextLost) return;
     contextLost = false;
     for (const entry of resources) {
-      entry.target = makeTarget(entry===rightCamera?'player-right-rear-camera':'player-planar-mirror');
+      entry.target = makeTarget(entry===rightCamera?'player-right-rear-camera':entry.geometry?.kind==='spherical-convex'?'player-convex-mirror':'player-planar-mirror');
       if (entry.material) { entry.material.uniforms.reflection.value = entry.target.texture; entry.material.needsUpdate = true; }
       entry.hasFrame = false;
     }
@@ -402,11 +533,23 @@ export function createPlayerMirrors(renderer, scene, player, { compact = false, 
           if (entry.hasFrame) { entry.mesh.material = entry.material; entry.active = true; entry.reason = 'cached'; }
           continue;
         }
-        for (let i=0;i<entry.worldCorners.length;i++) entry.worldCorners[i].copy(entry.geometry.corners[i]).applyMatrix4(entry.mesh.matrixWorld);
-        if (!updatePlanarMirrorCamera(camera,entry.worldPlane,entry.worldCorners,entry.view)) { fallback(entry,'invalid-projection'); continue; }
-        // Snapshot local-to-capture coordinates so skipped refreshes do not swim
-        // over the pane as the sprung body moves between texture updates.
-        entry.view.textureMatrix.multiply(entry.mesh.matrixWorld);
+        if (entry.geometry.kind==='spherical-convex') {
+          // Snapshot positions, normal transform and eye with the target, so a
+          // cached image stays coherent as the sprung body moves between ticks.
+          entry.view.captureModelMatrix.copy(entry.mesh.matrixWorld);
+          entry.view.captureNormalMatrix.getNormalMatrix(entry.mesh.matrixWorld);
+          entry.worldVertex.copy(entry.geometry.vertex).applyMatrix4(entry.mesh.matrixWorld);
+          for (let i=0;i<entry.worldSamples.length;i++) {
+            entry.worldSamples[i].point.copy(entry.geometry.samples[i].point).applyMatrix4(entry.mesh.matrixWorld);
+            entry.worldSamples[i].normal.copy(entry.geometry.samples[i].normal).applyNormalMatrix(entry.view.captureNormalMatrix).normalize();
+          }
+          if (!updateConvexMirrorCamera(camera,entry.worldPlane,entry.worldVertex,entry.worldSamples,entry.view)) { fallback(entry,'invalid-projection'); continue; }
+        } else {
+          for (let i=0;i<entry.worldCorners.length;i++) entry.worldCorners[i].copy(entry.geometry.corners[i]).applyMatrix4(entry.mesh.matrixWorld);
+          if (!updatePlanarMirrorCamera(camera,entry.worldPlane,entry.worldCorners,entry.view)) { fallback(entry,'invalid-projection'); continue; }
+          // Exact local-to-capture projection for the unchanged planar panes.
+          entry.view.textureMatrix.multiply(entry.mesh.matrixWorld);
+        }
         renderEntry(entry);
       }
       if (rightCamera) {
@@ -434,15 +577,18 @@ export function createPlayerMirrors(renderer, scene, player, { compact = false, 
     get diagnostics() {
       return {
         paneCount:entries.length, rejected:[...rejected], disposed, contextLost, totalPasses, failedPasses, shadowFallbackPasses, lastError,
-        planarPasses:entries.reduce((sum,entry)=>sum+entry.passes,0),maxCapturePassesPerRefresh:entries.length,
+        planarPasses:entries.reduce((sum,entry)=>sum+(entry.geometry.kind==='planar'?entry.passes:0),0),
+        convexPasses:entries.reduce((sum,entry)=>sum+(entry.geometry.kind==='spherical-convex'?entry.passes:0),0),maxCapturePassesPerRefresh:entries.length,
         budget:{...budget}, fallback:'Authored environment material, not a live rear view',
         rearVisibility:rearFog?{fogNear:42,fogFar:78,finiteWorld:true}:null,
         rightCamera:rightCamera?{available:true,kind:'rear-right camera, not planar reflection',active:rightCamera.active,
           reason:rightCamera.reason,passes:rightCamera.passes,width:rightCamera.target?.width??budget.width,height:rightCamera.target?.height??budget.height,
           camera:rightCamera.view.camera.position.toArray(),verticalFov:36,horizontalFlip:true,colorSpace:'scene-linear',
           direction:rightCamera.view.camera.getWorldDirection(new T.Vector3()).toArray()}: {available:false,active:false,reason:'missing-pod-or-screen',passes:0},
-        panes:entries.map(entry=>({role:entry.role,name:entry.mesh.name,active:entry.active,reason:entry.reason,
+        panes:entries.map(entry=>({role:entry.role,name:entry.mesh.name,kind:entry.geometry.kind,active:entry.active,reason:entry.reason,
           passes:entry.passes,width:entry.target?.width??budget.width,height:entry.target?.height??budget.height,planeError:entry.geometry.maxPlaneError,
+          ...(entry.geometry.kind==='spherical-convex'?{radius:entry.geometry.radius,sphereError:entry.geometry.maxSphereError,
+            angularSize:entry.view.angularSize.toArray(),approximation:'Exact curved-normal outgoing directions; shared tangent-vertex capture approximates near-field parallax and occlusion'}:{}),
           worldPlane:[...entry.worldPlane.normal.toArray(),entry.worldPlane.constant],camera:entry.view.camera.position.toArray()})),
       };
     },
