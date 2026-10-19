@@ -100,7 +100,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     matchMedia:()=>({matches:false,addEventListener(){}}),location:{reload(){}},
     Game,recoverPendingRunResult,homeVehicleFraming,bindGarageOrbitInput,RunTelemetry,deriveGarageView,getEngineeringModifiers,getRunDoubleOffer,LIMITS,CATALOG,ADS,vehicleDefinition,
     createStorage:()=>createStorage(()=>localStorage),createProgressionStorage:()=>({...profileStore,dispatch:action=>rejectSettings&&action.type==='UPDATE_SETTINGS'?{ok:false,changed:false,reason:'future-version-read-only',profile:profileStore.get(),persistence:profileStore.status()}:profileStore.dispatch(structuredClone(action))}),
-    createThumbDrive:()=>({setEnabled(){},clear(){}}),createOrientationGate:({onChange})=>{orientationHandler=onChange;onChange(portrait);return {blocked:portrait};},createSdk:()=>sdk,createLifecycle,createAds,createAdCadence,loadOwnGames,openOwnGame,
+    createOrientationGate:({onChange})=>{orientationHandler=onChange;onChange(portrait);return {blocked:portrait};},createSdk:()=>sdk,createLifecycle,createAds,createAdCadence,loadOwnGames,openOwnGame,
     createPlatformServices:options=>{
       const {onState}=options;platformChanged=onState;
       if(useRealPlatform)return platformServices=createRealPlatformServices({...options,minSaveIntervalMs:0});
@@ -749,3 +749,31 @@ for(const action of ['startDrive','navigate'])for(const replacementKind of ['dif
   assert.equal(h.api.state.screen,action==='startDrive'?'playing':'garage','the aborted no-ad transition releases its operation lock');
  });
 }
+
+test('mobile pause sound uses accepted settings and cloud queue while help returns to the same paused run',async()=>{
+  const h=await controller();await h.api.startRun();
+  h.listeners.get('pauseBtn:click')();
+  assert.equal(h.api.state.screen,'paused');assert.equal(h.api.state.ui.modalType,'pause');
+  const identity=structuredClone(h.api.state.run),queues=h.cloudSaves.length;
+  await h.api.handleAction('pauseSound');
+  assert.equal(h.profileStore.get().settings.sound,true);assert.equal(h.api.state.audio.enabled,true);
+  assert.equal(h.cloudSaves.length,queues+1);assert.deepEqual(h.cloudSaves.at(-1),h.profileStore.get());
+  assert.equal(h.api.state.screen,'paused');assert.equal(h.api.state.lifecycle.paused,true);
+  await h.api.handleAction('pauseHelp');assert.equal(h.api.state.ui.modalType,'help');
+  assert.equal(h.api.state.lifecycle.paused,true);assert.deepEqual(h.api.state.run,identity);
+  await h.api.handleAction('closeHelp');assert.equal(h.api.state.ui.modalType,'pause');
+  assert.equal(h.api.state.screen,'paused');assert.equal(h.api.state.lifecycle.paused,true);
+  assert.deepEqual(h.api.state.run,identity);assert.equal(h.cloudSaves.length,queues+1);
+});
+
+test('pause-only utility actions ignore playing or other modals and never bypass rejected settings',async()=>{
+  const h=await controller();await h.api.startRun();
+  const before=h.profileStore.get(),queues=h.cloudSaves.length;
+  await h.api.handleAction('pauseSound');await h.api.handleAction('pauseHelp');
+  assert.deepEqual(h.profileStore.get(),before);assert.equal(h.api.state.screen,'playing');
+  h.listeners.get('pauseBtn:click')();h.rejectSettings();
+  await h.api.handleAction('pauseSound');assert.deepEqual(h.profileStore.get(),before);
+  assert.equal(h.api.state.settings.sound,before.settings.sound);assert.equal(h.cloudSaves.length,queues);
+  await h.api.handleAction('pauseHelp');await h.api.handleAction('pauseSound');
+  assert.deepEqual(h.profileStore.get(),before);assert.equal(h.api.state.ui.modalType,'help');
+});

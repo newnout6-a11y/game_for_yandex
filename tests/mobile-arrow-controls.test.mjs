@@ -73,7 +73,7 @@ function harness(state = {}) {
   const elements = new Map();
   const byId = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
   const document = element(), window = element();
-  document.getElementById = byId;
+  document.getElementById = byId; window.navigator = { maxTouchPoints: 2 };
   const effects = { renders: 0, scheduled: 0, pauses: 0, orbitCancels: 0, syncs: 0, events: [], audioEvents: [], visualEvents: [] };
   const hud = Object.create(UI.prototype);
   const s = {
@@ -85,6 +85,7 @@ function harness(state = {}) {
     syncGlanceControls() {}, toggleCamera() { assert.fail('driving inputs must not toggle camera'); },
     startRun() { assert.fail('driving inputs must not start another run'); },
     applyScreen() {}, syncGameplay() { effects.syncs++; }, showResults() { s.screen = 'results'; },
+    innerWidth: 551, innerHeight: 360, coarsePointer: true, mobileControls: true, matchMedia: () => ({ matches: s.coarsePointer }),
     previous: 0, orientationBlocked: false, garageScene: null, garageDirty: false,
     renderer: {
       reducedMotion: false, render() { effects.renders++; },
@@ -105,13 +106,14 @@ function harness(state = {}) {
   };
   game.start();
   Object.assign(game.state, { speed: 20, traffic: [], pickups: [], obstacles: [], nextSpawn: Infinity, nextEvent: Infinity }, state);
-  for (const name of ['clearInput', 'pauseRun', 'tick']) vm.runInContext(applicationFunction(name), s);
+  for (const name of ['clearInput', 'pauseRun', 'tick', 'syncMobileControls']) vm.runInContext(applicationFunction(name), s);
   // Strip only the declaration; its actual lifecycle callback closes over this sandbox.
   const lifecycleExpression = sourceBetween('const lifecycle=createLifecycle(', 'const ads=').replace(/^const lifecycle=/, '');
   s.lifecycle = vm.runInContext(lifecycleExpression, s);
   vm.runInContext(sourceBetween("document.addEventListener('keydown', event => {", '// Dedicated held glances'), s);
   vm.runInContext(sourceBetween("for (const name of ['pointerup', 'pointercancel']) window.addEventListener", 'let gesture = null;'), s);
   vm.runInContext('let gesture = null;\n' + sourceBetween("document.addEventListener('visibilitychange',", "sdk.on('game_api_pause'"), s);
+  vm.runInContext(sourceBetween("window.addEventListener('resize',", '/** Loading completion'), s);
   let time = 0;
   return {
     s, effects, button: byId,
@@ -272,6 +274,38 @@ test('disabled, aria-disabled, paused, wrong-screen and non-primary-button gates
   }
   const h = harness(); h.down('boostBtn', 7); h.button('boostBtn').disabled = true;
   h.up('boostBtn', 7); assert.deepEqual(h.s.input.read(), NEUTRAL, 'disabled buttons must still release an existing owner');
+});
+
+test('same-landscape viewport resize preserves exact held touch owners and continuous driving', () => {
+  const h = harness(); h.down('leftBtn', 41); h.down('boostBtn', 42); h.frame(.1);
+  const owners = [...h.s.input.held], before = h.s.game.state.nitro;
+  const cancels = h.effects.orbitCancels;
+  for (const [width, height] of [[560, 315], [551, 330], [551, 360], [667, 375]]) {
+    h.s.innerWidth = width; h.s.innerHeight = height; h.s.window.emit('resize');
+    assert.deepEqual([...h.s.input.held], owners, 'resize must retain original IDs, not repress replacements');
+    assert.equal(h.effects.orbitCancels, cancels); assert.equal(h.s.mobileControls, true);
+    h.frame(.1); assert.equal(h.s.game.state.boosting, true); assert.equal(h.s.game.state.throttle, 1);
+    assert.equal(h.s.input.read().steer, -1);
+  }
+  closeTo(h.s.game.state.nitro, before - CONFIG.nitroDrain * .4);
+  h.up('leftBtn', 41); assert.equal(h.s.input.read().boost, true); assert.equal(h.s.input.read().steer, 0);
+  h.up('boostBtn', 42); assert.deepEqual(h.s.input.read(), NEUTRAL);
+});
+
+test('actual eligibility and portrait changes still clear holds and cannot restore them on resize back', () => {
+  for (const change of [
+    s => { s.innerWidth = 360; s.innerHeight = 551; },
+    s => { s.coarsePointer = false; },
+    s => { s.window.navigator.maxTouchPoints = 0; },
+    s => { s.orientationBlocked = true; },
+  ]) {
+    const h = harness(); h.down('rightBtn', 1); h.down('boostBtn', 2); change(h.s); h.s.window.emit('resize');
+    assert.equal(h.s.mobileControls, false); assert.deepEqual(h.s.input.read(), NEUTRAL);
+    h.s.innerWidth = 551; h.s.innerHeight = 360; h.s.coarsePointer = true;
+    h.s.window.navigator.maxTouchPoints = 2; h.s.orientationBlocked = false; h.s.window.emit('resize');
+    assert.equal(h.s.mobileControls, true); assert.deepEqual(h.s.input.read(), NEUTRAL);
+    h.frame(.1); assert.equal(h.s.game.state.boosting, false); assert.equal(h.s.game.state.throttle, 0);
+  }
 });
 
 test('production clearInput forgets arrows, assisted nitro, keyboard, analog, swipe and horn holds', () => {

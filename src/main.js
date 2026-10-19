@@ -67,7 +67,7 @@ const orientationGate=createOrientationGate({window,document,appRoot:byId('app')
 syncMobileControls();
 /** Compact arrows are selected by the real touch viewport, never by desktop width alone. */
 function syncMobileControls(){const nav=window.navigator||{};const eligible=Number(nav.maxTouchPoints)>0&&matchMedia('(pointer: coarse)').matches&&innerWidth>=innerHeight&&!orientationBlocked;if(mobileControls!==eligible)clearInput();mobileControls=eligible;byId('app').dataset.mobileControls=String(eligible);}
-window.addEventListener('resize',()=>{clearInput();syncMobileControls();});
+window.addEventListener('resize',()=>syncMobileControls());
 /** Loading completion is sent once only after an interactive landscape entry is available. */
 function signalReady(){if(assetsReady&&!orientationBlocked)sdk.ready();}
 
@@ -246,6 +246,12 @@ function toggleCamera(){
   if(!updateSettings({cameraMode:settings.cameraMode==='cockpit'?'chase':'cockpit'}))return;
   ui.camera(settings.cameraMode);ui.notice(settings.cameraMode==='cockpit'?'Выбран вид из кабины':'Выбрана внешняя камера');
 }
+/** Use the same transactional sound preference from the toolbar and mobile pause menu. */
+async function toggleSound(){
+  if(!updateSettings({sound:!settings.sound}))return;
+  await audio.unlock();syncGameplay();
+  ui.notice(settings.sound?'Звук включён':'Звук выключен');
+}
 /** Enable deliberate held glances only when the actual Rocket eye is active and gameplay has focus. */
 function syncGlanceControls(){
   const visible=renderer.playerVehicleId==='rocket'&&renderer.cameraMode==='cockpit'&&['playing','paused'].includes(screen);
@@ -274,6 +280,8 @@ async function handleAction(action){
   }else if(action==='menu'){
     if(['playing','paused'].includes(screen))saveRun();finalizeRun();ui.close();screen='hub';clearInput();lifecycle.resume('user');applyScreen();syncGameplay();refreshGarage();
   }else if(action==='camera'){if(ui.modalType==='pause')toggleCamera();}
+  else if(action==='pauseSound'){if(screen==='paused'&&ui.modalType==='pause')await toggleSound();}
+  else if(action==='pauseHelp'){if(screen==='paused'&&ui.modalType==='pause'){helpFromGame=true;ui.help();}}
   else if(action==='closeHelp'){ui.close();if(helpFromGame)ui.pause();helpFromGame=false;}
 }
 /** Translate UI intents into validated economy actions; no DOM value directly awards credits or paid entitlements. */
@@ -339,11 +347,7 @@ byId('helpBtn').addEventListener('click', () => {
   if (screen === 'playing') pauseRun();
   ui.help();
 });
-byId('soundBtn').addEventListener('click', async () => {
-  if(!updateSettings({sound:!settings.sound}))return;
-  await audio.unlock(); syncGameplay();
-  ui.notice(settings.sound ? 'Звук включён' : 'Звук выключен');
-});
+byId('soundBtn').addEventListener('click', toggleSound);
 byId('fullscreenBtn').addEventListener('click', async () => {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
