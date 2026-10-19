@@ -1,7 +1,6 @@
 import { recoverPendingRunResult } from './pending-run-result.js';
 import { homeVehicleFraming } from './home-framing.js';
 import { compactGarageFraming } from './garage-framing.js';
-import { createThumbDrive } from './thumb-drive.js';
 import { createOrientationGate } from './orientation-gate.js';
 import { Game } from './game.js';
 import { RoadRenderer } from './world.js';
@@ -30,7 +29,7 @@ const byId=id=>document.getElementById(id);
 const storage=createStorage(), profileStore=createProgressionStorage();
 const settings={...storage.get(),...profileStore.get().settings};
 const sdk=createSdk(),audio=new GameAudio(settings.sound),input=new DrivingInput();
-let otherGames=[],inspection='overview',orientationBlocked=false,thumbDrive=null,garageOrbitInput=null;
+let otherGames=[],inspection='overview',orientationBlocked=false,mobileControls=false,garageOrbitInput=null;
 let screen='loading',tab='fleet',busy=false,assetsReady=false,assetsFailed=false,garageScene=null,platform=null;
 let startingRun=false;
 let fleetMiniatures=null,fleetTargets=[],fleetVisibilityDirty=true,fleetTouchRemaining=0;
@@ -45,6 +44,7 @@ const playButton=byId('playBtn');playButton.disabled=true;
 const renderer=new RoadRenderer(byId('scene'),percent=>{loading={progress:Math.round(percent*.85),message:'Модели, материалы и трасса'};refreshGarage();},{quality:settings.renderQuality,cameraMode:settings.cameraMode,onRenderSettings:info=>ui.renderSettings(info)});
 const glance=new CockpitGlanceControls(direction=>renderer.setLookDirection(direction));
 const game=new Game({onEvent:(event,value)=>{
+  if(event==='boost-empty'){input.releaseEmptyTouchBoost(0);return;}
   telemetry?.event(event,value,game.state);audio.tone(event);renderer.effect(event);
   if(event==='near')ui.toast('БЛИЗКО! ×'+value);
   if(event==='charge')ui.toast('+22% ЭНЕРГИИ');
@@ -64,11 +64,10 @@ platform=createPlatformServices({sdk,lifecycle,profileStore,onState:()=>{reconci
 const orientationGate=createOrientationGate({window,document,appRoot:byId('app'),onChange:blocked=>{
   orientationBlocked=blocked;clearInput();if(blocked)lifecycle.pause('orientation');else lifecycle.resume('orientation');garageDirty=true;signalReady();
 }});
-thumbDrive=createThumbDrive({root:byId('thumbDrive'),window,onControls:controls=>input.setAnalog('thumb-drive',controls)});
-syncThumbControls();
-/** Enable one-thumb controls only for actual touch landscape play; keyboard ownership remains independent. */
-function syncThumbControls(){const nav=window.navigator||{};const touch=Number(nav.maxTouchPoints)>0&&matchMedia('(pointer: coarse)').matches;const eligible=touch&&innerWidth>=innerHeight&&!orientationBlocked;byId('app').dataset.thumbDrive=String(eligible);thumbDrive?.setEnabled(eligible&&screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing');}
-window.addEventListener('resize',syncThumbControls);
+syncMobileControls();
+/** Compact arrows are selected by the real touch viewport, never by desktop width alone. */
+function syncMobileControls(){const nav=window.navigator||{};const eligible=Number(nav.maxTouchPoints)>0&&matchMedia('(pointer: coarse)').matches&&innerWidth>=innerHeight&&!orientationBlocked;if(mobileControls!==eligible)clearInput();mobileControls=eligible;byId('app').dataset.mobileControls=String(eligible);}
+window.addEventListener('resize',()=>{clearInput();syncMobileControls();});
 /** Loading completion is sent once only after an interactive landscape entry is available. */
 function signalReady(){if(assetsReady&&!orientationBlocked)sdk.ready();}
 
@@ -98,9 +97,9 @@ function hydrateStoredSettings(){
   renderer.setQuality(settings.renderQuality);renderer.setCameraMode(settings.cameraMode);renderer.setRoute(settings.route);ui.sound(settings.sound);garageDirty=true;
 }
 /** Release input owners at every screen or lifecycle boundary, including mirror glances. */
-function clearInput(){garageOrbitInput?.cancel();thumbDrive?.clear();input.clear();game.releaseControls();glance.clear();}
+function clearInput(){garageOrbitInput?.cancel();input.clear();game.releaseControls();glance.clear();}
 /** Only genuine active simulation is reported as gameplay or produces engine audio. */
-function syncGameplay(){syncThumbControls();const active=screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing';sdk.gameplay(active);audio.update(game.state,active);}
+function syncGameplay(){syncMobileControls();const active=screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing';sdk.gameplay(active);audio.update(game.state,active);}
 /** Keep legacy driving HUD separate from the new menu; hidden legacy controls cannot receive focus. */
 function applyScreen(){
   garageOrbitInput?.cancel();
@@ -395,7 +394,7 @@ for (const [id,action] of controlBindings) {
   const button=byId(id);
   button.addEventListener('pointerdown',event=>{
     event.preventDefault();if(screen!=='playing'||lifecycle.paused||event.button>0||button.disabled||button.getAttribute('aria-disabled')==='true')return;
-    input.set(action,'pointer-'+event.pointerId,true);
+    if(event.pointerType==='touch')input.setTouch(action,'pointer-'+event.pointerId,true);else input.set(action,'pointer-'+event.pointerId,true);
     try { button.setPointerCapture(event.pointerId); } catch { /* Synthetic pointer events have no active capture. */ }
   });
   for(const name of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(name,event=>input.set(action,'pointer-'+event.pointerId,false));
@@ -518,7 +517,7 @@ function tick(time){
   const garageVisible=!orientationBlocked&&!document.hidden&&['hub','garage','results'].includes(screen);
   const paintChanged=garageScene?.advance?.(dt,{visible:garageVisible,reducedMotion:renderer.reducedMotion===true,mediaActive:!lifecycle.paused&&!loading.adPending&&!garageUI.settingsOpen});
   if(paintChanged)garageDirty=true;
-  if(screen==='playing'&&!lifecycle.paused){game.update(dt,input.read());telemetry?.observe(game.state,dt);if(game.state.phase==='crashed'){clearInput();syncGameplay();crashElapsed+=dt;if(crashElapsed>=.65){crashElapsed=0;showResults();}}}
+  if(screen==='playing'&&!lifecycle.paused){game.update(dt,()=>input.read());input.releaseEmptyTouchBoost(game.state.nitro);telemetry?.observe(game.state,dt);if(game.state.phase==='crashed'){clearInput();syncGameplay();crashElapsed+=dt;if(crashElapsed>=.65){crashElapsed=0;showResults();}}}
   if(!orientationBlocked&&['playing','paused'].includes(screen)){
     ui.hud(game.state);
     for(const[id,action]of controlBindings){const held=String(input.active(action)),button=byId(id);if(button.dataset.held!==held)button.dataset.held=held;if(button.getAttribute('aria-pressed')!==held)button.setAttribute('aria-pressed',held);}

@@ -94,15 +94,16 @@ export class Game {
    * Invalid/nonpositive time and non-playing phases are ignored; a crash stops the
    * remaining substeps. Excess elapsed time is discarded rather than accumulated.
    * @param {number} dt - Requested elapsed time in seconds.
-   * @param {Object} [controls={}] - Throttle/brake in [0, 1], steer/roll in [-1, 1],
+   * @param {Object|Function} [controls={}] - A snapshot or live substep sampler; throttle/brake in [0, 1], steer/roll in [-1, 1],
    * and boost/flight flags; non-finite axes become zero.
    * @returns {void}
    */
   update(dt, controls={}){
     if(this.state.phase!=='playing'||!Number.isFinite(dt)||dt<=0)return;
-    const c={throttle:axis(controls?.throttle),brake:axis(controls?.brake),steer:axis(controls?.steer,-1),boost:Boolean(controls?.boost),flight:Boolean(controls?.flight),horn:Boolean(controls?.horn),roll:axis(controls?.roll,-1)};
+    const normalize=sample=>({throttle:axis(sample?.throttle),brake:axis(sample?.brake),steer:axis(sample?.steer,-1),boost:Boolean(sample?.boost),flight:Boolean(sample?.flight),horn:Boolean(sample?.horn),roll:axis(sample?.roll,-1)});
+    const live=typeof controls==='function',snapshot=live?null:normalize(controls);
     let remaining=Math.min(dt,.1);
-    while(remaining>1e-9&&this.state.phase==='playing'){const step=Math.min(remaining,1/120);this.step(step,c);remaining-=step;}
+    while(remaining>1e-9&&this.state.phase==='playing'){const step=Math.min(remaining,1/120);this.step(step,live?normalize(controls()):snapshot);remaining-=step;}
   }
   /**
    * Advances one positive simulation substep, mutating the run and its entities.
@@ -119,9 +120,11 @@ export class Game {
     this.pulseTime=Math.max(0,this.pulseTime-dt);
     const steering=c.steer||(this.pulseTime>0?this.pulse:0);
     s.throttle=c.brake>0?0:c.throttle;s.braking=c.brake>0;
+    const energyBeforeFlight=s.nitro;
     updateFlight(s,dt,s.flightAllowed ? c : {...c,flight:false,roll:0},this.onEvent);
+    if(energyBeforeFlight>0&&s.nitro===0)this.onEvent('boost-empty');
     s.boosting=c.boost&&!s.flying&&s.altitude<.2&&s.throttle>0&&!s.braking&&s.speed>5&&s.nitro>0;
-    if(s.boosting)s.nitro=Math.max(0,s.nitro-CONFIG.nitroDrain*dt);
+    if(s.boosting){s.nitro=Math.max(0,s.nitro-CONFIG.nitroDrain*dt);if(s.nitro===0)this.onEvent('boost-empty');}
     const maxSpeed=this.playerConfig.maxSpeed*this.rules.speed*(s.boosting?1.27:1);
     const drive=s.throttle*(this.playerConfig.acceleration+(s.boosting?7:0));
     const resistance=s.speed>0?CONFIG.coastDeceleration+s.speed*s.speed*.0012:0;

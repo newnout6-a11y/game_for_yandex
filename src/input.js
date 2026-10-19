@@ -11,9 +11,13 @@ export class DrivingInput {
    * @param {boolean} down - True to hold; false removes only this source.
    */
   set(action, source, down) {
-    if (!['left','right','gas','brake','boost','flight','rollLeft','rollRight','horn'].includes(action)) return;
+    if (!['left','right','gas','brake','boost','touchBoost','flight','rollLeft','rollRight','horn'].includes(action)) return;
     if (down) this.held.set(source, action); else this.held.delete(source);
   }
+  /** A held touch nitro button owns gas and boost together, never two competing map entries. */
+  setTouch(action, source, down) { this.set(action === 'boost' ? 'touchBoost' : action, source, down); }
+  /** Empty reserve disarms only touch nitro; refilling cannot revive a disabled held button. */
+  releaseEmptyTouchBoost(reserve) { if (reserve <= 0) for (const [source, action] of this.held) if (action === 'touchBoost') this.held.delete(source); }
   /** Store finite bounded analog axes for one independent touch source; zero releases that source. */
   setAnalog(source, controls = {}) {
     const clamp=(value,min,max)=>Number.isFinite(value)?Math.min(max,Math.max(min,value)):0;
@@ -40,12 +44,12 @@ export class DrivingInput {
    * @param {string} action - Logical control name.
    * @returns {boolean} True even if another source for the same action was released.
    */
-  active(action) { for (const held of this.held.values()) if (held === action) return true; return false; }
+  active(action) { for (const held of this.held.values()) if (held === action || (held === 'touchBoost' && (action === 'boost' || action === 'gas'))) return true; return false; }
   /**
    * Return a fresh simulation control sample without mutating held inputs.
    * @returns {Object} Signed steer/roll axes (-1, 0, +1), binary pedals and boolean boost/flight.
    */
-  read() { const samples=[...this.analog.values()],last=samples.at(-1)||{}; return { steer:(Number(this.active('right'))-Number(this.active('left')))||(last.steer||0), throttle:Math.max(Number(this.active('gas')),...samples.map(s=>s.throttle)), brake:Math.max(Number(this.active('brake')),...samples.map(s=>s.brake)), boost:this.active('boost'), flight:this.active('flight'), horn:this.active('horn'), roll:Number(this.active('rollRight'))-Number(this.active('rollLeft')) }; }
+  read() { const samples=[...this.analog.values()],last=samples.at(-1)||{},left=this.active('left'),right=this.active('right'); return { steer:left||right?Number(right)-Number(left):(last.steer||0), throttle:Math.max(Number(this.active('gas')),...samples.map(s=>s.throttle)), brake:Math.max(Number(this.active('brake')),...samples.map(s=>s.brake)), boost:this.active('boost'), flight:this.active('flight'), horn:this.active('horn'), roll:Number(this.active('rollRight'))-Number(this.active('rollLeft')) }; }
   /**
    * Release every key and pointer source when pausing, crashing, blurring or starting a run.
    */

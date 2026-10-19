@@ -6,6 +6,7 @@ import { bindGarageOrbitInput } from '../src/garage-orbit-input.js';
 import { recoverPendingRunResult } from '../src/pending-run-result.js';
 import { homeVehicleFraming } from '../src/home-framing.js';
 import { Game } from '../src/game.js';
+import { DrivingInput } from '../src/input.js';
 import { RunTelemetry } from '../src/run-telemetry.js';
 import { createProgressionStorage, PROGRESSION_STORAGE_KEY } from '../src/progression-storage.js';
 import { createProfile, deriveGarageView, getEngineeringModifiers, getRunDoubleOffer, LIMITS } from '../src/progression.js';
@@ -89,7 +90,6 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     setInteraction(id){this.activeId=id;}
     update(dt,options){this.lastUpdate={dt,...options};return false;}
   }
-  class DrivingInput { clear() {} key() {} read() { return {}; } active() {return false;} set() {} release() {} }
   class CockpitGlanceControls { constructor(){this.direction=0;} clear() {} setEnabled(value) {this.enabled=value;} release() {} }
   class GameAudio { constructor(enabled){this.enabled=enabled;} update() {} tone() {} async unlock() {} }
   const sdk={init:async()=>platformSdk,get:()=>platformSdk,on(){},ready(){readyCalls++;},gameplay(){}};

@@ -1,0 +1,183 @@
+/* Mobile-only driving layout. main.js owns touch/landscape eligibility. */
+@media (orientation: landscape) {
+  #app[data-mobile-controls="true"] {
+    --header-height: calc(44px + env(safe-area-inset-top, 0px));
+    --mobile-drive-size: 52px;
+    --mobile-drive-gap: 8px;
+    --mobile-drive-row: 60px;
+  }
+
+  #app[data-mobile-controls="true"] .topbar {
+    height: var(--header-height);
+    padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
+    gap: 8px;
+  }
+
+  #app[data-mobile-controls="true"] .brand { font-size: 17px; }
+  #app[data-mobile-controls="true"] .brand > svg { width: 24px; height: 24px; }
+  #app[data-mobile-controls="true"] .toolbar { gap: 0; }
+  #app[data-mobile-controls="true"] .toolbar .icon-button { width: 44px; height: 44px; flex-shrink: 0; }
+
+  #app[data-mobile-controls="true"] .game-hud {
+    top: calc(var(--header-height) + 8px);
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    left: max(12px, env(safe-area-inset-left, 0px));
+  }
+
+  /* Keep the reserve and speed in the top HUD, never behind an ability. */
+  #app[data-mobile-controls="true"] .score-block > strong { font-size: 26px; }
+  #app[data-mobile-controls="true"] .score-block > .eyebrow { font-size: 9px; }
+  #app[data-mobile-controls="true"] .speed-block {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    width: auto;
+    height: auto;
+    align-items: flex-end;
+  }
+  #app[data-mobile-controls="true"] .speed-block strong { font-size: 28px; }
+  #app[data-mobile-controls="true"] .speed-block > span { font-size: 9px; }
+  #app[data-mobile-controls="true"] .speed-dial { display: none; }
+  #app[data-mobile-controls="true"] .nitro-block {
+    top: 4px;
+    right: 50%;
+    bottom: auto;
+    width: 92px;
+    transform: translateX(50%);
+  }
+  #app[data-mobile-controls="true"] .nitro-label { font-size: 9px; letter-spacing: .04em; }
+  #app[data-mobile-controls="true"] .nitro-hint,
+  #app[data-mobile-controls="true"] .run-hint { display: none; }
+  #app[data-mobile-controls="true"] .challenge { top: 44px; width: min(60%, 320px); font-size: 11px; }
+  #app[data-mobile-controls="true"] .challenge > div:first-child { margin-bottom: 4px; gap: 8px; }
+  #app[data-mobile-controls="true"] .challenge #distance { flex-shrink: 0; white-space: nowrap; }
+  #app[data-mobile-controls="true"] .event-banner { top: 76px; width: min(40%, 260px); padding: 6px; font-size: 10px; }
+  #app[data-mobile-controls="true"] .event-banner p { display: none; }
+  #app[data-mobile-controls="true"] .run-toast { top: 38%; font-size: 13px; }
+
+  /* Independent left steering and right pedals leave the road center open. */
+  #app[data-mobile-controls="true"] .touch-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    height: var(--mobile-drive-size);
+    bottom: 0;
+  }
+  #app[data-mobile-controls="true"] .touch-controls > .steer-pair,
+  #app[data-mobile-controls="true"] .touch-controls > .pedal-pair {
+    display: flex;
+    gap: var(--mobile-drive-gap);
+    align-items: flex-end;
+  }
+  #app[data-mobile-controls="true"] .touch-controls button {
+    min-width: 44px;
+    min-height: 44px;
+    -webkit-touch-callout: none;
+  }
+  #app[data-mobile-controls="true"] .touch-controls .drive-button {
+    width: var(--mobile-drive-size);
+    height: var(--mobile-drive-size);
+    padding: 0;
+    border-radius: 12px;
+    font-size: 27px;
+    line-height: 1;
+  }
+  #app[data-mobile-controls="true"] .touch-controls .pedal {
+    width: var(--mobile-drive-size);
+    height: var(--mobile-drive-size);
+    padding: 4px 2px;
+    border-radius: 10px;
+    font-size: 10px;
+    line-height: 1.1;
+  }
+  #app[data-mobile-controls="true"] .touch-controls .gas-pedal { border-color: var(--color-muted); }
+  #app[data-mobile-controls="true"] .touch-controls button:active,
+  #app[data-mobile-controls="true"] .touch-controls button[data-held="true"] { transform: none; }
+  #app[data-mobile-controls="true"] .touch-controls .drive-button[data-held="true"],
+  #app[data-mobile-controls="true"] .touch-controls .gas-pedal[data-held="true"] { border-color: var(--color-warning); }
+  #app[data-mobile-controls="true"] .touch-controls .brake-pedal[data-held="true"] { border-color: var(--color-danger); }
+
+  /* A single, low row replaces the tall ability tower in the old thumbpad UI. */
+  #app[data-mobile-controls="true"] .touch-controls .ability-pair {
+    right: 0;
+    bottom: var(--mobile-drive-row);
+    display: grid;
+    grid-template-columns: 44px 44px 44px 64px;
+    gap: 6px;
+    width: 214px;
+    align-items: stretch;
+  }
+  #app[data-mobile-controls="true"] .touch-controls .ability-pair button {
+    position: static;
+    width: 100%;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 3px 2px;
+    border-radius: 8px;
+    font-size: 9px;
+    line-height: 1.1;
+  }
+  #app[data-mobile-controls="true"] .touch-controls .ability-pair .roll-button { flex-direction: column; gap: 1px; font-size: 8px; }
+  #app[data-mobile-controls="true"] .roll-button .roll-icon { font-size: 19px; line-height: 19px; }
+  #app[data-mobile-controls="true"] .touch-controls .flight-button { flex-direction: column; gap: 2px; }
+  #app[data-mobile-controls="true"] .flight-button svg { display: block; width: 16px; height: 16px; }
+  #app[data-mobile-controls="true"] .touch-controls .boost-button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+  #app[data-mobile-controls="true"] #boostStatus { max-width: 100%; font-size: 8px; font-weight: 500; line-height: 1; letter-spacing: 0; white-space: nowrap; }
+  #app[data-mobile-controls="true"] #boostBtn:is([data-boost-state="active"], [data-boost-state="boosting"]) {
+    color: var(--color-on-accent);
+    border-color: var(--color-warning);
+    background-color: var(--color-warning);
+  }
+  #app[data-mobile-controls="true"] #boostBtn[data-boost-state="empty"] { color: var(--color-danger); border-color: var(--color-danger); }
+  #app[data-mobile-controls="true"] #boostBtn:is([data-boost-state="too-slow"], [data-boost-state="braking"]) #boostStatus { color: var(--color-muted); }
+  #app[data-mobile-controls="true"][data-flight="false"] .touch-controls .ability-pair { display: flex; width: 112px; justify-content: flex-end; }
+  #app[data-mobile-controls="true"][data-flight="false"] .touch-controls .boost-button { width: 64px; }
+
+  /* Mirrors occupy their own row above steering; status moves up only in cockpit. */
+  #app[data-mobile-controls="true"] .glance-controls { left: 0; bottom: var(--mobile-drive-row); transform: none; gap: var(--mobile-drive-gap); }
+  #app[data-mobile-controls="true"] .glance-button { width: var(--mobile-drive-size); height: 44px; min-width: 44px; min-height: 44px; flex-direction: column; gap: 1px; font-size: 8px; border-radius: 8px; }
+  #app[data-mobile-controls="true"] .glance-button > [aria-hidden] { font-size: 20px; line-height: 18px; }
+  #app[data-mobile-controls="true"] .flight-status { left: 0; bottom: var(--mobile-drive-row); width: 144px; padding: 6px; gap: 4px; }
+  #app[data-mobile-controls="true"] .game-hud:has(.glance-controls:not([hidden])) .flight-status { bottom: calc(var(--mobile-drive-row) + 52px); }
+  #app[data-mobile-controls="true"] .flight-status-heading { gap: 4px; font-size: 9px; letter-spacing: .06em; }
+  #app[data-mobile-controls="true"] .flight-status-heading svg { width: 12px; height: 12px; }
+  #app[data-mobile-controls="true"] .flight-status-heading kbd,
+  #app[data-mobile-controls="true"] .flight-hint,
+  #app[data-mobile-controls="true"] .flight-telemetry,
+  #app[data-mobile-controls="true"] .roll-keys { display: none; }
+  #app[data-mobile-controls="true"] .flight-status > strong { font-size: 10px; line-height: 1.2; }
+  #app[data-mobile-controls="true"] .roll-status { padding-top: 4px; gap: 3px; }
+  #app[data-mobile-controls="true"] .roll-label { font-size: 9px; letter-spacing: .04em; }
+  #app[data-mobile-controls="true"] .roll-status strong { font-size: 9px; }
+  #app[data-mobile-controls="true"] .horn-control {
+    right: calc(var(--mobile-drive-size) * 2 + var(--mobile-drive-gap) + 8px);
+    bottom: 0;
+    width: 44px;
+    height: 44px;
+    padding: 4px 2px;
+    flex-direction: column;
+    gap: 2px;
+    border-radius: 8px;
+  }
+  #app[data-mobile-controls="true"] .horn-control svg { width: 20px; height: 20px; }
+  #app[data-mobile-controls="true"] .horn-control span { font-size: 7px; }
+  #app[data-mobile-controls="true"] .horn-control kbd { display: none; }
+}
+
+/* A narrow host iframe needs two ability rows, not overlapping left-hand controls. */
+@media (orientation: landscape) and (max-width: 480px) {
+  #app[data-mobile-controls="true"] { --mobile-drive-size: 44px; --mobile-drive-gap: 6px; --mobile-drive-row: 52px; }
+  #app[data-mobile-controls="true"] .brand > span { display: none; }
+  #app[data-mobile-controls="true"] .touch-controls .drive-button { font-size: 25px; }
+  #app[data-mobile-controls="true"] .touch-controls .pedal { font-size: 9px; }
+  #app[data-mobile-controls="true"] .touch-controls .ability-pair { grid-template-columns: 48px 64px; width: 118px; }
+  #app[data-mobile-controls="true"] .horn-control { right: calc(50% - 22px); }
+  #app[data-mobile-controls="true"] .flight-status { width: 132px; padding: 4px; gap: 3px; }
+  #app[data-mobile-controls="true"] .flight-status-heading,
+  #app[data-mobile-controls="true"] .roll-label { display: none; }
+  #app[data-mobile-controls="true"] .roll-status { padding: 0; border: 0; }
+  #app[data-mobile-controls="true"] .event-banner { width: min(40%, 160px); }
+}
