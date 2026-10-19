@@ -493,7 +493,8 @@ garageOrbitInput=bindGarageOrbitInput({element:byId('scene'),window,document,ena
 function garageFraming(){
   if(screen==='hub'){
     const bounds=selector=>document.querySelector(selector)?.getBoundingClientRect();
-    return homeVehicleFraming({width:innerWidth,height:innerHeight,header:bounds('.gs-header'),route:bounds('.gs-route-cell'),label:bounds('.gs-hero-vehicle'),actions:bounds('.gs-hub-actions'),footer:bounds('.gs-footer')});
+    const measured=homeVehicleFraming({width:innerWidth,height:innerHeight,header:bounds('.gs-header'),route:bounds('.gs-route-cell'),label:bounds('.gs-hero-vehicle'),actions:bounds('.gs-hub-actions'),footer:bounds('.gs-footer')});
+    if(measured)return measured;
   }
   const stage=document.querySelector('.gs-stage');
   if(stage&&screen==='garage'){

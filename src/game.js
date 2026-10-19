@@ -263,7 +263,9 @@ export class Game {
     const committed=new Set(s.traffic.filter(car=>car.laneChange?.phase==='moving').flatMap(occupiedTrafficLanes));
     const openEdges=[0,2].filter(lane=>!committed.has(lane)&&(type!=='roadworks'||canPlaceRoadworks(s,lane)));
     if((type==='roadworks'||type==='convoy')&&!openEdges.length)return false;
-    const lane=type==='roadworks'?openEdges[Math.floor(this.random()*openEdges.length)]:Math.floor(this.random()*3);
+    // Convoys preflight both edges before drawing their lane preference, so a
+    // rejected event cannot advance an injected RNG that cannot be rolled back.
+    const lane=type==='convoy'?null:type==='roadworks'?openEdges[Math.floor(this.random()*openEdges.length)]:Math.floor(this.random()*3);
     const at=s.distance+(type==='convoy'?240:150),id=this.serial+1;
     const info={
       roadworks:{title:'Дорожные работы',hint:(lane===0?'Левая':'Правая')+' полоса закрыта. Обойди ограждение.',points:300},
@@ -278,33 +280,33 @@ export class Game {
       for(const z of [174,204])s.obstacles.push({id:++serial,kind:'barrier',x:lane,z});
     }
     if(type==='convoy'){
-      const preferredSafe=lane===0?2:0;
-      const edges=[preferredSafe,...openEdges.filter(value=>value!==preferredSafe)].filter(value=>openEdges.includes(value));
-      let accepted=null;
+      const layouts=new Map();
       // Try a finite set of complete convoy layouts. Individual stopping gaps
       // and the connecting player passage must both pass before anything exists.
-      for(const safe of edges){
-        for(let offset=0;offset<=144&&!accepted;offset+=18){
+      for(const safe of openEdges){
+        for(let offset=0;offset<=144;offset+=18){
           const created=[];let nextSerial=id;
           for(let i=0;i<4;i++){
             const kind=['van','sedan','suv','hatch'][i];
             const car={id:nextSerial+1,eventId:id,lane:i%2?1:(safe===0?2:0),z:240+offset+i*18,speed:19,cruiseSpeed:19,color:i%7,kind,category:trafficDefinition(kind).category,passed:false};
             const proposed={...s,traffic:[...s.traffic,...created]};
             while(car.z<=400&&!assessTrafficSpawn(proposed,car).allowed)car.z+=18;
-            if(car.z>400)continue;
+            if(car.z>400)break;
             nextSerial++;created.push(car);
           }
-          if(!created.length)continue;
+          if(created.length!==4)continue;
           const low=Math.min(...created.map(car=>car.z-trafficDefinition(car.kind).length/2));
           const high=Math.max(...created.map(car=>car.z+trafficDefinition(car.kind).length/2));
           // Six m/s is the event's braking target, never its initial cruise speed.
           const corridor={lane:safe,z:(low+high)/2,halfLength:(high-low)/2+8,speed:6};
           if(!assessTrafficWaveCorridor({...s,traffic:[...s.traffic,...created]},corridor).allowed)continue;
-          accepted={created,serial:nextSerial,corridor};
+          layouts.set(safe,{created,serial:nextSerial,corridor});break;
         }
-        if(accepted)break;
       }
-      if(!accepted)return false;
+      if(!layouts.size)return false;
+      event.lane=Math.floor(this.random()*3);
+      const preferredSafe=event.lane===0?2:0;
+      const accepted=layouts.get(preferredSafe)||layouts.values().next().value;
       serial=accepted.serial;event.targets=accepted.created.map(car=>car.id);
       s.traffic.push(...accepted.created);
       s.safeLane=accepted.corridor.lane;s.safeCorridor=accepted.corridor;

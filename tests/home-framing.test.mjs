@@ -41,7 +41,8 @@ test('normal desktop, portrait and unavailable geometry retain the established c
 });
 test('controller calls mobile framing only for HOME; results and garage keep their existing paths',async()=>{
  const source=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
- assert.match(source,/if\(screen==='hub'\)\{[\s\S]*?return homeVehicleFraming\(/);
+ assert.match(source,/if\(screen==='hub'\)\{[\s\S]*?const measured=homeVehicleFraming\(/);
+ assert.match(source,/if\(measured\)return measured/);
  assert.match(source,/if\(stage&&screen==='garage'\)/);assert.match(source,/if\(innerWidth<700\)return\{x:18,y:innerHeight\*\.29,width:innerWidth-36,height:innerHeight\*\.265\}/);
  assert.equal((source.match(/homeVehicleFraming\(/g)||[]).length,1);
 });
@@ -80,5 +81,14 @@ test('narrow HOME Rocket framing is genuinely larger without moving or rescaling
   const size=()=>{const xs=scene.cameraContext.points.map(p=>p.clone().project(scene.camera).x);return Math.max(...xs)-Math.min(...xs);};
   scene.render(w,h,{x:18,y:h*.29,width:w-36,height:h*.265});const before=size();scene.render(w,h,homeVehicleFraming(layout(w,h)));
   assert.ok(size()/before>=1.5);assert.ok(scene.vehicle.position.equals(position));assert.ok(scene.vehicle.scale.equals(scale));
+ }
+});
+
+test('restored narrow-desktop band fits all five real cars without changing their authored transforms',()=>{
+ for(const id of ['rocket','hatch','sedan','suv','van'])for(const [width,height]of [[390,844],[600,900],[600,600]]){
+  const scene=showcase(id),position=scene.vehicle.position.clone(),scale=scene.vehicle.scale.clone();
+  const region={x:18,y:height*.29,width:width-36,height:height*.265};scene.render(width,height,region);
+  for(const point of scene.cameraContext.points){const p=point.clone().project(scene.camera),x=(p.x+1)*width/2,y=(1-p.y)*height/2;assert.ok(x>=region.x-.01&&x<=region.x+region.width+.01&&y>=region.y-.01&&y<=region.y+region.height+.01,`${id}/${width}x${height}: fallback bounds`);}
+  assert.ok(scene.vehicle.position.equals(position));assert.ok(scene.vehicle.scale.equals(scale));
  }
 });
