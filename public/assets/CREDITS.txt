@@ -168,3 +168,15 @@ retiming or re-encoding. roadster-screen-poster.jpg is a frame at 14.2 seconds.
 Not original game footage, a physics proof, or a Tesla endorsement.
 User supply does not establish a commercial redistribution license.
 Technical provenance: art/garage/screen/supplied-video-provenance.json.
+
+Garage Lightning McQueen toy (2026-10-19)
+Blender-authored physical toy geometry and an authored conformal decal atlas,
+based on the user-supplied diecast toy reference. The Lightning McQueen/Cars
+character identity, Rust-eze and racing graphics are third-party subject matter
+associated with Disney/Pixar. Authorship of this mesh does not establish an
+official affiliation, endorsement or commercial redistribution license.
+Editable packed source: art/garage/toy/toy-racecar.blend; reproducible generator:
+scripts/create_garage_toy.py. Editable atlas: art/garage/toy/mcqueen-decals.svg.
+Runtime asset: assets/garage/toy-racecar.glb. The private reference photograph
+is neither embedded in the model nor included in the public source.
+Detailed provenance and source ownership: art/garage/toy/provenance.json.

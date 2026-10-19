@@ -87,7 +87,7 @@ test('all compact sizes share one measured header/navigation band', () => {
   for (const [w, h] of [[320, 240], [480, 270], [560, 315], [667, 375], [844, 390]]) {
     const layout = declarations('.gs-layout', w, h);
     assert.equal(layout.display, 'grid');
-    assert.equal(layout['grid-template-rows'], '44px minmax(0, 1fr) auto');
+    assert.equal(layout['grid-template-rows'], '44px minmax(0, 1fr)');
     assert.equal(declarations('.gs-layout > .gs-header', w, h).display, 'contents');
     assert.equal(declarations('.gs-layout > .gs-garage', w, h).display, 'contents');
     assert.equal(declarations('.gs-header .gs-mobile-home', w, h)['grid-column'], '1');
@@ -127,12 +127,11 @@ test('stage and workbench stay side by side in either old drawer state', () => {
   assert.doesNotMatch(compact, /data-drawer|minmax\((?:120|150|155|225)px/);
 });
 
-test('guest authentication retains its 44px target without trapping the workbench below a footer', () => {
-  assert.equal(declarations('.gs-layout > .gs-footer').height, '24px');
-  assert.equal(declarations('.gs-layout > .gs-footer:has(.gs-footer-connect)').height, '44px');
-  assert.equal(declarations('.gs-footer .gs-footer-connect')['min-height'], '44px');
+test('all saved and guest states reclaim the former footer row for the stage and workbench', () => {
+  assert.doesNotMatch(compact, /\.gs-footer/);
+  assert.equal(declarations('.gs-layout')['grid-template-rows'], '44px minmax(0, 1fr)');
   for (const [w, h] of [[320, 240], [480, 270], [560, 315], [667, 375], [844, 390]]) {
-    assert.ok(h - 44 - 44 >= 152, `${w}×${h} has a real guest work row`);
+    assert.ok(h - 44 >= 196, `${w}×${h} has a real guest work row`);
     assert.ok(w - Math.max(190, Math.min(w * .42, 320)) >= 130);
   }
 });

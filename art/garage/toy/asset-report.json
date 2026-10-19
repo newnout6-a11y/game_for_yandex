@@ -1,0 +1,113 @@
+{
+  "name": "Lightning McQueen toy (95)",
+  "source": "art/garage/toy/toy-racecar.blend",
+  "glb": "public/assets/garage/toy-racecar.glb",
+  "generator": "scripts/create_garage_toy.py",
+  "root": "GARAGE_TOY_MCQUEEN_95",
+  "axis_contract": {
+    "up": "+Y",
+    "front": "-Z",
+    "units": "metres"
+  },
+  "bounds_m": {
+    "min": [
+      -0.328404,
+      0.003,
+      -0.657966
+    ],
+    "max": [
+      0.328404,
+      0.430998,
+      0.646605
+    ]
+  },
+  "size_m": [
+    0.656808,
+    0.427998,
+    1.304572
+  ],
+  "editable_parts": 49,
+  "materials": 8,
+  "draw_batches": 8,
+  "triangles": 40698,
+  "bytes": 1855108,
+  "sha256": "ff4b04e7c3026a16c9b233ed1f4c52133671d3546189c516f72566e4179323d6",
+  "source_sha256": "b922c6f81c126908f6ed9b6ebe742d561669c076824452dc2e99208a0456606c",
+  "generator_sha256": "f3af68db38143817184c7221b15d35dc0d840a08751ea38f1bf207b4a3ad637e",
+  "collapsed_export_triangles": 0,
+  "bad_export_normals": 0,
+  "collapsed_source_faces_removed": 54,
+  "textures": 2,
+  "runtime_texture_dimensions": [
+    1024,
+    1024
+  ],
+  "runtime_texture_rgba8_mip_bytes": 6291456,
+  "additional_runtime_textures": [
+    {
+      "name": "opaque windshield paint",
+      "dimensions": [
+        512,
+        256
+      ],
+      "rgba8_mip_bytes": 699052
+    }
+  ],
+  "additional_editable_textures": [
+    {
+      "name": "opaque windshield paint",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "windshield-paint.svg"
+    }
+  ],
+  "editable_texture_dimensions": [
+    2048,
+    2048
+  ],
+  "decal_source_sha256": "7916b12385649b6b2cf2048548f2e8200491c9c1458ca100f3e376f4f97f6ae4",
+  "runtime_lights": 0,
+  "runtime_cameras": 0,
+  "source_external_resources": 0,
+  "recommended_placement": {
+    "position": [
+      -2.95,
+      -0.007,
+      4.8
+    ],
+    "rotation_y": 0.2
+  },
+  "provenance": "Original Blender mesh construction recreating the user-supplied Lightning McQueen toy. Disney/Pixar Cars character identity and reproduced Rust-eze/95/Lightning graphics are third-party subject matter; no commercial license or endorsement is asserted. One packed marking atlas plus opaque authored windshield vector paint; no reference photograph billboard.",
+  "change_scope": "Only the existing canopy UV/material changed and 10 overlapping face-art meshes were removed. All 49 retained parts have exact geometry parity with the accepted 1d138f20 baseline. No other body/roof print or runtime code changed.",
+  "budget": {
+    "max_triangles": 42000,
+    "max_glb_bytes": 2000000,
+    "max_material_batches": 8,
+    "max_runtime_textures": 2,
+    "max_runtime_texture_rgba8_mip_bytes": 6291456
+  },
+  "prior_rejected_production_budget": {
+    "triangles": 17596,
+    "bytes": 807796,
+    "draw_batches": 7,
+    "reason_for_increase": "Preserved continuous fender/arch loops, actual perforated concave rims, and receiver-conforming printed triangles."
+  },
+  "paint": {
+    "base_color_srgb": "#d60918",
+    "metalness": 0,
+    "roughness": 0.17,
+    "clearcoat": 0.65,
+    "clearcoat_roughness": 0.13,
+    "no_noise_or_bump_texture": true
+  },
+  "verification_scope": "Exact ff4b04e7 candidate passed native distant and close runtime visual checks with production camera range. Local integration authorized; final user visual acceptance and external publication remain separate and pending.",
+  "source_portability_cleanup": "Both editable images are packed. Image.name and ImagePackedFile.filepath fixed-size fields have complete zero-after-NUL tails and basename-relative paths. See path-string-tail-proof.json; source bytes are unchanged from the verified candidate.",
+  "windshield_paint": "Exact authored outline/brow/iris/pupil/catchlight vectors painted directly onto unchanged opaque canopy receiver. No separate layered face-art meshes.",
+  "windshield_source_sha256": {
+    "windshield-paint.svg": "66e2f7a1be065699eeb3dbf2219372be9dd81f19bd506ad7000861c0b3278e2b",
+    "windshield-paint.png": "9ba85fcb0b2cff1807aaffee9fb5e5bbb0ca4c6118fc49a4b26955bbbc24764d",
+    "windshield-paint.json": "5bef2cadca65de9e43e411be98393f41d0f680b51a0dd88827788b674897293d"
+  }
+}

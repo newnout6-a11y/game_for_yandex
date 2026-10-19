@@ -1,0 +1,113 @@
+{
+  "position": [
+    -2.95,
+    -0.007,
+    4.8
+  ],
+  "rotation_y": 0.2,
+  "conservative_world_bounds": {
+    "min": [
+      -3.558510466720326,
+      -0.007,
+      4.038326249047667
+    ],
+    "max": [
+      -2.441489533279674,
+      0.643,
+      5.561673750952333
+    ]
+  },
+  "tiers": [
+    {
+      "tier": 1,
+      "room_sha256": "23772c94a09f41b51171efdcbefe8d9e5c9995c9b6384395ebaf271ebd3bbe6a",
+      "room_triangles_aabb_conflicts_above_floor": [],
+      "authored_camera_obstacle_conflicts": [],
+      "room_source_sha256": "c0a4dbb6b272b779453c8df13897cc7b33e59d375f3a6ad89b090f4296d81595"
+    },
+    {
+      "tier": 2,
+      "room_sha256": "dfe6183fdb7f8bbf5f6a8a60c86810775db2dc6d64385e6197bef8b406e264e5",
+      "room_triangles_aabb_conflicts_above_floor": [],
+      "authored_camera_obstacle_conflicts": [],
+      "room_source_sha256": "1cddc60d201852ac1f5c96745821de0aed2e6e8dab0b042a5fe6f6779695c6b9"
+    },
+    {
+      "tier": 3,
+      "room_sha256": "caaffa5545112194763a9fe226208de4d7b9080721f2b38679d4eec01b16106d",
+      "room_triangles_aabb_conflicts_above_floor": [],
+      "authored_camera_obstacle_conflicts": [],
+      "room_source_sha256": "88d3e340d95f439d6d5e4f6a6e4ecb64598957068a09fe6b34362bcdb289a32b"
+    },
+    {
+      "tier": 4,
+      "room_sha256": "b699d1e22cff09f43bda4a76f71656c49d5db20b376ce0c8ea0d3443bd80b75f",
+      "room_triangles_aabb_conflicts_above_floor": [],
+      "authored_camera_obstacle_conflicts": [],
+      "room_source_sha256": "b57f80f9ba792c0ad0921a5e0029d02e3bec2d90eccba277cc93e17b2266b25e"
+    }
+  ],
+  "floor_contact": {
+    "method": "Four actual tyre-bottom contact groups raycast to slab, plus every tyre triangle clipped at the actual raised gasket top, checked conservatively against all actual gasket triangle bounds in each immutable room.",
+    "room_floor_top_y": -0.005000002682209015,
+    "local_tyre_bottom_y": 0.003,
+    "recommended_translation_y": -0.007,
+    "clearance_m": 0.0010000026822090148,
+    "horizontal_adjustment_m": [
+      0.05,
+      0,
+      0
+    ],
+    "previous_center_issue": "At x=-3, LF tyre overlapped the existing expansion gasket. The horizontal shift avoids it without raising or remodelling the toy.",
+    "minimum_lower_tyre_to_left_gasket_horizontal_clearance_m": 0.02288427660291026
+  },
+  "scope": "Final rear-left aisle pose, horizontally shifted 50mm to avoid the existing floor seam. Exact world mesh clears main/parked vehicle envelopes and four immutable room meshes; full lower-tyre footprint checked against actual gasket triangles.",
+  "camera_integration": {
+    "result": "The prior broader prop centered at [-3, -.007, 4.8] passed 9/9 camera tests. The current exact mesh centered at [-2.95, -.007, 4.8] remains contained in the same tested world envelope. Final new native/runtime checks are owned by the integrating task.",
+    "coverage": "9,600 poses across five vehicles and four tiers, transitions, drag, and cockpit; recorded by integrating task",
+    "no_camera_solver_changes": true
+  },
+  "rejected_initial_pose": {
+    "position": [
+      -3.25,
+      -0.007,
+      -2.25
+    ],
+    "reason": "Room geometry cleared, but native runtime camera solver moved inward and normal view did not show toy. Do not use this pose."
+  },
+  "character": "Lightning McQueen reference-based toy",
+  "runtime_asset_sha256": "ff4b04e7c3026a16c9b233ed1f4c52133671d3546189c516f72566e4179323d6",
+  "actual_world_bounds": {
+    "min": [
+      -3.34987666237612,
+      -0.003999999973922968,
+      4.1451462776495065
+    ],
+    "max": [
+      -2.508371609386303,
+      0.4239975206851959,
+      5.488138231900447
+    ]
+  },
+  "prior_camera_light_tested_envelope": {
+    "min": [
+      -3.50065,
+      -0.0048,
+      4.11935
+    ],
+    "max": [
+      -2.50134,
+      0.5748,
+      5.49151
+    ]
+  },
+  "contained_in_prior_camera_light_envelope": true,
+  "focused_asset_tests": {
+    "passed": 6,
+    "total": 6,
+    "scope": "Current canonical exact GLB; actual contact centers, complete lower tyre vertices/edge crossings and floor gasket triangles in all four rooms."
+  },
+  "current_asset_sha256": "ff4b04e7c3026a16c9b233ed1f4c52133671d3546189c516f72566e4179323d6",
+  "print_only_revision": "Opaque windshield paint replaces 10 stacked face-art layers. All retained geometry, bounds and actual tyre contacts are unchanged.",
+  "geometry_baseline_runtime_sha256": "1d138f2049f0a2810a95b40f59effbeee515b40d395806643cdb356167f07a65"
+}

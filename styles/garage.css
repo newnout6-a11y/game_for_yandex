@@ -86,13 +86,7 @@
 .garage-shell .gs-load-error { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 24px; max-height: 136px; overflow-y: auto; pointer-events: auto; border-bottom: 1px solid #f1774070; background: #29221df5; }
 .garage-shell .gs-load-error > p { min-width: 0; overflow-wrap: anywhere; }
 .garage-shell .gs-load-error > .gs-button { flex: 0 0 auto; color: var(--gs-orange); }
-.garage-shell .gs-footer { flex: 0 0 43px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 32px; background: #131a1dea; border-top: 1px solid var(--gs-line); pointer-events: auto; }
-.garage-shell .gs-footer-brand { font: 8px/1 var(--gs-mono); letter-spacing: .1em; color: var(--gs-dim); }
 .garage-shell .gs-save-status { display: flex; align-items: center; gap: 7px; color: var(--gs-muted); font-size: 10px; }
-.garage-shell .gs-footer-build { font: 8px/1 var(--gs-mono); letter-spacing: .12em; color: var(--gs-dim); }
-.garage-shell .gs-footer-connect { min-height: 44px; padding: 8px 0; border: 0; background: transparent; font-size: 10px; }
-.garage-shell .gs-footer:has(.gs-footer-connect) { flex-basis: 44px; }
-.garage-shell .gs-footer-connect svg { width: 16px; height: 16px; }
 .garage-shell .gs-garage { display: grid; grid-template-columns: 194px minmax(140px, 1fr) 355px; flex: 1; min-height: 0; }
 .garage-shell .gs-rail { display: flex; flex-direction: column; min-height: 0; padding: 15px 0 20px; border-right: 1px solid var(--gs-line); background: #172024d9; backdrop-filter: blur(8px); pointer-events: auto; }
 .garage-shell .gs-back { margin: 0 15px 22px; padding: 10px; border: none; background: none; justify-content: flex-start; flex-direction: row-reverse; color: var(--gs-muted); font-size: 11px; }
@@ -283,11 +277,7 @@
   .garage-shell .gs-balance { font-size: 12px; gap: 6px; }
   .garage-shell .gs-currency-mark { width: 19px; height: 21px; font-size: 13px; }
   .garage-shell .gs-icon-button { width: 44px; }
-  .garage-shell .gs-footer { flex-basis: 36px; padding: 0 15px; gap: 10px; }
-  .garage-shell .gs-footer-brand { display: none; }
   .garage-shell .gs-save-status { font-size: 8px; }
-  .garage-shell .gs-footer-build { font-size: 7px; }
-  .garage-shell .gs-footer-connect { font-size: 8px; min-height: 44px; }
   .garage-shell .gs-hub { padding: 27px 23px 0; overflow-y: auto; }
   .garage-shell .gs-hub-intro { max-width: none; width: 100%; pointer-events: none; }
   .garage-shell .gs-hub-intro > .gs-kicker { font-size: 8px; margin-bottom: 13px; }
@@ -368,10 +358,7 @@
   .garage-shell .gs-emblem { width: 36px; height: 36px; }
   .garage-shell .gs-brand-type strong { font-size: 18px; }
   .garage-shell .gs-brand-type > span { font-size: 6px; }
-  .garage-shell .gs-footer { flex-basis: 28px; padding-inline: 18px; }
-  .garage-shell .gs-footer-brand, .garage-shell .gs-footer-build { font-size: 7px; }
   .garage-shell .gs-save-status { font-size: 8px; }
-  .garage-shell .gs-footer-connect { min-height: 44px; font-size: 8px; }
   .garage-shell .gs-garage { grid-template-columns: 130px minmax(160px, 1fr) 300px; }
   .garage-shell .gs-rail { padding: 0; overflow-y: auto; }
   .garage-shell .gs-back { min-height: 44px; margin: 0 8px; font-size: 10px; }
@@ -629,7 +616,6 @@
 }
 @media (max-height: 500px) and (min-width: 600px) {
   .garage-shell .gs-header { flex-basis: 54px; }
-  .garage-shell .gs-footer { flex-basis: 28px; }
   .garage-shell .gs-garage, .garage-shell[data-drawer='open'] .gs-garage { grid-template-columns: 153px minmax(160px, 1fr) 290px; grid-template-rows: minmax(0, 1fr); }
   .garage-shell .gs-rail { display: flex; }
   .garage-shell .gs-tabs { flex-direction: column; padding: 0; background: none; border-bottom: 0; overflow: visible; }
@@ -684,10 +670,7 @@
 
 /* Clear working hierarchy: the vehicle name is the only editorial italic. */
 .garage-shell[data-screen='garage'] .gs-header-context > span,
-.garage-shell[data-screen='garage'] .gs-brand-type > span,
-.garage-shell[data-screen='garage'] .gs-footer-brand,
-.garage-shell[data-screen='garage'] .gs-footer-build { display: none; }
-.garage-shell[data-screen='garage'] .gs-footer { justify-content: flex-end; }
+.garage-shell[data-screen='garage'] .gs-brand-type > span { display: none; }
 .garage-shell .gs-tab-name { font: 650 14px/1.2 var(--gs-body); letter-spacing: -.015em; color: #b2bcb3; }
 .garage-shell .gs-tab[aria-selected='true'] .gs-tab-name { color: #fffdf3; font-weight: 750; }
 .garage-shell .gs-tab[aria-selected='true'] { background: #778b6c27; border-color: #acb99b40; box-shadow: inset 3px 0 #d7e5c4; }
@@ -892,7 +875,6 @@
 @media (max-width: 700px) and (min-width: 600px) and (max-height: 500px) {
   .garage-shell[data-screen='garage'] .gs-vehicle-title-dock > .gs-vehicle-title { font-size: 20px; }
 }
-.garage-shell .gs-footer { background: #191b28ed; border-color: #b4a7c526; }
 .garage-shell .gs-currency-mark { border-color: #df95bc57; }
 .garage-shell .gs-primary { color: #291f31; }
 .garage-shell .gs-primary:hover:not(:disabled) { background: #f0b8d0; border-color: #f0b8d0; }
@@ -1138,10 +1120,6 @@
   .garage-shell[data-screen='garage'] .gs-header .gs-balance { font-size: 12px; gap: 5px; }
   .garage-shell[data-screen='garage'] .gs-header .gs-currency-mark { width: 18px; height: 19px; font-size: 12px; }
   .garage-shell[data-screen='garage'] .gs-header .gs-icon-button { width: 44px; height: 44px; min-height: 44px; padding: 10px; }
-  .garage-shell[data-screen='garage'] .gs-layout > .gs-footer { flex: 0 0 24px; min-width: 0; min-height: 0; padding: 0 8px; gap: 6px; }
-  .garage-shell[data-screen='garage'] .gs-layout > .gs-footer:has(.gs-footer-connect) { flex-basis: 44px; }
-  .garage-shell[data-screen='garage'] .gs-footer .gs-save-status { min-width: 0; font-size: 9px; line-height: 1.2; }
-  .garage-shell[data-screen='garage'] .gs-footer .gs-footer-connect { min-width: 44px; min-height: 44px; padding: 6px 0; font-size: 10px; }
 
   .garage-shell[data-screen='garage'] .gs-garage {
     display: grid; position: relative; min-width: 0; min-height: 0;
@@ -1329,7 +1307,7 @@
 @media (orientation: landscape) and (max-height: 620px) and (max-width: 1100px) {
   .garage-shell[data-screen='garage'] .gs-layout {
     display: grid; grid-template-columns: 44px max-content minmax(0, 1fr) max-content;
-    grid-template-rows: 44px minmax(0, 1fr) auto; gap: 0;
+    grid-template-rows: 44px minmax(0, 1fr); gap: 0;
     box-sizing: border-box; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   }
   .garage-shell[data-screen='garage'] .gs-layout > .gs-header,
@@ -1346,8 +1324,6 @@
     font-size: 18px; white-space: nowrap; overflow-x: auto; overflow-y: hidden;
     scrollbar-width: none; pointer-events: auto; touch-action: pan-x;
   }
-  .garage-shell[data-screen='garage'] .gs-layout > .gs-footer { grid-column: 1 / -1; grid-row: 3; height: 24px; }
-  .garage-shell[data-screen='garage'] .gs-layout > .gs-footer:has(.gs-footer-connect) { height: 44px; }
 }
 @media (orientation: landscape) and (max-height: 620px) and (max-width: 1100px) {
   .garage-shell[data-screen='garage'] .gs-tabs > .gs-tab { grid-template-columns: minmax(0, 1fr); grid-template-rows: 18px auto; padding: 3px 4px; gap: 1px; }
@@ -1484,12 +1460,7 @@
   .garage-shell[data-screen='hub'] .gs-brand-type strong { font-size: 18px; }
   .garage-shell[data-screen='hub'] .gs-account { gap: 8px; }
   .garage-shell[data-screen='hub'] .gs-balance { font-size: 13px; gap: 6px; }
-  .garage-shell[data-screen='hub'] .gs-footer { flex: 0 0 28px; min-width: 0; padding: 0 14px; gap: 10px; }
-  .garage-shell[data-screen='hub'] .gs-footer:has(.gs-footer-connect) { flex-basis: 44px; }
-  .garage-shell[data-screen='hub'] .gs-footer-brand,
-  .garage-shell[data-screen='hub'] .gs-footer-build { display: none; }
   .garage-shell[data-screen='hub'] .gs-save-status { min-width: 0; font-size: 9px; }
-  .garage-shell[data-screen='hub'] .gs-footer-connect { min-height: 44px; font-size: 9px; }
   .garage-shell[data-screen='hub'] .gs-hub {
     display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
     gap: 8px; padding: 10px 14px 12px; overflow: clip;
@@ -1531,16 +1502,13 @@
   .garage-shell[data-screen='hub'] .gs-hub-actions { gap: 4px; }
   .garage-shell[data-screen='hub'] .gs-hub-actions .gs-button { padding-inline: 5px; }
   .garage-shell[data-screen='hub'] .gs-hub-actions svg { display: none; }
-  .garage-shell[data-screen='hub'] .gs-footer { padding-inline: 8px; gap: 6px; }
   .garage-shell[data-screen='hub'] .gs-save-status { line-height: 1.2; }
-  .garage-shell[data-screen='hub'] .gs-footer-connect { flex: 0 1 62%; min-width: 0; padding-block: 0; gap: 6px; line-height: 1.2; }
 }
 /* A 180px-tall landscape iframe has room for two real 44px control rows only
-   when decorative vertical space yields. Header and guest login stay readable. */
+   when decorative vertical space yields. Header controls stay readable. */
 @media (orientation: landscape) and (max-height: 220px) {
   .garage-shell[data-screen='hub'] .gs-header { flex-basis: 46px; padding-block: 0; border-bottom: 0; }
   .garage-shell[data-screen='hub'] .gs-hub { padding-block: 0; gap: 2px; }
-  .garage-shell[data-screen='hub'] .gs-footer { border-top: 0; }
 }
 
 /* LIQUID_GLASS_SURFACES: material only. Keep the accepted desktop/mobile grid,
@@ -1690,3 +1658,28 @@
   .garage-shell.gs-liquid-glass :is(button[aria-pressed='true'], button[aria-selected='true']) { outline: 2px solid Highlight; outline-offset: -2px; }
 }
 /* LIQUID_GLASS_SURFACES_END */
+
+/* FOOTER_FREE_SPACE: no permanent bottom strip or hidden row reservation. */
+.garage-shell .gs-panel-heading:has(.gs-fleet-count) { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.garage-shell .gs-fleet-count { color: var(--gs-muted); font: 10px/1.3 var(--gs-mono); }
+.garage-shell .gs-save-controls { display: grid; gap: 8px; padding: 14px 0; margin-bottom: 12px; border-top: 1px solid var(--gs-line); }
+.garage-shell .gs-save-status { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+.garage-shell .gs-save-action { min-width: 44px; min-height: 44px; font-size: 11px; }
+/* The warning shares Settings' existing hit target. Only its announcement is offscreen. */
+.garage-shell .gs-header .gs-icon-button[data-gs-save-warning='true'] { position: relative; }
+.garage-shell .gs-save-indicator {
+  position: absolute; top: 4px; right: 4px; display: grid; place-items: center;
+  width: 12px; height: 12px; border: 1px solid #302537; border-radius: 50%;
+  color: #2c2034; background: #e6b6d2; font: 750 9px/1 var(--gs-body); pointer-events: none;
+}
+.garage-shell .gs-save-announcement {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; pointer-events: none;
+}
+.garage-shell .gs-catalog-scroll-hint { display: none; flex: 0 0 auto; color: var(--gs-panel-muted); font: 10px/1.2 var(--gs-body); white-space: nowrap; pointer-events: none; }
+.garage-shell .gs-workbench[data-scrollable='true'] .gs-catalog-scroll-hint { display: inline; }
+.garage-shell .gs-workbench { scrollbar-color: #c8a8c4 #292735; }
+@media (forced-colors: active) {
+  .garage-shell .gs-save-indicator { color: Canvas; background: CanvasText; border-color: Canvas; }
+}
+/* FOOTER_FREE_SPACE_END */

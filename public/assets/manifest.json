@@ -417,5 +417,15 @@
     "source": "https://www.youtube.com/watch?v=r5vsHHPVhJg",
     "provenance": "art/garage/screen/supplied-video-provenance.json",
     "changes": "User-provided Tesla The Kickflip | Roadster video, not original game artwork. Full 1,052-frame timeline retained without cropping, resizing, retiming or video re-encoding; audio removed. Poster derived at 14.2 seconds. No affiliation or endorsement. Local integration does not establish redistribution permission."
+  },
+  {
+    "file": "assets/garage/toy-racecar.glb",
+    "bytes": 1855108,
+    "sha256": "ff4b04e7c3026a16c9b233ed1f4c52133671d3546189c516f72566e4179323d6",
+    "license": "Reference-based third-party character depiction; commercial rights unverified",
+    "source": "project:art/garage/toy/toy-racecar.blend",
+    "generator": "scripts/create_garage_toy.py",
+    "provenance": "art/garage/toy/provenance.json",
+    "changes": "Blender-authored physical Lightning McQueen toy mesh and authored conformal marking atlas and opaque windshield vector paint, based on the user-supplied diecast reference. Disney/Pixar Cars character identity, Rust-eze and racing graphics are third-party subject matter. No official affiliation, endorsement or commercial license is asserted. The user photograph is not embedded or redistributed."
   }
 ]

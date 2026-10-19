@@ -1,0 +1,80 @@
+{
+  "runtime_sha256": "ff4b04e7c3026a16c9b233ed1f4c52133671d3546189c516f72566e4179323d6",
+  "source_sha256": "b922c6f81c126908f6ed9b6ebe742d561669c076824452dc2e99208a0456606c",
+  "baseline_runtime_sha256": "1d138f2049f0a2810a95b40f59effbeee515b40d395806643cdb356167f07a65",
+  "source_geometry_unchanged_for_all_retained_parts": true,
+  "retained_parts": 49,
+  "removed_only_face_overlay_parts": [
+    "Blue iris dark rim -1",
+    "Blue iris dark rim 1",
+    "Deep blue pupil -1",
+    "Deep blue pupil 1",
+    "McQueen blue eye -1",
+    "McQueen blue eye 1",
+    "Rounded shaped McQueen windshield with central brow notch",
+    "Thin defined windshield surround",
+    "White eye catchlight -1",
+    "White eye catchlight 1"
+  ],
+  "added_geometry_parts": [],
+  "changed_geometry_parts": [],
+  "changed_uv_parts": [
+    "Low flat rounded diecast roof and integrated canopy"
+  ],
+  "changed_material_parts": [
+    "Low flat rounded diecast roof and integrated canopy"
+  ],
+  "opaque_face_receiver": true,
+  "image_resources": [
+    {
+      "name": "Authored opaque windshield paint",
+      "size": [
+        1024,
+        512
+      ],
+      "packed": true
+    },
+    {
+      "name": "McQueen toy recreated decal atlas",
+      "size": [
+        2048,
+        2048
+      ],
+      "packed": true
+    }
+  ],
+  "active_portable_paths": [
+    {
+      "field": "Image:Authored opaque windshield paint.filepath",
+      "path": "//windshield-paint.png"
+    },
+    {
+      "field": "Image:Authored opaque windshield paint.filepath_raw",
+      "path": "//windshield-paint.png"
+    },
+    {
+      "field": "Image:McQueen toy recreated decal atlas.filepath",
+      "path": "//mcqueen-decals.png"
+    },
+    {
+      "field": "Image:McQueen toy recreated decal atlas.filepath_raw",
+      "path": "//mcqueen-decals.png"
+    },
+    {
+      "field": "Image:Authored opaque windshield paint.packed_files.filepath",
+      "path": "//windshield-paint.png"
+    },
+    {
+      "field": "Image:McQueen toy recreated decal atlas.packed_files.filepath",
+      "path": "//mcqueen-decals.png"
+    },
+    {
+      "field": "Scene:Scene.render.filepath",
+      "path": "//preview-front-three-quarter.png"
+    },
+    {
+      "field": "Screen:Shading.file_browser.directory",
+      "path": "//"
+    }
+  ]
+}

@@ -50,12 +50,11 @@ test('compact controls fit their content instead of stretching across the car', 
   assert.doesNotMatch(compact, /text-size-adjust:\s*none|transform:\s*scale|zoom:/);
 });
 
-test('compact controls preserve the accepted header and guest footer budget', () => {
+test('compact controls preserve the accepted header without a footer budget', () => {
   assert.match(compact, /\.gs-header \{ flex: 0 0 52px; min-width: 0; padding: 4px 14px; gap: 10px; \}/);
   assert.match(compact, /\.gs-emblem \{ width: 34px; height: 34px; \}/);
-  assert.match(compact, /\.gs-footer \{ flex: 0 0 28px;/);
-  assert.match(compact, /\.gs-footer:has\(\.gs-footer-connect\) \{ flex-basis: 44px; \}/);
-  assert.match(compact, /\.gs-footer-connect \{ min-height: 44px;/);
+  assert.doesNotMatch(compact, /\.gs-footer/);
+  assert.match(css, /\.gs-save-action \{ min-width: 44px; min-height: 44px;/);
 });
 
 test('HOME markup retains the real start, garage and route actions without new persistence or SDK paths', async () => {
@@ -82,6 +81,6 @@ test('180px HOME budgets two real control rows without shrinking text or targets
   const short = compact.slice(compact.indexOf('@media (orientation: landscape) and (max-height: 220px)'));
   assert.match(short, /\.gs-header \{ flex-basis: 46px; padding-block: 0; border-bottom: 0; \}/);
   assert.match(short, /\.gs-hub \{ padding-block: 0; gap: 2px; \}/);
-  assert.match(short, /\.gs-footer \{ border-top: 0; \}/);
+  assert.doesNotMatch(short, /\.gs-footer/);
   assert.doesNotMatch(short, /font-size:|min-height:|display: none|overflow: hidden/);
 });

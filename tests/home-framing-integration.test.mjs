@@ -23,7 +23,7 @@ test('actual HOME controller retains the narrow desktop portrait band when compa
  for(const [width,height]of [[700,900],[1440,900],[1024,768]])assert.equal(frame(width,height),null);
 });
 test('actual HOME controller falls through on each missing or invalid measured rectangle',()=>{
- for(const selector of ['.gs-header','.gs-route-cell','.gs-hero-vehicle','.gs-hub-actions','.gs-footer']){
+ for(const selector of ['.gs-header','.gs-route-cell','.gs-hero-vehicle','.gs-hub-actions']){
   assert.deepEqual(frame(560,315,{missing:selector}),fallback(560,315));
   assert.deepEqual(frame(667,375,{invalid:selector}),fallback(667,375));
   assert.equal(frame(844,390,{missing:selector}),null);
@@ -39,4 +39,14 @@ test('other screens retain their own established framing without adopting the HO
  for(const screen of ['results','playing','paused'])assert.deepEqual(frame(560,315,{screen}),fallback(560,315));
  const stage={getBoundingClientRect:()=>({x:100,y:80,width:500,height:400,top:80,bottom:480}),querySelector:()=>null};
  assert.deepEqual(frame(560,800,{screen:'garage',stage}),{x:120,y:162,width:460,height:251});
+});
+
+
+test('actual HOME controller uses the reclaimed bottom when the footer is intentionally absent',()=>{
+ for(const [width,height]of [[551,360],[560,315],[667,375],[844,390]]){
+  const old=frame(width,height),now=frame(width,height,{missing:'.gs-footer'});
+  assert.ok(now);assert.notDeepEqual(now,fallback(width,height));assert.equal(now.x,old.x);assert.equal(now.y,old.y);
+  assert.ok(now.height>old.height);assert.ok(now.y+now.height<=height-8);
+  assert.deepEqual(frame(width,height,{invalid:'.gs-footer'}),width<700?fallback(width,height):null);
+ }
 });

@@ -49,7 +49,9 @@ function harness(options = {}) {
   };
   const lifecycle = createLifecycle();
   const services = createPlatformServices({ sdk: { init: async () => options.noSdk ? null : real, get: () => options.noSdk ? null : real }, lifecycle, profileStore: store,
-    now: () => stamp, timeoutMs: options.timeoutMs ?? 200, minSaveIntervalMs: options.minSaveIntervalMs ?? 0,
+    // Non-deadline cases tolerate CPU contention from GLB/Blender test workers.
+    // Explicit timeout regressions below still request their original5/10ms.
+    now: () => stamp, timeoutMs: options.timeoutMs ?? 1000, minSaveIntervalMs: options.minSaveIntervalMs ?? 0,
     commerceConfig: options.commerceConfig, trustedBackend: options.trustedBackend, onState: next => stateChanges.push(next) });
   return { services, real, store, provider, lifecycle, remote, writes, reads, playerCalls, events, stateChanges,
     setIdentity: (id, auth = true) => { selectedId = id; authorized = auth; },

@@ -1,0 +1,56 @@
+{
+  "title": "Lightning McQueen reference-based physical toy",
+  "authorship": "Original procedural Blender mesh construction and editable vector decal recreation, depicting the requested third-party Lightning McQueen diecast toy using the user photo and independently inspected multi-view reference photographs. Reference photos are not embedded or distributed.",
+  "source": "art/garage/toy/toy-racecar.blend",
+  "generator": "scripts/create_garage_toy.py",
+  "runtime": "public/assets/garage/toy-racecar.glb",
+  "external_meshes": [],
+  "photo_embedded": false,
+  "image_generation_used": false,
+  "editable_decals": "art/garage/toy/mcqueen-decals.svg",
+  "texture": "Two authored textures: the editable 2048 \u00d7 2048 marking atlas and 1024 \u00d7 512 opaque windshield paint are packed into Blender. Runtime GLB embeds 1024 \u00d7 1024 marking and 512 \u00d7 256 windshield copies. Neither contains a reference photograph.",
+  "decals": "Recreated Rust-eze hood and wing wordmarks, number 95, yellow/orange lightning and flame side graphics, small racing sponsor graphics, and LIGHTYEAR tyre lettering.",
+  "character_rights": "The Lightning McQueen likeness and Disney/Pixar Cars identity, including reproduced fictional branding, are third-party subject matter, not an original fictional project character. No commercial license, affiliation, endorsement, or redistribution rights are asserted.",
+  "source_portability": "The editable source retains semantically named mesh pieces, two packed authored images and a separate native preview studio. No external photo, font, mesh or task-specific absolute resource path is needed. Fixed-size path-string padding is explicitly zeroed using the source file SDNA layout, so stale absolute-path suffixes cannot survive after a shorter relative path.",
+  "scope": "Independent static toy prop only. Existing rooms and selected vehicles remain unchanged. No reference photograph is in the public source tree. Local integration does not imply commercial rights or external publication approval.",
+  "commercial_rights": "Unverified. No commercial license, affiliation, endorsement or redistribution rights are asserted.",
+  "authored_file_sha256": {
+    "scripts/create_garage_toy.py": "f3af68db38143817184c7221b15d35dc0d840a08751ea38f1bf207b4a3ad637e",
+    "art/garage/toy/mcqueen-decals.svg": "b5c3e9912715c73030136788b00a86b7a18ef26011596a9a40efee0867cc51ab",
+    "art/garage/toy/mcqueen-decals.png": "7916b12385649b6b2cf2048548f2e8200491c9c1458ca100f3e376f4f97f6ae4",
+    "art/garage/toy/mcqueen-decals.json": "167e771392fa51eff1937e0173a18959b4f60aea95afbec2d8d4120cb48281cd",
+    "art/garage/toy/windshield-paint.svg": "66e2f7a1be065699eeb3dbf2219372be9dd81f19bd506ad7000861c0b3278e2b",
+    "art/garage/toy/windshield-paint.png": "9ba85fcb0b2cff1807aaffee9fb5e5bbb0ca4c6118fc49a4b26955bbbc24764d",
+    "art/garage/toy/windshield-paint.json": "5bef2cadca65de9e43e411be98393f41d0f680b51a0dd88827788b674897293d",
+    "art/garage/toy/windshield-paint-runtime.png": "4ab80c97fbb187ea1295b7f4159e115f9c7ef3832e4e3c2dc35947e4e2386325"
+  },
+  "construction": "Continuous painted shell and fenders; four volumetric compact tyres, concave red rims with real through-openings; low shaped windshield with exact authored eyes painted into the opaque canopy receiver; three-bar rear glazing and rounded raked blade. Printed triangles are clipped from visible receiving surfaces with matching winding and transferred final normals.",
+  "finish": "Smooth saturated opaque red enamel over diecast-like shape: nonmetallic base paint with clearcoat, distinct rough black tyres. No grain, damage, wear or photographic surface texture.",
+  "runtime_budget": {
+    "max_triangles": 42000,
+    "max_glb_bytes": 2000000,
+    "max_material_batches": 8,
+    "max_runtime_textures": 2,
+    "max_runtime_texture_rgba8_mip_bytes": 6291456
+  },
+  "runtime_actual": {
+    "triangles": 40698,
+    "bytes": 1855108,
+    "material_batches": 8,
+    "runtime_textures": 2,
+    "runtime_texture_rgba8_mip_bytes": 6291456
+  },
+  "asset_sha256": "ff4b04e7c3026a16c9b233ed1f4c52133671d3546189c516f72566e4179323d6",
+  "source_sha256": "b922c6f81c126908f6ed9b6ebe742d561669c076824452dc2e99208a0456606c",
+  "recommended_placement": {
+    "position": [
+      -2.95,
+      -0.007,
+      4.8
+    ],
+    "rotation_y": 0.2,
+    "reason": "50mm horizontal shift avoids the existing concrete expansion gasket without lifting tyres or changing geometry."
+  },
+  "editable_windshield": "art/garage/toy/windshield-paint.svg",
+  "runtime_print_robustness": "Ten overlapping face-art layers were removed and their exact vector expression was painted into the unchanged opaque canopy UV. All 49 retained parts have exact source geometry parity with the accepted pre-fix toy. No camera or shape workaround."
+}

@@ -476,9 +476,11 @@ test('blocked local persistence is not represented as a successful local save', 
   const h = harness(); h.render({ platform: { local: { localSaved: false }, cloudStatus: 'unavailable' } });
   assert.ok(h.root.textContent.includes('Прогресс только в этой сессии'));
 });
-test('healthy guest cloud still exposes explicit benefit-labelled Yandex ID sign-in', () => {
+test('healthy guest cloud keeps explicit benefit-labelled Yandex ID sign-in in settings', () => {
   const h = harness();
   h.render({ screen: 'hub', platform: { sdk: true, auth: 'guest', cloud: true, cloudConnected: true, authenticated: false }, cloud: { status: 'durable' } });
+  assert.equal(h.button('cloudConnect'), undefined, 'Healthy account controls no longer reserve a footer');
+  h.click(h.button('_local', action => action.kind === 'openSettings'));
   const login = h.button('cloudConnect'); assert.ok(login); assert.equal(login.disabled, false);
   assert.match(login.textContent, /Яндекс ID/); assert.match(login.textContent, /прогресс на всех устройствах/);
   assert.equal(h.actions.length, 0); h.click(login); assert.deepEqual(h.actions, [{ type: 'cloudConnect' }]);
@@ -487,8 +489,8 @@ test('healthy guest cloud still exposes explicit benefit-labelled Yandex ID sign
   assert.equal(h.actions.length, 1);
   h.ui.setBusy(true); h.ui.setBusy(false); assert.equal(pending.disabled, true);
 });
-test('authorized failed cloud read offers a retry, not another login or an automatic action', () => {
-  const h = harness();
+test('authorized failed cloud read offers a retry in Settings, not another login or an automatic action', () => {
+  const h = harness(); h.ui.settingsOpen = true;
   for (const error of ['cloud-load-failed', 'invalid-cloud-response', 'invalid-cloud-profile', 'timeout']) {
     h.render({ platform: { sdk: true, auth: 'authorized', authenticated: true, cloud: true }, cloud: { available: true, status: 'error', error } });
     assert.equal(h.button('cloudConnect'), undefined); assert.ok(h.button('retryCloud'));
@@ -663,8 +665,8 @@ test('panel muted text exceeds AA contrast on plain, selected and material surfa
   }
   assert.match(css, /\.gs-list-index \{ color: var\(--gs-panel-muted\); font-size: 10px; \}/);
 });
-test('initial unavailable or guest player errors expose cloud-read retry before optional login', () => {
-  const h = harness();
+test('initial unavailable or guest player errors expose cloud-read retry before optional login in Settings', () => {
+  const h = harness(); h.ui.settingsOpen = true;
   for (const auth of ['unavailable', 'guest', 'authorized']) {
     h.render({ screen: 'hub', platform: { sdk: true, auth, cloud: false, authenticated: auth === 'authorized' }, cloud: { available: false, status: 'error', error: 'cloud-load-failed' } });
     const retry = h.button('retryCloud'); assert.ok(retry); assert.equal(retry.disabled, false);
@@ -681,8 +683,12 @@ test('initial unavailable or guest player errors expose cloud-read retry before 
     h.render({ platform, cloud: { status: 'error', error: 'cloud-load-failed' } });
     assert.equal(h.button('retryCloud'), undefined);
   }
+  h.ui.settingsOpen = false;
   h.render({ platform: { sdk: true, auth: 'guest', cloud: true }, cloud: { status: 'durable' } });
+  assert.equal(h.button('cloudConnect'), undefined);
+  h.click(h.button('_local', action => action.kind === 'openSettings'));
   assert.ok(h.button('cloudConnect')); assert.equal(h.button('retryCloud'), undefined);
+  h.click(h.button('_local', action => action.kind === 'closeSettings'));
   h.render({ platform: { sdk: true, auth: 'unavailable' }, cloud: { status: 'error', error: 'cloud-write-failed' } });
   assert.equal(h.button('retryCloud'), undefined);
 });
@@ -1039,4 +1045,177 @@ test('Fleet list ignores non-finite offsets without resetting independent panel 
     assert.equal(h.root.querySelector('.gs-vehicle-list').scrollTop, 0);
     assert.equal(h.root.querySelector('.gs-workbench').scrollTop, 55);
   }
+});
+
+
+test('footer-free HOME, garage and results have no quiet save chrome or decorative fleet heading', () => {
+  const h = harness();
+  for (const screen of ['hub', 'garage', 'results']) {
+    h.render({ screen });
+    assert.equal(h.root.querySelector('.gs-footer'), null);
+    assert.equal(h.root.querySelector('footer'), null);
+    assert.equal(h.root.querySelector('.gs-save-announcement'), null);
+    assert.doesNotMatch(h.root.textContent, /Локальное сохранение|ЛИНИЯ АВТОМОБИЛЕЙ/i);
+    assert.ok(h.root.querySelector('[data-gs-settings-open]'));
+  }
+  h.render({ screen: 'garage', tab: 'fleet' });
+  assert.equal(h.root.querySelector('.gs-fleet-count').textContent, '1 / 5');
+  assert.equal(h.root.querySelectorAll('.gs-car-miniature').length, 5);
+  assert.equal(h.root.querySelectorAll('.gs-vehicle-row').length, 5);
+});
+
+test('removing footer never suppresses local, cloud or conflict failures', () => {
+  const h = harness();
+  for (const screen of ['hub', 'garage', 'results']) {
+    h.render({ screen, local: { saved: false } });
+    assert.match(h.root.querySelector('.gs-save-announcement').textContent, /Прогресс только в этой сессии/);
+    assert.equal(h.root.querySelector('.gs-save-announcement').getAttribute('role'), 'alert');
+    for (const status of ['error', 'uncertain', 'rate-limited', 'frozen']) {
+      h.render({ screen, platform: { sdk: true, auth: 'authorized' }, cloud: { status } });
+      assert.match(h.root.querySelector('.gs-save-announcement').textContent, /облако не подтверждено/);
+    }
+    h.render({ screen, platform: { conflict: { local: h.profile, cloud: createProfile({ now: 456 }) } } });
+    assert.ok(h.root.querySelector('.gs-cloud-dialog'));
+    assert.equal(h.root.querySelector('.gs-layout').inert, true);
+    assert.equal(h.root.querySelector('.gs-save-announcement'), null, 'Conflict is handled by its existing modal, never a duplicate warning');
+  }
+});
+
+test('Atelier overflow cue follows measured content and never changes cosmetic actions', () => {
+  const h = harness(); h.render({ tab: 'style' });
+  const panel = h.root.querySelector('.gs-workbench');
+  assert.equal(panel.querySelectorAll('.gs-catalog-scroll-hint').length, 1);
+  const actions = panel.querySelectorAll('[data-gs-action]').map(node => node.dataset.gsAction);
+  panel.clientHeight = 260; panel.scrollHeight = 900; h.ui.updateCatalogOverflow();
+  assert.equal(panel.dataset.scrollable, 'true');
+  panel.clientHeight = 900; h.ui.updateCatalogOverflow();
+  assert.equal(panel.dataset.scrollable, 'false');
+  assert.deepEqual(panel.querySelectorAll('[data-gs-action]').map(node => node.dataset.gsAction), actions);
+  assert.equal(h.actions.length, 0);
+});
+
+test('Atelier uses one shared panel cue, never repeated cues in later or hidden sections', () => {
+  const h = harness(); h.render({ tab: 'style' });
+  for (const category of ['body', 'wheels', 'cockpit']) {
+    h.click(h.button('_local', action => action.kind === 'atelierCategory' && action.id === category));
+    const panel = h.root.querySelector('.gs-workbench');
+    const groups = panel.querySelectorAll('.gs-item-group');
+    const firstVisible = groups.find(group => !group.hidden);
+    assert.equal(panel.querySelectorAll('.gs-catalog-scroll-hint').length, 1, category);
+    assert.equal(firstVisible.querySelectorAll('.gs-catalog-scroll-hint').length, 1, category);
+    assert.ok(groups.filter(group => group !== firstVisible).every(group => !group.querySelector('.gs-catalog-scroll-hint')));
+  }
+  h.click(h.button('_local', action => action.kind === 'atelierCategory' && action.id === 'body'));
+  h.click(h.button('_local', action => action.kind === 'atelierBodySection' && action.id === 'glass'));
+  const panel = h.root.querySelector('.gs-workbench');
+  assert.equal(panel.querySelectorAll('.gs-catalog-scroll-hint').length, 1);
+  assert.ok(panel.querySelectorAll('.gs-item-group').find(group => !group.hidden).querySelector('.gs-catalog-scroll-hint'));
+  assert.deepEqual(h.actions, ['overview', 'wheels', 'cockpit', 'overview', 'overview'].map(view => ({ type: 'inspectVehicle', view })), 'Category navigation retains only its existing camera actions');
+});
+
+test('shared catalogue cue is conditional inline text, not an overlay or extra strip', async () => {
+  const css = await readFile(new URL('../styles/garage.css', import.meta.url), 'utf8');
+  const cue = css.match(/\.garage-shell \.gs-catalog-scroll-hint \{([^}]+)\}/)[1];
+  assert.match(cue, /display: none/);
+  assert.match(cue, /pointer-events: none/);
+  assert.doesNotMatch(cue, /position:|(?:min-)?height:|padding:/);
+  assert.match(css, /\.gs-workbench\[data-scrollable='true'\] \.gs-catalog-scroll-hint \{ display: inline; \}/);
+});
+
+
+test('save failure alerts take precedence over stale success labels without denying a confirmed cloud copy', () => {
+  const h = harness();
+  h.render({ platform: { saveStatus: 'Успешно сохранено' }, cloud: { status: 'error' } });
+  assert.match(h.root.querySelector('.gs-save-announcement').textContent, /облако не подтверждено/);
+  assert.doesNotMatch(h.root.querySelector('.gs-save-announcement').textContent, /Успешно сохранено/);
+  h.render({ local: { saved: false }, cloud: { status: 'saved' } });
+  assert.match(h.root.querySelector('.gs-save-announcement').textContent, /На устройстве не сохранено · сохранено в облаке/);
+});
+
+
+test('save failures are announced without an overlay and remain actionable inside Settings', () => {
+  const h = harness();
+  h.render({ local: { saved: false }, platform: { sdk: true, auth: 'authorized' }, cloud: { status: 'error', error: 'cloud-load-failed' } });
+  assert.ok(h.root.querySelector('.gs-save-announcement'));
+  h.click(h.button('_local', action => action.kind === 'openSettings'));
+  assert.equal(h.root.querySelector('.gs-save-announcement'), null);
+  const settings = h.root.querySelector('.gs-settings-dialog');
+  assert.match(settings.querySelector('.gs-save-controls').textContent, /Прогресс только в этой сессии.*облако не подтверждено/);
+  assert.ok(settings.contains(h.button('retryCloud')));
+  assert.equal(h.root.querySelector('.gs-layout').inert, true);
+  h.click(h.button('_local', action => action.kind === 'closeSettings'));
+  assert.ok(h.root.querySelector('.gs-save-announcement'), 'Unresolved failure is announced again when Settings closes');
+  assert.equal(h.actions.length, 0);
+});
+
+test('actual SDK and server durable statuses acknowledge the cloud copy despite unavailable local storage', () => {
+  const h = harness();
+  for (const status of ['durable', 'server-durable']) {
+    h.render({ local: { saved: false }, platform: { sdk: true, auth: 'authorized' }, cloud: { status } });
+    const alert = h.root.querySelector('.gs-save-announcement');
+    assert.match(alert.textContent, /На устройстве не сохранено · сохранено в облаке/);
+    assert.doesNotMatch(alert.textContent, /только в этой сессии|облако не подтверждено/);
+    h.click(h.button('_local', action => action.kind === 'openSettings'));
+    assert.equal(h.root.querySelector('.gs-save-announcement'), null);
+    assert.match(h.root.querySelector('.gs-save-controls').textContent, /На устройстве не сохранено · сохранено в облаке/);
+    h.click(h.button('_local', action => action.kind === 'closeSettings'));
+    h.render({ local: { saved: true }, platform: { sdk: true, auth: 'authorized' }, cloud: { status } });
+    assert.equal(h.root.querySelector('.gs-save-announcement'), null);
+    h.click(h.button('_local', action => action.kind === 'openSettings'));
+    assert.match(h.root.querySelector('.gs-save-controls').textContent, /Сохранено в облаке/);
+    h.click(h.button('_local', action => action.kind === 'closeSettings'));
+  }
+  assert.equal(h.actions.length, 0);
+});
+
+test('removed footer selectors cannot merge the hidden garage tagline into tab typography', async () => {
+  const css = await readFile(new URL('../styles/garage.css', import.meta.url), 'utf8');
+  const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+  const selector = ".garage-shell[data-screen='garage'] .gs-header-context > span";
+  const rule = rules.find(([, selectors]) => selectors.split(',').map(item => item.trim()).includes(selector));
+  assert.ok(rule, 'The garage context/brand copy has its own explicit hiding rule');
+  assert.deepEqual(rule[1].split(',').map(item => item.trim()), [selector, ".garage-shell[data-screen='garage'] .gs-brand-type > span"]);
+  assert.match(rule[2], /^\s*display:\s*none;?\s*$/);
+  assert.doesNotMatch(rule[1], /gs-tab-name/);
+});
+
+
+test('save warning shares the existing Settings button instead of blocking catalogue controls', () => {
+  const h = harness(); h.render({ tab: 'style' });
+  const categoryActions = h.root.querySelectorAll('.gs-atelier-category').map(node => node.dataset.gsAction);
+  const settings = h.root.querySelector('[data-gs-settings-open]');
+  assert.equal(settings.getAttribute('aria-label'), 'Настройки');
+  h.render({ tab: 'style', platform: { sdk: true, auth: 'authorized' }, cloud: { status: 'error', error: 'cloud-load-failed' } });
+  const warning = h.root.querySelector('[data-gs-settings-open]');
+  assert.equal(warning.dataset.gsSaveWarning, 'true');
+  assert.equal(warning.getAttribute('aria-label'), 'Ошибка сохранения. Открыть настройки');
+  assert.equal(warning.querySelector('.gs-save-indicator').getAttribute('aria-hidden'), 'true');
+  assert.equal(h.root.querySelector('.gs-save-alert'), null);
+  assert.equal(h.button('retryCloud'), undefined, 'No invisible or overlapping retry target remains outside Settings');
+  const announcement = h.root.querySelector('.gs-save-announcement');
+  assert.equal(announcement.getAttribute('role'), 'alert');
+  assert.match(announcement.textContent, /облако не подтверждено/);
+  assert.equal(announcement.querySelectorAll('button').length, 0);
+  assert.deepEqual(h.root.querySelectorAll('.gs-atelier-category').map(node => node.dataset.gsAction), categoryActions);
+  h.click(warning);
+  const modal = h.root.querySelector('.gs-settings-dialog');
+  assert.ok(modal.contains(h.doc.activeElement), 'Opening the warning focuses the Settings modal');
+  assert.ok(modal.contains(h.button('retryCloud')));
+  h.click(h.button('_local', action => action.kind === 'closeSettings'));
+  assert.equal(h.doc.activeElement.dataset.gsFocus, 'openSettings');
+  h.render({ tab: 'style', cloud: { status: 'durable' } });
+  assert.equal(h.root.querySelector('.gs-save-indicator'), null);
+  assert.equal(h.root.querySelector('.gs-save-announcement'), null);
+});
+
+test('save warning CSS cannot reserve a strip or intercept catalogue pointer events', async () => {
+  const css = await readFile(new URL('../styles/garage.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(css, /\.gs-save-alert/);
+  const announcement = css.match(/\.garage-shell \.gs-save-announcement \{([^}]+)\}/)[1];
+  assert.match(announcement, /position: absolute; width: 1px; height: 1px/);
+  assert.match(announcement, /clip-path: inset\(50%\)/);
+  assert.match(announcement, /pointer-events: none/);
+  const indicator = css.match(/\.garage-shell \.gs-save-indicator \{([^}]+)\}/)[1];
+  assert.match(indicator, /position: absolute/);
+  assert.match(indicator, /pointer-events: none/);
 });

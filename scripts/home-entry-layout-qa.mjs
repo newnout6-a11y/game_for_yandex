@@ -61,8 +61,8 @@ async function measure(frame) {
     return {
       viewport:[innerWidth,innerHeight],physicalScreen:[screen.width,screen.height],root:rect(root),
       hub:{...rect(hub),content:bounds(hub),scrollTop:hub.scrollTop,scrollHeight:hub.scrollHeight,clientHeight:hub.clientHeight,overflow:getComputedStyle(hub).overflowY},
-      header:{...rect(header),textBoxes:textBoxes(header)},footer:{...rect(footer),textBoxes:textBoxes(footer)},
-      headerControls:[...header.querySelectorAll('button')].map(control),footerControls:[...footer.querySelectorAll('button')].map(control),
+      header:{...rect(header),textBoxes:textBoxes(header)},footer:footer?{...rect(footer),textBoxes:textBoxes(footer)}:null,
+      headerControls:[...header.querySelectorAll('button')].map(control),footerControls:footer?[...footer.querySelectorAll('button')].map(control):[],
       brand:rect(document.querySelector('.gs-brand')),account:rect(document.querySelector('.gs-account')),
       hero:visible(hero)?rect(hero):null,title:{...rect(title),clip:getComputedStyle(title).clipPath},
       route:{...rect(route),value:route.value,label,textWidth,contentWidth:routeContent.right-routeContent.x,content:routeContent,font:routeStyle.font,paddingLeft:routeStyle.paddingLeft,paddingRight:routeStyle.paddingRight,hit:hit(route)},
@@ -79,7 +79,8 @@ function problems(info) {
   if(info.blocked)issues.push('Landscape incorrectly blocked');
   if(info.brand.right>info.account.x)issues.push('Brand and wallet overlap');
   if(info.pageOverflow>1)issues.push('Horizontal page overflow');
-  for(const section of [info.header,info.footer]) {
+  if(info.hub.bottom>(info.footer?.y??info.viewport[1])+epsilon)issues.push('HOME extends below footer or viewport edge');
+  for(const section of [info.header,info.footer].filter(Boolean)) {
     if(!inside(section,info.root))issues.push('Header/footer outside viewport');
     if(section.textBoxes.some(box=>!inside(box,section)))issues.push('Header/footer text is clipped');
   }

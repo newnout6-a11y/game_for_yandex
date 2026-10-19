@@ -5,6 +5,7 @@ import { GarageCameraMotion, frameCockpitCustomization, garageCameraLimits, gara
 import { setPlayerInteriorView } from './car.js';
 import { textureAnisotropy } from './render-settings.js';
 import { GarageScreenPlayer } from './garage-screen-player.js';
+import { GarageToyProp } from './garage-toy-prop.js';
 
 /**
  * Display an authored workshop and the selected real vehicle on the existing
@@ -25,18 +26,24 @@ export class GarageScene {
     // A local ceiling fixture cannot be shadowed by the roof above it. The old
     // infinite directional light clipped that roof across its finite ortho map,
     // projecting a hard triangular coverage boundary onto the room shell.
-    this.key = new T.SpotLight('#fff0d6', 100, 24, Math.PI*.42, .7, 2); this.key.position.set(-4, 5.7, -3);
+    this.key = new T.SpotLight('#fff0d6', 50, 16, 66*Math.PI/180, .3, 2);
+    this.key.position.set(0,4.5,-.8);this.key.target.position.set(0,0,-.8);
     this.key.castShadow = true; this.key.shadow.mapSize.set(1024, 1024);
     // The TV changes pixels, not occluders. Rebuild this static light map only
     // when authored geometry, visibility, parking or GPU context actually changes.
     this.key.shadow.autoUpdate=false;this.key.shadow.needsUpdate=true;
     // Keep the shadow projection tied to the spotlight cone, not a smaller
-    // manually clipped rectangle. The broad penumbra fades at that same edge.
-    this.key.shadow.camera.near=.1;this.key.shadow.camera.far=24;this.key.shadow.focus=1;
+    // manually clipped rectangle. The penumbra fades at that same edge.
+    // The emitter sits below every authored suspended lamp, not behind its casing.
+    // This 66-degree half-cone spends the same 1024 map on a 20.2m floor
+    // footprint (19.7mm/texel), rather than 62m at 8m depth.
+    this.key.shadow.camera.near=.1;this.key.shadow.camera.far=16;this.key.shadow.focus=1;
     this.key.shadow.normalBias = .025; this.key.shadow.bias = -.0002;
     this.scene.add(this.key, this.key.target);
     this.fill = new T.DirectionalLight('#a7d6df', 1.1); this.fill.position.set(5, 3, 4); this.scene.add(this.fill);
-    this.loader = new T.GLTFLoader(); this.cache = new Map(); this.generation = 0;
+    this.loader = new T.GLTFLoader();
+    this.toyProp=new GarageToyProp(this.loader,{onError:error=>this.onStatus({toyError:String(error.message||error)})});
+    this.cache = new Map(); this.generation = 0;
     this.tier = 0; this.ready = false; this.disposed = false; this.yaw = -.63; this.pitch = .24; this.zoom = 1;
     this.vehicle = null; this.vehicleKey = ''; this.environmentTarget = null; this.inspection='overview'; this.orbitOffset=0;
     this.loadingTier=null;this.failedTier=null;this.environmentDirty=false;this.parkedVehicles=[];this.parkedKey='';
@@ -44,6 +51,15 @@ export class GarageScene {
     this.onContextRestored=()=>{this.environmentDirty=true;this.key.shadow.needsUpdate=true;this.onStatus({contextRestored:true});};
     renderer.domElement?.addEventListener('webglcontextrestored',this.onContextRestored);
     this.target = new T.Vector3(0, .83, 0); this.lastWidth = 0; this.lastHeight = 0;
+  }
+
+  /** Install the authored decorative toy once and wake a settled room for its cached bake; missing decoration never blocks entry. */
+  async prepareToy(){
+    if(this.disposed)return false;
+    const toy=await this.toyProp.load();
+    if(this.disposed||!toy)return false;
+    if(toy.parent!==this.scene){this.scene.add(toy);this.cameraLimits=null;this.environmentDirty=true;this.key.shadow.needsUpdate=true;this.onStatus({toyReady:true});}
+    return true;
   }
 
   /** Load one authored tier transactionally; failure retains the previous usable room until an explicit retry. */
@@ -235,7 +251,7 @@ export class GarageScene {
       }
     }
     const minimumFov=aspect<1?49:38;
-    const limits=this.cameraLimits||(this.cameraLimits=garageCameraLimits(this.room,this.parkedVehicles));
+    const limits=this.cameraLimits||(this.cameraLimits=garageCameraLimits(this.room,[...this.parkedVehicles,this.toyProp.root].filter(Boolean)));
     let radius=Math.min((this.vehicleLength||4.7)*(aspect<1?1.95:1.75)*this.zoom,limits.orbitRadius);
     if(this.inspection==='wheels')radius=1.9;
     const vehicleBounds=new T.Box3().setFromObject(this.vehicle,true);
@@ -267,7 +283,7 @@ export class GarageScene {
   /** Release exclusively owned room GPU assets once; vehicle source buffers remain with the road asset cache. */
   dispose() {
     if (this.disposed) return; this.disposed = true; ++this.generation;
-    this.paintTransition?.dispose();for(const wipe of this.rimTransitions)wipe.dispose();this.screenDisplay.dispose();
+    this.paintTransition?.dispose();for(const wipe of this.rimTransitions)wipe.dispose();this.screenDisplay.dispose();this.toyProp.dispose();
     this.renderer.domElement?.removeEventListener('webglcontextrestored',this.onContextRestored);
     this.environmentTarget?.dispose(); this.key.shadow.map?.dispose();
     const geometries = new Set(), materials = new Set(), textures = new Set();

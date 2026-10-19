@@ -70,6 +70,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
   class GarageScene {
     constructor(options) { this.options=options;this.tier=0;this.ready=false; }
     setVehicle(id) { this.vehicleId=id; }
+    async prepareToy() { this.toyPrepared=true;return true; }
     async setTier(tier) {
       requests.push(tier);
       if (failUpgrade && tier>1) {this.failedTier=tier;

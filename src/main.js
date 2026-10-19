@@ -483,6 +483,7 @@ async function initialize(){
     fleetMiniatures=new FleetMiniatures({renderer:renderer.renderer,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),environment:renderer.scene.environment,onChange:({id,canvas,status})=>{if(!canvas?.isConnected||fleetTargets.find(target=>target.id===id)?.canvas!==canvas)return;canvas.parentElement.dataset.state=status;const label=canvas.parentElement.querySelector('.gs-miniature-status');if(label)label.textContent=status==='error'?'Нет превью':'3D';}});
     loading={progress:90,message:'Открываем бокс…'};refreshGarage();
     garageScene.setVehicle(previewId,profileStore.get().loadouts[previewId]?.cosmetics||{});
+    void garageScene.prepareToy();
     if(!await garageScene.setTier(profileStore.get().garage.level))throw new Error('Garage asset unavailable');
     assetsReady=true;void loadOwnGames(sdk).then(games=>{otherGames=games;if(!['playing','paused'].includes(screen))refreshGarage();});playButton.disabled=false;loading={progress:100,message:'Готово'};screen='hub';restorePendingResult();applyScreen();refreshGarage();signalReady();syncGameplay();
   }catch(error){console.error('Interactive startup failed:',error);assetsFailed=true;loading={...loading,error:'Не удалось загрузить игру. Проверь соединение и повтори.'};refreshGarage();}

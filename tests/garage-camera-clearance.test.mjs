@@ -5,12 +5,16 @@ import { GarageScene } from '../src/garage-scene.js';
 import { createOwnedVehicle } from '../src/owned-vehicles.js';
 import { installTrafficTemplates, TRAFFIC_KINDS } from '../src/traffic.js';
 import { garageCameraLimits, garageBoxCorners, garageNearPlaneCorners, constrainGarageCamera } from '../src/garage-camera-motion.js';
+import { GARAGE_TOY_POSITION, GARAGE_TOY_YAW } from '../src/garage-toy-prop.js';
 import { loadRoadsterGeometry } from './helpers/roadster-geometry.mjs';
 
 const assets = { car: (await loadRoadsterGeometry()).scene, traffic: {} };
 for (const id of TRAFFIC_KINDS) assets.traffic[id] = (await loadRoadsterGeometry(new URL(`../public/assets/traffic/${id}.glb`, import.meta.url))).scene;
 installTrafficTemplates(assets.traffic);
 const rooms = await Promise.all([1, 2, 3, 4].map(async tier => (await loadRoadsterGeometry(new URL(`../public/assets/garage/tier${tier}.glb`, import.meta.url))).scene));
+const toyTemplate=(await loadRoadsterGeometry(new URL('../public/assets/garage/toy-racecar.glb',import.meta.url))).scene;
+/** Place the exact authored prop into every existing full-orbit and inspection sweep. */
+function toyInstance(){const toy=toyTemplate.clone(true);toy.position.set(...GARAGE_TOY_POSITION);toy.rotation.y=GARAGE_TOY_YAW;toy.updateMatrixWorld(true);return toy;}
 const ids = ['rocket', 'hatch', 'sedan', 'suv', 'van'];
 const viewports = [
   [1440, 900, { x: 248, y: 198, width: 800, height: 560 }],
@@ -30,7 +34,7 @@ function makeCar(id) {
 
 function sceneFixture(tier = 1, id = 'rocket') {
   const scene = new GarageScene({ renderer: { toneMappingExposure: 1, render() {} }, makeVehicle: (kind, appearance) => createOwnedVehicle(assets, kind, appearance) });
-  scene.room = rooms[tier - 1]; scene.ready = true; scene.tier = tier;
+  scene.room = rooms[tier - 1]; scene.toyProp.root=toyInstance();scene.scene.add(scene.toyProp.root); scene.ready = true; scene.tier = tier;
   scene.setVehicle(id); scene.setParking([{ id: 'van' }, { id: 'suv' }]);
   return scene;
 }
@@ -68,7 +72,7 @@ test('all real models fit asymmetric desktop/phone regions through full 360-degr
     assert.ok(room.userData.garageCamera.obstacles.length > 0, `tier${tier + 1}: real equipment obstacles`);
     const parked = tier === 0 ? [] : [makeCar('van'), ...(tier > 1 ? [makeCar('suv')] : [])];
     parked.forEach((car, index) => { car.position.x = index ? 6.2 : -6.2; car.position.z = -.8; car.updateMatrixWorld(true); });
-    const limits = garageCameraLimits(room, parked);
+    const limits = garageCameraLimits(room, [...parked,toyInstance()]);
     for (const id of ids) {
       const car = makeCar(id), box = new T.Box3().setFromObject(car, true), points = garageBoxCorners(box);
       const pivot = new T.Vector3(0, Math.max(.75, Math.min(1.2, box.getSize(new T.Vector3()).y * .52)), 0);

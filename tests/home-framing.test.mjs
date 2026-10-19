@@ -92,3 +92,16 @@ test('restored narrow-desktop band fits all five real cars without changing thei
   assert.ok(scene.vehicle.position.equals(position));assert.ok(scene.vehicle.scale.equals(scale));
  }
 });
+
+
+test('footerless HOME keeps all five real cars within the reclaimed native iframe stage',()=>{
+ for(const id of ['rocket','hatch','sedan','suv','van'])for(const [width,height]of [[551,360],[560,315],[844,390]])for(const scale of [1,1.5]){
+  const input=layout(width,height,scale);delete input.footer;input.actions.y=height-58;
+  const region=homeVehicleFraming(input);assert.ok(region,`${id}/${width}: absent footer is intentional`);
+  const scene=showcase(id);scene.render(width,height,region);
+  for(const point of scene.cameraContext.points){const p=point.clone().project(scene.camera),x=(p.x+1)*width/2,y=(1-p.y)*height/2;
+   assert.ok(x>=region.x-.01&&x<=region.x+region.width+.01&&y>=region.y-.01&&y<=region.y+region.height+.01);
+   assert.ok(x>=input.actions.x+input.actions.width||y<=input.actions.y);
+  }
+ }
+});
