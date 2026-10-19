@@ -20,7 +20,7 @@ simulation or camera behavior changed.
 
 ## Verification
 
-- `npm test`: 711 passing tests, including five new header/title regressions.
+- `npm test`: 725 passing tests, including five header/title regressions and 14 pinned-baseline/parity tests.
 - `npm run check`: 52 source modules checked, zero errors.
 - `npm run build`: 111 build files.
 - `node scripts/garage-header-qa.mjs`: actual production garage rendering and
@@ -37,12 +37,24 @@ space beneath the game wordmark.
 The phone retains its existing centered wordmark and left back button; this
 update does not rearrange the responsive layout. No browser errors were reported.
 
-For a matched before/after run, set `HEADER_BASELINE_CSS` to the previously
-accepted `styles/garage.css`. The harness substitutes only that stylesheet in
-the first capture, then loads the current stylesheet without moving the camera.
+The default command always runs the matched before/after comparison. It loads
+`tests/fixtures/garage-header-baseline.css`, pinned by SHA-256 to the accepted
+pre-PR5 stylesheet at commit `28955fa9c838efe8537c88334ca23e09f7cf65aa`.
+Missing or modified baseline bytes stop the command before browser launch;
+`HEADER_BASELINE_CSS` may relocate only those exact bytes. It cannot disable
+comparison or accept the changed stylesheet as its own reference.
+
+This historical PR5 test intentionally isolates a CSS-only edit: the same DOM,
+modules, assets, scene and viewport are captured with the pinned stylesheet,
+then the current stylesheet. Both frames are mandatory. Header/control geometry
+and title typography must match; the only allowed title movement is the approved
+20/8 px lift. Negative tests verify that changes to control positions, title
+width or font cannot pass. These historical title positions must not overwrite
+later intentionally changed layouts when descendant branches are synchronized.
+
 It uses an isolated local tier-four inspection save and a paused browser clock;
-it does not modify cloud progress or production code. Native PNGs and computed
-element/buffer dimensions are written to `output/garage-header/`.
+it does not modify cloud progress or production code. Native PNGs, the baseline
+commit/hash, and computed bounds are written to `output/garage-header/`.
 
 The default browser is the installed Chrome channel. Set `CHROME_BIN` to another
 installed Chromium executable when needed. `SOFTWARE_WEBGL=1` enables the
