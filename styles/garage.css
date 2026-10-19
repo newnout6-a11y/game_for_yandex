@@ -1163,11 +1163,32 @@
   .garage-shell[data-screen='hub'] .gs-hero-vehicle > strong { font-size: 16px; line-height: 1.2; }
   .garage-shell[data-screen='hub'] .gs-hero-vehicle > .gs-kicker,
   .garage-shell[data-screen='hub'] .gs-hero-vehicle > .gs-small-note { display: none; }
-  .garage-shell[data-screen='hub'] .gs-hub-dock { grid-column: 1; grid-row: 1; align-self: start; justify-self: start; display: block; width: max-content; max-width: min(49%, 260px); margin: 0; border: 0; background: none; backdrop-filter: none; }
+  .garage-shell[data-screen='hub'] .gs-hub-dock { grid-column: 1; grid-row: 1; align-self: start; justify-self: start; display: block; width: max-content; max-width: 100%; margin: 0; border: 0; background: none; backdrop-filter: none; }
   /* Contracts remain in the garage. The route is still directly selectable. */
   .garage-shell[data-screen='hub'] .gs-hub-dock > :not(.gs-route-cell) { display: none; }
   .garage-shell[data-screen='hub'] .gs-route-cell { display: block; padding: 0; border: 0; }
   .garage-shell[data-screen='hub'] .gs-route-cell > .gs-kicker { display: none; }
   .garage-shell[data-screen='hub'] .gs-route-cell .gs-setting { width: 100%; margin: 0; }
   .garage-shell[data-screen='hub'] .gs-route-cell select { min-width: 44px; min-height: 44px; width: auto; max-width: 100%; padding: 8px 28px 8px 10px; font-size: 12px; background-color: #202232d9; border: 1px solid var(--gs-line); }
+}
+
+/* Below 400px the native route's intrinsic text width takes priority over the
+   optional car caption. Decorative action icons yield before readable labels. */
+@media (orientation: landscape) and (max-width: 400px) {
+  .garage-shell[data-screen='hub'] .gs-header { padding-inline: 8px; gap: 6px; }
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle { display: none; }
+  .garage-shell[data-screen='hub'] .gs-hub { padding-inline: 8px; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions { gap: 4px; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions .gs-button { padding-inline: 5px; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions svg { display: none; }
+  .garage-shell[data-screen='hub'] .gs-footer { padding-inline: 8px; gap: 6px; }
+  .garage-shell[data-screen='hub'] .gs-save-status { line-height: 1.2; }
+  .garage-shell[data-screen='hub'] .gs-footer-connect { flex: 0 1 62%; min-width: 0; padding-block: 0; gap: 6px; line-height: 1.2; }
+}
+/* A 180px-tall landscape iframe has room for two real 44px control rows only
+   when decorative vertical space yields. Header and guest login stay readable. */
+@media (orientation: landscape) and (max-height: 220px) {
+  .garage-shell[data-screen='hub'] .gs-header { flex-basis: 46px; padding-block: 0; border-bottom: 0; }
+  .garage-shell[data-screen='hub'] .gs-hub { padding-block: 0; gap: 2px; }
+  .garage-shell[data-screen='hub'] .gs-footer { border-top: 0; }
 }

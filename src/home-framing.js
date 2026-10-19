@@ -9,7 +9,7 @@ export function homeVehicleFraming({width,height,header,route,label,actions,foot
   if (![width,height].every(value=>Number.isFinite(value)&&value>0)) return null;
   if (!(width>height && (height<=620 || width<=900))) return null;
   if (![header,route,label,actions,footer].every(rect=>rect && [rect.x,rect.y,rect.width,rect.height].every(Number.isFinite))) return null;
-  const edge=14,gap=8;
+  const edge=width<=400?8:14,gap=width<=400&&height<=220?2:8;
   const x=Math.max(edge,route.x+route.width+gap);
   const y=Math.max(header.y+header.height+gap,label.y+label.height+gap);
   const right=width-edge,bottom=Math.min(height-edge,actions.y-gap);
@@ -23,5 +23,11 @@ export function homeVehicleFraming({width,height,header,route,label,actions,foot
   const side={x,y,width:right-x,height:bottom-y};
   const below={x:edge,y:belowY,width:width-edge*2,height:bottom-belowY};
   const region=column.width>=width*.4 && column.height>=60?column:side.width>=width*.4 && side.height>=60?side:below;
-  return region.width>=60 && region.height>=60?region:null;
+  if(region.width>=60 && region.height>=60)return region;
+  // A side-panel-constrained 320px iframe still needs full route text and real
+  // 44px controls. A smaller clear rectangle is safer than falling back to an
+  // unbounded hero camera behind them. Larger layouts retain the fit above.
+  if(width<=400)return [column,side,below].filter(r=>r.width>40&&r.height>40)
+    .sort((a,b)=>Math.min(b.width,b.height*2)-Math.min(a.width,a.height*2))[0]||null;
+  return null;
 }

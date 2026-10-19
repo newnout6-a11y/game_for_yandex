@@ -42,7 +42,7 @@ test('compact controls fit their content instead of stretching across the car', 
   assert.match(button, /font-size: 12px; line-height: 1\.2; overflow-wrap: normal;/);
   assert.doesNotMatch(button, /(?:^|;)\s*height:|white-space: nowrap|text-overflow|overflow:\s*hidden|transform:|zoom:/);
   assert.match(compact, /\.gs-hub-actions svg \{ width: 16px; height: 16px; \}/);
-  assert.match(dock, /width: max-content; max-width: min\(49%, 260px\);/);
+  assert.match(dock, /width: max-content; max-width: 100%;/);
   assert.match(route, /min-width: 44px; min-height: 44px; width: auto; max-width: 100%;/);
   assert.doesNotMatch(compact, /text-size-adjust:\s*none|transform:\s*scale|zoom:/);
 });
@@ -62,4 +62,23 @@ test('HOME markup retains the real start, garage and route actions without new p
   assert.match(home, /\{ type: 'navigate', screen: 'garage', tab: 'fleet' \}/);
   assert.match(home, /this\.settingSelect\('route', 'Маршрут'/);
   assert.doesNotMatch(home, /localStorage|sessionStorage|YaGames|fetch\(/);
+});
+
+
+test('narrow HOME lets full route text use available width before optional decoration', () => {
+  const dock = compact.match(/\.gs-hub-dock \{([^}]+)\}/s)[1];
+  assert.doesNotMatch(dock, /49%|260px/);
+  const narrow = compact.slice(compact.indexOf('@media (orientation: landscape) and (max-width: 400px)'));
+  assert.match(narrow, /\.gs-hero-vehicle \{ display: none; \}/);
+  assert.match(narrow, /\.gs-hub-actions svg \{ display: none; \}/);
+  assert.match(narrow, /\.gs-hub-actions \.gs-button \{ padding-inline: 5px; \}/);
+  assert.doesNotMatch(narrow, /font-size:|text-overflow:|transform:|zoom:/);
+});
+
+test('180px HOME budgets two real control rows without shrinking text or targets', () => {
+  const short = compact.slice(compact.indexOf('@media (orientation: landscape) and (max-height: 220px)'));
+  assert.match(short, /\.gs-header \{ flex-basis: 46px; padding-block: 0; border-bottom: 0; \}/);
+  assert.match(short, /\.gs-hub \{ padding-block: 0; gap: 2px; \}/);
+  assert.match(short, /\.gs-footer \{ border-top: 0; \}/);
+  assert.doesNotMatch(short, /font-size:|min-height:|display: none|overflow: hidden/);
 });
