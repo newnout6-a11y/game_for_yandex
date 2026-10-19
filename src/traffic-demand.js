@@ -198,7 +198,10 @@ export function assessTrafficWaveCorridor(state, { lane, z, speed: corridorSpeed
     || !Number.isFinite(corridorHalf) || corridorHalf < 0) return result('invalid-corridor');
   const bounds = playerBoundsFor(state), playerHalf = bounds.length / 2;
   const roadworks = roadworksBounds(state);
-  if (roadworks?.lane === lane && intersects(z - corridorHalf - playerHalf, z + corridorHalf + playerHalf, roadworks.start, roadworks.end)) return result('roadworks');
+  // Match event installation's full forward sweep: a moving reservation before
+  // static works eventually reaches them even when the player stays stopped.
+  if (roadworks?.lane === lane && z - corridorHalf - playerHalf <= roadworks.end
+    && (corridorSpeed > 0 || z + corridorHalf + playerHalf >= roadworks.start)) return result('roadworks');
   for (const car of state.traffic || []) {
     if (car && Number.isFinite(car.z) && occupiedTrafficLanes(car).includes(lane)
       && Math.abs(car.z - z) <= corridorHalf + playerHalf + halfLength(car)) return result('occupied-corridor');

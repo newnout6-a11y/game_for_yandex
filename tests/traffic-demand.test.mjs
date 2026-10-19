@@ -128,6 +128,20 @@ test('roadworks checks closure and stopping approach, but not a clear section be
   assert.equal(assessTrafficSpawn(s, car(0, 60)).allowed, true);
 });
 
+test('a new moving passage cannot approach existing static roadworks later', () => {
+  const s = state({ x: 0, lane: 0, speed: 0, distance: 0,
+    roadEvent: { type: 'roadworks', lane: 0, remaining: 150, end: 215 } });
+  for (const speed of [.000001, 14, 20]) {
+    assert.equal(assessTrafficWaveCorridor(s, { lane: 0, z: 100, halfLength: 20, speed }).reason, 'roadworks');
+  }
+  assert.equal(assessTrafficWaveCorridor(s, { lane: 0, z: 100, halfLength: 20, speed: 0 }).allowed, true);
+  assert.equal(assessTrafficWaveCorridor(s, { lane: 0, z: 100, halfLength: 20 }).allowed, true);
+  // The connecting path is already past the works, so this tests the forward
+  // sweep itself rather than permission to drive through a closed transition.
+  const passed = { ...s, safeCorridor: { lane: 0, z: 260, halfLength: 16, speed: 14 } };
+  assert.equal(assessTrafficWaveCorridor(passed, { lane: 0, z: 300, halfLength: 20, speed: 14 }).allowed, true);
+});
+
 test('static obstacles need stopping distance, ignore hit objects and use actual lateral widths', () => {
   const barrier = { kind: 'barrier', x: 0, z: 250 };
   assert.equal(assessTrafficSpawn(state({ obstacles: [barrier] }), car()).reason, 'obstacle');

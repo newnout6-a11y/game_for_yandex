@@ -52,6 +52,47 @@ test('roadworks cannot close the finite corridor already promised to the player'
  assert.equal(canPlaceRoadworks(g.state,0),false);assert.equal(g.startEvent('roadworks'),true);assert.equal(g.state.roadEvent.lane,2);
  assert.equal(canPlaceRoadworks({...g.state,safeCorridor:{lane:0,z:300,halfLength:20,speed:20}},0),true,'reservation is finite, not a permanent lane ban');
 });
+test('roadworks preserve an approaching reserved passage throughout later simulation',()=>{
+ for(const dt of [1/120,1/60,1/30,.1]){
+  const g=fixture();g.state.safeCorridor={lane:0,z:100,halfLength:20,speed:14};
+  const initial={...g.state.safeCorridor};
+  assert.equal(canPlaceRoadworks(g.state,0),false,'the current gap is not the future sweep');
+  assert.equal(g.startEvent('roadworks'),true);assert.equal(g.state.roadEvent.lane,2);
+  assert.deepEqual(g.state.safeCorridor,initial,'do not move or revoke the existing reservation');
+  let crossedFormerWorkZone=false;
+  for(let i=0;i<Math.ceil(40/dt);i++){
+   g.update(dt);
+   const c=g.state.safeCorridor,half=g.state.playerBounds.length/2;
+   if(c.z-c.halfLength-half>213.6)crossedFormerWorkZone=true;
+   for(const obstacle of g.state.obstacles){
+    const obstacleLane=Math.round(obstacle.x),depth=obstacle.kind==='barrier'?2:.6;
+    assert.ok(obstacleLane!==c.lane||Math.abs(obstacle.z-c.z)>c.halfLength+half+depth,'no later obstacle enters the promised passage');
+   }
+  }
+  assert.ok(crossedFormerWorkZone,'test advances past the entire original closure');
+  assert.ok(g.state.roadEvent,'a waiting player keeps works active even after the display deadline');
+  assert.equal(g.state.phase,'playing');assert.equal(g.state.trafficDiagnostics.interventions,0);
+ }
+});
+test('temporal reservation is directional and finite, with exact padded boundaries',()=>{
+ const g=fixture(),half=g.state.playerBounds.length/2;
+ const check=(z,speed)=>canPlaceRoadworks({...g.state,safeCorridor:{lane:0,z,halfLength:20,speed}},0);
+ assert.equal(check(100,14),false);
+ assert.equal(check(-20,14),false,'active rear reservation may move forward again while the player waits');
+ assert.equal(check(100,0),true,'a stationary disjoint reservation never approaches');
+ assert.equal(check(100,undefined),true,'legacy omitted speed is stationary');
+ assert.equal(check(149.4-20-half,0),false,'inclusive front contact');
+ assert.equal(check(213.6+20+half,14),false,'inclusive rear contact');
+ assert.equal(check(213.6+20+half+.001,14),true,'a reservation beyond the works moves away');
+ assert.equal(canPlaceRoadworks({...g.state,safeCorridor:{lane:1,z:100,halfLength:20,speed:14}},0),true,'other lanes remain available');
+});
+test('approaching reservation and blocked opposite edge defer installation atomically',()=>{
+ const g=fixture([{id:1,kind:'semi',lane:2,z:130,speed:20,cruiseSpeed:20}]);
+ g.state.safeCorridor={lane:0,z:100,halfLength:20,speed:14};
+ const before=structuredClone(g.state),serial=g.serial;let samples=0;g.random=()=>{samples++;return 0;};
+ assert.equal(g.startEvent('roadworks'),false);
+ assert.deepEqual(g.state,before);assert.equal(g.serial,serial);assert.equal(samples,0);
+});
 test('naturally scheduled first roadworks preserves the currently promised corridor',()=>{
  const g=new Game({random:seededRandom(1)});g.start();
  for(let i=0;i<2400&&!g.state.roadEvent&&g.state.phase==='playing';i++)g.update(1/120,{throttle:1});

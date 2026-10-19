@@ -7,6 +7,8 @@ import { trafficDriverProfile, TRAFFIC_DRIVER_LIMITS } from './traffic-policy.js
  * Test a new static roadwork layout before it exists. Existing drivers must be
  * able to stop for every approaching cone/barrier after their reaction reserve;
  * a roadwork cannot appear inside a car or depend on an immediate lane change.
+ * Moving reserved passages must also stay clear for their entire forward sweep:
+ * roadworks have no time-based expiry while the player remains behind them.
  * Cars wholly beyond a new obstacle are unaffected. Distances are metres, speed
  * m/s, reaction seconds and maximum braking m/s². This does not mutate state.
  * @param {Object} state - Current traffic with fixed-width lane reservations.
@@ -16,9 +18,13 @@ import { trafficDriverProfile, TRAFFIC_DRIVER_LIMITS } from './traffic-policy.js
 export function canPlaceRoadworks(state,lane){
   // A road event cannot revoke the finite passage already promised by demand.
   // Include the player's half-length at either end, not just the wave centre.
+  // Player travel cancels from the relative corridor/obstacle displacement.
+  // A moving corridor behind the closure will reach it if the player waits;
+  // its current non-overlap and the event's display deadline are not sufficient.
   const corridor=state.safeCorridor,half=playerBoundsFor(state).length/2;
   if(corridor?.lane===lane&&Number.isFinite(corridor.z)&&Number.isFinite(corridor.halfLength)
-    &&corridor.z+corridor.halfLength+half>=149.4&&corridor.z-corridor.halfLength-half<=213.6)return false;
+    &&(corridor.speed>0||corridor.z+corridor.halfLength+half>=149.4)
+    &&corridor.z-corridor.halfLength-half<=213.6)return false;
   const hazards=[...Array.from({length:8},(_,i)=>({z:150+i*9,depth:.6})),{z:174,depth:2},{z:204,depth:2}];
   for(const car of state.traffic||[]){
     if(!occupiedTrafficLanes(car).includes(lane))continue;
