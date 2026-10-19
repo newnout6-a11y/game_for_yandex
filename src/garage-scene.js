@@ -289,7 +289,7 @@ export class GarageScene {
       return this.drawScene();
     }
     this.camera.userData.garageStableOrbit=null;
-    let pitch=this.pitch,yaw=this.yaw,lookTarget=target,fitFov=minimumFov;
+    let pitch=this.pitch,yaw=this.yaw,lookTarget=target;
     let points=garageBoxCorners(focus===this.vehicle?vehicleBounds:new T.Box3().setFromObject(focus,true)),recoveryProjection=null;
     if(this.orbitRecovery){
       const destination=new T.PerspectiveCamera(minimumFov,aspect,.08,80);
@@ -302,12 +302,12 @@ export class GarageScene {
       const recovery=this.orbitRecovery,p=recovery.progress,t=p*p*(3-2*p);
       radius=T.MathUtils.lerp(recovery.radius,radius,t);pitch+=recovery.pitchOffset*(1-t);yaw+=recovery.yawOffset*(1-t);
       if(recovery.target)lookTarget=recovery.target.clone().lerp(target,t);
+      // Preserve focus metadata for a later interrupted preset. This does not
+      // fit the active lens: recoveryProjection above exclusively owns its optics.
       if(recovery.points?.length===points.length)points=recovery.points.map((point,index)=>point.clone().lerp(points[index],t));
-      fitFov=T.MathUtils.lerp(recovery.fov,minimumFov,t);
-      this.camera.near=T.MathUtils.lerp(recovery.near,this.camera.near,t);this.camera.updateProjectionMatrix();
     }
     this.camera.position.copy(target).add(new T.Vector3(Math.sin(yaw)*radius,Math.sin(pitch)*radius,-Math.cos(yaw)*radius));
-    this.cameraContext={limits,pivot:this.target.clone(),target:lookTarget,vehicleBounds,points,width,height,region,minimumFov:fitFov,fixedProjection:recoveryProjection};
+    this.cameraContext={limits,pivot:this.target.clone(),target:lookTarget,vehicleBounds,points,width,height,region,minimumFov,fixedProjection:recoveryProjection};
     constrainGarageCamera(this.camera,this.cameraContext);
 
 

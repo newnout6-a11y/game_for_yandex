@@ -20,6 +20,11 @@
       "all_runtime_triangles_match_current_source_polygons_and_uvs": true,
       "all_source_polygon_multiplicities_verified": true,
       "runtime_normal_differences_measured_against_checkpoint": true,
+      "runtime_shading_normal_constraints_enforced": true,
+      "normal_component_tolerance": 0.0017453290304702991,
+      "normal_angle_tolerance_degrees": 0.1,
+      "raw_normal_unit_length_tolerance": 4.76837158203125e-07,
+      "unrelated_runtime_normals_exact": true,
       "all_unrelated_runtime_world_positions_preserved": true,
       "world_position_tolerance_m": 3e-05,
       "translation_rebased_material_nodes": [],
@@ -73,7 +78,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.002",
@@ -84,7 +92,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.111",
@@ -95,7 +106,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.0801171645979935e-07
         },
         {
           "mesh": "Cube.041",
@@ -106,7 +120,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Arrival television independently editable screen",
@@ -117,7 +134,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.011",
@@ -128,7 +148,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.375",
@@ -139,7 +162,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cone.040",
@@ -150,7 +176,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 6.717942602207927e-08
         },
         {
           "mesh": "Cube.001",
@@ -161,7 +190,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Original mural single solid-wall surface",
@@ -172,7 +204,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.368",
@@ -183,7 +218,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 8.476305879412394e-08
         },
         {
           "mesh": "Cube.245",
@@ -194,7 +232,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.309",
@@ -205,7 +246,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.2678779892638659e-07
         },
         {
           "mesh": "Cube.289",
@@ -216,7 +260,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 5.921254819796218e-08
         },
         {
           "mesh": "Cube.008",
@@ -227,7 +274,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cone.243",
@@ -238,7 +288,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.282",
@@ -249,7 +302,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.280",
@@ -260,7 +316,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.2457506470830992e-07
         }
       ],
       "runtime_accessors": [
@@ -1511,6 +1570,11 @@
       "all_runtime_triangles_match_current_source_polygons_and_uvs": true,
       "all_source_polygon_multiplicities_verified": true,
       "runtime_normal_differences_measured_against_checkpoint": true,
+      "runtime_shading_normal_constraints_enforced": true,
+      "normal_component_tolerance": 0.0017453290304702991,
+      "normal_angle_tolerance_degrees": 0.1,
+      "raw_normal_unit_length_tolerance": 4.76837158203125e-07,
+      "unrelated_runtime_normals_exact": true,
       "all_unrelated_runtime_world_positions_preserved": true,
       "world_position_tolerance_m": 3e-05,
       "translation_rebased_material_nodes": [],
@@ -2006,7 +2070,10 @@
           "source_position_max_error_m": 2.1324806311895372e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0.00020912656845606392,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0.012780363787193811,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.002",
@@ -2016,7 +2083,10 @@
           "source_position_max_error_m": 1.9157121187163284e-06,
           "source_uv_max_error": 1.1920928955078125e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.318",
@@ -2026,7 +2096,10 @@
           "source_position_max_error_m": 1.3486991292666062e-06,
           "source_uv_max_error": 1.1920928955078125e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 5.921254819796218e-08
         },
         {
           "mesh": "Cube.041",
@@ -2036,7 +2109,10 @@
           "source_position_max_error_m": 6.743495646333031e-07,
           "source_uv_max_error": 2.3399479687213898e-08,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Arrival television independently editable screen",
@@ -2046,7 +2122,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.011",
@@ -2056,7 +2135,10 @@
           "source_position_max_error_m": 2.1324806311895372e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0.0002091226456621409,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0.012781940600694227,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.319",
@@ -2066,7 +2148,10 @@
           "source_position_max_error_m": 4.915124804938387e-07,
           "source_uv_max_error": 1.1920928955078125e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.298",
@@ -2076,7 +2161,10 @@
           "source_position_max_error_m": 1.0662403155947686e-06,
           "source_uv_max_error": 5.960464477539063e-08,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cone.056",
@@ -2086,7 +2174,10 @@
           "source_position_max_error_m": 5.6420135479129385e-06,
           "source_uv_max_error": 5.21540641784668e-08,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 6.717942602207927e-08
         },
         {
           "mesh": "Cube.001",
@@ -2096,7 +2187,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 5.960464477539063e-08,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Original mural single solid-wall surface",
@@ -2106,7 +2200,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.170",
@@ -2116,7 +2213,10 @@
           "source_position_max_error_m": 1.3486991292666062e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.280",
@@ -2126,7 +2226,10 @@
           "source_position_max_error_m": 1.9660499219753547e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 9.405020229280581e-08
         },
         {
           "mesh": "Cube.130",
@@ -2136,7 +2239,10 @@
           "source_position_max_error_m": 1.9660499219753547e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.200",
@@ -2146,7 +2252,10 @@
           "source_position_max_error_m": 1.193582079395128e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0.0002159553897342903,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0.014016614594233529,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.2137830585068343e-07
         },
         {
           "mesh": "Cube.180",
@@ -2156,7 +2265,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 5.921254819796218e-08
         },
         {
           "mesh": "Cube.008",
@@ -2166,7 +2278,10 @@
           "source_position_max_error_m": 1.9073486328125e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.343",
@@ -2176,7 +2291,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 1.1920928955078125e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cone.388",
@@ -2186,7 +2304,10 @@
           "source_position_max_error_m": 4.06012213716167e-06,
           "source_uv_max_error": 2.9802322387695312e-08,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 6.717942602207927e-08
         },
         {
           "mesh": "Cube.179",
@@ -2196,7 +2317,10 @@
           "source_position_max_error_m": 1.3486991292666062e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0.00012075122559895846,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0.007488794854649926,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.168",
@@ -2206,7 +2330,10 @@
           "source_position_max_error_m": 1.3486991292666062e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1586495118898199e-07
         }
       ],
       "runtime_accessors": [
@@ -3651,6 +3778,11 @@
       "all_runtime_triangles_match_current_source_polygons_and_uvs": true,
       "all_source_polygon_multiplicities_verified": true,
       "runtime_normal_differences_measured_against_checkpoint": true,
+      "runtime_shading_normal_constraints_enforced": true,
+      "normal_component_tolerance": 0.0017453290304702991,
+      "normal_angle_tolerance_degrees": 0.1,
+      "raw_normal_unit_length_tolerance": 4.76837158203125e-07,
+      "unrelated_runtime_normals_exact": true,
       "all_unrelated_runtime_world_positions_preserved": true,
       "world_position_tolerance_m": 3e-05,
       "translation_rebased_material_nodes": [],
@@ -3704,7 +3836,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.444",
@@ -3715,7 +3850,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.697",
@@ -3726,7 +3864,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 9.338108908352183e-08
         },
         {
           "mesh": "Cube.483",
@@ -3737,7 +3878,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.0977140907364458e-07
         },
         {
           "mesh": "Arrival television independently editable screen",
@@ -3748,7 +3892,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.453",
@@ -3759,7 +3906,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.698",
@@ -3770,7 +3920,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.724",
@@ -3781,7 +3934,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.443",
@@ -3792,7 +3948,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Original mural single solid-wall surface",
@@ -3803,7 +3962,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.623",
@@ -3814,7 +3976,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cone.210",
@@ -3825,7 +3990,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 6.968025556552959e-08
         },
         {
           "mesh": "Cube.034",
@@ -3836,7 +4004,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 5.921254819796218e-08
         },
         {
           "mesh": "Cube.751",
@@ -3847,7 +4018,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 9.338108908352183e-08
         },
         {
           "mesh": "Cube.571",
@@ -3858,7 +4032,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.450",
@@ -3869,7 +4046,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.722",
@@ -3880,7 +4060,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Engineering wall title",
@@ -3891,7 +4074,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.744",
@@ -3902,7 +4088,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 5.921254819796218e-08
         },
         {
           "mesh": "Cube.625",
@@ -3913,7 +4102,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1692767842852447e-07
         }
       ],
       "runtime_accessors": [
@@ -5300,6 +5492,11 @@
       "all_runtime_triangles_match_current_source_polygons_and_uvs": true,
       "all_source_polygon_multiplicities_verified": true,
       "runtime_normal_differences_measured_against_checkpoint": true,
+      "runtime_shading_normal_constraints_enforced": true,
+      "normal_component_tolerance": 0.0017453290304702991,
+      "normal_angle_tolerance_degrees": 0.1,
+      "raw_normal_unit_length_tolerance": 4.76837158203125e-07,
+      "unrelated_runtime_normals_exact": true,
       "all_unrelated_runtime_world_positions_preserved": true,
       "world_position_tolerance_m": 3e-05,
       "translation_rebased_material_nodes": [
@@ -7804,7 +8001,10 @@
           "source_position_max_error_m": 2.1324806311895372e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0.0007047456049700807,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0.04208969843664691,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.002",
@@ -7814,7 +8014,10 @@
           "source_position_max_error_m": 1.9157121187163284e-06,
           "source_uv_max_error": 1.1920928955078125e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.345",
@@ -7824,7 +8027,10 @@
           "source_position_max_error_m": 9.5367431640625e-07,
           "source_uv_max_error": 1.1920928955078125e-07,
           "baseline_normal_max_component_error": 0.0012864390166396622,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0.07977549407210906,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.041",
@@ -7834,7 +8040,10 @@
           "source_position_max_error_m": 6.743495646333031e-07,
           "source_uv_max_error": 2.3399479687213898e-08,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Arrival television independently editable screen",
@@ -7844,7 +8053,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.011",
@@ -7854,7 +8066,10 @@
           "source_position_max_error_m": 2.1324806311895372e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0.0003011785483262863,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0.018118130637361018,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.190",
@@ -7864,7 +8079,10 @@
           "source_position_max_error_m": 1.9660499219753547e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.249",
@@ -7874,7 +8092,10 @@
           "source_position_max_error_m": 1.0662403155947686e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.0380478476790245e-07
         },
         {
           "mesh": "Cube.184",
@@ -7884,7 +8105,10 @@
           "source_position_max_error_m": 1.0662403155947686e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 2.6576282063928147e-08
         },
         {
           "mesh": "Cube.001",
@@ -7894,7 +8118,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 5.960464477539063e-08,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Original mural single solid-wall surface",
@@ -7904,7 +8131,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 0,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.183",
@@ -7914,7 +8144,10 @@
           "source_position_max_error_m": 2.1851424207852688e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0.00028649186654106096,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0.01790895345662691,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cone.110",
@@ -7924,7 +8157,10 @@
           "source_position_max_error_m": 9.5367431640625e-07,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 6.968025556552959e-08
         },
         {
           "mesh": "Cube.130",
@@ -7934,7 +8170,10 @@
           "source_position_max_error_m": 1.9073486328125e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 9.338108908352183e-08
         },
         {
           "mesh": "Cube.253",
@@ -7944,7 +8183,10 @@
           "source_position_max_error_m": 1.066656750481343e-06,
           "source_uv_max_error": 5.960464477539063e-08,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         },
         {
           "mesh": "Cube.008",
@@ -7954,7 +8196,10 @@
           "source_position_max_error_m": 1.9073486328125e-06,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.370",
@@ -7964,7 +8209,10 @@
           "source_position_max_error_m": 0,
           "source_uv_max_error": 1.1920928955078125e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 0.0
         },
         {
           "mesh": "Cube.431",
@@ -7974,7 +8222,10 @@
           "source_position_max_error_m": 9.610960205463925e-07,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.0693049778964792e-07
         },
         {
           "mesh": "Cube.412",
@@ -7984,7 +8235,10 @@
           "source_position_max_error_m": 4.76837158203125e-07,
           "source_uv_max_error": 2.9802322387695312e-08,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 5.921254819796218e-08
         },
         {
           "mesh": "Cube.180",
@@ -7994,7 +8248,10 @@
           "source_position_max_error_m": 9.5413986400672e-07,
           "source_uv_max_error": 2.384185791015625e-07,
           "baseline_normal_max_component_error": 0,
-          "unrelated_normal_max_component_error": 0
+          "unrelated_normal_max_component_error": 0,
+          "baseline_normal_max_angle_degrees": 0,
+          "unrelated_normal_max_angle_degrees": 0,
+          "raw_normal_max_unit_length_error": 1.1443151204382218e-07
         }
       ],
       "runtime_accessors": [

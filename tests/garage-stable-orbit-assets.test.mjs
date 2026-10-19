@@ -29,6 +29,11 @@ for (const tier of [1, 2, 3, 4]) test(`tier ${tier}: exact bounded source/runtim
   assert.equal(row.glb_bytes, glb.length);
   assert.equal(row.source_paths_portable_and_images_packed, true);
   assert.equal(row.all_source_polygon_multiplicities_verified, true);
+  assert.equal(row.runtime_shading_normal_constraints_enforced, true);
+  assert.equal(row.unrelated_runtime_normals_exact, true);
+  assert.equal(row.normal_angle_tolerance_degrees, .1);
+  assert.ok(row.normal_component_tolerance < .00175, 'Do not loosen the accepted rounding ceiling');
+  assert.equal(row.raw_normal_unit_length_tolerance, 4 * 2 ** -23);
   assert.doesNotMatch(source.toString('latin1'), /\/workspace\/(?:scratch|shared)\/|\/home\/agent|\/tmp\//);
   const intended = (manifest.tiers[String(tier)] || []).flatMap(assembly => assembly.objects);
   assert.deepEqual(row.transformed_objects.map(part => part.name).sort(), [...intended].sort());
@@ -66,8 +71,11 @@ for (const tier of [1, 2, 3, 4]) test(`tier ${tier}: exact bounded source/runtim
     assert.equal(mesh.source_polygon_containment_verified, true);
     assert.ok(mesh.source_position_max_error_m <= row.world_position_tolerance_m);
     assert.ok(mesh.source_uv_max_error <= 2e-5);
-    assert.ok(mesh.baseline_normal_max_component_error <= .00175, 'Subdegree export-normal rounding only');
+    assert.ok(mesh.baseline_normal_max_component_error <= row.normal_component_tolerance, 'Bounded export-normal rounding only');
+    assert.ok(mesh.baseline_normal_max_angle_degrees <= row.normal_angle_tolerance_degrees, 'Enforce actual angle, not only per-component error');
+    assert.ok(mesh.raw_normal_max_unit_length_error <= row.raw_normal_unit_length_tolerance, 'Validate before normalization');
     assert.equal(mesh.unrelated_normal_max_component_error, 0, 'Every unrelated exported shading normal remains exact');
+    assert.equal(mesh.unrelated_normal_max_angle_degrees, 0);
   }
   for (const image of row.runtime_images) {
     const descriptor = doc.images.find(item => item.name === image.name), view = doc.bufferViews[descriptor.bufferView];

@@ -16,6 +16,9 @@ from mathutils import Vector, kdtree
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from sanitize_blend_sources import fingerprint, verify_paths
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from normal_validation import (assert_normal_preserved, validate_exported_normals,
+    NORMAL_COMPONENT_TOLERANCE, NORMAL_ANGLE_TOLERANCE_DEGREES, NORMAL_UNIT_LENGTH_TOLERANCE)
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--baseline-dir', type=Path, required=True)
@@ -178,9 +181,11 @@ for tier in [1,2,3,4]:
         for mesh in new_doc['meshes']:
             for primitive_index,primitive in enumerate(mesh['primitives']):
                 count=len(new_accessor(primitive['indices']))//3
+                length_error=validate_exported_normals(new_accessor(primitive['attributes']['NORMAL']), (tier,mesh['name']))
                 triangle_records.append({'mesh':mesh['name'],'triangles':count,'changed_triangle_corners':0,
                     'source_polygon_containment_verified':True,'proof_method':'Exact source and GLB bytes equal the audited checkpoint',
-                    'source_position_max_error_m':0,'source_uv_max_error':0,'baseline_normal_max_component_error':0,'unrelated_normal_max_component_error':0})
+                    'source_position_max_error_m':0,'source_uv_max_error':0,'baseline_normal_max_component_error':0,'unrelated_normal_max_component_error':0,
+                    'baseline_normal_max_angle_degrees':0,'unrelated_normal_max_angle_degrees':0,'raw_normal_max_unit_length_error':length_error})
                 for semantic,index in {**primitive['attributes'],'indices':primitive['indices']}.items():
                     data=new_accessor(index)
                     accessor_records.append({'mesh':mesh['name'],'primitive':primitive_index,'semantic':semantic,'accessor':index,
@@ -216,13 +221,17 @@ for tier in [1,2,3,4]:
                 assert len(index)==len(old_index), 'Drawn triangle count changed'
                 local=new_accessor(new_p['attributes']['POSITION'])
                 world=(node_matrix(new_node)@np.c_[local,np.ones(len(local))].T).T[:,:3]
-                normal=new_accessor(new_p['attributes']['NORMAL'])@node_matrix(new_node)[:3,:3].T
+                raw_normal=new_accessor(new_p['attributes']['NORMAL'])
+                length_error=validate_exported_normals(raw_normal, (tier,new_mesh['name'],'current'))
+                normal=raw_normal@node_matrix(new_node)[:3,:3].T
                 normal/=np.linalg.norm(normal,axis=1)[:,None]
                 uv=new_accessor(new_p['attributes']['TEXCOORD_0'])
                 old_node=next(n for n in old_doc['nodes'] if n.get('mesh')==mesh_index)
                 old_local=old_accessor(old_p['attributes']['POSITION'])
                 old_world=(node_matrix(old_node)@np.c_[old_local,np.ones(len(old_local))].T).T[:,:3]
-                old_normal=old_accessor(old_p['attributes']['NORMAL'])@node_matrix(old_node)[:3,:3].T
+                old_raw_normal=old_accessor(old_p['attributes']['NORMAL'])
+                length_error=max(length_error,validate_exported_normals(old_raw_normal, (tier,new_mesh['name'],'baseline')))
+                old_normal=old_raw_normal@node_matrix(old_node)[:3,:3].T
                 old_normal/=np.linalg.norm(old_normal,axis=1)[:,None]
                 old_uv=old_accessor(old_p['attributes']['TEXCOORD_0'])
                 old_is_transformed=np.zeros(len(old_world),dtype=bool)
@@ -237,7 +246,8 @@ for tier in [1,2,3,4]:
                 baseline_tree=kdtree.KDTree(len(old_world))
                 for k,point in enumerate(old_world):baseline_tree.insert(point,k)
                 baseline_tree.balance()
-                vertex_faces=[];position_error=normal_error=uv_error=baseline_normal_error=unrelated_normal_error=0
+                vertex_faces=[];position_error=uv_error=baseline_normal_error=unrelated_normal_error=0
+                baseline_normal_angle=unrelated_normal_angle=0
                 for vertex,point in enumerate(world):
                     matches=group['tree'].find_range(point,3e-5);valid={}
                     for co,source_index,distance in matches:
@@ -248,9 +258,18 @@ for tier in [1,2,3,4]:
                     assert valid, ('Runtime corner differs from source position/UV/normal',tier,new_mesh['name'],vertex,point,uv[vertex],normal[vertex],[(group['corners'][i]['uv'].tolist(),d) for co,i,d in matches[:4]])
                     equivalent=[k for co,k,d in baseline_tree.find_range(point,3e-5) if np.max(np.abs(old_uv[k]-uv[vertex]))<=2e-5]
                     assert equivalent, ('No baseline UV/vertex at the expected source position',tier,new_mesh['name'],point)
-                    errors=np.max(np.abs(old_normal[equivalent]-normal[vertex]),axis=1);best=equivalent[int(np.argmin(errors))];error=float(np.min(errors))
+                    # An unrelated source face may not borrow the allowance of
+                    # a coincident moved part. Enforce before accumulating proof.
+                    allow_transformed=all(group['faces'][face]['object'] in named for face in valid)
+                    candidate,error,angle=assert_normal_preserved(normal[vertex],old_normal[equivalent],
+                        old_is_transformed[equivalent],raw_normal[vertex],old_raw_normal[equivalent],
+                        (tier,new_mesh['name'],vertex),allow_transformed=allow_transformed)
+                    best=equivalent[candidate]
                     baseline_normal_error=max(baseline_normal_error,error)
-                    if not old_is_transformed[best]:unrelated_normal_error=max(unrelated_normal_error,error)
+                    baseline_normal_angle=max(baseline_normal_angle,angle)
+                    if not old_is_transformed[best] or not allow_transformed:
+                        unrelated_normal_error=max(unrelated_normal_error,error)
+                        unrelated_normal_angle=max(unrelated_normal_angle,angle)
                     vertex_faces.append(valid)
                 changed_corners=0
                 for tri in index.reshape(-1,3):
@@ -265,7 +284,8 @@ for tier in [1,2,3,4]:
                 total_changed+=changed_corners
                 triangle_records.append({'mesh':new_mesh['name'],'triangles':len(index)//3,'changed_triangle_corners':changed_corners,
                     'source_polygon_containment_verified':True,'source_position_max_error_m':position_error,
-                    'source_uv_max_error':uv_error,'baseline_normal_max_component_error':baseline_normal_error,'unrelated_normal_max_component_error':unrelated_normal_error})
+                    'source_uv_max_error':uv_error,'baseline_normal_max_component_error':baseline_normal_error,'unrelated_normal_max_component_error':unrelated_normal_error,
+                    'baseline_normal_max_angle_degrees':baseline_normal_angle,'unrelated_normal_max_angle_degrees':unrelated_normal_angle,'raw_normal_max_unit_length_error':length_error})
                 for semantic,accessor_index in {**new_p['attributes'],'indices':new_p['indices']}.items():
                     old=old_accessor(accessor_index);new=new_accessor(accessor_index)
                     accessor_records.append({'mesh':new_mesh['name'],'primitive':primitive_index,'semantic':semantic,'accessor':accessor_index,
@@ -311,7 +331,10 @@ for tier in [1,2,3,4]:
         'before_source_sha256':sha(before_source.read_bytes()),'source_sha256':sha(source.read_bytes()),
         'before_glb_sha256':sha(old_raw),'glb_sha256':sha(new_raw),'before_glb_bytes':len(old_raw),'glb_bytes':len(new_raw),
         'all_unrelated_source_meshes_uvs_materials_images_settings_unchanged':True,'all_unrelated_source_transforms_and_extras_unchanged':True,
-        'all_runtime_materials_images_unchanged':True,'all_runtime_triangles_match_current_source_polygons_and_uvs':True,'all_source_polygon_multiplicities_verified':True,'runtime_normal_differences_measured_against_checkpoint':True,'all_unrelated_runtime_world_positions_preserved':True,'world_position_tolerance_m':3e-5,'translation_rebased_material_nodes':rebased_nodes,
+        'all_runtime_materials_images_unchanged':True,'all_runtime_triangles_match_current_source_polygons_and_uvs':True,'all_source_polygon_multiplicities_verified':True,'runtime_normal_differences_measured_against_checkpoint':True,
+        'runtime_shading_normal_constraints_enforced':True,'normal_component_tolerance':NORMAL_COMPONENT_TOLERANCE,
+        'normal_angle_tolerance_degrees':NORMAL_ANGLE_TOLERANCE_DEGREES,'raw_normal_unit_length_tolerance':NORMAL_UNIT_LENGTH_TOLERANCE,
+        'unrelated_runtime_normals_exact':True,'all_unrelated_runtime_world_positions_preserved':True,'world_position_tolerance_m':3e-5,'translation_rebased_material_nodes':rebased_nodes,
         'source_paths_portable_and_images_packed':True,'camera_boxes_match_actual_translated_objects':True,
         'unchanged_source_objects':len(before_objects)-len(named),'transformed_objects':transformed,
         'source_fingerprint_before':before_fp,'source_fingerprint_after':after_fp,
