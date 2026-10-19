@@ -1,4 +1,4 @@
-const actions = Object.freeze({ ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right', ArrowUp:'gas', KeyW:'gas', ArrowDown:'brake', KeyS:'brake', Space:'boost', KeyF:'flight', KeyQ:'rollLeft', KeyE:'rollRight' });
+const actions = Object.freeze({ ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right', ArrowUp:'gas', KeyW:'gas', ArrowDown:'brake', KeyS:'brake', Space:'boost', KeyF:'flight', KeyQ:'rollLeft', KeyE:'rollRight', KeyH:'horn' });
 export class DrivingInput {
   /**
    * Create independent input-source ownership so one finger/key release cannot cancel another.
@@ -11,7 +11,7 @@ export class DrivingInput {
    * @param {boolean} down - True to hold; false removes only this source.
    */
   set(action, source, down) {
-    if (!['left','right','gas','brake','boost','flight','rollLeft','rollRight'].includes(action)) return;
+    if (!['left','right','gas','brake','boost','flight','rollLeft','rollRight','horn'].includes(action)) return;
     if (down) this.held.set(source, action); else this.held.delete(source);
   }
   /** Store finite bounded analog axes for one independent touch source; zero releases that source. */
@@ -45,7 +45,7 @@ export class DrivingInput {
    * Return a fresh simulation control sample without mutating held inputs.
    * @returns {Object} Signed steer/roll axes (-1, 0, +1), binary pedals and boolean boost/flight.
    */
-  read() { const samples=[...this.analog.values()],last=samples.at(-1)||{}; return { steer:(Number(this.active('right'))-Number(this.active('left')))||(last.steer||0), throttle:Math.max(Number(this.active('gas')),...samples.map(s=>s.throttle)), brake:Math.max(Number(this.active('brake')),...samples.map(s=>s.brake)), boost:this.active('boost'), flight:this.active('flight'), roll:Number(this.active('rollRight'))-Number(this.active('rollLeft')) }; }
+  read() { const samples=[...this.analog.values()],last=samples.at(-1)||{}; return { steer:(Number(this.active('right'))-Number(this.active('left')))||(last.steer||0), throttle:Math.max(Number(this.active('gas')),...samples.map(s=>s.throttle)), brake:Math.max(Number(this.active('brake')),...samples.map(s=>s.brake)), boost:this.active('boost'), flight:this.active('flight'), horn:this.active('horn'), roll:Number(this.active('rollRight'))-Number(this.active('rollLeft')) }; }
   /**
    * Release every key and pointer source when pausing, crashing, blurring or starting a run.
    */

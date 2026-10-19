@@ -85,7 +85,7 @@ test('the main controller does not start ads while a timed-out login dialog is s
   }
 });
 
-test('revive settlement and finalized ad receipt remain exactly once across reloads', () => {
+test('continued run remains mutually exclusive with doubling across reloads', () => {
   const provider = memory(); let id = 0;
   const reopen = () => createProgressionStorage({ provider, idFactory: () => `audit_${++id}` });
   const metrics = (distanceM, revives = 0) => ({ distanceM, groundDistanceM: distanceM,
@@ -97,9 +97,9 @@ test('revive settlement and finalized ad receipt remain exactly once across relo
   const continued = store.settleRun(run, metrics(900, 1), { finalized: true });
   assert.equal(continued.rewardDelta.credits, 30); assert.equal(store.get().stats.runs, 1);
   const claimed = store.dispatch({ type: 'CLAIM_AD_BONUS', runId: run.id, runSequence: run.sequence });
-  assert.equal(claimed.ok, true); const completed = store.get();
+  assert.equal(claimed.ok, false); assert.equal(claimed.reason, 'run-finalized'); const completed = store.get();
   store = reopen();
-  assert.equal(store.dispatch({ type: 'CLAIM_AD_BONUS', runId: run.id, runSequence: run.sequence }).reason, 'already-claimed');
+  assert.equal(store.dispatch({ type: 'CLAIM_AD_BONUS', runId: run.id, runSequence: run.sequence }).reason, 'run-finalized');
   assert.equal(store.settleRun(run, metrics(1200, 1)).reason, 'run-finalized');
   assert.deepEqual(store.get(), completed);
 });

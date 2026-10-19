@@ -93,7 +93,8 @@ test('completed slow semi keeps its source reservation until the articulated tai
   const leader = { id: 902, kind: 'van', lane: 1, z: 307.32838930143046,
     speed: 7.450110145611688, cruiseSpeed: 7.450110145611688 };
   Object.assign(state, { traffic: [truck, leader], distance: 2606.4080935902894,
-    speed: 10.935729655437171, x: 0, lane: 0, safeLane: 0, invincible: 1e9,
+    speed: 10.935729655437171, x: 0, lane: 0, safeLane: 0,
+    safeCorridor: { lane: 0, z: truck.z, speed: truck.speed, halfLength: 40 }, invincible: 1e9,
     nextSpawn: Infinity, nextEvent: Infinity });
   let completed = false, tailSeen = false;
   for (let i = 0; i < 1200; i++) {

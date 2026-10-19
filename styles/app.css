@@ -346,3 +346,11 @@ kbd { font: var(--text-xs)/var(--line-heading) var(--font-mono); border: var(--s
 #app[data-flight="false"] #flightStatus,#app[data-flight="false"] #flightBtn,#app[data-flight="false"] .roll-button{display:none}
 #app[data-flight="false"] .ability-pair{display:flex;align-items:end}
 .topbar[hidden]{display:none}
+
+/* One deliberate request: audible horn and the same-time headlamp flash. */
+.horn-control { position: absolute; right: 15rem; bottom: var(--space-4); display: flex; gap: var(--space-2); align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: var(--space-2); pointer-events: auto; touch-action: none; user-select: none; color: var(--color-text); background: var(--color-event-scrim); border: var(--stroke) solid var(--color-border); border-radius: var(--radius-small); font: 700 var(--text-micro)/1 var(--font-body); }
+.horn-control svg { width: 22px; height: 22px; }
+.horn-control[data-held="true"] { border-color: var(--color-text); background: var(--color-elevated); }
+#app[data-thumb-drive="true"] .horn-control { right: 154px; bottom: 32px; width: 52px; flex-direction: column; gap: 3px; }
+#app[data-thumb-drive="true"] .horn-control kbd { display: none; }
+#app[data-thumb-drive="true"] .horn-control span { font-size: 8px; }

@@ -18,7 +18,7 @@ const run = started.run;
 const telemetry = new RunTelemetry();
 // Observe after simulation updates; forward existing Game events too.
 telemetry.observe(game.state, dt);
-store.settleRun(run, telemetry.snapshot()); // result screen, still eligible for revive
+store.settleRun(run, telemetry.snapshot(), {resultPending:true}); // a known crash result, still eligible for live revive
 // Keep the same run and telemetry instance across a revive.
 store.settleRun(run, telemetry.snapshot(), {finalized:true}); // leaving results permanently
 // Or store.finalizeRun(run) when already settled.
@@ -41,7 +41,7 @@ The new primary key is `aerokrai.profile.v2`; the backup is `aerokrai.profile.v2
 - Season: `season.id`, `xp` capped at 9,000, `claims`, `badges`, `equippedBadge`. The 20 permanent levels each require 450 XP. Badges, banners and trophy have real catalog IDs, Russian names and display symbols. There is no expiry clock or artificial daily XP cap.
 - Telemetry totals: `stats` uses metres, seconds, m/s, counts and actual raw simulation score. `maxRunDistanceM`, `maxCleanGroundSegmentM`, `engineeringPurchases`, `runs` support contracts.
 - Records: `records.standard`, `records.tuned`, `records.continued`, each keyed by `vehicleId:difficulty`. Legacy records remain separately attributable at `legacy.best`; old non-specific records are not mislabeled as a new car class.
-- Settlement: `ledger.nextSequence`, `finalizedThrough`, `activeRun`, `recent` (last 24 finalized receipts).
+- Settlement: `ledger.nextSequence`, `finalizedThrough`, `activeRun`, `recent` (last 24 finalized receipts). The optional receipt boolean `resultPending` marks an actually displayed crash result. Ordinary autosaves and legacy receipts default to false. Continuing or finalizing clears it; marking a result persists even when no new metric or reward delta is due.
 - Settings: original route keys `ring/neon/dawn`, difficulty `flow/rush`, sound, render quality `auto/high/ultra`, and chase/cockpit camera mode.
 
 Caps, fixed catalog allowlists and bounded 24-run history keep the JSON payload comfortably below the 190,000-byte write ceiling, leaving margin under the platform's documented 200 KB cloud limit. Tests check actual UTF-8 bytes. Unknown maps, catalog IDs and prototype keys are not copied. Invalid/nonfinite wallet values do not become free currency.
@@ -67,11 +67,11 @@ EQUIP_BADGE {badgeId} // null clears the display
 UPDATE_SETTINGS {settings}
 ```
 
-Internal integration actions are `BEGIN_RUN`, `SETTLE_RUN`, `FINALIZE_RUN`, `CLAIM_AD_BONUS {runSequence,runId}`. Use the store's run helpers rather than constructing receipt identities. Reward-ad dispatch must occur only after the platform adapter's verified rewarded callback. The reducer does not pretend that a JavaScript action is an independently verified ad receipt.
+Internal integration actions are `BEGIN_RUN`, `SETTLE_RUN`, `FINALIZE_RUN`, `CONTINUE_RUN {runSequence,runId}`, `CLAIM_AD_BONUS {runSequence,runId}`. Use the store's run helpers rather than constructing receipt identities. Reward-ad dispatch must occur only after the platform adapter's verified rewarded callback. The reducer does not pretend that a JavaScript action is an independently verified ad receipt.
 
 ## Run settlement and replay protection
 
-`beginRun()` allocates a monotonically increasing sequence, persists it and closes any older active run. An initial result screen must settle with `finalized:false` if revive remains available. Continuing uses the same identity and cumulative telemetry. Every receipt stores cumulative already-accounted credits/XP and telemetry totals; only a positive difference is awarded, so duplicate results, reloads, or a revive cannot count the same distance or reward again. Run count increments once.
+`beginRun()` allocates a monotonically increasing sequence, persists it and closes any older active run. An initial result screen must settle with `finalized:false` if revive remains available. Continuing first persists the exclusive `finishChoice: "continue"` through `CONTINUE_RUN`, then uses the same identity and cumulative telemetry. It can happen only once and excludes doubling for this run, including after a later crash or restore. Every receipt stores cumulative already-accounted credits/XP and telemetry totals; only a positive difference is awarded, so duplicate results, reloads, or a revive cannot count the same distance or reward again. Run count increments once.
 
 Finalization advances `finalizedThrough`. A settlement at or below that barrier is permanently rejected even if its individual receipt has fallen out of the bounded recent history. Sequence plus ID and run configuration must match the active receipt. A new run cannot reopen an old one. This guarantee is within a valid local save lineage, not across simultaneous devices, a manually reverted browser store, or lost writes.
 
@@ -79,7 +79,7 @@ Base credits: floor(metres/10) + 20 × successful road events + 10 × eligible p
 
 The first 500 m grant is automatically claimed as the **same** `first_500m` contract, once per profile. It awards 200 credits and zero XP. It is never a second onboarding wallet transaction.
 
-Result-ad bonus: min(100, floor(base earned credits × 0.25)), only on a finalized run of at least 500 m, once. It excludes onboarding/contracts, grants no XP and never multiplies score or records. Recent-history eviction can remove an old unclaimed ad opportunity; it cannot permit replay. When the results UI offers this ad, finalization means revive is no longer available for that run.
+Result-ad doubling grants one exact additional copy of the active receipt’s `creditsGranted`, the base driving credits actually received. The run must be at least 500 m, have positive actual earnings, have no continuation choice, and have enough wallet capacity for the entire extra amount. It excludes onboarding, contracts and season reward claims, grants no XP and never multiplies score or records. `CLAIM_AD_BONUS` atomically grants and finalizes in one revision; it no longer requires a separate prior finalization. `adCreditsGranted` stays separate from the base and `adClaimed` plus `finalizedThrough` prevent replay. `onboardingGranted` preserves the separate displayed one-off grant. These are additive v2 receipt fields; old continued/already-claimed receipts remain ineligible. See [Result choices and exact reward doubling](RESULT_CHOICES_REWARD_POLICY.md) for UI choices, cap handling, save-failure and SDK/account boundaries.
 
 ## Authentic telemetry and precision landing
 
@@ -112,3 +112,9 @@ node --test tests/progression*.test.mjs tests/run-telemetry.test.mjs
 ```
 
 Tests include prices/caps, atomic purchases, stage ownership, per-car selection, standard/tuned/continued records, authored locks, real season identifiers, duplicate claims, precision anti-farming, production Game flight, pauses/jitter/revive, NaN/prototype payloads, legacy/v1 migration, previous-valid backup recovery, unknown future versions, quota failure/retry, cumulative receipts after reopen, bounded history replay barriers, cloud replacement and the 200 KB margin.
+
+## Reloaded results
+
+`recoverPendingRunResult` projects the accepted profile receipt without settlement, new sequence, awards, records or ad calls. A known pending result restores its free finish and existing eligible ×2 quote. A legacy/interrupted driving receipt restores only already-earned totals and free finish, not a fabricated crash or bonus. Finished/doubled, invalid and empty receipts do not reopen. No physical vehicle/road state is persisted, so continuation is explicitly unavailable after reload. Accepted cloud replacement restores only that profile’s receipt; existing identity/generation guards reject late callbacks from the replaced result.
+
+Local write failures remain visible. A reload can restore only the last successful durable snapshot; it cannot promise recovery of an unpersisted session. Unconfirmed ads do not become grants after reload. This does not implement a server-authoritative ad-receipt ledger.

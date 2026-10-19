@@ -852,12 +852,24 @@ def camera_contract():
     ROOT_OBJ['garageCamera']=contract;bpy.context.scene['garageCamera']=contract
     return contract
 
-def apply_original_mural(tier):
-    """Project one original painting onto existing architectural faces, not a poster.
+# One uninterrupted load-bearing wall, not the moving sectional service gate.
+# Coordinates are game metres (+Y up); full original 2:1 artwork is retained.
+# Y=1.5..4.5 fits the actual native overview instead of clipping above the UI.
+MURAL_WALL_PLACEMENT = {
+    'version': 2, 'support': 'Right rear return wall',
+    'wall_interior_x': 9.88, 'paint_x': 9.878, 'paint_offset_m': .002,
+    'z_min': 1.0, 'z_max': 7.0, 'y_min': 1.5, 'y_max': 4.5,
+    'normal': [-1., 0., 0.], 'texture_aspect': 2.,
+}
 
-    Geometry belongs to a separate, non-collision decal batch; the original wall,
-    door leaves, gaps, fasteners and fins are untouched. Paint sits 2 mm in front
-    of each actual surface. All tiers share one small 1024 x 512 RGBA paint map.
+
+def apply_original_mural(tier):
+    """Keep the complete original mural on one actual solid side-wall face.
+
+    One quad, one unchanged texture and one material replace the old projection
+    across concrete, slats, gaps and frames. The selected concrete return is
+    continuous in all four tiers, safely outside every car and camera envelope.
+    The 2 mm inward offset avoids z-fighting without becoming floating signage.
     """
     global OBJECTS
     for ob in list(OBJECTS):
@@ -866,61 +878,40 @@ def apply_original_mural(tier):
             if not mesh.users: bpy.data.meshes.remove(mesh)
     name='Original rose velocity mural'
     mat=bpy.data.materials.get(name)
-    if mat is None: mat=material(name,(1,1,1),0,.94)
-    M[name]=mat; nt=mat.node_tree; bs=nt.nodes.get('Principled BSDF')
-    for node in list(nt.nodes):
-        if node.type=='TEX_IMAGE': nt.nodes.remove(node)
-    path=os.path.join(OUT,'original-rose-velocity-mural.png')
-    if not os.path.exists(path): raise FileNotFoundError('Run python art/garage/mural/create_mural.py first')
-    img=bpy.data.images.load(path,check_existing=True); img.name='original-rose-velocity-mural'; img.reload()
-    im=nt.nodes.new('ShaderNodeTexImage'); im.image=img; im.interpolation='Linear'; im.extension='CLIP'
-    nt.links.new(im.outputs['Color'],bs.inputs['Base Color']); nt.links.new(im.outputs['Alpha'],bs.inputs['Alpha'])
-    mat.surface_render_method='BLENDED'; mat.use_transparency_overlap=False
-    mat['original_art_source']='art/garage/mural/rose-velocity.svg'; mat['collision_role']='none'; mat['paint_surface']='Aerosol pigment on existing rear architecture, not emissive signage'
-    # Bounds deliberately cover the rear door/right wall visible from the actual
-    # game overview, rather than only the workshop wall hidden by its right UI.
-    bounds={1:(1.40,9.62,1.34,5.45),2:(2.80,9.62,1.72,5.13),3:(2.58,9.62,2.53,6.05),4:(-3.72,3.72,1.25,4.97)}[tier]
-    x0,x1,y0,y1=bounds
-    targets={'Rear wall cast concrete','Insulated sectional door leaf','Modular wall cassette','Acoustic wall fin'}
-    verts=[]; faces=[]
-    def clipped(poly,axis,value,greater):
-        if not poly:return []
-        out=[]
-        for a,b in zip(poly,poly[1:]+poly[:1]):
-            inside_a=(a[axis]>=value) if greater else (a[axis]<=value)
-            inside_b=(b[axis]>=value) if greater else (b[axis]<=value)
-            if inside_a:out.append(a)
-            if inside_a!=inside_b:
-                t=(value-a[axis])/(b[axis]-a[axis]);out.append(a+(b-a)*t)
-        return out
+    if mat is None:
+        mat=material(name,(1,1,1),0,.94)
+        path=os.path.join(OUT,'original-rose-velocity-mural.png')
+        if not os.path.exists(path): raise FileNotFoundError('Run python art/garage/mural/create_mural.py first')
+        img=bpy.data.images.load(path,check_existing=True); img.name='original-rose-velocity-mural'
+        nt=mat.node_tree; bs=nt.nodes.get('Principled BSDF')
+        im=nt.nodes.new('ShaderNodeTexImage'); im.image=img; im.interpolation='Linear'; im.extension='CLIP'
+        nt.links.new(im.outputs['Color'],bs.inputs['Base Color']); nt.links.new(im.outputs['Alpha'],bs.inputs['Alpha'])
+        mat.surface_render_method='BLENDED'; mat.use_transparency_overlap=False
+        mat['original_art_source']='art/garage/mural/rose-velocity.svg'; mat['collision_role']='none'
+        mat['paint_surface']='Aerosol pigment on solid concrete, not emissive signage'
+    # A resumed source retains the accepted shader graph and packed image bytes.
+    M[name]=mat; spec=MURAL_WALL_PLACEMENT
+    wall=bpy.data.objects.get(spec['support'])
+    if wall is None: raise RuntimeError('Original mural requires its solid right return wall')
     bpy.context.view_layer.update()
-    for ob in OBJECTS:
-        if ob.name.split('.')[0] not in targets:continue
-        for poly in ob.data.polygons:
-            normal=(ob.matrix_world.to_3x3()@poly.normal).normalized()
-            if normal.y<.9999:continue # Only inward rear faces, never tops/sides.
-            ps=[ob.matrix_world@ob.data.vertices[i].co for i in poly.vertices]
-            for axis,value,greater in [(0,x0,True),(0,x1,False),(2,y0,True),(2,y1,False)]:ps=clipped(ps,axis,value,greater)
-            # Clipping at a source corner can repeat it. Remove only those exact
-            # coincidences so no numeric-collapse defects enter the new batch.
-            clean=[]
-            for pt in ps:
-                if not clean or (pt-clean[-1]).length>1e-6:clean.append(pt)
-            if len(clean)>1 and (clean[-1]-clean[0]).length<1e-6:clean.pop()
-            if len(clean)<3:continue
-            area=sum((clean[i]-clean[0]).cross(clean[i+1]-clean[0]).length for i in range(1,len(clean)-1))
-            if area<1e-9:continue
-            start=len(verts);verts.extend([(p.x,p.y+.002,p.z) for p in clean]);faces.append(tuple(range(start,start+len(clean))))
-    if not faces:raise RuntimeError('Original mural did not find rear architectural faces')
-    mesh=bpy.data.meshes.new('Original mural projected surface mesh');mesh.from_pydata(verts,[],faces);mesh.update()
-    ob=bpy.data.objects.new('Original rose velocity wall paint',mesh);bpy.context.collection.objects.link(ob);reg(ob,ob.name,name)
+    bounds=[wall.matrix_world@Vector(p) for p in wall.bound_box]
+    assert min(p.x for p in bounds)-spec['paint_x'] > .0019
+    assert min(-p.y for p in bounds) < spec['z_min'] < spec['z_max'] < max(-p.y for p in bounds)
+    assert min(p.z for p in bounds) < spec['y_min'] < spec['y_max'] < max(p.z for p in bounds)
+    assert abs((spec['z_max']-spec['z_min'])/(spec['y_max']-spec['y_min'])-spec['texture_aspect']) < 1e-9
+    x=spec['paint_x']; y0=spec['y_min']; y1=spec['y_max']; z0=spec['z_min']; z1=spec['z_max']
+    points=[(x,y0,z0),(x,y0,z1),(x,y1,z1),(x,y1,z0)]
+    mesh=bpy.data.meshes.new('Original mural single solid-wall surface')
+    mesh.from_pydata([v(p) for p in points],[],[(0,1,2,3)]); mesh.update()
+    ob=bpy.data.objects.new('Original rose velocity wall paint',mesh)
+    bpy.context.collection.objects.link(ob); reg(ob,ob.name,name)
     uv=mesh.uv_layers.new(name='Original mural whole-wall projection')
-    for poly in mesh.polygons:
-        for li in poly.loop_indices:
-            p=mesh.vertices[mesh.loops[li].vertex_index].co
-            uv.data[li].uv=((x1-p.x)/(x1-x0),(p.z-y0)/(y1-y0))
-    ob['original_garage_mural']=True;ob['collision_role']='none';ob['artwork']='Rose Velocity';ob['authoring_source']='art/garage/mural/rose-velocity.svg';ob['paint_offset_m']=.002
-    ob['projection_bounds_game_xy']=list(bounds);ob['original_architecture_unchanged']=True
+    uvs=[(0,0),(1,0),(1,1),(0,1)]
+    for loop in mesh.loops: uv.data[loop.index].uv=uvs[loop.vertex_index]
+    ob['original_garage_mural']=True; ob['collision_role']='none'; ob['artwork']='Rose Velocity'
+    ob['authoring_source']='art/garage/mural/rose-velocity.svg'; ob['paint_offset_m']=spec['paint_offset_m']
+    ob['solid_wall_placement']=dict(spec); ob['original_architecture_unchanged']=True
+    ROOT_OBJ['garageMural']=dict(spec); bpy.context.scene['garageMural']=dict(spec)
     bpy.context.scene['original_mural']='Rose Velocity: original rose, magenta and plum flight-road coupe graffiti'
 
 def lighting(tier):
@@ -1150,11 +1141,18 @@ def main(tier):
         return
     if OPT.mural_only:
         if not OPT.resume: raise ValueError('--mural-only requires --resume')
+        mural_before={
+            'placement':ROOT_OBJ['garageMural'].to_dict() if ROOT_OBJ.get('garageMural') else None,
+            'source_sha256':hashlib.sha256(open(source,'rb').read()).hexdigest(),
+            'glb_sha256':hashlib.sha256(open(os.path.join(OUT,'tier%d.glb'%tier),'rb').read()).hexdigest(),
+        }
         apply_original_mural(tier)
-        cleanup=clean_source_meshes()
+        # The accepted non-mural meshes were already cleaned and must not be
+        # touched by a placement-only repair. This single quad is nondegenerate.
+        cleanup=[]
         bpy.context.preferences.filepaths.save_version=0
         save_portable(source)
-        export_tier(tier,source,cleanup)
+        export_tier(tier,source,cleanup,mural_before=mural_before)
         return
     if OPT.cleanup_only:
         if not OPT.resume: raise ValueError('--cleanup-only requires --resume')
@@ -1219,7 +1217,9 @@ def build_scene(tier):
     setup_materials(); [None,tier1,tier2,tier3,tier4][tier](); lighting(tier)
     bpy.context.scene['garage_tier']=tier; bpy.context.scene['source']='scripts/create_garage.py'; bpy.context.scene['runtime_lights']='None exported: use unified runtime key/fill/environment.'
 
-def export_tier(tier,source,cleanup=None):
+def export_tier(tier,source,cleanup=None,mural_before=None):
+    report_path=os.path.join(ART,'tier%d-report.json'%tier)
+    previous_report=json.load(open(report_path)) if os.path.isfile(report_path) else {}
     original_objects=len(OBJECTS)
     # Export copies consolidated by material. Source .blend retains each editable named part.
     export_meshes=[]
@@ -1255,12 +1255,46 @@ def export_tier(tier,source,cleanup=None):
         report['garage_screen']=ROOT_OBJ['garageScreen'].to_dict()
         report['user_provided_textures']=['roadster-screen-poster.jpg']
         report['screen_media_provenance']='art/garage/screen/supplied-video-provenance.json'
+    if ROOT_OBJ.get('garageMural'):
+        report['garage_mural']=ROOT_OBJ['garageMural'].to_dict()
     report['degenerate_cleanup']={'relative_cross_squared_threshold':DEGENERATE_RELATIVE_CROSS_SQUARED,'removed_triangles':sum(item['removed_triangles'] for item in cleanup or []),'parts':cleanup or [],'export_collapsed_triangles':0}
     if ROOT_OBJ.get('garageCamera'):
         report['camera_interior']=ROOT_OBJ['garageCamera'].to_dict()
         report['interior_completion_version']=1
         report['preserved_rear_geometry_sha256']=ROOT_OBJ.get('preserved_rear_geometry_sha256','')
-    with open(os.path.join(ART,'tier%d-report.json'%tier),'w') as f: json.dump(report,f,indent=2)
+    # A subsequent geometry export must not erase the earlier poster's source
+    # attribution and exact swap evidence, nor misrepresent it as current scope.
+    if previous_report.get('screen_poster_swap'):
+        report['screen_poster_swap']=dict(previous_report['screen_poster_swap'])
+        report['screen_poster_swap']['historical_operation']=True
+        report['screen_poster_swap']['scope_note']='Before/after hashes and preservation claims describe the earlier poster replacement only, not the current asset after subsequent edits.'
+    if previous_report.get('mural_relocation_history'):
+        report['mural_relocation_history']=previous_report['mural_relocation_history']
+    if previous_report.get('mural_relocation'):
+        report['mural_relocation']=previous_report['mural_relocation']
+    if mural_before:
+        if report.get('mural_relocation'):
+            historical=dict(report['mural_relocation']); historical['historical_operation']=True
+            report['mural_relocation_history']=[*report.get('mural_relocation_history',[]),historical]
+        report['mural_relocation']={
+            'operation':'Place the complete original Rose Velocity mural on its solid right concrete wall within actual native overview framing',
+            'placement_before':mural_before['placement'],'placement_after':dict(MURAL_WALL_PLACEMENT),
+            'source_before_sha256':mural_before['source_sha256'],
+            'source_after_sha256':hashlib.sha256(open(source,'rb').read()).hexdigest(),
+            'glb_before_sha256':mural_before['glb_sha256'],'glb_after_sha256':report['sha256'],
+            'changed_scope':['Original rose velocity mural mesh positions, topology and UVs','Mural placement metadata'],
+            'full_glb_byte_identical':False,
+            'preservation_scope':'Non-mural mesh accessor payloads, all material definitions and embedded images only; not the complete pre-mural GLB buffer.',
+            'verification_report':'art/garage/mural-placement-audit.json',
+        }
+        before=mural_before['placement'];after=MURAL_WALL_PLACEMENT
+        if before and all(before[k]==after[k] for k in ['paint_x','z_min','z_max','texture_aspect']):
+            dy=after['y_min']-before['y_min']
+            if abs((after['y_max']-before['y_max'])-dy)<1e-8:
+                report['mural_relocation']['translation_game_m']=[0.,dy,0.]
+                report['mural_relocation']['size_and_uvs_unchanged']=True
+                report['mural_relocation']['changed_scope']=['Original rose velocity mural vertical position','Mural placement metadata']
+    with open(report_path,'w') as f: json.dump(report,f,indent=2)
     print('GARAGE_REPORT '+json.dumps(report),flush=True)
     if OPT.render or OPT.render_reverse:
         if OPT.preview_car:

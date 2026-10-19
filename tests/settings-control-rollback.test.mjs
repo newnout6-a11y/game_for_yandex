@@ -77,7 +77,7 @@ function harness(){
     const byId=id=>{if(id!=='renderQuality')throw new Error('Unexpected element '+id);return legacyQuality;};
     const platform={getState:()=>({}),queueSave:profile=>cloudSaves.push(structuredClone(profile))},sdk={get:()=>null},ads={available:false};
     const renderer={setQuality(){},setCameraMode(){},setRoute(){}},audio={enabled:settings.sound},ui={sound(){}};
-    let orientationBlocked=false,busy=false,assetsReady=false,garageScene=null,screen='hub',tab='fleet',inspection='overview';
+    let orientationBlocked=false,busy=false,startingRun=false,assetsReady=false,garageScene=null,screen='hub',tab='fleet',inspection='overview';
     let previewId=profileStore.get().selectedVehicleId,loading={},runResult=null,otherGames=[],garageDirty=false;
     let appliedSelectedId=previewId,appliedSettingsKey=JSON.stringify(profileStore.get().settings);
     ${functions}

@@ -8,9 +8,9 @@ test('F is a held flight control and release stops only that key', () => {
   assert.equal(input.key('KeyF', true), true);
   input.key('KeyW', true);
   input.key('KeyD', true);
-  assert.deepEqual(input.read(), { steer: 1, throttle: 1, brake: 0, boost: false, flight: true, roll: 0 });
+  assert.deepEqual(input.read(), { steer: 1, throttle: 1, brake: 0, boost: false, flight: true, horn: false, roll: 0 });
   input.key('KeyF', false);
-  assert.deepEqual(input.read(), { steer: 1, throttle: 1, brake: 0, boost: false, flight: false, roll: 0 });
+  assert.deepEqual(input.read(), { steer: 1, throttle: 1, brake: 0, boost: false, flight: false, horn: false, roll: 0 });
 });
 
 test('independent touch flight sources survive one release and clear on pause', () => {
@@ -22,10 +22,10 @@ test('independent touch flight sources survive one release and clear on pause', 
   input.release('pointer-1');
   assert.equal(input.read().flight, true);
   input.key('KeyF', false);
-  assert.deepEqual(input.read(), { steer: -1, throttle: 1, brake: 0, boost: false, flight: false, roll: 0 });
+  assert.deepEqual(input.read(), { steer: -1, throttle: 1, brake: 0, boost: false, flight: false, horn: false, roll: 0 });
   input.set('flight', 'pointer-4', true);
   input.clear();
-  assert.deepEqual(input.read(), { steer: 0, throttle: 0, brake: 0, boost: false, flight: false, roll: 0 });
+  assert.deepEqual(input.read(), { steer: 0, throttle: 0, brake: 0, boost: false, flight: false, horn: false, roll: 0 });
 });
 
 test('flight HUD explains readiness, energy, altitude, landing and cooldown', () => {
@@ -71,7 +71,7 @@ test('touch roll release and cancellation preserve other fingers and clear on pa
   assert.equal(input.read().throttle, 1);
   input.set('rollLeft', 'pointer-4', true);
   input.clear();
-  assert.deepEqual(input.read(), { steer: 0, throttle: 0, brake: 0, boost: false, flight: false, roll: 0 });
+  assert.deepEqual(input.read(), { steer: 0, throttle: 0, brake: 0, boost: false, flight: false, horn: false, roll: 0 });
 });
 
 test('roll HUD separates airborne readiness, progress and cooldown', () => {

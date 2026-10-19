@@ -217,7 +217,9 @@ test('future front/rear closing gaps are rejected even when their current gap lo
 test('a long trailer consumes a target gap that fits a passenger car', () => {
   for (const [kind, allowed] of [['sedan', true], ['semi', false]]) {
     const { state, follower } = opportunity();
-    state.traffic.push(car(3, 0, 188, 22, kind));
+    // The candidate may slow to its 16 m/s source leader during the move;
+    // 62 m leaves the required closing margin for a sedan, not a long trailer.
+    state.traffic.push(car(3, 0, 158, 22, kind));
     step(state);
     assert.equal(Boolean(follower.laneChange), allowed, kind);
   }

@@ -31,7 +31,8 @@ export function garageNearPlaneCorners(camera) {
 
 /** Fit at a fixed eye position: a smaller UI region changes the lens, never backs through a wall. */
 export function fitGarageProjection(camera, points, width, height, region, minimumFov = 38) {
-  const view = region && region.width > 40 && region.height > 40 ? region : { x: 0, y: 0, width, height };
+  const validRegion = region && ['x', 'y', 'width', 'height'].every(key => Number.isFinite(region[key])) && region.width > 0 && region.height > 0;
+  const view = validRegion ? region : { x: 0, y: 0, width, height };
   camera.clearViewOffset();
   camera.updateMatrixWorld();
   let left = Infinity, right = -Infinity, bottom = Infinity, top = -Infinity;

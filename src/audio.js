@@ -48,6 +48,7 @@ export class GameAudio {
    */
   tone(kind) {
     if (!this.enabled || !this.context) return;
+    if (kind === 'horn') { this.horn(); return; }
     try {
       const now = this.context.currentTime;
       const osc = this.context.createOscillator();
@@ -61,4 +62,22 @@ export class GameAudio {
       osc.start(now); osc.stop(now + .26);
     } catch { /* Effects cannot interrupt a run. */ }
   }
+  /** Play one short original two-tone horn through the lifecycle-muted master. */
+  horn() {
+    if (!this.enabled || !this.context || !this.master) return;
+    try {
+      const now=this.context.currentTime, gain=this.context.createGain();
+      const filter=this.context.createBiquadFilter();filter.type='lowpass';filter.frequency.value=1300;
+      gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.085,now+.018);
+      gain.gain.setValueAtTime(.085,now+.36);gain.gain.exponentialRampToValueAtTime(.0001,now+.48);
+      filter.connect(gain).connect(this.master);
+      let remaining=2;
+      for(const frequency of [349,440]) {
+        const osc=this.context.createOscillator();osc.type='triangle';osc.frequency.value=frequency;
+        osc.connect(filter);osc.onended=()=>{osc.disconnect();if(!--remaining){filter.disconnect();gain.disconnect();}};
+        osc.start(now);osc.stop(now+.49);
+      }
+    } catch { /* Optional audio must never block the request or its headlamp flash. */ }
+  }
+
 }

@@ -11,6 +11,7 @@ class Node {
     this.ownerDocument = doc; this.tagName = tag.toUpperCase(); this.children = []; this.parentElement = null;
     this.dataset = {}; this.attributes = {}; this.style = { setProperty(key, value) { this[key] = value; } };
     this.className = ''; this.listeners = {}; this._text = ''; this.disabled = false; this.hidden = false;
+    this.scrollLeft = 0; this.scrollTop = 0;
     this.classList = { add: value => { this.className += ` ${value}`; }, remove: value => { this.className = this.className.split(' ').filter(item => item !== value).join(' '); } };
   }
   set textContent(value) { this._text = String(value); this.children = []; }
@@ -24,7 +25,7 @@ class Node {
   dispatchEvent(event) { this.listeners[event.type]?.(event); return true; }
   removeEventListener(key) { delete this.listeners[key]; }
   contains(node) { return node === this || this.children.some(child => child.contains(node)); }
-  focus() { this.ownerDocument.activeElement = this; }
+  focus(options) { this.ownerDocument.activeElement = this; this.focusOptions = options; this.ownerDocument.onFocus?.(this, options); }
   /** Match the subset of DOM selectors used by the presenter, including ancestors. */
   matches(selector) {
     if (selector.includes(':not(:disabled)') && this.disabled) return false;
@@ -702,15 +703,16 @@ test('scrollable workbench is focusable even with no enabled panel controls and 
 test('results use functional headings and keep actions separate from scrollable rewards and optional offers', async () => {
   const h = harness(); h.render({ screen: 'results', runResult: { newRecord: true, credits: 12, xp: 3, onboarding: 200, canRevive: true } });
   assert.equal(h.root.querySelector('.gs-result-intro h1').textContent, 'Новый рекорд');
-  assert.equal(h.root.querySelector('.gs-settlement h2').textContent, 'Награды');
+  assert.equal(h.root.querySelector('.gs-settlement h2').textContent, 'Награды за заезд');
   assert.equal(h.root.querySelector('.gs-result-intro').querySelector('.gs-kicker'), null);
   const scroll = h.root.querySelector('.gs-settlement-scroll');
   const actions = h.root.querySelector('.gs-result-actions');
-  assert.equal(scroll.contains(h.button('revive')), true);
+  assert.equal(scroll.contains(h.button('revive')), false);
+  assert.equal(h.root.querySelector('.gs-result-optional').contains(h.button('revive')), true);
   assert.equal(scroll.contains(h.root.querySelector('.gs-results-records')), true);
-  assert.match(scroll.textContent, /Первый рубеж · \+200 ₵/);
+  assert.match(scroll.textContent, /первый рубеж · \+200 ₵/);
   assert.equal(scroll.contains(actions), false);
-  assert.equal(actions.parentElement, scroll.parentElement);
+  assert.equal(actions.parentElement, h.root.querySelector('.gs-result-intro'));
   assert.equal(actions.contains(h.button('startDrive')), true);
   h.render({ screen: 'results', runResult: {} }); assert.equal(h.root.querySelector('.gs-result-intro h1').textContent, 'Результат заезда');
   const css = await readFile(new URL('../styles/garage.css', import.meta.url), 'utf8');
@@ -841,4 +843,200 @@ test('fleet interaction respects overlays and clears models when the catalog unm
   h.ui.setVisible(false);assert.equal(turns.at(-1),null);h.ui.handleMiniatureInteraction(event);assert.equal(turns.at(-1),null);
   h.ui.setVisible(true);h.render({tab:'style'});assert.deepEqual(targets.at(-1),[]);assert.equal(turns.at(-1),null);
   h.ui.dispose();assert.deepEqual(targets.at(-1),[]);for(const key of ['pointerover','pointerout','pointerdown','focusin','focusout'])assert.equal(h.root.listeners[key],undefined);
+});
+
+test('earned free finish precedes both video choices and remains outside the result scroll',()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{settled:true,receipt:{credits:321,baseCredits:121,xp:25},onboarding:200,canRevive:true,bonusEligible:true,bonusCredits:121}});
+  const panel=h.root.querySelector('.gs-settlement'),free=h.root.querySelector('.gs-result-free-choice'),scroll=h.root.querySelector('.gs-settlement-scroll');
+  assert.equal(panel.children[0],free);assert.ok(free.contains(h.button('finishRun')));assert.equal(scroll.contains(h.button('finishRun')),false);
+  assert.match(free.textContent,/Твои \+321 ₵ · уже начислены/);assert.match(h.button('finishRun').textContent,/Завершить и забрать/);
+  assert.match(h.button('rewardedBonus').textContent,/×2 и завершить · \+121/);assert.match(h.root.querySelector('.gs-result-optional').textContent,/121 → 242 ₵ за вождение/);
+  assert.match(scroll.textContent,/Первый рубеж, контракты, награды сезона и XP не удваиваются/);
+  h.click(h.button('finishRun'));assert.deepEqual(h.actions.at(-1),{type:'finishRun'});
+});
+
+for(const result of [
+  {bonusReason:'no-base-reward',receipt:{credits:0,baseCredits:0}},
+  {bonusReason:'wallet-cap',receipt:{credits:12,baseCredits:12}},
+  {bonusReason:'continue-chosen',receipt:{credits:50,baseCredits:50}},
+  {settled:false},
+])test(`free finish is available without a video offer for ${result.bonusReason||'an unsettled result'}`,()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:false},runResult:result});
+  assert.ok(h.button('finishRun'));assert.equal(h.button('finishRun').disabled,false);assert.ok(h.button('startDrive'));assert.equal(h.button('rewardedBonus'),undefined);
+});
+
+test('finalized and doubled results expose no continuation or duplicate reward claims',()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{settled:true,finalized:true,bonusClaimed:true,canRevive:true,bonusEligible:true,receipt:{credits:442,baseCredits:121}}});
+  assert.equal(h.button('finishRun'),undefined);assert.equal(h.button('rewardedBonus'),undefined);assert.equal(h.button('revive'),undefined);
+  const free=h.root.querySelector('.gs-result-free-choice');assert.match(free.textContent,/удвоение получено/);assert.match(free.textContent,/В гараж/);
+});
+
+test('busy ad requests disable result choices instead of offering an unsafe second operation',()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{settled:true,canRevive:true,bonusEligible:true,bonusCredits:100}});h.ui.setBusy(true);
+  for(const action of ['finishRun','startDrive','revive','rewardedBonus']){const button=h.button(action);assert.equal(button.disabled,true);h.click(button);}
+  assert.equal(h.actions.length,0);
+});
+
+
+test('compact result hierarchy keeps both optional choices before expandable reward details',()=>{
+  const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{settled:true,receipt:{credits:479,baseCredits:279,xp:67},canRevive:true,bonusEligible:true,bonusCredits:279}});
+  const panel=h.root.querySelector('.gs-settlement'),free=h.root.querySelector('.gs-result-free-choice'),choices=h.root.querySelector('.gs-result-optional'),scroll=h.root.querySelector('.gs-settlement-scroll'),details=h.root.querySelector('.gs-result-details');
+  assert.deepEqual(panel.children,[free,choices,scroll]);assert.ok(choices.contains(h.button('revive')));assert.ok(choices.contains(h.button('rewardedBonus')));
+  assert.equal(details.open,undefined);assert.equal(details.querySelector('summary').textContent,'Награды и условия ↓');
+  assert.ok(details.contains(h.root.querySelector('.gs-settlement-rewards')));assert.equal(details.contains(h.button('revive')),false);assert.equal(details.contains(h.button('rewardedBonus')),false);
+  assert.match(choices.textContent,/279 → 558 ₵ за вождение/);assert.match(choices.textContent,/Без XP/);
+});
+
+for(const recoveryKind of ['result','interrupted'])test(`recovered ${recoveryKind} explains unavailable continuation without claiming a failed save is durable`,()=>{
+ const h=harness();h.render({screen:'results',platform:{rewarded:true},runResult:{recovered:true,recoveryKind,settled:true,canRevive:false,bonusEligible:recoveryKind==='result',bonusCredits:60,receipt:{credits:260,baseCredits:60,xp:12},saveMessage:'Награда учтена в этой сессии. Локальное сохранение недоступно.'}});
+ assert.equal(h.root.querySelector('[data-gs-heading]').textContent,recoveryKind==='result'?'Сохранённый результат':'Прерванный заезд');
+ const free=h.root.querySelector('.gs-result-free-choice');assert.match(free.textContent,/После перезагрузки продолжение недоступно/);assert.doesNotMatch(free.textContent,/Награда сохранена/);
+ assert.match(h.root.querySelector('.gs-settlement-scroll').textContent,/Локальное сохранение недоступно/);
+ assert.equal(h.button('revive'),undefined);assert.equal(!!h.button('rewardedBonus'),recoveryKind==='result');assert.ok(h.button('finishRun'));
+});
+
+test('recovered result without SDK has no empty video-choice heading or fabricated training continuation',()=>{
+ const h=harness();h.render({screen:'results',platform:{rewarded:false},runResult:{recovered:true,recoveryKind:'result',settled:true,canRevive:false,bonusEligible:true,bonusCredits:60,receipt:{credits:60,baseCredits:60}}});
+ assert.equal(h.root.querySelector('.gs-result-optional'),null);assert.equal(h.button('revive'),undefined);assert.equal(h.button('rewardedBonus'),undefined);assert.ok(h.button('finishRun'));
+});
+
+// Scroll coordinates are deterministic DOM state here; native iframe QA proves
+// the corresponding selected-control visibility and hitboxes at phone sizes.
+const garageHorizontalStrips = ['.gs-tabs', '.gs-inspection', '.gs-atelier-categories', '.gs-body-sections'];
+
+test('garage refresh restores horizontal strips and vertical panel before preventScroll focus', () => {
+  const h = harness(); h.render({ tab: 'style' });
+  const offsets = [173.5, 91, 27, 34];
+  const previous = garageHorizontalStrips.map((selector, index) => {
+    const node = h.root.querySelector(selector); assert.ok(node, selector); node.scrollLeft = offsets[index]; return node;
+  });
+  h.root.querySelector('.gs-workbench').scrollTop = 487;
+  h.button('inspectVehicle', action => action.view === 'cockpit').focus();
+  let focused;
+  h.doc.onFocus = (node, options) => {
+    focused = { id: node.dataset.gsFocus, options, horizontal: garageHorizontalStrips.map(selector => h.root.querySelector(selector).scrollLeft), vertical: h.root.querySelector('.gs-workbench').scrollTop };
+  };
+  h.render({ tab: 'style', inspection: 'cockpit' });
+  for (const [index, selector] of garageHorizontalStrips.entries()) assert.notEqual(h.root.querySelector(selector), previous[index], 'A genuinely replaced strip was restored');
+  assert.deepEqual(focused, { id: 'inspectVehicle:cockpit', options: { preventScroll: true }, horizontal: offsets, vertical: 487 });
+  assert.equal(h.doc.activeElement.getAttribute('aria-pressed'), 'true');
+});
+
+test('garage tabs preserve horizontal navigation across panels while panel scroll resets independently', () => {
+  const h = harness(); h.render({ tab: 'style' });
+  h.root.querySelector('.gs-tabs').scrollLeft = 205;
+  h.root.querySelector('.gs-inspection').scrollLeft = 77;
+  h.root.querySelector('.gs-atelier-categories').scrollLeft = 22;
+  h.root.querySelector('.gs-body-sections').scrollLeft = 19;
+  h.root.querySelector('.gs-workbench').scrollTop = 300;
+  h.render({ tab: 'season' });
+  assert.equal(h.root.querySelector('.gs-tabs').scrollLeft, 205);
+  assert.equal(h.root.querySelector('.gs-inspection').scrollLeft, 77);
+  assert.equal(h.root.querySelector('.gs-workbench').scrollTop, 0);
+  assert.equal(h.root.querySelector('.gs-atelier-categories'), null);
+  h.render({ tab: 'style' });
+  assert.equal(h.root.querySelector('.gs-tabs').scrollLeft, 205);
+  assert.equal(h.root.querySelector('.gs-inspection').scrollLeft, 77);
+  assert.equal(h.root.querySelector('.gs-atelier-categories').scrollLeft, 0);
+  assert.equal(h.root.querySelector('.gs-body-sections').scrollLeft, 0);
+});
+
+test('Atelier selection retains the scrolled navigation but resets removed Body strips and vertical content', () => {
+  const h = harness(); h.render({ tab: 'style' });
+  h.root.querySelector('.gs-atelier-categories').scrollLeft = 26;
+  h.root.querySelector('.gs-body-sections').scrollLeft = 31;
+  h.root.querySelector('.gs-workbench').scrollTop = 240;
+  const glass = h.button('_local', action => action.kind === 'atelierBodySection' && action.id === 'glass'); glass.focus(); h.click(glass);
+  assert.equal(h.ui.atelierBodySection, 'glass');
+  assert.equal(h.root.querySelector('.gs-body-sections').scrollLeft, 31);
+  assert.equal(h.root.querySelector('.gs-atelier-categories').scrollLeft, 26);
+  assert.equal(h.root.querySelector('.gs-workbench').scrollTop, 0, 'Existing category content reset is unchanged');
+  assert.equal(h.doc.activeElement.dataset.gsFocus, glass.dataset.gsFocus);
+  assert.deepEqual(h.doc.activeElement.focusOptions, { preventScroll: true });
+  h.click(h.button('_local', action => action.kind === 'atelierCategory' && action.id === 'cockpit'));
+  assert.equal(h.root.querySelector('.gs-atelier-categories').scrollLeft, 26);
+  assert.equal(h.root.querySelector('.gs-body-sections'), null);
+  h.click(h.button('_local', action => action.kind === 'atelierCategory' && action.id === 'body'));
+  assert.equal(h.root.querySelector('.gs-atelier-categories').scrollLeft, 26);
+  assert.equal(h.root.querySelector('.gs-body-sections').scrollLeft, 0, 'Reintroduced strips start fresh rather than reviving stale offsets');
+});
+
+test('changing selected vehicle resets its inspection and Atelier offsets but preserves global tabs', () => {
+  const h = harness(); h.render({ tab: 'style' });
+  for (const [index, selector] of garageHorizontalStrips.entries()) h.root.querySelector(selector).scrollLeft = 40 + index;
+  h.render({ tab: 'style', selectedVehicle: 'hatch' });
+  assert.equal(h.root.querySelector('.gs-tabs').scrollLeft, 40);
+  assert.equal(h.root.querySelector('.gs-inspection').scrollLeft, 0);
+  assert.equal(h.root.querySelector('.gs-atelier-categories').scrollLeft, 0);
+  assert.equal(h.root.querySelector('.gs-body-sections').scrollLeft, 0);
+});
+
+test('leaving garage clears horizontal history without changing independent HOME vertical scroll', () => {
+  const h = harness(); h.render({ tab: 'style' });
+  for (const selector of garageHorizontalStrips) h.root.querySelector(selector).scrollLeft = 120;
+  h.root.querySelector('.gs-workbench').scrollTop = 270;
+  h.render({ screen: 'hub' });
+  assert.equal(h.root.querySelector('.gs-inspection'), null);
+  h.root.querySelector('.gs-hub').scrollTop = 164;
+  h.render({ screen: 'hub' });
+  assert.equal(h.root.querySelector('.gs-hub').scrollTop, 164);
+  h.render({ tab: 'style' });
+  for (const selector of garageHorizontalStrips) assert.equal(h.root.querySelector(selector).scrollLeft, 0, selector);
+  assert.equal(h.root.querySelector('.gs-workbench').scrollTop, 0);
+});
+
+test('non-finite horizontal offsets are ignored rather than carried into replacement DOM', () => {
+  const h = harness(); h.render({ tab: 'style' });
+  for (const [index, selector] of garageHorizontalStrips.entries()) h.root.querySelector(selector).scrollLeft = [NaN, Infinity, -Infinity, undefined][index];
+  h.root.querySelector('.gs-workbench').scrollTop = 95;
+  h.render({ tab: 'style' });
+  for (const selector of garageHorizontalStrips) assert.equal(h.root.querySelector(selector).scrollLeft, 0, selector);
+  assert.equal(h.root.querySelector('.gs-workbench').scrollTop, 95);
+});
+
+test('Fleet list retains the fifth car through selection and refresh independently of its workbench', () => {
+  const h = harness(); h.render({ tab: 'fleet' });
+  const id = CATALOG.fleet.at(-1).id;
+  const previous = h.root.querySelector('.gs-vehicle-list'); previous.scrollTop = 67.5;
+  h.root.querySelector('.gs-workbench').scrollTop = 93;
+  h.root.querySelector('.gs-tabs').scrollLeft = 42;
+  const fifth = h.button('selectVehicle', action => action.id === id); fifth.focus(); h.click(fifth);
+  assert.deepEqual(h.actions.at(-1), { type: 'selectVehicle', id });
+  let focused;
+  h.doc.onFocus = (node, options) => {
+    focused = { id: node.dataset.gsFocus, options, list: h.root.querySelector('.gs-vehicle-list').scrollTop, panel: h.root.querySelector('.gs-workbench').scrollTop };
+  };
+  const miniatureOffsets = [];
+  h.ui.onMiniatures = () => miniatureOffsets.push(h.root.querySelector('.gs-vehicle-list').scrollTop);
+  h.render({ tab: 'fleet', selectedVehicle: id });
+  assert.notEqual(h.root.querySelector('.gs-vehicle-list'), previous);
+  assert.deepEqual(focused, { id: `selectVehicle:${id}`, options: { preventScroll: true }, list: 67.5, panel: 93 });
+  assert.equal(h.doc.activeElement.getAttribute('aria-pressed'), 'true');
+  assert.equal(h.root.querySelector('.gs-tabs').scrollLeft, 42);
+  assert.deepEqual(miniatureOffsets, [67.5], 'Miniature visibility sees the restored list viewport');
+  h.render({ tab: 'fleet', selectedVehicle: id });
+  assert.equal(h.root.querySelector('.gs-vehicle-list').scrollTop, 67.5);
+  assert.equal(h.root.querySelector('.gs-workbench').scrollTop, 93);
+});
+
+test('Fleet list does not retain a stale offset after a screen or panel change', () => {
+  for (const destination of [{ screen: 'hub' }, { tab: 'style' }]) {
+    const h = harness(); h.render({ tab: 'fleet' });
+    h.root.querySelector('.gs-vehicle-list').scrollTop = 111;
+    h.render(destination);
+    assert.equal(h.root.querySelector('.gs-vehicle-list'), null);
+    h.render({ tab: 'fleet' });
+    assert.equal(h.root.querySelector('.gs-vehicle-list').scrollTop, 0);
+  }
+});
+
+test('Fleet list ignores non-finite offsets without resetting independent panel scroll', () => {
+  for (const offset of [NaN, Infinity, -Infinity, undefined]) {
+    const h = harness(); h.render({ tab: 'fleet' });
+    h.root.querySelector('.gs-vehicle-list').scrollTop = offset;
+    h.root.querySelector('.gs-workbench').scrollTop = 55;
+    h.render({ tab: 'fleet' });
+    assert.equal(h.root.querySelector('.gs-vehicle-list').scrollTop, 0);
+    assert.equal(h.root.querySelector('.gs-workbench').scrollTop, 55);
+  }
 });

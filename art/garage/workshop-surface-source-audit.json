@@ -97,8 +97,8 @@
           "armatures": 0,
           "actions": 0
         },
-        "source_bytes": 10004016,
-        "source_sha256": "e649da776da3c5f260e7a3f05df6853a1e6a6d82c231bfb0db3cbec67a22141a",
+        "source_bytes": 10008748,
+        "source_sha256": "c0a4dbb6b272b779453c8df13897cc7b33e59d375f3a6ad89b090f4296d81595",
         "relative_packed_paths_verified": true,
         "surface_contract": {
           "wall": {
@@ -277,8 +277,8 @@
           "armatures": 0,
           "actions": 0
         },
-        "source_bytes": 11062336,
-        "source_sha256": "978d728f4ad52c7c516f5bd2f8cba386589509d69bfdf8cc90a6c6a039ea4b41",
+        "source_bytes": 11067068,
+        "source_sha256": "1cddc60d201852ac1f5c96745821de0aed2e6e8dab0b042a5fe6f6779695c6b9",
         "relative_packed_paths_verified": true,
         "surface_contract": {
           "wall": {
@@ -455,8 +455,8 @@
           "armatures": 0,
           "actions": 0
         },
-        "source_bytes": 9132732,
-        "source_sha256": "376d07fce5b42179ba36b4a9f6aa7f3695e381e494fb647ce34af13600cc026e",
+        "source_bytes": 9135568,
+        "source_sha256": "88d3e340d95f439d6d5e4f6a6e4ecb64598957068a09fe6b34362bcdb289a32b",
         "relative_packed_paths_verified": true,
         "surface_contract": {
           "wall": {
@@ -633,8 +633,8 @@
           "armatures": 0,
           "actions": 0
         },
-        "source_bytes": 10056168,
-        "source_sha256": "313b5030694560fa4c17561112b1733e549091078a650da7131628184813e920",
+        "source_bytes": 10059948,
+        "source_sha256": "b57f80f9ba792c0ad0921a5e0029d02e3bec2d90eccba277cc93e17b2266b25e",
         "relative_packed_paths_verified": true,
         "surface_contract": {
           "wall": {
@@ -712,5 +712,6 @@
       },
       "source_byte_delta": 1427780
     }
-  ]
+  ],
+  "later_mural_relocation": "Current mural is the intact two-triangle 6 × 3 m panel on the solid side wall at Y1.5–4.5 m, lowered0.75 m for normal runtime framing. Historical before hashes are retained; non-mural materials, images, lights and source geometry are unchanged. See mural-placement-audit.json."
 }

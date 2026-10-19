@@ -1074,3 +1074,471 @@
   .garage-shell .gs-workbench .gs-vehicle-row-copy strong { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .garage-shell .gs-car-miniature { transition: none; } }
+
+/* Result choices: earned credits are free; one optional reward is secondary.
+   The finish action lives outside the scroll area, including small landscape phones. */
+.garage-shell .gs-result-free-choice { padding: 0 0 18px; border-bottom: 1px solid var(--gs-line); margin-bottom: 20px; flex: 0 0 auto; }
+.garage-shell .gs-result-earned { margin: 0 0 10px; color: var(--gs-chalk); font: 650 13px/1.4 var(--gs-body); }
+.garage-shell .gs-result-free-choice .gs-small-note { margin: 8px 0 0; }
+.garage-shell .gs-result-free-choice .gs-finish-free { min-height: 48px; }
+.garage-shell .gs-result-optional { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--gs-line); }
+.garage-shell .gs-result-optional .gs-kicker { margin: 0 0 12px; }
+.garage-shell .gs-result-optional .gs-button { min-height: 46px; margin: 0 0 6px; }
+.garage-shell .gs-result-optional .gs-small-note { margin: 0 0 16px; }
+.garage-shell .gs-result-optional .gs-double-basis { color: var(--gs-chalk); }
+.garage-shell .gs-result-retry { grid-template-columns: 1fr; }
+@media (max-height: 500px) and (min-width: 600px) {
+  .garage-shell .gs-result-free-choice { padding: 9px 12px; margin: 0; background: #262634; }
+  .garage-shell .gs-result-earned { font-size: 11px; margin: 0 0 5px; }
+  .garage-shell .gs-result-free-choice .gs-finish-free { min-height: 44px; padding: 9px 10px; font-size: 12px; }
+  .garage-shell .gs-result-free-choice .gs-small-note { font-size: 10px; line-height: 1.3; margin: 5px 0 0; }
+  .garage-shell .gs-result-optional { margin-top: 12px; padding-top: 12px; }
+  .garage-shell .gs-result-optional .gs-button { font-size: 12px; }
+  .garage-shell .gs-result-optional .gs-small-note { font-size: 10px; }
+  .garage-shell .gs-result-retry { padding-block: 7px; }
+}
+
+/* All three result choices stay above details, not below a cropped reward total. */
+.garage-shell .gs-result-optional { margin: 0 0 18px; padding: 0 0 14px; border-top: 0; border-bottom: 1px solid var(--gs-line); flex: 0 0 auto; }
+.garage-shell .gs-result-optional .gs-button + .gs-button { margin-top: 4px; }
+.garage-shell .gs-result-optional .gs-double-basis { margin: 5px 0 0; }
+.garage-shell .gs-result-details > summary { min-height: 44px; display: flex; align-items: center; padding: 10px 0; cursor: pointer; color: var(--gs-chalk); font: 650 12px/1.3 var(--gs-body); list-style: none; }
+.garage-shell .gs-result-details > summary:focus-visible { outline: 2px solid var(--gs-glacier); outline-offset: -2px; }
+.garage-shell .gs-result-detail-body { padding-top: 8px; }
+.garage-shell .gs-result-intro .gs-result-retry { max-width: 300px; background: transparent; padding: 0; border: 0; }
+@media (max-height: 500px) and (min-width: 600px) {
+  .garage-shell .gs-result-free-choice { padding: 8px 12px; }
+  .garage-shell .gs-result-free-choice > .gs-small-note:not(.gs-recovery-note) { display: none; }
+  .garage-shell .gs-result-optional { margin: 0; padding: 7px 12px; }
+  .garage-shell .gs-result-optional > .gs-kicker { display: none; }
+  .garage-shell .gs-result-optional .gs-button { min-height: 44px; margin: 0; padding: 8px 10px; font-size: 11px; }
+  .garage-shell .gs-result-optional .gs-button + .gs-button { margin-top: 6px; }
+  .garage-shell .gs-result-optional .gs-double-basis { margin: 5px 0 0; font-size: 10px; line-height: 1.3; }
+  .garage-shell .gs-settlement-scroll { padding: 0 12px 8px; scrollbar-width: auto; }
+  .garage-shell .gs-result-details > summary { font-size: 11px; }
+  .garage-shell .gs-result-detail-body { padding: 4px 0 8px; }
+  .garage-shell .gs-result-intro .gs-result-retry { margin-top: 14px; }
+}
+
+/* MOBILE_GARAGE_COMPACT: use the game iframe, not the physical phone, as the
+   layout budget. The catalogue stays beside the clear stage in BOTH drawer
+   states; only the catalogue scrolls vertically. Desktop, HOME and results
+   keep their existing layout. Dense secondary controls retain real 32px targets. */
+@media (orientation: landscape) and (max-height: 620px) and (max-width: 1100px) {
+  .garage-shell[data-screen='garage'] { --gs-compact-garage: 1; --gs-compact-panel: clamp(190px, 42%, 320px); }
+  .garage-shell[data-screen='garage'] .gs-layout { min-height: 0; height: 100%; max-height: 100%; }
+  .garage-shell[data-screen='garage'] .gs-layout > .gs-header { flex: 0 0 44px; min-width: 0; min-height: 0; padding: 0 8px; gap: 6px; border-bottom: 0; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-mobile-home { display: inline-flex; flex: 0 0 44px; margin: 0; padding: 10px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-brand { min-width: 0; gap: 4px; margin-right: auto; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-emblem { width: 27px; height: 27px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-brand-type { display: flex; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-brand-type strong { font-size: 14px; letter-spacing: .025em; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-header-context { display: none; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-account { gap: 6px; margin-left: auto; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-balance { font-size: 12px; gap: 5px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-currency-mark { width: 18px; height: 19px; font-size: 12px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-icon-button { width: 44px; height: 44px; min-height: 44px; padding: 10px; }
+  .garage-shell[data-screen='garage'] .gs-layout > .gs-footer { flex: 0 0 24px; min-width: 0; min-height: 0; padding: 0 8px; gap: 6px; }
+  .garage-shell[data-screen='garage'] .gs-layout > .gs-footer:has(.gs-footer-connect) { flex-basis: 44px; }
+  .garage-shell[data-screen='garage'] .gs-footer .gs-save-status { min-width: 0; font-size: 9px; line-height: 1.2; }
+  .garage-shell[data-screen='garage'] .gs-footer .gs-footer-connect { min-width: 44px; min-height: 44px; padding: 6px 0; font-size: 10px; }
+
+  .garage-shell[data-screen='garage'] .gs-garage {
+    display: grid; position: relative; min-width: 0; min-height: 0;
+    grid-template-columns: minmax(0, 1fr) var(--gs-compact-panel);
+    grid-template-rows: 44px minmax(0, 1fr); gap: 0; overflow: hidden;
+  }
+  .garage-shell[data-screen='garage'] .gs-garage > .gs-rail { display: contents; }
+  .garage-shell[data-screen='garage'] .gs-rail > .gs-back,
+  .garage-shell[data-screen='garage'] .gs-rail > .gs-tier-compact { display: none; }
+  .garage-shell[data-screen='garage'] .gs-rail > .gs-tabs {
+    grid-column: 1 / -1; grid-row: 1; display: flex; flex-direction: row;
+    min-width: 0; min-height: 0; height: 44px; padding: 0 4px; gap: 2px;
+    overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none;
+    background: #202232ed; border-bottom: 1px solid #b9a2c530;
+  }
+  .garage-shell[data-screen='garage'] .gs-tabs > .gs-tab {
+    flex: 1 0 auto; display: grid; grid-template-columns: 24px max-content;
+    align-items: center; justify-content: center; min-width: 44px; min-height: 44px; height: 44px;
+    padding: 3px 6px; gap: 4px; border-radius: 5px; white-space: nowrap;
+  }
+  .garage-shell[data-screen='garage'] .gs-tab .gs-nav-scene { width: 24px; height: 24px; }
+  .garage-shell[data-screen='garage'] .gs-tab .gs-nav-scene svg { width: 100%; height: 100%; }
+  .garage-shell[data-screen='garage'] .gs-tab .gs-tab-name { font-size: 11px; line-height: 1.2; }
+  .garage-shell[data-screen='garage'] .gs-tab .gs-tab-number { display: none; }
+
+  .garage-shell[data-screen='garage'] .gs-garage > .gs-stage {
+    grid-column: 1; grid-row: 2; min-width: 0; min-height: 0;
+    padding: 6px 8px 7px; overflow: hidden;
+  }
+  .garage-shell[data-screen='garage'] .gs-stage > .gs-stage-heading { display: none; }
+  .garage-shell[data-screen='garage'] .gs-stage-heading > .gs-title-reservation { display: none; }
+  .garage-shell[data-screen='garage'] .gs-stage > .gs-stage-bottom {
+    display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch;
+    min-width: 0; gap: 4px; margin-top: auto;
+  }
+  .garage-shell[data-screen='garage'] .gs-stage-bottom > .gs-stage-actions { flex: 0 0 auto; min-width: 0; width: 100%; gap: 0; }
+  .garage-shell[data-screen='garage'] .gs-stage-actions > .gs-inspection {
+    display: grid; grid-template-columns: repeat(4, minmax(max-content, 1fr));
+    min-width: 0; width: 100%; max-width: 340px; margin: 0; padding: 0; gap: 2px;
+    overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; border-radius: 8px;
+  }
+  .garage-shell[data-screen='garage'] .gs-inspection > .gs-inspection-button { min-width: 44px; min-height: 44px; padding: 5px 3px; font-size: 10px; border-radius: 6px; }
+  .garage-shell[data-screen='garage'] .gs-stage-actions > .gs-build-status,
+  .garage-shell[data-screen='garage'] .gs-stage-bottom > .gs-drawer-toggle { display: none; }
+  .garage-shell[data-screen='garage'] .gs-stage-bottom > .gs-vehicle-title-dock { flex: 0 0 auto; width: 100%; min-width: 0; text-align: right; }
+  .garage-shell[data-screen='garage'] .gs-stage .gs-vehicle-title-dock > .gs-vehicle-title { font-size: 20px; line-height: 1.08; margin: 0; overflow-wrap: anywhere; }
+
+  .garage-shell[data-screen='garage'] .gs-garage > .gs-workbench {
+    grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; height: auto; max-height: 100%;
+    margin: 4px 4px 4px 0; overflow-x: hidden; overflow-y: auto;
+    overscroll-behavior: contain; scrollbar-width: thin; scroll-padding-block: 6px;
+    border: 1px solid #8c78943d; border-radius: 3px 10px 3px 3px;
+    /* Avoid the inherited broad shadow clipping the shared top band in Chromium. */
+    box-shadow: none;
+  }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-heading { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-heading h2 { font-size: 18px; line-height: 1.1; margin: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-heading::before { top: 8px; bottom: 8px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-heading::after { width: 17px; height: 10px; right: 10px; top: 11px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body { min-width: 0; padding: 10px 10px 14px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-button { min-width: 44px; min-height: 44px; padding: 7px 8px; gap: 6px; font-size: 11px; line-height: 1.25; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-button > svg { width: 16px; height: 16px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-description { font-size: 11px; line-height: 1.4; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-small-note { font-size: 10px; line-height: 1.4; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-section-label { margin-bottom: 7px; gap: 5px; font-size: 10px; line-height: 1.3; letter-spacing: .02em; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-setting { margin: 9px 0; gap: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-setting > span { font-size: 10px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-setting select { min-width: 44px; min-height: 44px; padding: 6px; font-size: 11px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-product-copy strong { font-size: 11px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-product-copy > span { font-size: 10px; line-height: 1.35; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-product-row { flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-product-row .gs-product-copy { flex: 1 1 80px; }
+
+  /* Fleet keeps its real 3D miniature canvases, never substitutes generic icons. */
+  .garage-shell[data-screen='garage'] .gs-workbench:has(.gs-vehicle-list) { scroll-padding-top: 50px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-vehicle-list) { display: flex; flex-direction: column; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail { display: contents; margin-bottom: 8px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-button { order: 0; position: sticky; top: 0; z-index: 2; margin-bottom: 8px; box-shadow: 0 -10px 0 #252533, 0 5px 0 #252533; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-button:disabled { opacity: 1; color: #bdb5c7; background: #45394b; border-color: #6c5a73; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-small-note { order: 1; margin: 0 0 8px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-vehicle-list) > .gs-section-label { order: 1; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body > .gs-vehicle-list { order: 2; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-spec-row { order: 3; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-setting { order: 4; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-vehicle-list) > .gs-small-note { order: 5; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-description { display: none; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-spec-row { flex-wrap: wrap; gap: 8px 12px; margin: 6px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-stat { gap: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-stat-value { font-size: 18px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-stat-value small { margin-left: 3px; font-size: 9px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-list { margin: 0 -3px 10px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row { grid-template-columns: 10px 60px minmax(0, 1fr) 12px; min-height: 58px; padding: 6px 3px; gap: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-car-thumb { width: 60px; height: 40px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row-copy { gap: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row-copy strong { font-size: 11px; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row-copy > span { font-size: 10px; line-height: 1.3; }
+
+  /* Atelier keeps Body / Rims / Cockpit and Body / Glass reachable in the tray. */
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-atelier-body { padding-top: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-atelier-categories { grid-template-columns: repeat(3, minmax(max-content, 1fr)); margin: 0 0 2px; padding: 0; gap: 3px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-atelier-category { min-width: 44px; min-height: 44px; padding: 5px 2px; font-size: 11px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-body-sections { gap: 8px; margin: 0 0 3px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-body-section { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 5px 2px; font-size: 11px; white-space: nowrap; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-feature { display: none; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-item-group { margin-bottom: 14px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-heading { margin-bottom: 4px; gap: 5px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-heading > .gs-section-label { margin: 0; font-size: 12px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-grid { gap: 6px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-palette { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-card,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-card[aria-pressed='true'] { min-width: 44px; min-height: 44px; padding: 6px; gap: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice[aria-pressed='true'] { min-height: 76px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-sample { height: 40px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice .gs-material-sample { height: 30px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice .gs-sample-surface { width: 45px; height: 25px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-caption { gap: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-caption > strong { font-size: 11px; line-height: 1.2; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-action,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-reason { font-size: 10px; line-height: 1.3; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice[aria-pressed='true'] { grid-template-columns: 48px minmax(0, 1fr); min-height: 64px; gap: 4px 7px; padding: 7px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-surface { width: 42px; height: 34px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-wheel .gs-sample-surface { width: 36px; height: 36px; border-width: 5px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-wheel .gs-sample-surface::after { width: 8px; height: 8px; margin: 9px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-glass .gs-sample-surface { width: 40px; height: 28px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-steering .gs-sample-surface { width: 36px; height: 36px; border-width: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-steering .gs-sample-surface::before { width: 29px; height: 6px; top: 10px; left: -1px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-steering .gs-sample-surface::after { width: 8px; height: 14px; top: 13px; left: 10px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-steering[data-variant='yoke'] .gs-sample-surface { height: 28px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-steering[data-variant='yoke'] .gs-sample-surface::before { top: 5px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-sample-steering[data-variant='yoke'] .gs-sample-surface::after { top: 7px; height: 12px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-cosmetic-reset { flex-wrap: wrap; gap: 3px 7px; margin-top: 4px; padding: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-cosmetic-reset > .gs-small-note { flex: 1 1 100px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-preset-section { margin-top: 14px; padding-top: 10px; }
+
+  /* Engineering, Contracts and Season share the same bounded, scrollable tray. */
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-engineering-comparison { margin: 12px 0; padding: 10px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-engineering-comparison > h3 { font-size: 12px; margin-bottom: 7px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-comparison-row { grid-template-columns: minmax(0, 1fr) 38px 64px; gap: 4px; padding: 7px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-comparison-label,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-comparison-row > strong { font-size: 10px; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-upgrade-branch { margin: 14px 0; padding-bottom: 12px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-branch-heading { gap: 8px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-branch-heading h3 { font-size: 14px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-upgrade-steps { gap: 4px; margin: 9px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-effect { margin-bottom: 8px; font-size: 10px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-level-controls { grid-template-columns: repeat(6, minmax(44px, 1fr)); gap: 3px; overflow-x: auto; overscroll-behavior-x: contain; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-level-button { min-width: 44px; min-height: 44px; padding: 6px 2px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-workshop-plan { margin-top: 14px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-tier-row { gap: 8px; padding: 10px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-tier-number { font-size: 18px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract { margin-bottom: 14px; padding-bottom: 12px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract h3 { font-size: 16px; margin: 7px 0 6px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract-reward { font-size: 18px; margin: 9px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-progress-wrap { margin: 10px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-name { font-size: 20px; margin-bottom: 7px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-season-name) > .gs-description { display: none; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-tier { gap: 7px; padding: 10px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-rewards { gap: 10px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-track { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-track > .gs-small-note { grid-column: 1; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-track > strong { font-size: 11px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-track > button { grid-column: 1; grid-row: auto; justify-self: start; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-commerce-note,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-badge-collection { margin-top: 12px; padding-top: 10px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-commerce-note h3 { font-size: 15px; margin-bottom: 6px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-platform-note { margin-top: 8px; padding: 6px 8px; font-size: 10px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-empty { padding: 7px 0 12px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-empty > svg { width: 28px; height: 28px; margin: 5px 0 10px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-empty h3 { font-size: 17px; margin-bottom: 8px; }
+}
+@media (orientation: landscape) and (max-height: 620px) and (max-width: 400px) {
+  .garage-shell[data-screen='garage'] .gs-garage > .gs-stage { padding-inline: 4px; }
+  .garage-shell[data-screen='garage'] .gs-stage .gs-vehicle-title-dock > .gs-vehicle-title { font-size: 18px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-brand { gap: 2px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-brand-type strong { font-size: 12px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body { padding-inline: 8px; }
+}
+@media (orientation: landscape) and (max-height: 300px) and (min-width: 401px) and (max-width: 1100px) {
+  .garage-shell[data-screen='garage'] .gs-stage .gs-vehicle-title-dock > .gs-vehicle-title { font-size: 18px; }
+}
+/* Compact iframes share one top band to keep desktop quantities in view. CSS Grid measures the real wallet
+   group, including enlarged text, rather than guessing a right-hand inset. */
+@media (orientation: landscape) and (max-height: 620px) and (max-width: 1100px) {
+  .garage-shell[data-screen='garage'] .gs-layout {
+    display: grid; grid-template-columns: 44px max-content minmax(0, 1fr) max-content;
+    grid-template-rows: 44px minmax(0, 1fr) auto; gap: 0;
+    box-sizing: border-box; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  }
+  .garage-shell[data-screen='garage'] .gs-layout > .gs-header,
+  .garage-shell[data-screen='garage'] .gs-layout > .gs-garage { display: contents; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-brand { grid-column: 2; grid-row: 1; display: flex; margin: 0; padding-right: 5px; gap: 3px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-emblem { width: 21px; height: 21px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-brand-type strong { font-size: 12px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-mobile-home { grid-column: 1; grid-row: 1; width: 44px; height: 44px; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-account { grid-column: 4; grid-row: 1; margin: 0; padding-right: 4px; }
+  .garage-shell[data-screen='garage'] .gs-rail > .gs-tabs { grid-column: 3; grid-row: 1; padding-inline: 2px; }
+  .garage-shell[data-screen='garage'] .gs-garage > .gs-stage { grid-column: 1 / -1; grid-row: 2; justify-self: start; width: calc(100% - var(--gs-compact-panel)); }
+  .garage-shell[data-screen='garage'] .gs-garage > .gs-workbench { grid-column: 1 / -1; grid-row: 2; justify-self: end; width: calc(var(--gs-compact-panel) - 4px); }
+  .garage-shell[data-screen='garage'] .gs-stage .gs-vehicle-title-dock > .gs-vehicle-title {
+    font-size: 18px; white-space: nowrap; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; pointer-events: auto; touch-action: pan-x;
+  }
+  .garage-shell[data-screen='garage'] .gs-layout > .gs-footer { grid-column: 1 / -1; grid-row: 3; height: 24px; }
+  .garage-shell[data-screen='garage'] .gs-layout > .gs-footer:has(.gs-footer-connect) { height: 44px; }
+}
+@media (orientation: landscape) and (max-height: 620px) and (max-width: 1100px) {
+  .garage-shell[data-screen='garage'] .gs-tabs > .gs-tab { grid-template-columns: minmax(0, 1fr); grid-template-rows: 18px auto; padding: 3px 4px; gap: 1px; }
+  .garage-shell[data-screen='garage'] .gs-tab .gs-nav-scene { justify-self: center; width: 20px; height: 18px; }
+  .garage-shell[data-screen='garage'] .gs-tab .gs-tab-copy { align-items: center; }
+  .garage-shell[data-screen='garage'] .gs-tab .gs-tab-name { font-size: 10px; line-height: 1.1; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-atelier-category,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-body-section { min-height: 32px; padding-block: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-cosmetic-reset .gs-small-button { min-height: 32px; padding: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-atelier-categories { margin-bottom: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-body-sections { margin-bottom: 1px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-palette { gap: 4px; padding: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice[aria-pressed='true'] { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center; min-height: 44px; padding: 3px; gap: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice .gs-material-sample { grid-column: 1; grid-row: 1; width: 16px; height: 24px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice .gs-sample-surface { width: 16px; height: 16px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice .gs-sample-caption { grid-column: 2; grid-row: 1; gap: 2px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice .gs-sample-reason { grid-column: 1 / -1; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-color-choice[data-owned='false'] .gs-sample-action { font-family: var(--gs-body); }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-heading { margin-bottom: 2px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-cosmetic-reset { margin-top: 2px; }
+}
+@media (orientation: landscape) and (max-height: 620px) and (max-width: 500px) {
+  .garage-shell[data-screen='garage'] .gs-layout { grid-template-columns: 44px minmax(0, 1fr) max-content; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-brand { display: none; }
+  .garage-shell[data-screen='garage'] .gs-rail > .gs-tabs { grid-column: 2; }
+  .garage-shell[data-screen='garage'] .gs-header .gs-account { grid-column: 3; }
+}
+/* Match the desktop's first-screen content, rather than merely making it scrollable.
+   Content-sized rows grow with enlarged type; no fixed-height text clipping. */
+@media (orientation: landscape) and (max-height: 620px) and (max-width: 1100px) {
+  .garage-shell[data-screen='garage'] .gs-inspection > .gs-inspection-button { min-height: 32px; padding-block: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body { padding: 4px 6px 8px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-setting { margin: 2px 0; gap: 2px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-setting select { min-height: 32px; padding: 4px; }
+
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-button { min-height: 32px; margin-bottom: 2px; box-shadow: 0 -10px 0 #252533, 0 1px 0 #252533; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-vehicle-list) > .gs-section-label { margin-bottom: 2px; font-size: 9px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-list {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(max-content, 4.15em);
+    flex: 0 0 auto; min-height: 0; max-height: calc(8.3em + 2px); margin: 0 0 2px; gap: 2px;
+    font-size: 13px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row { grid-template-columns: 30px minmax(0, 1fr); grid-template-rows: auto auto; min-width: 0; min-height: 50px; padding: 3px; gap: 2px 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row > .gs-list-index,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row > svg { display: none; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-car-thumb { grid-column: 1; grid-row: 1; width: 30px; height: 22px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row-copy { display: contents; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row-copy strong { grid-column: 2; grid-row: 1; min-width: 0; font-size: 10px; line-height: 1.15; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-row-copy > span { grid-column: 1 / -1; grid-row: 2; font-size: 9px; line-height: 1.2; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-spec-row { gap: 4px 8px; margin: 2px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-stat { flex-direction: row; align-items: baseline; gap: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-stat-label { font-size: 8px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-stat-value { font-size: 15px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-setting { flex-direction: row; align-items: center; gap: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-setting > span { flex: 0 0 36px; font-size: 9px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-vehicle-detail > .gs-setting select { min-width: 0; flex: 1; }
+
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-engineering-comparison) > .gs-setting { flex-direction: row; align-items: center; gap: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-engineering-comparison) > .gs-setting > span { flex: 0 0 44px; font-size: 9px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-engineering-comparison) > .gs-setting select { flex: 1; min-width: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-engineering-comparison { margin: 4px 0; padding: 2px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-engineering-comparison > h3 { margin-bottom: 3px; font-size: 11px; line-height: 1.2; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-comparison-row { grid-template-columns: minmax(0, 1fr) 54px 54px; padding: 2px 0; gap: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-comparison-label,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-comparison-row > strong { font-size: 9.5px; line-height: 1.2; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-comparison-row small { font-size: 9px; line-height: 1.2; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-comparison-head { font-size: 9px; }
+
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-contract) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 6px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-contract) > .gs-small-note { grid-column: 1 / -1; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract { display: flex; flex-direction: column; min-width: 0; margin: 0; padding: 3px; border: 1px solid #b6a2c02b; border-radius: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract .gs-section-label { flex-direction: column; align-items: flex-start; margin: 0 0 3px; gap: 2px; font-size: 9px; line-height: 1.2; letter-spacing: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract h3 { margin: 2px 0; font-size: 14px; line-height: 1.15; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract .gs-description { margin: 2px 0; font-size: 10px; line-height: 1.3; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract-reward { margin: 4px 0; font-size: 14px; line-height: 1.2; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract .gs-progress-wrap { margin: 4px 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract .gs-progress-label { margin-top: 3px; line-height: 1.2; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-contract > .gs-button { margin-top: auto; padding: 4px; font-size: 10px; }
+
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-season-name) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-season-name) > :not(.gs-season-tier) { grid-column: 1 / -1; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-name { margin: 0; font-size: 17px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-season-name) > .gs-progress-wrap { margin: 1px 0 2px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-panel-body:has(> .gs-season-name) > .gs-progress-wrap .gs-progress-label { margin-top: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-tier { position: relative; display: block; min-width: 0; padding: 3px; border: 1px solid #b6a2c02b; border-radius: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-tier > .gs-tier-number { position: absolute; top: 3px; left: 3px; padding: 0; font-size: 11px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-rewards { min-width: 0; width: 100%; gap: 6px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-track { min-width: 0; gap: 2px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-track > .gs-kicker { padding-left: 15px; font-size: 8px; letter-spacing: 0; line-height: 1.4; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-track > strong { min-height: 2.4em; font-size: 10px; line-height: 1.2; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-season-track > button { justify-self: stretch; min-width: 32px; min-height: 32px; padding: 3px 1px; font-size: 10px; }
+}
+/* Material subcategories retain the same first-screen choices as desktop. */
+@media (orientation: landscape) and (max-height: 620px) and (max-width: 1100px) {
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-item-group { margin-bottom: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-heading > .gs-section-label { font-size: 11px; line-height: 1.2; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-list { gap: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice,
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice[aria-pressed='true'] { grid-template-columns: 24px max-content minmax(0, 1fr); min-height: 32px; padding: 3px; gap: 2px 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-material-sample { grid-column: 1; grid-row: 1 / 3; width: 24px; height: 24px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-caption { display: contents; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-caption > strong { grid-column: 2 / -1; grid-row: 1; min-width: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-action { grid-column: 2; grid-row: 2; min-width: 0; margin: 0; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-reason { grid-column: 3; grid-row: 2; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-surface { width: 24px; height: 22px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-wheel .gs-sample-surface { width: 24px; height: 24px; border-width: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-wheel .gs-sample-surface::after { width: 6px; height: 6px; margin: 6px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-glass .gs-sample-surface { width: 24px; height: 18px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-steering .gs-sample-surface { width: 24px; height: 24px; border-width: 3px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-steering .gs-sample-surface::before { width: 19px; height: 4px; top: 7px; left: -1px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-steering .gs-sample-surface::after { width: 6px; height: 9px; top: 9px; left: 6px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-steering[data-variant='yoke'] .gs-sample-surface { height: 20px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-steering[data-variant='yoke'] .gs-sample-surface::before { top: 4px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-material-choice .gs-sample-steering[data-variant='yoke'] .gs-sample-surface::after { top: 6px; height: 9px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-cosmetic-reset > .gs-small-note { flex-basis: 70px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-item-group[data-gs-slot='wheels.finish'] > .gs-material-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-item-group[data-gs-slot='wheels.finish'] .gs-material-choice { grid-template-columns: 24px minmax(0, 1fr); min-height: 44px; }
+  .garage-shell[data-screen='garage'] .gs-workbench .gs-item-group[data-gs-slot='wheels.finish'] .gs-sample-reason { grid-column: 1 / -1; grid-row: 3; }
+}
+/* MOBILE_GARAGE_COMPACT_END */
+
+/* HOME_ENTRY_COMPACT: the game iframe, not the physical phone, sets this budget.
+   Yandex sidebars can reduce landscape content below 700px. Keep both entry
+   actions in their own non-scrolling row; optional copy yields to the real car.
+   Every override is hub-only so the accepted garage and results stay unchanged. */
+@media (orientation: landscape) and (max-height: 620px), (orientation: landscape) and (max-width: 900px) {
+  .garage-shell[data-screen='hub'] .gs-layout { min-height: 0; height: 100%; max-height: 100%; }
+  .garage-shell[data-screen='hub'] .gs-header { flex: 0 0 52px; min-width: 0; padding: 4px 14px; gap: 10px; }
+  .garage-shell[data-screen='hub'] .gs-header-context,
+  .garage-shell[data-screen='hub'] .gs-brand-type > span { display: none; }
+  .garage-shell[data-screen='hub'] .gs-emblem { width: 34px; height: 34px; }
+  .garage-shell[data-screen='hub'] .gs-brand { gap: 6px; }
+  .garage-shell[data-screen='hub'] .gs-brand-type strong { font-size: 18px; }
+  .garage-shell[data-screen='hub'] .gs-account { gap: 8px; }
+  .garage-shell[data-screen='hub'] .gs-balance { font-size: 13px; gap: 6px; }
+  .garage-shell[data-screen='hub'] .gs-footer { flex: 0 0 28px; min-width: 0; padding: 0 14px; gap: 10px; }
+  .garage-shell[data-screen='hub'] .gs-footer:has(.gs-footer-connect) { flex-basis: 44px; }
+  .garage-shell[data-screen='hub'] .gs-footer-brand,
+  .garage-shell[data-screen='hub'] .gs-footer-build { display: none; }
+  .garage-shell[data-screen='hub'] .gs-save-status { min-width: 0; font-size: 9px; }
+  .garage-shell[data-screen='hub'] .gs-footer-connect { min-height: 44px; font-size: 9px; }
+  .garage-shell[data-screen='hub'] .gs-hub {
+    display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px; padding: 10px 14px 12px; overflow: clip;
+  }
+  .garage-shell[data-screen='hub'] .gs-hub-intro { display: contents; width: auto; max-width: none; pointer-events: none; }
+  .garage-shell[data-screen='hub'] .gs-hub-intro > .gs-kicker,
+  .garage-shell[data-screen='hub'] .gs-hub-copy,
+  .garage-shell[data-screen='hub'] .gs-hub-intro > .gs-small-note { display: none; }
+  /* Preserve the page heading and focus destination without a giant visible slogan. */
+  .garage-shell[data-screen='hub'] .gs-hub-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions {
+    grid-column: 1; grid-row: 2; justify-self: start; display: grid;
+    grid-template-columns: repeat(2, minmax(0, max-content)); width: max-content; max-width: min(100%, 400px); margin: 0; gap: 6px;
+  }
+  /* Fit the labels, not the whole bottom edge. Real 44px targets stay intact;
+     intrinsic columns grow with enlarged text rather than scaling the buttons. */
+  .garage-shell[data-screen='hub'] .gs-hub-actions .gs-button { min-width: 44px; min-height: 44px; width: auto; justify-content: center; padding: 8px 10px; gap: 6px; font-size: 12px; line-height: 1.2; overflow-wrap: normal; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions .gs-secondary { background: #202232ed; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions svg { width: 16px; height: 16px; }
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle { top: 14px; right: 14px; width: min(43%, 260px); gap: 3px; overflow-wrap: anywhere; }
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle > strong { font-size: 16px; line-height: 1.2; }
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle > .gs-kicker,
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle > .gs-small-note { display: none; }
+  .garage-shell[data-screen='hub'] .gs-hub-dock { grid-column: 1; grid-row: 1; align-self: start; justify-self: start; display: block; width: max-content; max-width: 100%; margin: 0; border: 0; background: none; backdrop-filter: none; }
+  /* Contracts remain in the garage. The route is still directly selectable. */
+  .garage-shell[data-screen='hub'] .gs-hub-dock > :not(.gs-route-cell) { display: none; }
+  .garage-shell[data-screen='hub'] .gs-route-cell { display: block; padding: 0; border: 0; }
+  .garage-shell[data-screen='hub'] .gs-route-cell > .gs-kicker { display: none; }
+  .garage-shell[data-screen='hub'] .gs-route-cell .gs-setting { width: 100%; margin: 0; }
+  .garage-shell[data-screen='hub'] .gs-route-cell select { min-width: 44px; min-height: 44px; width: auto; max-width: 100%; padding: 8px 28px 8px 10px; font-size: 12px; background-color: #202232d9; border: 1px solid var(--gs-line); }
+}
+
+/* Below 400px the native route's intrinsic text width takes priority over the
+   optional car caption. Decorative action icons yield before readable labels. */
+@media (orientation: landscape) and (max-width: 400px) {
+  .garage-shell[data-screen='hub'] .gs-header { padding-inline: 8px; gap: 6px; }
+  .garage-shell[data-screen='hub'] .gs-hero-vehicle { display: none; }
+  .garage-shell[data-screen='hub'] .gs-hub { padding-inline: 8px; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions { gap: 4px; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions .gs-button { padding-inline: 5px; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions svg { display: none; }
+  .garage-shell[data-screen='hub'] .gs-footer { padding-inline: 8px; gap: 6px; }
+  .garage-shell[data-screen='hub'] .gs-save-status { line-height: 1.2; }
+  .garage-shell[data-screen='hub'] .gs-footer-connect { flex: 0 1 62%; min-width: 0; padding-block: 0; gap: 6px; line-height: 1.2; }
+}
+/* A 180px-tall landscape iframe has room for two real 44px control rows only
+   when decorative vertical space yields. Header and guest login stay readable. */
+@media (orientation: landscape) and (max-height: 220px) {
+  .garage-shell[data-screen='hub'] .gs-header { flex-basis: 46px; padding-block: 0; border-bottom: 0; }
+  .garage-shell[data-screen='hub'] .gs-hub { padding-block: 0; gap: 2px; }
+  .garage-shell[data-screen='hub'] .gs-footer { border-top: 0; }
+}
