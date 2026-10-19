@@ -199,3 +199,7 @@ Q / E выполняют один боковой оборот в полёте; �
 ### Живые мини-модели автопарка
 
 В списке гаража показаны те же реальные 3D-модели машин с сохранённой окраской и деталями. Наведение или клавиатурный фокус плавно поворачивает мини-машину, касание запускает короткий осмотр. Неподвижные карточки используют кеш, все делят один игровой WebGL-рендерер. Подробности: [GARAGE_FLEET_MINIATURES.md](docs/GARAGE_FLEET_MINIATURES.md).
+
+### Compact mobile HOME
+
+The compact landscape HOME now gives the actual selected car a measured, unobstructed hero area and content-width entry buttons with 44px minimum touch targets. Normal desktop, garage inspection and driving cameras are unchanged. See [mobile HOME composition and verification](docs/MOBILE_HOME_COMPOSITION.md).

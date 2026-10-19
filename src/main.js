@@ -1,4 +1,5 @@
 import { recoverPendingRunResult } from './pending-run-result.js';
+import { homeVehicleFraming } from './home-framing.js';
 import { createThumbDrive } from './thumb-drive.js';
 import { createOrientationGate } from './orientation-gate.js';
 import { Game } from './game.js';
@@ -489,6 +490,10 @@ let previous=performance.now();
 garageOrbitInput=bindGarageOrbitInput({element:byId('scene'),window,document,enabled:()=>!orientationBlocked&&!document.hidden&&!busy&&!loading.adPending&&!garageUI.settingsOpen&&!garageUI.view?.platform?.conflict&&['hub','garage'].includes(screen),onOrbit:(dx,dy)=>{garageScene?.orbit(dx,dy);garageDirty=true;}});
 /** Reserve the real visible inspection rectangle, including the mobile drawer, rather than hiding half the car under UI. */
 function garageFraming(){
+  if(screen==='hub'){
+    const bounds=selector=>document.querySelector(selector)?.getBoundingClientRect();
+    return homeVehicleFraming({width:innerWidth,height:innerHeight,header:bounds('.gs-header'),route:bounds('.gs-route-cell'),label:bounds('.gs-hero-vehicle'),actions:bounds('.gs-hub-actions'),footer:bounds('.gs-footer')});
+  }
   const stage=document.querySelector('.gs-stage');
   if(stage&&screen==='garage'){
     const rect=stage.getBoundingClientRect(),heading=stage.querySelector('.gs-stage-heading')?.getBoundingClientRect(),controls=stage.querySelector('.gs-stage-bottom')?.getBoundingClientRect();

@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import { bindGarageOrbitInput } from '../src/garage-orbit-input.js';
 import { recoverPendingRunResult } from '../src/pending-run-result.js';
+import { homeVehicleFraming } from '../src/home-framing.js';
 import { Game } from '../src/game.js';
 import { RunTelemetry } from '../src/run-telemetry.js';
 import { createProgressionStorage, PROGRESSION_STORAGE_KEY } from '../src/progression-storage.js';
@@ -95,7 +96,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     window:{addEventListener(name,callback){listen(`window:${name}`,callback);}},
     performance:{now:()=>0},innerWidth:1200,innerHeight:800,requestAnimationFrame(){},
     matchMedia:()=>({matches:false,addEventListener(){}}),location:{reload(){}},
-    Game,recoverPendingRunResult,bindGarageOrbitInput,RunTelemetry,deriveGarageView,getEngineeringModifiers,getRunDoubleOffer,LIMITS,CATALOG,ADS,vehicleDefinition,
+    Game,recoverPendingRunResult,homeVehicleFraming,bindGarageOrbitInput,RunTelemetry,deriveGarageView,getEngineeringModifiers,getRunDoubleOffer,LIMITS,CATALOG,ADS,vehicleDefinition,
     createStorage:()=>createStorage(()=>localStorage),createProgressionStorage:()=>({...profileStore,dispatch:action=>rejectSettings&&action.type==='UPDATE_SETTINGS'?{ok:false,changed:false,reason:'future-version-read-only',profile:profileStore.get(),persistence:profileStore.status()}:profileStore.dispatch(structuredClone(action))}),
     createThumbDrive:()=>({setEnabled(){},clear(){}}),createOrientationGate:({onChange})=>{orientationHandler=onChange;onChange(portrait);return {blocked:portrait};},createSdk:()=>sdk,createLifecycle,createAds,createAdCadence,loadOwnGames,openOwnGame,
     createPlatformServices:options=>{

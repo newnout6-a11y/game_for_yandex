@@ -1152,20 +1152,22 @@
   .garage-shell[data-screen='hub'] .gs-hub-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .garage-shell[data-screen='hub'] .gs-hub-actions {
     grid-column: 1; grid-row: 2; justify-self: start; display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 480px); margin: 0; gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, max-content)); width: max-content; max-width: min(100%, 400px); margin: 0; gap: 6px;
   }
-  .garage-shell[data-screen='hub'] .gs-hub-actions .gs-button { min-width: 44px; min-height: 48px; width: 100%; padding: 12px 14px; gap: 8px; font-size: 14px; line-height: 1.2; overflow-wrap: anywhere; }
+  /* Fit the labels, not the whole bottom edge. Real 44px targets stay intact;
+     intrinsic columns grow with enlarged text rather than scaling the buttons. */
+  .garage-shell[data-screen='hub'] .gs-hub-actions .gs-button { min-width: 44px; min-height: 44px; width: auto; justify-content: center; padding: 8px 10px; gap: 6px; font-size: 12px; line-height: 1.2; overflow-wrap: normal; }
   .garage-shell[data-screen='hub'] .gs-hub-actions .gs-secondary { background: #202232ed; }
-  .garage-shell[data-screen='hub'] .gs-hub-actions svg { width: 18px; height: 18px; }
+  .garage-shell[data-screen='hub'] .gs-hub-actions svg { width: 16px; height: 16px; }
   .garage-shell[data-screen='hub'] .gs-hero-vehicle { top: 14px; right: 14px; width: min(43%, 260px); gap: 3px; overflow-wrap: anywhere; }
   .garage-shell[data-screen='hub'] .gs-hero-vehicle > strong { font-size: 16px; line-height: 1.2; }
   .garage-shell[data-screen='hub'] .gs-hero-vehicle > .gs-kicker,
   .garage-shell[data-screen='hub'] .gs-hero-vehicle > .gs-small-note { display: none; }
-  .garage-shell[data-screen='hub'] .gs-hub-dock { grid-column: 1; grid-row: 1; align-self: start; justify-self: start; display: block; width: min(49%, 260px); margin: 0; border: 0; background: none; backdrop-filter: none; }
+  .garage-shell[data-screen='hub'] .gs-hub-dock { grid-column: 1; grid-row: 1; align-self: start; justify-self: start; display: block; width: max-content; max-width: min(49%, 260px); margin: 0; border: 0; background: none; backdrop-filter: none; }
   /* Contracts remain in the garage. The route is still directly selectable. */
   .garage-shell[data-screen='hub'] .gs-hub-dock > :not(.gs-route-cell) { display: none; }
   .garage-shell[data-screen='hub'] .gs-route-cell { display: block; padding: 0; border: 0; }
   .garage-shell[data-screen='hub'] .gs-route-cell > .gs-kicker { display: none; }
   .garage-shell[data-screen='hub'] .gs-route-cell .gs-setting { width: 100%; margin: 0; }
-  .garage-shell[data-screen='hub'] .gs-route-cell select { min-height: 44px; width: 100%; padding: 8px 28px 8px 10px; font-size: 12px; background-color: #202232d9; border: 1px solid var(--gs-line); }
+  .garage-shell[data-screen='hub'] .gs-route-cell select { min-width: 44px; min-height: 44px; width: auto; max-width: 100%; padding: 8px 28px 8px 10px; font-size: 12px; background-color: #202232d9; border: 1px solid var(--gs-line); }
 }

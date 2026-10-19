@@ -24,10 +24,35 @@ test('every compact HOME rule is screen-scoped, leaving garage and results uncha
 
 test('entry actions have a reserved non-scrolling row and minimum touch targets', () => {
   assert.match(compact, /\.gs-hub \{[^}]*grid-template-rows: minmax\(0, 1fr\) auto[^}]*overflow: clip;/s);
-  assert.match(compact, /\.gs-hub-actions \{[^}]*grid-row: 2;[^}]*repeat\(2, minmax\(0, 1fr\)\)[^}]*margin: 0;/s);
-  assert.match(compact, /\.gs-hub-actions \.gs-button \{[^}]*min-width: 44px; min-height: 48px;/s);
+  assert.match(compact, /\.gs-hub-actions \{[^}]*grid-row: 2;[^}]*repeat\(2, minmax\(0, max-content\)\)[^}]*margin: 0;/s);
+  assert.match(compact, /\.gs-hub-actions \.gs-button \{[^}]*min-width: 44px; min-height: 44px;/s);
   assert.match(compact, /\.gs-hub-title \{[^}]*clip-path: inset\(50%\)/s);
   assert.match(compact, /\.gs-route-cell select \{[^}]*min-height: 44px;/s);
+});
+
+test('compact controls fit their content instead of stretching across the car', () => {
+  const actions = compact.match(/\.gs-hub-actions \{([^}]+)\}/s)[1];
+  const button = compact.match(/\.gs-hub-actions \.gs-button \{([^}]+)\}/s)[1];
+  const dock = compact.match(/\.gs-hub-dock \{([^}]+)\}/s)[1];
+  const route = compact.match(/\.gs-route-cell select \{([^}]+)\}/s)[1];
+  assert.match(actions, /width: max-content; max-width: min\(100%, 400px\);/);
+  assert.match(actions, /gap: 6px;/);
+  assert.doesNotMatch(actions, /\b1fr\b|480px/);
+  assert.match(button, /width: auto; justify-content: center; padding: 8px 10px; gap: 6px;/);
+  assert.match(button, /font-size: 12px; line-height: 1\.2; overflow-wrap: normal;/);
+  assert.doesNotMatch(button, /(?:^|;)\s*height:|white-space: nowrap|text-overflow|overflow:\s*hidden|transform:|zoom:/);
+  assert.match(compact, /\.gs-hub-actions svg \{ width: 16px; height: 16px; \}/);
+  assert.match(dock, /width: max-content; max-width: min\(49%, 260px\);/);
+  assert.match(route, /min-width: 44px; min-height: 44px; width: auto; max-width: 100%;/);
+  assert.doesNotMatch(compact, /text-size-adjust:\s*none|transform:\s*scale|zoom:/);
+});
+
+test('compact controls preserve the accepted header and guest footer budget', () => {
+  assert.match(compact, /\.gs-header \{ flex: 0 0 52px; min-width: 0; padding: 4px 14px; gap: 10px; \}/);
+  assert.match(compact, /\.gs-emblem \{ width: 34px; height: 34px; \}/);
+  assert.match(compact, /\.gs-footer \{ flex: 0 0 28px;/);
+  assert.match(compact, /\.gs-footer:has\(\.gs-footer-connect\) \{ flex-basis: 44px; \}/);
+  assert.match(compact, /\.gs-footer-connect \{ min-height: 44px;/);
 });
 
 test('HOME markup retains the real start, garage and route actions without new persistence or SDK paths', async () => {
