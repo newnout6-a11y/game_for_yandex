@@ -19,8 +19,8 @@
       8.8
     ]
   },
-  "bytes": 5337508,
-  "sha256": "dfe6183fdb7f8bbf5f6a8a60c86810775db2dc6d64385e6197bef8b406e264e5",
+  "bytes": 5336996,
+  "sha256": "e1f43eb43e19592156aee5c8f7d18b71b68fb34ae85f31d03efec55c0e2e1050",
   "original_textures": [
     "original-rose-velocity-mural.png",
     "original-workshop-wall-basecolor.png",
@@ -1817,12 +1817,12 @@
       {
         "name": "Service lift post",
         "min": [
-          -3.98,
+          -6.88,
           0.0,
           1.8
         ],
         "max": [
-          -3.62,
+          -6.52,
           3.7,
           2.2
         ]
@@ -1830,12 +1830,12 @@
       {
         "name": "Lift base",
         "min": [
-          -4.21,
+          -7.11,
           0.0,
           1.63
         ],
         "max": [
-          -3.39,
+          -6.29,
           0.14,
           2.37
         ]
@@ -1843,12 +1843,12 @@
       {
         "name": "Lift carriage",
         "min": [
-          -4.06,
+          -6.96,
           0.375,
           1.65
         ],
         "max": [
-          -3.54,
+          -6.44,
           0.925,
           1.85
         ]
@@ -1856,12 +1856,12 @@
       {
         "name": "Retracted lift arm",
         "min": [
-          -3.885,
+          -6.785,
           0.17,
           2.15
         ],
         "max": [
-          -3.715,
+          -6.615,
           0.33,
           3.45
         ]
@@ -1869,12 +1869,12 @@
       {
         "name": "Lift pad",
         "min": [
-          -3.95,
+          -6.85,
           0.27,
           3.25
         ],
         "max": [
-          -3.65,
+          -6.55,
           0.35,
           3.55
         ]
@@ -1882,12 +1882,12 @@
       {
         "name": "Service lift post.001",
         "min": [
-          3.62,
+          6.52,
           0.0,
           1.8
         ],
         "max": [
-          3.98,
+          6.88,
           3.7,
           2.2
         ]
@@ -1895,12 +1895,12 @@
       {
         "name": "Lift base.001",
         "min": [
-          3.39,
+          6.29,
           0.0,
           1.63
         ],
         "max": [
-          4.21,
+          7.11,
           0.14,
           2.37
         ]
@@ -1908,12 +1908,12 @@
       {
         "name": "Lift carriage.001",
         "min": [
-          3.54,
+          6.44,
           0.375,
           1.65
         ],
         "max": [
-          4.06,
+          6.96,
           0.925,
           1.85
         ]
@@ -1921,12 +1921,12 @@
       {
         "name": "Retracted lift arm.001",
         "min": [
-          3.715,
+          6.615,
           0.17,
           2.15
         ],
         "max": [
-          3.885,
+          6.785,
           0.33,
           3.45
         ]
@@ -1934,12 +1934,12 @@
       {
         "name": "Lift pad.001",
         "min": [
-          3.65,
+          6.55,
           0.27,
           3.25
         ],
         "max": [
-          3.95,
+          6.85,
           0.35,
           3.55
         ]
@@ -1947,13 +1947,13 @@
       {
         "name": "Lift overhead cable support",
         "min": [
-          -4.025,
-          4.01,
+          -6.925,
+          4.31,
           1.89
         ],
         "max": [
-          4.025,
-          4.19,
+          6.925,
+          4.49,
           2.11
         ]
       },
@@ -4077,6 +4077,23 @@
     "historical_operation": true,
     "scope_note": "Before/after hashes and preservation claims describe the earlier poster replacement only, not the current asset after subsequent edits."
   },
+  "mural_relocation_history": [
+    {
+      "operation": "Move the complete original Rose Velocity mural from multi-surface rear projection onto one solid right concrete wall",
+      "source_before_sha256": "978d728f4ad52c7c516f5bd2f8cba386589509d69bfdf8cc90a6c6a039ea4b41",
+      "source_after_sha256": "3c92e440e872c54f822ef6feced7ab0a1cb912f90086357f70aa3549d45b74d5",
+      "glb_before_sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
+      "glb_after_sha256": "6a7e12dbc7ee8480b3af2584eb7d8a30f532e81a12dae7095b3213b22a34b7b4",
+      "changed_scope": [
+        "Original rose velocity mural mesh positions, topology and UVs",
+        "Mural placement metadata"
+      ],
+      "full_glb_byte_identical": false,
+      "preservation_scope": "Non-mural mesh accessor payloads, all material definitions and embedded images only; not the complete pre-mural GLB buffer.",
+      "verification_report": "art/garage/mural-placement-audit.json",
+      "historical_operation": true
+    }
+  ],
   "mural_relocation": {
     "operation": "Place the complete original Rose Velocity mural on its solid right concrete wall within actual native overview framing",
     "placement_before": {
@@ -4129,23 +4146,10 @@
       -0.75,
       0.0
     ],
-    "size_and_uvs_unchanged": true
+    "size_and_uvs_unchanged": true,
+    "historical_operation": true,
+    "scope_note": "Hashes and preservation claims describe the earlier mural relocation only; stable-orbit-placement-audit.json chains that checkpoint to this later bounded equipment translation."
   },
-  "mural_relocation_history": [
-    {
-      "operation": "Move the complete original Rose Velocity mural from multi-surface rear projection onto one solid right concrete wall",
-      "source_before_sha256": "978d728f4ad52c7c516f5bd2f8cba386589509d69bfdf8cc90a6c6a039ea4b41",
-      "source_after_sha256": "3c92e440e872c54f822ef6feced7ab0a1cb912f90086357f70aa3549d45b74d5",
-      "glb_before_sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
-      "glb_after_sha256": "6a7e12dbc7ee8480b3af2584eb7d8a30f532e81a12dae7095b3213b22a34b7b4",
-      "changed_scope": [
-        "Original rose velocity mural mesh positions, topology and UVs",
-        "Mural placement metadata"
-      ],
-      "full_glb_byte_identical": false,
-      "preservation_scope": "Non-mural mesh accessor payloads, all material definitions and embedded images only; not the complete pre-mural GLB buffer.",
-      "verification_report": "art/garage/mural-placement-audit.json",
-      "historical_operation": true
-    }
-  ]
+  "stable_orbit_placement_audit": "art/garage/stable-orbit-placement-audit.json",
+  "preserved_rear_geometry_scope": "Historical interior-completion checkpoint; current bounded lift/island geometry changes are proven separately by stable_orbit_placement_audit."
 }

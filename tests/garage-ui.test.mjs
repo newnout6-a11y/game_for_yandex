@@ -86,7 +86,7 @@ test('every garage tab renders against the real catalog and keeps all five tab c
 });
 test('first-entry hub starts immediately and exposes no forced authentication gate', () => {
   const h = harness(); h.render({ screen: 'hub' });
-  assert.ok(h.root.textContent.includes('Можно играть сразу')); assert.ok(h.button('startDrive'));
+  assert.ok(!h.root.textContent.includes('Можно играть сразу')); assert.ok(h.button('startDrive'));
   assert.equal(h.button('cloudConnect'), undefined); assert.equal(h.button('purchaseProduct'), undefined);
   h.click(h.button('startDrive')); assert.deepEqual(h.actions, [{ type: 'startDrive' }]);
 });
@@ -346,7 +346,7 @@ test('CSS is namespaced and contains portrait, landscape and reduced-motion rule
 
 test('revive is an explicit eligible action and local label does not imply advertisement', () => {
   const h = harness(); h.render({ screen: 'results', runResult: { canRevive: true, reviveLabel: 'Тренировочное продолжение' } });
-  const revive = h.button('revive'); assert.ok(revive); assert.equal(revive.textContent, 'Тренировочное продолжение');
+  const revive = h.button('revive'); assert.ok(revive); assert.equal(revive.getAttribute('aria-label'), 'Тренировочное продолжение'); assert.equal(revive.querySelector('.gs-result-wide-label').textContent, 'Тренировочное продолжение');
   h.click(revive); assert.deepEqual(h.actions.at(-1), { type: 'revive' });
   h.render({ screen: 'results', runResult: { canRevive: true, bonusClaimed: true } }); assert.equal(h.button('revive'), undefined);
 });
@@ -1218,4 +1218,25 @@ test('save warning CSS cannot reserve a strip or intercept catalogue pointer eve
   const indicator = css.match(/\.garage-shell \.gs-save-indicator \{([^}]+)\}/)[1];
   assert.match(indicator, /position: absolute/);
   assert.match(indicator, /pointer-events: none/);
+});
+
+
+test('clean HOME removes promotional copy and vehicle metadata, preserving its actual actions and focus target', () => {
+  const h = harness(); h.ui.setVisible(true); h.render({screen: 'garage'}); h.render({screen: 'hub'});
+  for (const text of ['ДОРОГА НАЧИНАЕТСЯ ЗДЕСЬ', 'НЕБО БЛИЖЕ', 'ДЕРЖИ ТРАССУ', 'ЗАБИРАЙ НЕБО', 'Твой родстер.', 'Можно играть сразу', 'В ТВОЁМ БОКСЕ']) assert.ok(!h.root.textContent.includes(text), text);
+  for (const selector of ['.gs-hub-intro', '.gs-hub-title', '.gs-hub-copy', '.gs-hero-vehicle']) assert.equal(h.root.querySelector(selector), null, selector);
+  const heading = h.root.querySelector('.gs-home-heading');
+  assert.equal(heading.textContent, 'Главная'); assert.equal(heading.dataset.gsHeading, 'true'); assert.equal(heading.tabIndex, -1);
+  assert.equal(h.doc.activeElement, heading);
+  assert.ok(h.root.querySelector('.gs-brand')); assert.ok(h.root.querySelector('.gs-balance'));
+  assert.ok(h.root.querySelector('[data-gs-settings-open]')); assert.ok(h.root.querySelector('[data-gs-setting="route"]'));
+  assert.ok(h.root.querySelector('.gs-hub-dock').textContent.includes('БОКС'));
+  const start = h.button('startDrive'), garage = h.button('navigate', a => a.tab === 'fleet'), contracts = h.button('navigate', a => a.tab === 'contracts');
+  assert.ok(start && garage && contracts); h.click(start); h.click(garage); h.click(contracts);
+  assert.deepEqual(h.actions, [{type:'startDrive'}, {type:'navigate',screen:'garage',tab:'fleet'}, {type:'navigate',screen:'garage',tab:'contracts'}]);
+});
+
+test('HOME caption removal does not remove Garage and Results context', () => {
+  const h = harness(); h.render({screen:'garage'}); assert.ok(h.root.querySelector('.gs-header-context').textContent.includes('ЛИЧНЫЙ ГАРАЖ'));
+  h.render({screen:'results'}); assert.ok(h.root.querySelector('.gs-header-context').textContent.includes('ЗАЕЗД ЗАВЕРШЁН'));
 });

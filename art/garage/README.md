@@ -227,3 +227,25 @@ the poster and all seven pre-TV embedded images, but not the separately delivere
 movie. The 100,000-triangle/40-draw limits, exact geometry checks, parked-car
 clearance checks and full camera safety checks are not relaxed. Source `.blend`
 files are editable authoring deliverables and are not runtime downloads.
+
+
+## Stable fixed-distance orbit placement
+
+The current bounded operation is recorded in `stable-orbit-placement.json` and
+`stable-orbit-placement-audit.json`. Tier2 retains the complete lift: both six-part
+sides move from X ±3.8 to ±6.7 m; the bridge rises from Y 4.1 to 4.4 m and its ends
+extend to a total width of 13.85 m, preserving the bevel cross-section. Tier4
+retains both complete 36-part technical islands and moves their centers from
+X ±6.1 to ±7.4 m. No shell, mural, TV, lights, textures or other props are removed,
+rescaled, or repainted. Tiers1 and3 remain byte-identical to the accepted source
+and runtime checkpoint. Parking is separately placed at X ±7.8, Z −1.6 m in runtime.
+
+Reproduce the bounded saved-source update with `blender -b --python-exit-code 1
+--python scripts/create_garage.py -- --tiers 2 4 --resume --stable-orbit-only`.
+Clean generation consumes the same exact placement manifest. The current proof
+checks portable packed sources and exact unrelated source state, and compares
+drawn runtime triangle corners rather than pretending Blender material batching
+never rebases its local origin or deduplicates equivalent vertices. Historical
+mural and surface-operation reports retain their original hashes; the new proof
+chains those checkpoints to the current assets. Current mural visibility is
+remeasured honestly after the physical equipment changes.

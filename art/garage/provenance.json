@@ -34,8 +34,8 @@
   "files": [
     {
       "path": "scripts/create_garage.py",
-      "bytes": 88877,
-      "sha256": "1bfaf5920d8c323c2ab25a406352af4d6331bc6f2b5fe0ad75a8c97fad17fe56"
+      "bytes": 92219,
+      "sha256": "1248174799e0e34c437fea970e8674eff4030130d0e970bcfb57c58e90d7db92"
     },
     {
       "path": "art/garage/tier1.blend",
@@ -45,7 +45,7 @@
     {
       "path": "art/garage/tier2.blend",
       "bytes": 11067068,
-      "sha256": "1cddc60d201852ac1f5c96745821de0aed2e6e8dab0b042a5fe6f6779695c6b9"
+      "sha256": "fd114edc25b0e87b4c70663d34ca9b951b453d994cd7d227f3364b9c2ced3c49"
     },
     {
       "path": "art/garage/tier3.blend",
@@ -55,7 +55,7 @@
     {
       "path": "art/garage/tier4.blend",
       "bytes": 10059948,
-      "sha256": "b57f80f9ba792c0ad0921a5e0029d02e3bec2d90eccba277cc93e17b2266b25e"
+      "sha256": "998b793a9806d8c3162093602649f22f4de61bd354544485a34b8767f95d4f6e"
     },
     {
       "path": "public/assets/garage/original-concrete-grain.png",
@@ -124,13 +124,13 @@
     },
     {
       "path": "art/garage/workshop-surface-source-audit.json",
-      "bytes": 40778,
-      "sha256": "567f72566a25005de9de2be0c314486a6b41dbd02db6677aee0d1ce43b6029ff"
+      "bytes": 40927,
+      "sha256": "5e0983419bde539fac89c016b82b97ef1770fb0b271a3d60967d6555f67721dc"
     },
     {
       "path": "art/garage/workshop-surface-map-audit.json",
-      "bytes": 23446,
-      "sha256": "fa0f7dabd5429194015d0c47b12e29163eb4791ee4083fd839d429d15aef6a59"
+      "bytes": 23478,
+      "sha256": "7814b0647518255d798a2c09a1bc53c6232bd2ae92cacbc777cd122203c226ad"
     },
     {
       "path": "art/garage/reverse-workshop-audit.json",
@@ -144,18 +144,18 @@
     },
     {
       "path": "art/garage/README.md",
-      "bytes": 16254,
-      "sha256": "af8c9071f12bc2ce85185ae17c53886919cbabd469956e12e871070c6935f0c0"
+      "bytes": 17648,
+      "sha256": "34c10769b7051be42597f8b9e5d9e7c1cbdfb660de80c91ac2a3c663d4b43bf6"
     },
     {
       "path": "art/garage/export-audit.json",
       "bytes": 2386,
-      "sha256": "66e0e398dee499c007e2df012c935553c339b8da3cc07e873e2988b34395e1db"
+      "sha256": "3397aa37d9e8c2100f896cd9d5929756a7356c816c78b2e1cb463228a7e41992"
     },
     {
       "path": "art/garage/parking-envelope-audit.json",
-      "bytes": 2228,
-      "sha256": "d9f903eb2957f35a8a31429a7c2173be4bd22ab25538c7b39506fb38ff6ae195"
+      "bytes": 2158,
+      "sha256": "9351c1f7a8ca66ea5ec8d7ecc5340db15b547f1c7f85cbf7cfaf2f62fe8f2554"
     },
     {
       "path": "art/garage/tier1-report.json",
@@ -164,8 +164,8 @@
     },
     {
       "path": "art/garage/tier2-report.json",
-      "bytes": 72795,
-      "sha256": "013240a69f816128f1e43e83809707b419b976ba5a74fff3422e078527ed8a57"
+      "bytes": 73291,
+      "sha256": "4082181edf3bd74cdebf65f64de61668bd307ac061060e32974c89d24bffb646"
     },
     {
       "path": "art/garage/tier3-report.json",
@@ -174,8 +174,8 @@
     },
     {
       "path": "art/garage/tier4-report.json",
-      "bytes": 79813,
-      "sha256": "779e64897801a1ee62de06d74694ee299720c9b7d4f6df6dbf7fd2a5fcee4051"
+      "bytes": 80309,
+      "sha256": "070965831c34b38369059c28a811ce5cb07de5324d6b9d596c9595c9b7ddb365"
     },
     {
       "path": "public/assets/garage/original-workshop-wall-basecolor.png",
@@ -221,6 +221,26 @@
       "path": "public/assets/garage/roadster-screen-loop.mp4",
       "bytes": 1707750,
       "sha256": "ad8377d176e7c8ca152d982e35eaff15b97a35014747cc783f3baa53d064e7f5"
+    },
+    {
+      "path": "art/garage/stable-orbit-placement.json",
+      "bytes": 16472,
+      "sha256": "0ef0757f86308a3f6e2b8b8e8c3b9428e1e579e53fd0525cc26e8bf29e8276ac"
+    },
+    {
+      "path": "art/garage/stable-orbit-placement-audit.json",
+      "bytes": 310613,
+      "sha256": "41fb466a91c877f76db523ec3d6bbd589e8ea899a4851bec7c84a5b8682b71f0"
+    },
+    {
+      "path": "art/garage/audit_stable_orbit.py",
+      "bytes": 23214,
+      "sha256": "aadfc68d7e8340e26d131b175979dc64da91df3609c3b4ba1b121060b65697f3"
+    },
+    {
+      "path": "art/garage/audit_parking.py",
+      "bytes": 2028,
+      "sha256": "964a32e87ed50a26942d663c22729025ffc738b929031d624c8fb45e3a706f99"
     }
   ],
   "exports": [
@@ -254,8 +274,8 @@
     },
     {
       "tier": 2,
-      "glb_bytes": 5337508,
-      "sha256": "dfe6183fdb7f8bbf5f6a8a60c86810775db2dc6d64385e6197bef8b406e264e5",
+      "glb_bytes": 5336996,
+      "sha256": "e1f43eb43e19592156aee5c8f7d18b71b68fb34ae85f31d03efec55c0e2e1050",
       "primitives": 21,
       "triangles": 50208,
       "materials": 21,
@@ -310,8 +330,8 @@
     },
     {
       "tier": 4,
-      "glb_bytes": 5217224,
-      "sha256": "b699d1e22cff09f43bda4a76f71656c49d5db20b376ce0c8ea0d3443bd80b75f",
+      "glb_bytes": 5216008,
+      "sha256": "51f9f84a40ce18e7b2033546bb83011733fe49ef9f485b159589181639ee40d5",
       "primitives": 20,
       "triangles": 43248,
       "materials": 20,
@@ -418,7 +438,7 @@
     "helper": "scripts/sanitize_blend_sources.py",
     "textures": "Packed bytes preserved; file references are relative to each editable source.",
     "preservation": "Saved and reopened in Blender; geometry, material values, node graphs, hierarchy, object transforms and packed texture bytes unchanged. Runtime GLBs were not regenerated.",
-    "scope": "Historical twelve-source portability cleanup; current garage sources are packed and verified again by reverse-workshop-source-audit.json and workshop-surface-source-audit.json. Previously published vehicle sources are untouched."
+    "scope": "Historical twelve-source portability cleanup; current garage sources are packed and verified again by stable-orbit-placement-audit.json. Previously published vehicle sources are untouched."
   },
   "interior_completion": {
     "version": 1,
@@ -441,7 +461,9 @@
     "audit": "art/garage/reverse-workshop-audit.json",
     "source_audit": "art/garage/reverse-workshop-source-audit.json",
     "preservation": "Every pre-existing source mesh, transform, topology, UV and material assignment unchanged; new equipment authored only in shallow perimeter zones and true camera-solid metadata regenerated. Full orbit, parking and car assets unchanged.",
-    "runtime_preview_note": "Distinct arrival layout was reviewed first, then the user requested a large TV. TV-inclusive tier1 was reviewed natively before propagation. Earlier duplicated-bench screenshots are rejected candidates, and pre-TV entry screenshots are historical, not final appearance evidence. All-tier/mobile/orbit appearance reviewed separately in actual application captures."
+    "runtime_preview_note": "Distinct arrival layout was reviewed first, then the user requested a large TV. TV-inclusive tier1 was reviewed natively before propagation. Earlier duplicated-bench screenshots are rejected candidates, and pre-TV entry screenshots are historical, not final appearance evidence. All-tier/mobile/orbit appearance reviewed separately in actual application captures.",
+    "historical_operation": true,
+    "current_geometry_proof": "art/garage/stable-orbit-placement-audit.json"
   },
   "workshop_surface_finish": {
     "version": 2,
@@ -458,7 +480,9 @@
     ],
     "embedded_surface_bytes": 1150397,
     "unchanged_mural_bytes": 587374,
-    "gpu_surface_rgba8_with_mips_bytes": 8388600
+    "gpu_surface_rgba8_with_mips_bytes": 8388600,
+    "historical_operation": true,
+    "current_geometry_proof": "art/garage/stable-orbit-placement-audit.json"
   },
   "wall_television": {
     "version": 1,
@@ -546,5 +570,19 @@
     "media_provenance": "art/garage/screen/supplied-video-provenance.json",
     "poster_only_preservation": "Saved/reopened Blender fingerprints and every non-poster GLB bufferView verified unchanged; only image data and truthful attribution extras differ."
   },
-  "mural_placement_audit": "art/garage/mural-placement-audit.json"
+  "mural_placement_audit": "art/garage/mural-placement-audit.json",
+  "stable_orbit_placement": {
+    "version": 1,
+    "generator_option": "--resume --stable-orbit-only",
+    "manifest": "art/garage/stable-orbit-placement.json",
+    "audit": "art/garage/stable-orbit-placement-audit.json",
+    "source_audit": "art/garage/audit_stable_orbit.py",
+    "scope": "Complete tier2 lift sides translated outward, overhead bridge widened and raised; complete tier4 technical islands translated outward. All unrelated source geometry, materials, images, lights, TV and mural retained. Current drawn runtime triangles are checked in world space; equivalent Blender batch-origin rebasing and vertex deduplication are reported honestly.",
+    "unchanged_tiers": [
+      1,
+      3
+    ],
+    "parking_audit": "art/garage/parking-envelope-audit.json",
+    "mural_visibility_note": "Current visibility is remeasured in the placement audit. Physical relocated equipment may occlude parts of the otherwise untouched mural from some angles."
+  }
 }

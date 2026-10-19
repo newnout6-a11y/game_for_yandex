@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../public/vendor/three.js';
-import {GarageScene} from '../src/garage-scene.js';
+import {GarageScene,GARAGE_PARKING_BAYS} from '../src/garage-scene.js';
 
 /** Exercise the actual async scene owner without requesting a WebGL context. */
 function fixture(){
@@ -24,8 +24,8 @@ test('stale async tier cannot replace newer selection and parallel same-tier req
 test('side cars fit only real owned parking slots and remain excluded from room ownership',async()=>{
  const {scene}=fixture();scene.loader.loadAsync=async()=>({scene:new T.Group()});scene.setVehicle('rocket');
  const records=['hatch','sedan','van','suv'].map(id=>({id}));scene.setParking(records);assert.equal(scene.parkedVehicles.length,0);
- await scene.setTier(2);assert.equal(scene.parkedVehicles.length,1);assert.equal(scene.parkedVehicles[0].position.x,-6.2);
- await scene.setTier(4);assert.equal(scene.parkedVehicles.length,2);assert.equal(scene.parkedVehicles[1].position.x,6.2);scene.dispose();
+ await scene.setTier(2);assert.equal(scene.parkedVehicles.length,1);assert.equal(scene.parkedVehicles[0].position.x,GARAGE_PARKING_BAYS[0].x);assert.equal(scene.parkedVehicles[0].position.z,GARAGE_PARKING_BAYS[0].z);
+ await scene.setTier(4);assert.equal(scene.parkedVehicles.length,2);assert.equal(scene.parkedVehicles[1].position.x,GARAGE_PARKING_BAYS[1].x);scene.dispose();
 });
 test('mobile camera fits full car into the actual visible inspection rectangle',async()=>{
  const {scene}=fixture();scene.loader.loadAsync=async()=>({scene:new T.Group()});await scene.setTier(1);scene.setVehicle('rocket');
@@ -45,7 +45,7 @@ test('inspection views use actual wheel and driver geometry and reset for ground
  scene.setInspection('rear');scene.render(1440,900);assert.ok(scene.camera.position.z>0);
  scene.setInspection('wheels');scene.advance(2);scene.render(1440,900);assert.ok(scene.camera.position.distanceTo(wheel.position)<2.1);
  scene.setInspection('cockpit');scene.advance(2);scene.render(1440,900,{x:230,y:150,width:700,height:500});assert.ok(scene.camera.position.distanceTo(new T.Vector3(-.43,1.046,.33))<.01);assert.equal(scene.camera.near,.025);
- scene.setVehicle('hatch');assert.equal(scene.inspection,'overview');scene.render(1440,900);assert.equal(scene.camera.near,.08);assert.equal(scene.camera.fov,38);scene.dispose();
+ scene.setVehicle('hatch');assert.equal(scene.inspection,'overview');scene.render(1440,900);assert.equal(scene.camera.near,.08);assert.equal(scene.camera.fov,scene.orbitRig.fov);assert.ok(scene.camera.fov>=38);scene.dispose();
 });
 
 for(const [compact,cap,expected] of [[false,16,8],[true,16,4],[false,2,2],[true,undefined,1]])test(`garage texture sampling is bounded for ${compact?'compact':'desktop'} capability ${cap}`,async()=>{

@@ -1,5 +1,6 @@
 import { recoverPendingRunResult } from './pending-run-result.js';
 import { homeVehicleFraming } from './home-framing.js';
+import { resultsVehicleFraming } from './results-framing.js';
 import { compactGarageFraming } from './garage-framing.js';
 import { createOrientationGate } from './orientation-gate.js';
 import { Game } from './game.js';
@@ -509,6 +510,10 @@ let previous=performance.now();
 garageOrbitInput=bindGarageOrbitInput({element:byId('scene'),window,document,enabled:()=>!orientationBlocked&&!document.hidden&&!busy&&!loading.adPending&&!garageUI.settingsOpen&&!garageUI.view?.platform?.conflict&&['hub','garage'].includes(screen),onOrbit:(dx,dy)=>{garageScene?.orbit(dx,dy);garageDirty=true;}});
 /** Reserve the real visible inspection rectangle, including the mobile drawer, rather than hiding half the car under UI. */
 function garageFraming(){
+  if(screen==='results'){
+    const measured=resultsVehicleFraming({width:innerWidth,height:innerHeight,stage:document.querySelector('.gs-results-stage')?.getBoundingClientRect()});
+    if(measured)return measured;
+  }
   if(screen==='hub'){
     const bounds=selector=>document.querySelector(selector)?.getBoundingClientRect();
     const measured=homeVehicleFraming({width:innerWidth,height:innerHeight,header:bounds('.gs-header'),route:bounds('.gs-route-cell'),label:bounds('.gs-hero-vehicle'),actions:bounds('.gs-hub-actions'),footer:bounds('.gs-footer')});
@@ -539,7 +544,7 @@ function tick(time){
     ui.hud(game.state);
     for(const[id,action]of controlBindings){const held=String(input.active(action)),button=byId(id);if(button.dataset.held!==held)button.dataset.held=held;if(button.getAttribute('aria-pressed')!==held)button.setAttribute('aria-pressed',held);}
     syncGlanceControls();renderer.render(game.state,{dt,paused:screen!=='playing'||lifecycle.paused});
-  }else if(!orientationBlocked&&garageScene?.ready&&(garageDirty||renderer.needsRender||garageScene.animating)&&!document.hidden){garageScene.render(innerWidth,innerHeight,garageFraming());garageDirty=false;renderer.needsRender=false;}
+  }else if(!orientationBlocked&&garageScene?.ready&&(garageDirty||renderer.needsRender||garageScene.animating)&&!document.hidden){garageScene.render(innerWidth,innerHeight,garageFraming(),{stableOrbit:screen!=='results'});garageDirty=false;renderer.needsRender=false;}
   const fleetVisible=garageVisible&&screen==='garage'&&tab==='fleet';
   const fleetPaused=lifecycle.paused||busy||loading.adPending||garageUI.settingsOpen||!!garageUI.view?.platform?.conflict;
   if(fleetVisible&&fleetVisibilityDirty)refreshFleetVisibility();

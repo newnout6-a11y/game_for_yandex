@@ -15,7 +15,7 @@ const server=capture.startServer();await once(server,'listening');
 const browser=await chromium.launch({...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{channel:'chrome'}),headless:true,args:process.env.SOFTWARE_WEBGL?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
 const report={label,syntheticGuestFooter:Boolean(process.env.HOME_GUEST),source:capture.provenance,method:'One complete source tree, including production main, imports, styles, vendor dependencies, authored GLBs and profile factory. Isolated local profile; controlled time; native CSS-pixel PNG and measured render-buffer dimensions. No real-device FPS claim.',frames:[],errors:[]};
 /** Test rectangular screen-space separation against actual visible vehicle vertices. */
-const overlaps=(a,b)=>a.x<b.right-1&&a.right>b.x+1&&a.y<b.bottom-1&&a.bottom>b.y+1;
+const overlaps=(a,b)=>a&&b&&a.x<b.right-1&&a.right>b.x+1&&a.y<b.bottom-1&&a.bottom>b.y+1;
 try{
  const page=await browser.newPage({viewport:{width:560,height:315},deviceScaleFactor:1,isMobile:true,hasTouch:true,reducedMotion:'reduce'});page.setDefaultTimeout(180000);
  page.on('pageerror',e=>report.errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/WebGL|THREE|shader/i.test(m.text()))report.errors.push(m.text());});

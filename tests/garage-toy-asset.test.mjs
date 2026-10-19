@@ -7,6 +7,8 @@ import { resolve } from 'node:path';
 import * as T from '../public/vendor/three.js';
 import { loadRoadsterGeometry } from './helpers/roadster-geometry.mjs';
 import { GARAGE_TOY_POSITION, GARAGE_TOY_YAW } from '../src/garage-toy-prop.js';
+import { GARAGE_PARKING_BAYS } from '../src/garage-scene.js';
+import { assertHistoricalAssetChain } from './helpers/stable-orbit-assets.mjs';
 
 const rootURL = new URL('../', import.meta.url);
 const candidateURL = process.env.TOY_ASSET_DIR ? pathToFileURL(resolve(process.env.TOY_ASSET_DIR) + '/') : null;
@@ -170,7 +172,7 @@ test('four substantial wheel contact patches are present at floor level', () => 
   for (const count of patchCounts.values()) assert.ok(count >= 2);
 });
 
-test('grounded placement clears all four immutable rooms, parked bays and main-car envelope', async () => {
+test('grounded placement clears all four audited rooms, current parked bays and main-car envelope', async () => {
   assert.deepEqual(report.recommended_placement.position, [...GARAGE_TOY_POSITION], 'Asset recommendation matches actual runtime placement');
   assert.equal(report.recommended_placement.rotation_y, GARAGE_TOY_YAW);
   const toy = scene.clone(true);
@@ -180,13 +182,13 @@ test('grounded placement clears all four immutable rooms, parked bays and main-c
   assert.ok(priorAcceptedEnvelope.containsBox(world), 'Revised toy stays within the parent-tested camera/light envelope');
   const car = new T.Box3(new T.Vector3(-2, 0, -3.6), new T.Vector3(2, 2.6, 3.6));
   assert.equal(world.intersectsBox(car), false);
-  for (const x of [-6.2, 6.2]) {
-    const park = new T.Box3(new T.Vector3(x - 1.09, 0, -3.61), new T.Vector3(x + 1.09, 2.6, 2.01));
+  for (const {x,z} of GARAGE_PARKING_BAYS) {
+    const park = new T.Box3(new T.Vector3(x - 1.3, 0, z - 3), new T.Vector3(x + 1.3, 2.6, z + 3));
     assert.equal(world.intersectsBox(park), false);
   }
   for (let tier = 1; tier <= 4; tier++) {
     const room = await loadRoadsterGeometry(new URL(`../public/assets/garage/tier${tier}.glb`, import.meta.url));
-    assert.equal(createHash('sha256').update(room.bytes).digest('hex'), roomProof.tiers.find(r => r.tier === tier).room_sha256, 'Existing rooms must stay untouched');
+    assertHistoricalAssetChain(tier, roomProof.tiers.find(r => r.tier === tier).room_sha256, room.bytes, 'glb');
     room.scene.traverse(o => {
       for (const obstacle of o.userData?.garageCamera?.obstacles || []) {
         assert.equal(world.intersectsBox(new T.Box3(new T.Vector3(...obstacle.min), new T.Vector3(...obstacle.max))), false);

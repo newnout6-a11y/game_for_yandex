@@ -15,7 +15,7 @@ sys.path.insert(0,os.path.join(ROOT,'scripts'))
 from sanitize_blend_sources import save_portable
 ART=os.path.join(ROOT,'art','garage'); OUT=os.path.join(ROOT,'public','assets','garage')
 os.makedirs(ART,exist_ok=True); os.makedirs(OUT,exist_ok=True); os.makedirs(os.path.join(ART,'previews'),exist_ok=True)
-args=argparse.ArgumentParser(); args.add_argument('--tiers',nargs='+',type=int,default=[1,2,3,4]); args.add_argument('--render',action='store_true'); args.add_argument('--resume',action='store_true'); args.add_argument('--refresh-textures',action='store_true'); args.add_argument('--preview-car',action='store_true'); args.add_argument('--mural-only',action='store_true',help='With --resume, replace only the original wall-paint decal and preserve accepted geometry, materials and preview lighting'); args.add_argument('--cleanup-only',action='store_true',help='With --resume, preserve scene settings and remove only numerically collapsed faces before re-export'); args.add_argument('--interior-only',action='store_true',help='With --resume, complete missing interior without changing accepted rear geometry or materials'); args.add_argument('--workshop-surface-only',action='store_true',help='With --resume, refresh the current floor/wall PBR maps without rebuilding any geometry'); args.add_argument('--reverse-workshop-only',action='store_true',help='With --resume, add functional reverse-side work zones and replace floor/wall finish while preserving the accepted rear set'); args.add_argument('--arrival-tv-only',action='store_true',help='With --resume, add the physical wall screen and lift only its new ventilation assembly, preserving all other geometry and surface maps'); args.add_argument('--screen-poster-only',action='store_true',help='With --resume, replace only the packed TV poster and truthful provenance metadata; preserve every mesh, shader setting and camera contract'); args.add_argument('--render-reverse',action='store_true',help='Render an additional inward view of the front entrance'); OPT=args.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
+args=argparse.ArgumentParser(); args.add_argument('--tiers',nargs='+',type=int,default=[1,2,3,4]); args.add_argument('--render',action='store_true'); args.add_argument('--resume',action='store_true'); args.add_argument('--refresh-textures',action='store_true'); args.add_argument('--preview-car',action='store_true'); args.add_argument('--mural-only',action='store_true',help='With --resume, replace only the original wall-paint decal and preserve accepted geometry, materials and preview lighting'); args.add_argument('--cleanup-only',action='store_true',help='With --resume, preserve scene settings and remove only numerically collapsed faces before re-export'); args.add_argument('--interior-only',action='store_true',help='With --resume, complete missing interior without changing accepted rear geometry or materials'); args.add_argument('--workshop-surface-only',action='store_true',help='With --resume, refresh the current floor/wall PBR maps without rebuilding any geometry'); args.add_argument('--reverse-workshop-only',action='store_true',help='With --resume, add functional reverse-side work zones and replace floor/wall finish while preserving the accepted rear set'); args.add_argument('--arrival-tv-only',action='store_true',help='With --resume, add the physical wall screen and lift only its new ventilation assembly, preserving all other geometry and surface maps'); args.add_argument('--screen-poster-only',action='store_true',help='With --resume, replace only the packed TV poster and truthful provenance metadata; preserve every mesh, shader setting and camera contract'); args.add_argument('--stable-orbit-only',action='store_true',help='With --resume, apply only the audited lift/island transformations to clear the fixed orbit; preserve all meshes, shaders, textures and preview settings'); args.add_argument('--render-reverse',action='store_true',help='Render an additional inward view of the front entrance'); OPT=args.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
 random.seed(9349)
 M={}; OBJECTS=[]; ROOT_OBJ=None
 SCREEN_ATTRIBUTION='Poster derived from user-provided Tesla footage; third-party authorship, redistribution rights unverified, no affiliation or endorsement.'
@@ -819,6 +819,38 @@ def dress_reverse_workshop(tier):
     ROOT_OBJ['reverse_workshop_new_parts']=len(OBJECTS)-start
 
 
+def apply_stable_orbit_placement(tier):
+    """Apply only explicitly audited assembly transformations, idempotently.
+
+    The manifest records original object locations and exact metre deltas. It is
+    shared by clean generation and the bounded saved-source repair: neither flow
+    deletes props, changes topology, shrinks equipment or invents collision boxes.
+    Only the lift bridge is widened, retaining its original bevel profile.
+    """
+    path=os.path.join(ART,'stable-orbit-placement.json')
+    with open(path) as handle: manifest=json.load(handle)
+    for assembly in manifest['tiers'].get(str(tier),[]):
+        delta=v(assembly['translation_game_m'])
+        for name in assembly['objects']:
+            ob=bpy.data.objects.get(name)
+            if ob is None or ob not in OBJECTS:raise RuntimeError('Missing audited equipment part: '+name)
+            original=v(assembly['original_locations_game_m'][name])
+            if (ob.location-(original+delta)).length<2e-5:
+                if assembly.get('widen_game_x_m'):
+                    width=max(p.co.x for p in ob.data.vertices)-min(p.co.x for p in ob.data.vertices)
+                    if abs(width-assembly['final_width_m'])>2e-5:raise RuntimeError('Moved bridge does not have its audited final width')
+                continue
+            if (ob.location-original).length>2e-5:raise RuntimeError('Equipment part no longer matches the audited baseline: '+name)
+            if assembly.get('widen_game_x_m'):
+                width=max(p.co.x for p in ob.data.vertices)-min(p.co.x for p in ob.data.vertices)
+                if abs(width-assembly['original_width_m'])>2e-5:raise RuntimeError('Bridge width differs from audited baseline')
+                # Extend the two ends, preserving the original bevel profile,
+                # topology, UVs and normals instead of stretching its cross-section.
+                for vertex in ob.data.vertices:vertex.co.x+=math.copysign(assembly['widen_game_x_m']/2,vertex.co.x)
+                ob.data.update()
+            ob.location+=delta
+    bpy.context.view_layer.update()
+
 def camera_contract():
     """Describe actual interior and authored solids before material batching.
 
@@ -1081,6 +1113,13 @@ def main(tier):
         M={m.name:m for m in bpy.data.materials}
     else:
         build_scene(tier)
+    if OPT.stable_orbit_only:
+        if not OPT.resume:raise ValueError('--stable-orbit-only requires --resume')
+        apply_stable_orbit_placement(tier)
+        camera_contract()
+        save_portable(source)
+        export_tier(tier,source,[])
+        return
     if OPT.screen_poster_only:
         if not OPT.resume:raise ValueError('--screen-poster-only requires --resume')
         refresh_screen_poster_only(tier,source)
@@ -1215,6 +1254,7 @@ def build_scene(tier):
     ROOT_OBJ=bpy.data.objects.new('GARAGE_TIER_%02d'%tier,None); bpy.context.collection.objects.link(ROOT_OBJ)
     ROOT_OBJ['coordinate_convention']='+Y up, -Z front, metres in exported GLB'; ROOT_OBJ['car_clearance']='x ±2m; z ±3.6m; floor top at y=-0.005m'; ROOT_OBJ['asset_provenance']='All geometry and textures are original procedural Blender artwork, no external assets.'
     setup_materials(); [None,tier1,tier2,tier3,tier4][tier](); lighting(tier)
+    apply_stable_orbit_placement(tier)
     bpy.context.scene['garage_tier']=tier; bpy.context.scene['source']='scripts/create_garage.py'; bpy.context.scene['runtime_lights']='None exported: use unified runtime key/fill/environment.'
 
 def export_tier(tier,source,cleanup=None,mural_before=None):
@@ -1272,6 +1312,13 @@ def export_tier(tier,source,cleanup=None,mural_before=None):
         report['mural_relocation_history']=previous_report['mural_relocation_history']
     if previous_report.get('mural_relocation'):
         report['mural_relocation']=previous_report['mural_relocation']
+    if OPT.stable_orbit_only:
+        if report.get('mural_relocation'):
+            report['mural_relocation']=dict(report['mural_relocation'])
+            report['mural_relocation']['historical_operation']=True
+            report['mural_relocation']['scope_note']='Hashes and preservation claims describe the earlier mural relocation only; stable-orbit-placement-audit.json chains that checkpoint to this later bounded equipment translation.'
+        report['stable_orbit_placement_audit']='art/garage/stable-orbit-placement-audit.json'
+        report['preserved_rear_geometry_scope']='Historical interior-completion checkpoint; current bounded lift/island geometry changes are proven separately by stable_orbit_placement_audit.'
     if mural_before:
         if report.get('mural_relocation'):
             historical=dict(report['mural_relocation']); historical['historical_operation']=True

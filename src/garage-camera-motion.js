@@ -1,4 +1,5 @@
 import * as T from '../public/vendor/three.js';
+import { applyGarageOrbitProjection } from './garage-stable-orbit.js';
 
 const DEFAULT_ROOM = Object.freeze({
   interiorMin: [-9.88, .02, -8.97], interiorMax: [9.88, 6.45, 7.57],
@@ -75,19 +76,42 @@ function radialLimit(pivot, direction, limits, margin) {
   return Math.max(.1, distance);
 }
 
+/** Exact finite solids for deliberate preset travel: an obstacle behind the eye is not an infinite wall. */
+function finiteRadialDistance(pivot, direction, desired, limits, vehicleBounds, nearRadius) {
+  const safe=limits.bounds.clone().expandByScalar(-limits.clearance-nearRadius);
+  let maximum=Infinity;
+  for(const axis of ['x','y','z'])if(Math.abs(direction[axis])>1e-9)maximum=Math.min(maximum,((direction[axis]>0?safe.max[axis]:safe.min[axis])-pivot[axis])/direction[axis]);
+  const blocked=[];
+  for(const [box,margin] of [[vehicleBounds,.12+nearRadius],...limits.obstacles.map(box=>[box,limits.clearance+nearRadius])]){
+    const expanded=box.clone().expandByScalar(margin);let enter=-Infinity,exit=Infinity;
+    for(const axis of ['x','y','z']){
+      if(Math.abs(direction[axis])<1e-9){if(pivot[axis]<expanded.min[axis]||pivot[axis]>expanded.max[axis]){enter=Infinity;break;}continue;}
+      const a=(expanded.min[axis]-pivot[axis])/direction[axis],b=(expanded.max[axis]-pivot[axis])/direction[axis];enter=Math.max(enter,Math.min(a,b));exit=Math.min(exit,Math.max(a,b));
+    }
+    if(exit>=enter&&exit>0)blocked.push([Math.max(.1,enter-.002),exit+.002]);
+  }
+  blocked.sort((a,b)=>a[0]-b[0]);let lower=.1,best=null,error=Infinity;
+  for(const [start,end] of [...blocked,[maximum,Infinity]]){
+    if(start>lower){const candidate=T.MathUtils.clamp(desired,lower,Math.min(start,maximum));if(Math.abs(candidate-desired)<error){best=candidate;error=Math.abs(candidate-desired);}}
+    lower=Math.max(lower,end);if(lower>=maximum)break;
+  }
+  return best??Math.min(desired,maximum);
+}
+
 /**
  * Keep an exterior eye and its full asymmetric near plane inside the authored room,
  * before equipment/parked cars, and outside the selected vehicle. The fit converges
  * toward a collision-free route; viewport changes never enlarge the room envelope.
  */
-export function constrainGarageCamera(camera, { limits, pivot, target, vehicleBounds, points, width, height, region, minimumFov = 38 }) {
+export function constrainGarageCamera(camera, { limits, pivot, target, vehicleBounds, points, width, height, region, minimumFov = 38, fixedProjection = null }) {
   const delta = camera.position.clone().sub(pivot), direction = delta.clone().normalize();
   let distance = delta.length();
   const ray = new T.Ray(pivot, direction), exit = new T.Vector3();
   for (let iteration = 0; iteration < 12; iteration++) {
     camera.position.copy(pivot).addScaledVector(direction, distance);
     camera.lookAt(target); camera.updateMatrixWorld();
-    fitGarageProjection(camera, points, width, height, region, minimumFov);
+    if(fixedProjection)applyGarageOrbitProjection(camera,fixedProjection,width,height);
+    else fitGarageProjection(camera, points, width, height, region, minimumFov);
     let nearRadius = Math.max(...garageNearPlaneCorners(camera).map(point => point.distanceTo(camera.position)));
     // A narrow mobile inspection region needs a wide full-canvas lens. Shorten
     // the near distance rather than giving its off-screen corners a metre-wide
@@ -96,6 +120,10 @@ export function constrainGarageCamera(camera, { limits, pivot, target, vehicleBo
       camera.near = Math.max(.012, camera.near * .18 / nearRadius);
       camera.updateProjectionMatrix();
       nearRadius = Math.max(...garageNearPlaneCorners(camera).map(point => point.distanceTo(camera.position)));
+    }
+    if(fixedProjection){
+      distance=finiteRadialDistance(pivot,direction,distance,limits,vehicleBounds,nearRadius);
+      fixedProjection={...fixedProjection,near:camera.near};break;
     }
     const safeDistance = radialLimit(pivot, direction, limits, limits.clearance + nearRadius);
     const car = vehicleBounds.clone().expandByScalar(.12 + nearRadius);
@@ -106,7 +134,8 @@ export function constrainGarageCamera(camera, { limits, pivot, target, vehicleBo
   }
   camera.position.copy(pivot).addScaledVector(direction, distance);
   camera.lookAt(target); camera.updateMatrixWorld();
-  fitGarageProjection(camera, points, width, height, region, minimumFov);
+  if(fixedProjection)applyGarageOrbitProjection(camera,fixedProjection,width,height);
+  else fitGarageProjection(camera, points, width, height, region, minimumFov);
   camera.userData.garageLookTarget = target.clone();
   camera.userData.garageExterior = true;
   camera.userData.garageFocusPoints = points.map(point => point.clone());
@@ -115,7 +144,7 @@ export function constrainGarageCamera(camera, { limits, pivot, target, vehicleBo
 /** Capture an actual displayed pose, never a mutable camera or a previous requested destination. */
 function pose(camera) {
   return { position: camera.position.clone(), rotation: camera.quaternion.clone(), fov: camera.fov, near: camera.near,
-    target: camera.userData.garageLookTarget?.clone(), exterior: camera.userData.garageExterior,
+    stableOrbit: camera.userData.garageStableOrbit, target: camera.userData.garageLookTarget?.clone(), exterior: camera.userData.garageExterior,
     points: camera.userData.garageFocusPoints?.map(point => point.clone()),
     offset: new T.Vector2(camera.view?.enabled ? camera.view.offsetX / camera.view.fullWidth : 0, camera.view?.enabled ? camera.view.offsetY / camera.view.fullHeight : 0) };
 }
@@ -146,6 +175,18 @@ export class GarageCameraMotion {
       const a = this.from.position.clone().sub(context.pivot), b = next.position.clone().sub(context.pivot);
       const angleA = Math.atan2(a.x, -a.z), angleB = Math.atan2(b.x, -b.z);
       const sweep = Math.atan2(Math.sin(angleB - angleA), Math.cos(angleB - angleA)), yaw = angleA + sweep * t;
+      if(this.from.stableOrbit||next.stableOrbit){
+        const both=Boolean(this.from.stableOrbit&&next.stableOrbit),smooth=value=>value*value*(3-2*value);
+        const radialTime=both?t:this.from.stableOrbit?smooth(Math.max(0,2*p-1)):smooth(Math.min(1,2*p));
+        const angularTime=both?t:this.from.stableOrbit?smooth(Math.min(1,2*p)):smooth(Math.max(0,2*p-1));
+        const radius=T.MathUtils.lerp(a.length(),b.length(),radialTime),pitch=T.MathUtils.lerp(Math.atan2(a.y,Math.hypot(a.x,a.z)),Math.atan2(b.y,Math.hypot(b.x,b.z)),t),travelYaw=angleA+sweep*angularTime;
+        camera.position.copy(context.pivot).add(new T.Vector3(Math.sin(travelYaw)*Math.cos(pitch)*radius,Math.sin(pitch)*radius,-Math.cos(travelYaw)*Math.cos(pitch)*radius));
+        const target=(this.from.target||context.target).clone().lerp(context.target,t),offset=this.from.offset.clone().lerp(next.offset,t);
+        const projection={fov:T.MathUtils.lerp(this.from.fov,next.fov,t),near:T.MathUtils.lerp(this.from.near,next.near,t),offsetX:offset.x*width,offsetY:offset.y*height};
+        camera.lookAt(target);applyGarageOrbitProjection(camera,projection,width,height);
+        if(!(this.from.stableOrbit&&next.stableOrbit))constrainGarageCamera(camera,{...context,target,fixedProjection:projection});
+        return;
+      }
       const radius = T.MathUtils.lerp(Math.hypot(a.x, a.z), Math.hypot(b.x, b.z), t);
       camera.position.copy(context.pivot).add(new T.Vector3(Math.sin(yaw) * radius, T.MathUtils.lerp(a.y, b.y, t), -Math.cos(yaw) * radius));
       const target = (this.from.target || context.target).clone().lerp(context.target, t);
@@ -157,7 +198,7 @@ export class GarageCameraMotion {
     if (this.from.exterior !== undefined && next.exterior !== undefined && this.from.exterior !== next.exterior) {
       // Optical breathing from a slightly wider lens is finite and stays in the destination compartment.
       camera.fov = Math.min(170, next.fov + 4 * (1 - t)); camera.updateProjectionMatrix();
-      if (context && next.exterior) constrainGarageCamera(camera, { ...context, minimumFov: camera.fov });
+      if (context && next.exterior && !next.stableOrbit) constrainGarageCamera(camera, { ...context, minimumFov: camera.fov });
       return;
     }
     camera.position.lerpVectors(this.from.position, next.position, t);

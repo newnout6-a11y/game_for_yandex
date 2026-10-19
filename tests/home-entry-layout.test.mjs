@@ -29,7 +29,7 @@ test('entry actions have a reserved non-scrolling row and minimum touch targets'
   assert.match(compact, /\.gs-hub \{[^}]*grid-template-rows: minmax\(0, 1fr\) auto[^}]*overflow: clip;/s);
   assert.match(compact, /\.gs-hub-actions \{[^}]*grid-row: 2;[^}]*repeat\(2, minmax\(0, max-content\)\)[^}]*margin: 0;/s);
   assert.match(compact, /\.gs-hub-actions \.gs-button \{[^}]*min-width: 44px; min-height: 44px;/s);
-  assert.match(compact, /\.gs-hub-title \{[^}]*clip-path: inset\(50%\)/s);
+  assert.match(css, /\.gs-home-heading \{[^}]*clip-path: inset\(50%\)/s);
   assert.match(compact, /\.gs-route-cell select \{[^}]*min-height: 44px;/s);
 });
 
@@ -71,7 +71,7 @@ test('narrow HOME lets full route text use available width before optional decor
   const dock = compact.match(/\.gs-hub-dock \{([^}]+)\}/s)[1];
   assert.doesNotMatch(dock, /49%|260px/);
   const narrow = compact.slice(compact.indexOf('@media (orientation: landscape) and (max-width: 400px)'));
-  assert.match(narrow, /\.gs-hero-vehicle \{ display: none; \}/);
+  assert.doesNotMatch(css, /\.gs-hero-vehicle/);
   assert.match(narrow, /\.gs-hub-actions svg \{ display: none; \}/);
   assert.match(narrow, /\.gs-hub-actions \.gs-button \{ padding-inline: 5px; \}/);
   assert.doesNotMatch(narrow, /font-size:|text-overflow:|transform:|zoom:/);
@@ -83,4 +83,13 @@ test('180px HOME budgets two real control rows without shrinking text or targets
   assert.match(short, /\.gs-hub \{ padding-block: 0; gap: 2px; \}/);
   assert.doesNotMatch(short, /\.gs-footer/);
   assert.doesNotMatch(short, /font-size:|min-height:|display: none|overflow: hidden/);
+});
+
+
+test('HOME header is floating without changing other screen chrome or keeping a hero-height budget', () => {
+  const clean = css.slice(css.indexOf('/* HOME_CLEAN_SHOWCASE:'));
+  assert.match(clean, /\[data-screen='hub'\] \.gs-header \{[^}]*background: transparent; border-bottom: 0;[^}]*backdrop-filter: none;/);
+  assert.match(clean, /\[data-screen='hub'\] \.gs-header \.gs-account \{ pointer-events: auto; \}/);
+  assert.match(css, /\.gs-hub \{[^}]*padding: 0 5vw;[^}]*justify-content: flex-end;/);
+  assert.doesNotMatch(css, /\.gs-hub-intro|\.gs-hub-title|\.gs-hub-copy|\.gs-hero-vehicle/);
 });
