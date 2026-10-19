@@ -97,16 +97,18 @@ test('safe-edge declaration bounds preserve the compact top rail at the supporte
   assert.match(css, /--mobile-goal-clearance-left: 132px/);
   assert.match(css, /--mobile-goal-clearance-right: 152px/);
   assert.match(css, /@media \(orientation: landscape\) and \(max-width: 600px\) \{\s*#app\[data-mobile-controls="true"\] \{ --mobile-goal-clearance-right: 108px/);
-  assert.match(css, /max-width: 480px\)[\s\S]*?--mobile-goal-clearance-left: 108px/);
+  assert.match(css, /max-width: 480px\)[\s\S]*?--mobile-goal-clearance-left: 64px/);
+  assert.match(css, /max-width: 360px\)[\s\S]*?--mobile-goal-clearance-left: 12px/);
   for (const [width, height] of [[551, 360], [560, 315], [400, 240], [320, 240], [844, 390]]) {
     for (const [safeLeft, safeRight] of [[0, 0], [44, 0], [0, 44]]) {
-      const left = Math.max(safeLeft + (width <= 480 ? 108 : 132), width / 2 - 140);
+      const left = Math.max(safeLeft + (width <= 360 ? 12 : width <= 480 ? 64 : 132), width / 2 - 140);
       const right = width - Math.max(safeRight + (width <= 600 ? 108 : 152), width / 2 - 140);
-      assert.ok(right - left >= 60 && right - left <= 280, `${width}×${height}, safe ${safeLeft}/${safeRight}: useful track remains`);
+      assert.ok(right - left - 58 >= 80 && right - left <= 280, `${width}×${height}, safe ${safeLeft}/${safeRight}: actual marker travel, after both end reserves`);
       assert.ok(left >= safeLeft && right <= width - safeRight);
       assert.ok(right + (width <= 600 ? 88 : 132) + Math.max(12, safeRight) <= width, 'rail does not enter unchanged utility targets');
     }
   }
+  assert.equal(280 - 12 - 108 - 58, 102, '280px floor retains over 80px of actual model travel, not merely outer rail width');
 });
 
 test('interpolation exists only during playing and is explicitly disabled for reduced motion', () => {

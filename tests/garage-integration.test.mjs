@@ -49,6 +49,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
   };
   class UI {
     constructor() { this.overlay={hidden:true}; this.modalType=null; }
+    syncBonusAnnouncements() {} announceBonus() {} clearBonusAnnouncements() {}
     setScreen() {} menu() {} renderSettings() {} toast() {} camera(value) {this.cameraMode=value;} sound(value) {this.soundEnabled=value;} glance() {} hud() {}
     notice(message) { this.lastNotice=message; }
     close() { this.overlay.hidden=true;this.modalType=null; }

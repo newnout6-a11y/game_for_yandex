@@ -36,6 +36,15 @@ export function roadBend(z, distance = 0) {
  * Gameplay state remains external; rendering updates visual resources and animation caches.
  */
 export class RoadRenderer {
+  get reducedMotion() { return this._reducedMotion ?? false; }
+  /** Keep existing preference assignments live for newly emitted and paused cues. */
+  set reducedMotion(value) {
+    const next = Boolean(value);
+    if (this._reducedMotion === next) return;
+    this._reducedMotion = next;
+    this.bonusEffects?.setReducedMotion(next);
+    this.needsRender = true;
+  }
   /**
    * Allocate the renderer and scene and start asynchronous asset initialization.
    * Detects reduced-motion/device budgets once initially and exposes completion through ready;

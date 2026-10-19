@@ -113,7 +113,7 @@ test('toolbar and pause buttons expose the requested mode, including automatic e
 
 test('toolbar camera visibility follows playing and paused, never menu or results', () => {
   const elements = Object.fromEntries(['menu', 'hud', 'pauseBtn', 'cameraBtn', 'helpBtn'].map(id => [id, {}]));
-  const ui = { app: { dataset: {} } };
+  const ui = { app: { dataset: {} }, bonusAnnouncements: { suspend() {} } };
   withDocument(elements, () => {
     for (const screen of ['menu', 'playing', 'paused', 'results']) {
       UI.prototype.setScreen.call(ui, screen);

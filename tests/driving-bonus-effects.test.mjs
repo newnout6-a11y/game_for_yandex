@@ -220,3 +220,38 @@ test('RoadRenderer clears cues before loading/paused early returns and keeps imp
   assert.deepEqual(emitted.map(args => args[0]), [34, 8]); assert.equal(impacts.impact, 1);
   f.effects.dispose();
 });
+
+test('live reduced-motion changes update active and future cues without advancing paused time', () => {
+  const f = fixture(), s = state(); f.effects.emit('near', anchor(s), s);
+  f.effects.update(s, .18);
+  const mesh = visible(f)[0], position = mesh.position.clone(), opacity = mesh.material.uniforms.opacity.value;
+  const movingScale = mesh.scale.x;
+  assert.equal(f.effects.setReducedMotion(true), true);
+  near(mesh.scale.x, 1); near(mesh.material.uniforms.opacity.value, opacity); vectorNear(mesh.position, position);
+  f.effects.update(s, .3, true); near(mesh.scale.x, 1); near(mesh.material.uniforms.opacity.value, opacity);
+  assert.equal(f.effects.setReducedMotion(true), false);
+  assert.equal(f.effects.setReducedMotion(false), true); near(mesh.scale.x, movingScale);
+  f.effects.setReducedMotion(true); f.effects.emit('charge', anchor(s), s);
+  assert.ok(visible(f).every(item => item.scale.x === 1));
+  f.effects.update(s, .1); assert.ok(visible(f).every(item => item.scale.x === 1));
+  f.effects.clear(); assert.equal(f.effects.setReducedMotion(false), false);
+  f.effects.emit('goal', anchor(s), s); near(visible(f)[0].scale.x, .88);
+  f.effects.dispose(); assert.equal(f.effects.setReducedMotion(true), false);
+});
+
+test('production renderer preference assignment propagates before any render/paused guard', () => {
+  const f = fixture(), s = state(), renderer = Object.create(RoadRenderer.prototype);
+  renderer.reducedMotion = false; renderer.bonusEffects = f.effects; renderer.needsRender = false;
+  f.effects.emit('near', anchor(s), s); f.effects.update(s, .1);
+  const mesh = visible(f)[0], opacity = mesh.material.uniforms.opacity.value;
+  // Same assignment used by the actual matchMedia change callback in main.
+  renderer.reducedMotion = true;
+  assert.equal(renderer.reducedMotion, true); assert.equal(renderer.needsRender, true); near(mesh.scale.x, 1);
+  renderer.loaded = false;
+  renderer.render(s, { paused: true, dt: 2 });
+  near(mesh.scale.x, 1); near(mesh.material.uniforms.opacity.value, opacity);
+  renderer.needsRender = false; renderer.reducedMotion = true; assert.equal(renderer.needsRender, false);
+  renderer.reducedMotion = false; assert.equal(renderer.needsRender, true);
+  near(mesh.scale.x, .88 + .2 * .1 / DRIVING_BONUS_LIFETIME);
+  f.effects.dispose();
+});

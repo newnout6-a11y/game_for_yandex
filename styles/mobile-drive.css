@@ -437,8 +437,11 @@
 
 /* A narrow host iframe needs two ability rows, not overlapping left-hand controls. */
 @media (orientation: landscape) and (max-width: 480px) {
-  #app[data-mobile-controls="true"] { --mobile-drive-size: 44px; --mobile-drive-gap: 6px; --mobile-drive-row: 52px; --mobile-goal-clearance-left: 108px; }
+  #app[data-mobile-controls="true"] { --mobile-drive-size: 44px; --mobile-drive-gap: 6px; --mobile-drive-row: 52px; }
   #app[data-mobile-controls="true"] .brand > span { display: none; }
+  /* The icon needs one 44px target, not the former wordmark's 108px reserve. */
+  #app[data-mobile-controls="true"]:is([data-screen="playing"], [data-screen="paused"]) { --mobile-goal-clearance-left: 64px; }
+  #app[data-mobile-controls="true"]:is([data-screen="playing"], [data-screen="paused"]) .brand { min-width: 44px; min-height: 44px; justify-content: center; }
   #app[data-mobile-controls="true"] .touch-controls .ability-pair { grid-template-columns: 48px 64px; width: 118px; }
   #app[data-mobile-controls="true"] .horn-control { right: calc(50% - 22px); }
   #app[data-mobile-controls="true"] .flight-status { width: 132px; padding: 4px; gap: 3px; }
@@ -446,6 +449,14 @@
   #app[data-mobile-controls="true"] .roll-label { display: none; }
   #app[data-mobile-controls="true"] .roll-status { padding: 0; border: 0; }
   #app[data-mobile-controls="true"] .event-banner { width: min(40%, 160px); }
+}
+
+/* At the iframe floor the optional home logo yields to actual distance travel.
+   Pause still provides the home action; both utility targets stay 44px square. */
+@media (orientation: landscape) and (max-width: 360px) {
+  #app[data-mobile-controls="true"]:is([data-screen="playing"], [data-screen="paused"]) { --mobile-goal-clearance-left: 12px; }
+  #app[data-mobile-controls="true"]:is([data-screen="playing"], [data-screen="paused"]) .brand { display: none; }
+  #app[data-mobile-controls="true"]:is([data-screen="playing"], [data-screen="paused"]) .toolbar { margin-left: auto; }
 }
 
 /* State changes are the only motion; never interpolate while paused or reducing motion. */

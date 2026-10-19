@@ -1,4 +1,5 @@
 import { CONFIG, ROUTES } from './config.js';
+import { createBonusAnnouncements } from './bonus-announcements.js';
 import { hudGaugePresentation } from './hud-gauges.js';
 import { FLIGHT } from './flight.js';
 import { formatNumber, clamp } from './util.js';
@@ -19,6 +20,7 @@ export class UI {
   constructor(onAction) {
     this.onAction = onAction;
     this.app = byId('app');
+    this.bonusAnnouncements = createBonusAnnouncements(byId('bonusAnnouncement'));
     this.overlay = byId('overlay');
     this.dialog = byId('dialog');
     this.renderSettingsElement = byId('renderSettings');
@@ -49,6 +51,7 @@ export class UI {
    * @param {string} screen - menu, playing, paused or results.
    */
   setScreen(screen) {
+    if (screen !== 'playing') this.bonusAnnouncements.suspend();
     this.app.dataset.screen = screen;
     byId('menu').hidden = screen !== 'menu';
     byId('hud').hidden = screen === 'menu';
@@ -219,6 +222,7 @@ export class UI {
    * @param {string} html - Internal dialog markup; not arbitrary user-supplied HTML.
    */
   open(type, html) {
+    this.bonusAnnouncements.suspend();
     if (this.overlay.hidden) this.returnFocus = document.activeElement;
     // Reuse one settings control in the menu and pause dialog; never discard its listeners.
     this.renderSettingsHome.append(this.renderSettingsElement);
@@ -290,8 +294,21 @@ export class UI {
     el.textContent = message; el.classList.add('visible');
     this.noticeTimer = setTimeout(() => el.classList.remove('visible'), 3500);
   }
+  /** Only live, unobscured gameplay may announce rewards to assistive technology. */
+  syncBonusAnnouncements(state, active) {
+    this.bonusAnnouncements.sync(state, active && this.overlay.hidden && !document.hidden);
+  }
+  /** Bonus text belongs exclusively to the visually hidden polite region, never the toast. */
+  announceBonus(event, value, state) {
+    return this.bonusAnnouncements.announce(event, value, state);
+  }
+  /** Clear before page suspension; permanently cancel timers when the document is discarded. */
+  clearBonusAnnouncements(dispose = false) {
+    if (dispose) this.bonusAnnouncements.dispose();
+    else this.bonusAnnouncements.suspend();
+  }
   /**
-   * Replace the short scoring/event toast and restart its 1.8-second visibility timer.
+   * Replace a short warning toast and restart its 1.8-second visibility timer.
    * @param {string} message - Plain text assigned via textContent.
    */
   toast(message) {

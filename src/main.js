@@ -50,7 +50,7 @@ const game=new Game({onEvent:(event,value,feedback)=>{
   // Ordinary passes have no new reward, telemetry observation or audio cue.
   if(event==='pass'){renderer.bonus(event,feedback,game.state);return;}
   telemetry?.event(event,value,game.state);audio.tone(event);renderer.effect(event);
-  if(event==='near'||event==='charge'||event==='goal'||(event==='event-clear'&&value.success))renderer.bonus(event,feedback,game.state);
+  if(event==='near'||event==='charge'||event==='goal'||(event==='event-clear'&&value.success)){renderer.bonus(event,feedback,game.state);ui.announceBonus(event,value,game.state);}
   if(event==='cone')ui.toast('КОНУС · −50 ОЧКОВ');
   if(event==='event-clear'&&!value.success)ui.toast('СОБЫТИЕ НЕ ПРОЙДЕНО');
 }});
@@ -101,7 +101,7 @@ function hydrateStoredSettings(){
 /** Release input owners at every screen or lifecycle boundary, including mirror glances. */
 function clearInput(){garageOrbitInput?.cancel();input.clear();game.releaseControls();glance.clear();}
 /** Only genuine active simulation is reported as gameplay or produces engine audio. */
-function syncGameplay(){syncMobileControls();const active=screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing';sdk.gameplay(active);audio.update(game.state,active);}
+function syncGameplay(){syncMobileControls();const active=screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing';ui.syncBonusAnnouncements(game.state,active);sdk.gameplay(active);audio.update(game.state,active);}
 /** Keep legacy driving HUD separate from the new menu; hidden legacy controls cannot receive focus. */
 function applyScreen(){
   garageOrbitInput?.cancel();
@@ -476,7 +476,8 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) { clearInput(); gesture = null; pauseRun('hidden'); }
   else lifecycle.resume('hidden');
 });
-window.addEventListener('pagehide',event=>{if(!event.persisted){routeVehicleMarker?.dispose();fleetMiniatures?.dispose();}});
+window.addEventListener('pagehide',event=>{ui.clearBonusAnnouncements(!event.persisted);if(!event.persisted){routeVehicleMarker?.dispose();fleetMiniatures?.dispose();}});
+window.addEventListener('pageshow', () => syncGameplay());
 window.addEventListener('blur', () => { clearInput(); gesture = null; pauseRun('blur'); });
 window.addEventListener('focus', () => lifecycle.resume('blur'));
 sdk.on('game_api_pause', () => pauseRun('platform'));

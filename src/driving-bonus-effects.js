@@ -157,6 +157,15 @@ export function createDrivingBonusEffects(scene, { bend, reducedMotion = false }
     get activeCount() { return count; },
     sync,
     clear,
+    /** Live accessibility changes apply immediately, even to a frozen paused cue. */
+    setReducedMotion(value) {
+      if (disposed || reducedMotion === Boolean(value)) return false;
+      reducedMotion = Boolean(value);
+      for (const slot of slots) {
+        if (slot.active) slot.mesh.scale.setScalar(reducedMotion ? 1 : .88 + .2 * slot.age / DRIVING_BONUS_LIFETIME);
+      }
+      return count > 0;
+    },
     /** Enqueue only accepted gameplay bonuses; callers suppress unsuccessful event-clear notifications. */
     emit(kind, anchor, state) {
       if (disposed || !ACCEPTED.has(kind)) return false;

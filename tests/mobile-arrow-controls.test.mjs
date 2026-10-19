@@ -80,7 +80,7 @@ function harness(state = {}) {
     byId, document, window, Game, game: null, input: new DrivingInput(), createLifecycle,
     glance: new CockpitGlanceControls(() => {}), screen: 'playing', busy: false,
     garageOrbitInput: { cancel() { effects.orbitCancels++; } },
-    ui: { overlay: { hidden: true }, hud: state => withDocument(document, () => hud.hud(state)), pause() { effects.pauses++; }, toast() {} },
+    ui: { overlay: { hidden: true }, hud: state => withDocument(document, () => hud.hud(state)), pause() { effects.pauses++; }, toast() {}, announceBonus() {}, clearBonusAnnouncements() {} },
     cameraShortcutAllowed, glanceShortcutAllowed,
     syncGlanceControls() {}, toggleCamera() { assert.fail('driving inputs must not toggle camera'); },
     startRun() { assert.fail('driving inputs must not start another run'); },
