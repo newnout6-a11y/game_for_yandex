@@ -112,7 +112,7 @@
 .garage-shell .gs-tier-link { padding: 8px 0; font-size: 10px; border: 0; background: none; color: var(--gs-glacier); }
 .garage-shell .gs-tier-link svg { width: 16px; height: 16px; }
 .garage-shell .gs-stage { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding: 29px 30px 25px; background: linear-gradient(180deg, #131a1d64, transparent 27%, transparent 80%, #131a1d90); }
-.garage-shell .gs-vehicle-title { font: 650 clamp(24px, 3.1vw, 47px)/1.1 var(--gs-heading); letter-spacing: -.025em; margin: 6px 0 8px; text-shadow: 0 3px 24px #000; overflow-wrap: anywhere; }
+.garage-shell .gs-car-type { font: 650 clamp(24px, 3.1vw, 47px)/1.1 var(--gs-heading); letter-spacing: -.025em; margin: 6px 0 8px; text-shadow: 0 3px 24px #000; overflow-wrap: anywhere; }
 .garage-shell .gs-stage-description { font: 8px/1.5 var(--gs-mono); color: var(--gs-muted); letter-spacing: .15em; }
 .garage-shell .gs-bay-stamp { position: absolute; right: 22px; top: 50%; display: flex; gap: 12px; color: #eee6d750; font: 8px/1.4 var(--gs-mono); writing-mode: vertical-rl; letter-spacing: .2em; }
 .garage-shell .gs-stage-bottom { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: 9px; }
@@ -326,7 +326,7 @@
   .garage-shell .gs-tab[aria-selected='true'] { border-bottom-color: var(--gs-orange); background: linear-gradient(0deg, #f1774016, transparent); }
   .garage-shell .gs-stage { padding: 19px 16px 17px; }
   .garage-shell .gs-stage-heading > .gs-kicker { font-size: 7px; }
-  .garage-shell .gs-vehicle-title { font-size: 29px; margin: 4px 0 5px; }
+  .garage-shell .gs-car-type { font-size: 29px; margin: 4px 0 5px; }
   .garage-shell .gs-stage-description { font-size: 7px; }
   .garage-shell .gs-bay-stamp { right: 13px; font-size: 7px; }
   .garage-shell .gs-stage-bottom { grid-template-columns: minmax(0, 1fr) 44px; gap: 7px; }
@@ -386,7 +386,7 @@
   .garage-shell .gs-stage { padding: 18px; }
   .garage-shell .gs-stage-bottom { gap: 6px; }
   .garage-shell .gs-inspection-button { min-height: 44px; min-width: 44px; font-size: 10px; padding: 7px 4px; }
-  .garage-shell .gs-vehicle-title { font-size: 26px; }
+  .garage-shell .gs-car-type { font-size: 26px; }
   .garage-shell .gs-build-status { font-size: 7px; }
   .garage-shell .gs-hub { padding: 19px 35px 0; }
   .garage-shell .gs-hub-intro { max-width: 54%; }
@@ -515,7 +515,7 @@
 .garage-shell .gs-tier-compact > .gs-kicker { color: #d0bd96; font-size: 8px; }
 .garage-shell .gs-tier-track .gs-tier-reached { color: #d0bd96; border-color: #b8a47c; }
 .garage-shell .gs-tier-link { color: #c9c4ae; font-size: 9px; }
-.garage-shell .gs-vehicle-title { font: italic 400 clamp(28px, 3vw, 47px)/1.08 var(--gs-editorial, Georgia, serif); letter-spacing: -.045em; max-width: 460px; }
+.garage-shell .gs-car-type { font: italic 400 clamp(28px, 3vw, 47px)/1.08 var(--gs-editorial, Georgia, serif); letter-spacing: -.045em; max-width: 460px; }
 .garage-shell .gs-stage { background: linear-gradient(180deg, #10150d25, transparent 25%, transparent 80%, #10150d60); }
 .garage-shell .gs-stage-heading > .gs-kicker { color: #ded8be; font-size: 8px; }
 .garage-shell .gs-inspection { border-radius: 24px; padding: 4px; background: #151c16c9; border: 1px solid #ded8be25; }
@@ -621,7 +621,7 @@
   .garage-shell .gs-panel-heading h2 { font-size: 34px; margin: 6px 0; }
   .garage-shell .gs-panel-heading > .gs-kicker { position: absolute; right: 23px; top: 26px; font-size: 7px; }
   .garage-shell .gs-panel-body { padding: 19px 23px 28px; }
-  .garage-shell .gs-vehicle-title { font-size: 32px; }
+  .garage-shell .gs-car-type { font-size: 32px; }
   .garage-shell[data-drawer='open'] .gs-garage { grid-template-rows: 68px minmax(155px, 24vh) minmax(150px, 1fr); }
   .garage-shell .gs-inspection { width: 100%; }
   .garage-shell .gs-inspection-button { font-size: 10px; }
@@ -658,7 +658,7 @@
   .garage-shell .gs-sample-surface { width: 65px; height: 56px; }
   .garage-shell .gs-workbench .gs-sample-card { min-height: 133px; }
   .garage-shell .gs-stage { padding: 18px 16px; }
-  .garage-shell .gs-vehicle-title { font-size: 29px; }
+  .garage-shell .gs-car-type { font-size: 29px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .garage-shell .gs-nav-scene *, .garage-shell .gs-material-sample * { animation: none !important; transition: none !important; }
@@ -878,10 +878,19 @@
 /* Open the garage roof between the original edge controls; keep all header geometry. */
 .garage-shell[data-screen='garage'] .gs-header { background: transparent; border-bottom-color: transparent; }
 .garage-shell[data-screen='garage'] .gs-header :is(.gs-brand-type, .gs-balance) { text-shadow: 0 1px 3px #10111bb3; }
-/* Lift only the car name into the newly open roof, without moving the stage or its controls. */
-.garage-shell[data-screen='garage'] .gs-vehicle-title { transform: translateY(-20px); }
+/* The car name belongs to the open stage, left of the workbench, opposite inspection.
+   Flex wrapping follows actual available stage width, including narrow desktop windows. */
+.garage-shell[data-screen='garage'] .gs-stage-bottom { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 9px 20px; }
+.garage-shell[data-screen='garage'] .gs-stage-actions { order: 0; display: grid; gap: 9px; flex: 0 1 340px; min-width: 0; }
+.garage-shell[data-screen='garage'] .gs-vehicle-title-dock { order: 1; flex: 1 0 auto; min-width: 0; max-width: 100%; text-align: right; }
+.garage-shell[data-screen='garage'] .gs-vehicle-title-dock > .gs-vehicle-title { margin: 0; max-width: none; }
+.garage-shell[data-screen='garage'] .gs-title-reservation { visibility: hidden; pointer-events: none; }
 @media (max-height: 500px) {
-  .garage-shell[data-screen='garage'] .gs-vehicle-title { transform: translateY(-8px); }
+  .garage-shell[data-screen='garage'] .gs-stage-bottom { row-gap: 6px; }
+  .garage-shell[data-screen='garage'] .gs-stage-actions { gap: 6px; }
+}
+@media (max-width: 700px) and (min-width: 600px) and (max-height: 500px) {
+  .garage-shell[data-screen='garage'] .gs-vehicle-title-dock > .gs-vehicle-title { font-size: 20px; }
 }
 .garage-shell .gs-footer { background: #191b28ed; border-color: #b4a7c526; }
 .garage-shell .gs-currency-mark { border-color: #df95bc57; }
@@ -1051,3 +1060,17 @@
   .garage-shell .gs-workbench .gs-color-choice, .garage-shell .gs-workbench .gs-color-choice[aria-pressed='true'] { min-height: 115px; }
   .garage-shell .gs-panel-heading { padding-block: 10px; }
 }
+
+/* Actual authored vehicles, rendered through the existing shared 3D renderer. */
+.garage-shell .gs-workbench .gs-vehicle-row { display: grid; grid-template-columns: 14px 96px minmax(0, 1fr) 14px; align-items: center; gap: 8px; padding: 10px 8px; min-height: 84px; }
+.garage-shell .gs-workbench .gs-car-thumb { position: relative; width: 96px; height: 60px; transform: none; overflow: hidden; background: radial-gradient(ellipse at 50% 80%, #75647a29, transparent 70%); border-radius: 5px; }
+.garage-shell .gs-car-miniature { display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 100ms ease; }
+.garage-shell .gs-car-thumb[data-state='ready'] .gs-car-miniature { opacity: 1; }
+.garage-shell .gs-miniature-status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--gs-muted); font: 10px/1.2 var(--gs-mono); }
+.garage-shell .gs-car-thumb[data-state='ready'] .gs-miniature-status { display: none; }
+@media (max-height: 500px), (max-width: 900px) {
+  .garage-shell .gs-workbench .gs-vehicle-row { grid-template-columns: 12px 76px minmax(0, 1fr) 12px; gap: 6px; padding: 8px 5px; min-height: 72px; }
+  .garage-shell .gs-workbench .gs-car-thumb { width: 76px; height: 48px; }
+  .garage-shell .gs-workbench .gs-vehicle-row-copy strong { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .garage-shell .gs-car-miniature { transition: none; } }

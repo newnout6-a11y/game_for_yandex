@@ -1,0 +1,716 @@
+{
+  "version": 2,
+  "scope": "Current wall and floor PBR with exact preservation of every baseline non-surface material node graph, mural packed bytes, preview lighting, cameras and render settings. The only allowed additions are garage_screen_display material and the exact 20,303-byte roadster-screen-poster JPEG for the explicitly requested physical television, both recorded separately. The poster derives from third-party Tesla footage supplied by the user, not original game artwork; redistribution rights are unverified. Geometry and camera collision metadata are intentionally not equality-asserted because the authorized entry/charging area and television add authored objects.",
+  "sources": [
+    {
+      "tier": 1,
+      "source": "art/garage/tier1.blend",
+      "before": {
+        "preserved": {
+          "baseline_non_surface_materials": "6fc430d7544c6b1a83de0819a94740bbb8f2bd3a8143dbc9255443915a2cef3b",
+          "lighting_and_camera": "51527add31de3a476371a8650d6f7c4153f9e296e6c5573570a0269e403891cb",
+          "render_settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "baseline_non_surface_packed_images": {
+            "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+          }
+        },
+        "non_surface_material_graphs": {
+          "Brushed stainless steel": "50711f5201608bb7105669f9fcc0aa0a3652180be257364dae61a8db8eaacaaa",
+          "Concrete expansion gasket": "c23f396897951f4165bb53c9699bf113bd5de7f12d56cdd1d6e0caaf3c992ed4",
+          "Embedded floor scuff": "04f973de3534b7e5d6538c913072f32c02e2c31e05b2aa9f53701cd4584d18d8",
+          "Faded floor marking": "fc49e7691938f335a9d32ed0d321a89609ecbeea829fea25c1f472c61e70b422",
+          "Graphite structural powdercoat": "5e03c943da3865958dfcfcb356c5a92c1ad6cc8a17b267ccd1f9943745e0d3b8",
+          "Neutral warm LED diffuser": "0917e2ba0ff112ea0193646f20c3cc9d32b42d5d52398bd979f256eda4f9e51c",
+          "Optical recess": "35f1832f3cb27179e7892a7d2f2eb6bf907848f8bf77bdf777d6dd09bd358fae",
+          "Original rose velocity mural": "bd9c917905b5ab1963222b27798bf97ad58e2cd97fe560d50d9c42d952671555",
+          "Safety enamel": "045581d641694444fc2abdc0a22aa8603067d7afdfb52c0df463143a0e85d1a5",
+          "Satin sectional door": "918725b9a8fe512438dee15d4b9a2dbf23d73d877e75de99887b7fd8f5c1305e",
+          "Signal amber enamel": "15f689fbcd12d4181d40e9b3eae99730a683c8d190eb3762261cf107bfcf8179",
+          "Treated warm workshop laminate": "0ba0f17dec2ec5e5bf5e3fa9101cce5fcc302a32f20122dee06e7a5e3a1d6e06",
+          "Warm graphic enamel": "bc858094701099d96b0d5497bc086f5393eb3cf8d6e0b98eb52770d3ea2bfac9",
+          "Workshop petrol powdercoat": "cd4c132b1f78c7596c507cf08b50e8611bbbfc86858cc0340fde2d9bd355c49b",
+          "Workshop rubber": "fa6fe421389f3648894bfa409aeb4461d517e11e5ee87fab4dfa1f9c8a4e744b"
+        },
+        "non_surface_packed_image_hashes": {
+          "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+        },
+        "geometry": "650633f80917bef57b6b4e9d75b08bf1b7344a366551dd00cc6fed930b293f92",
+        "objects": "fc85d4bd8b200977f527782665886beaa098c8c775183a145aa435f5c1a40857",
+        "camera_contract": "d0b061811409d52b43d988f11cc651b437be0403aae3a504733b54146c439e31",
+        "camera_obstacle_count": 203,
+        "statistics": {
+          "objects": 805,
+          "meshes": 800,
+          "vertices": 19960,
+          "faces": 16222,
+          "triangles": 34854,
+          "materials": 17,
+          "armatures": 0,
+          "actions": 0
+        },
+        "source_bytes": 8873852,
+        "source_sha256": "2b3e43899234bf458a0e26d06d8218be8d6dddb87f459c86179d4670fdfaded6",
+        "relative_packed_paths_verified": true
+      },
+      "after": {
+        "preserved": {
+          "baseline_non_surface_materials": "6fc430d7544c6b1a83de0819a94740bbb8f2bd3a8143dbc9255443915a2cef3b",
+          "lighting_and_camera": "51527add31de3a476371a8650d6f7c4153f9e296e6c5573570a0269e403891cb",
+          "render_settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "baseline_non_surface_packed_images": {
+            "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+          }
+        },
+        "non_surface_material_graphs": {
+          "Brushed stainless steel": "50711f5201608bb7105669f9fcc0aa0a3652180be257364dae61a8db8eaacaaa",
+          "Concrete expansion gasket": "c23f396897951f4165bb53c9699bf113bd5de7f12d56cdd1d6e0caaf3c992ed4",
+          "Embedded floor scuff": "04f973de3534b7e5d6538c913072f32c02e2c31e05b2aa9f53701cd4584d18d8",
+          "Faded floor marking": "fc49e7691938f335a9d32ed0d321a89609ecbeea829fea25c1f472c61e70b422",
+          "garage_screen_display": "5bd228e0946594fdbe44a83001d7ce4e338b6fdb3344c53403d53a187ea04dd2",
+          "Graphite structural powdercoat": "5e03c943da3865958dfcfcb356c5a92c1ad6cc8a17b267ccd1f9943745e0d3b8",
+          "Neutral warm LED diffuser": "0917e2ba0ff112ea0193646f20c3cc9d32b42d5d52398bd979f256eda4f9e51c",
+          "Optical recess": "35f1832f3cb27179e7892a7d2f2eb6bf907848f8bf77bdf777d6dd09bd358fae",
+          "Original rose velocity mural": "bd9c917905b5ab1963222b27798bf97ad58e2cd97fe560d50d9c42d952671555",
+          "Safety enamel": "045581d641694444fc2abdc0a22aa8603067d7afdfb52c0df463143a0e85d1a5",
+          "Satin sectional door": "918725b9a8fe512438dee15d4b9a2dbf23d73d877e75de99887b7fd8f5c1305e",
+          "Signal amber enamel": "15f689fbcd12d4181d40e9b3eae99730a683c8d190eb3762261cf107bfcf8179",
+          "Treated warm workshop laminate": "0ba0f17dec2ec5e5bf5e3fa9101cce5fcc302a32f20122dee06e7a5e3a1d6e06",
+          "Warm graphic enamel": "bc858094701099d96b0d5497bc086f5393eb3cf8d6e0b98eb52770d3ea2bfac9",
+          "Workshop petrol powdercoat": "cd4c132b1f78c7596c507cf08b50e8611bbbfc86858cc0340fde2d9bd355c49b",
+          "Workshop rubber": "fa6fe421389f3648894bfa409aeb4461d517e11e5ee87fab4dfa1f9c8a4e744b"
+        },
+        "non_surface_packed_image_hashes": {
+          "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd",
+          "roadster-screen-poster": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424"
+        },
+        "geometry": "52b62d72fd7438c03b2511eef6586245b092eaad836f3287c2915e531174e64a",
+        "objects": "9564fdd5d1467bdca7c2730e5de8502248ed973e2d5775e90ba872e72bd7ff8f",
+        "camera_contract": "ce37909ebadad6e7e006b01f01a937dc51d2f7fac5c6fefb5d2fa24753c34c08",
+        "camera_obstacle_count": 271,
+        "statistics": {
+          "objects": 995,
+          "meshes": 990,
+          "vertices": 24154,
+          "faces": 19945,
+          "triangles": 42428,
+          "materials": 18,
+          "armatures": 0,
+          "actions": 0
+        },
+        "source_bytes": 10004016,
+        "source_sha256": "e649da776da3c5f260e7a3f05df6853a1e6a6d82c231bfb0db3cbec67a22141a",
+        "relative_packed_paths_verified": true,
+        "surface_contract": {
+          "wall": {
+            "material": "Warm architectural concrete",
+            "tile_metres": 0.75,
+            "resolution": 512,
+            "images": {
+              "basecolor": {
+                "name": "original-workshop-wall-basecolor",
+                "packed_bytes": 132414,
+                "sha256": "8ef7007f9ad917e34de0a561b240d641e501a318b0335a07c7fdba5400961d7c",
+                "colour_space": "sRGB"
+              },
+              "normal": {
+                "name": "original-workshop-wall-normal",
+                "packed_bytes": 254293,
+                "sha256": "f3922cb4e56f7ed1433f395225ae73288162287ad6de21adde4834f97c4acca3",
+                "colour_space": "Non-Color"
+              },
+              "roughness": {
+                "name": "original-workshop-wall-roughness",
+                "packed_bytes": 147886,
+                "sha256": "eaf7dd4bc887aa1b39fb011f5debdcc3e11c0908e73706e370b82ba2564e6da8",
+                "colour_space": "Non-Color"
+              }
+            },
+            "shader": "4d1f5c6432b9077ee39c889d237398b0ea68aab8c997656387369639413d0f4d"
+          },
+          "floor": {
+            "material": "Original mottled concrete",
+            "tile_metres": 1.0,
+            "resolution": 512,
+            "images": {
+              "basecolor": {
+                "name": "original-workshop-floor-basecolor",
+                "packed_bytes": 166778,
+                "sha256": "434a192bedbe72a29fb58e756cccac7cc97f358ec1cf94be76bca75ed34eed69",
+                "colour_space": "sRGB"
+              },
+              "normal": {
+                "name": "original-workshop-floor-normal",
+                "packed_bytes": 192276,
+                "sha256": "9fe07834ef5166d28dc9bba02a7dafc0e56211d790ace34c5d2f7a207e6b08a1",
+                "colour_space": "Non-Color"
+              },
+              "roughness": {
+                "name": "original-workshop-floor-roughness",
+                "packed_bytes": 166674,
+                "sha256": "87112579119c470c7f4279c7a7ceab7a510fe8bfaa5787ba78216c95651a6490",
+                "colour_space": "Non-Color"
+              }
+            },
+            "shader": "b596cde6c487b9a9ca1cd62e38c9c1abb71406ee41861222ec95cbdd5ec7c52b"
+          }
+        },
+        "retired_surface_payloads": [],
+        "approved_new_packed_images": {
+          "roadster-screen-poster": {
+            "file": "public/assets/garage/roadster-screen-poster.jpg",
+            "bytes": 20303,
+            "sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+            "dimensions": [
+              640,
+              360
+            ],
+            "provenance": "art/garage/screen/supplied-video-provenance.json",
+            "authorship": "Poster derived from third-party Tesla footage supplied by the user; not original game artwork.",
+            "redistribution_license": "Unverified; not inferred from user possession. Public release approval is separate."
+          }
+        }
+      },
+      "baseline_non_surface_state_unchanged": true,
+      "approved_new_materials": {
+        "garage_screen_display": "5bd228e0946594fdbe44a83001d7ce4e338b6fdb3344c53403d53a187ea04dd2"
+      },
+      "source_byte_delta": 1130164
+    },
+    {
+      "tier": 2,
+      "source": "art/garage/tier2.blend",
+      "before": {
+        "preserved": {
+          "baseline_non_surface_materials": "4c1aee20aa3985a5c1f10cb22ab43d7d6073abd21a0814548eae5e330e864fc6",
+          "lighting_and_camera": "51527add31de3a476371a8650d6f7c4153f9e296e6c5573570a0269e403891cb",
+          "render_settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "baseline_non_surface_packed_images": {
+            "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+          }
+        },
+        "non_surface_material_graphs": {
+          "Brushed stainless steel": "50711f5201608bb7105669f9fcc0aa0a3652180be257364dae61a8db8eaacaaa",
+          "Concrete expansion gasket": "c23f396897951f4165bb53c9699bf113bd5de7f12d56cdd1d6e0caaf3c992ed4",
+          "Diagnostic screen": "afe542adb9a3c359359229edca509a366e7fa1f973fbb9be589d9660d4dd16c3",
+          "Faded floor marking": "fc49e7691938f335a9d32ed0d321a89609ecbeea829fea25c1f472c61e70b422",
+          "Graphite structural powdercoat": "5e03c943da3865958dfcfcb356c5a92c1ad6cc8a17b267ccd1f9943745e0d3b8",
+          "Instrument soft teal": "31d0621ea2db76c734f196a62209265d4d8525806764eff60cd3ae7d289d5e05",
+          "Neutral warm LED diffuser": "0917e2ba0ff112ea0193646f20c3cc9d32b42d5d52398bd979f256eda4f9e51c",
+          "Optical recess": "35f1832f3cb27179e7892a7d2f2eb6bf907848f8bf77bdf777d6dd09bd358fae",
+          "Original rose velocity mural": "bd9c917905b5ab1963222b27798bf97ad58e2cd97fe560d50d9c42d952671555",
+          "Pale ceramic powdercoat": "29785707a71fa3b6b01b816bb3da146aaa48327672427ce7df5a975af84b053b",
+          "Safety enamel": "045581d641694444fc2abdc0a22aa8603067d7afdfb52c0df463143a0e85d1a5",
+          "Satin sectional door": "918725b9a8fe512438dee15d4b9a2dbf23d73d877e75de99887b7fd8f5c1305e",
+          "Signal amber enamel": "15f689fbcd12d4181d40e9b3eae99730a683c8d190eb3762261cf107bfcf8179",
+          "Treated warm workshop laminate": "0ba0f17dec2ec5e5bf5e3fa9101cce5fcc302a32f20122dee06e7a5e3a1d6e06",
+          "Warm diagnostic indicator": "62dd3cf753ff523320b8a70f286d0910c06debb3e407036d1954984401583085",
+          "Warm graphic enamel": "bc858094701099d96b0d5497bc086f5393eb3cf8d6e0b98eb52770d3ea2bfac9",
+          "Workshop petrol powdercoat": "cd4c132b1f78c7596c507cf08b50e8611bbbfc86858cc0340fde2d9bd355c49b",
+          "Workshop rubber": "fa6fe421389f3648894bfa409aeb4461d517e11e5ee87fab4dfa1f9c8a4e744b"
+        },
+        "non_surface_packed_image_hashes": {
+          "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+        },
+        "geometry": "cded31494e63262d5df6cf8e38c32bc4bf712f78b94c67dc268a29bccb59dd76",
+        "objects": "69392b2695b75301e78f86d3517166f14f77836f55473e50a747c7a8596e640c",
+        "camera_contract": "386330f7de2b54c300a349277b4ea0ac34f6318b4a7a55c161e7dcdc3b30a74f",
+        "camera_obstacle_count": 228,
+        "statistics": {
+          "objects": 909,
+          "meshes": 904,
+          "vertices": 23426,
+          "faces": 19066,
+          "triangles": 41924,
+          "materials": 20,
+          "armatures": 0,
+          "actions": 0
+        },
+        "source_bytes": 9804460,
+        "source_sha256": "f7ae56b506d668cc989e80833364ea278e96c750f32bd45d7e71ce513013a8b9",
+        "relative_packed_paths_verified": true
+      },
+      "after": {
+        "preserved": {
+          "baseline_non_surface_materials": "4c1aee20aa3985a5c1f10cb22ab43d7d6073abd21a0814548eae5e330e864fc6",
+          "lighting_and_camera": "51527add31de3a476371a8650d6f7c4153f9e296e6c5573570a0269e403891cb",
+          "render_settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "baseline_non_surface_packed_images": {
+            "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+          }
+        },
+        "non_surface_material_graphs": {
+          "Brushed stainless steel": "50711f5201608bb7105669f9fcc0aa0a3652180be257364dae61a8db8eaacaaa",
+          "Concrete expansion gasket": "c23f396897951f4165bb53c9699bf113bd5de7f12d56cdd1d6e0caaf3c992ed4",
+          "Diagnostic screen": "afe542adb9a3c359359229edca509a366e7fa1f973fbb9be589d9660d4dd16c3",
+          "Faded floor marking": "fc49e7691938f335a9d32ed0d321a89609ecbeea829fea25c1f472c61e70b422",
+          "garage_screen_display": "5bd228e0946594fdbe44a83001d7ce4e338b6fdb3344c53403d53a187ea04dd2",
+          "Graphite structural powdercoat": "5e03c943da3865958dfcfcb356c5a92c1ad6cc8a17b267ccd1f9943745e0d3b8",
+          "Instrument soft teal": "31d0621ea2db76c734f196a62209265d4d8525806764eff60cd3ae7d289d5e05",
+          "Neutral warm LED diffuser": "0917e2ba0ff112ea0193646f20c3cc9d32b42d5d52398bd979f256eda4f9e51c",
+          "Optical recess": "35f1832f3cb27179e7892a7d2f2eb6bf907848f8bf77bdf777d6dd09bd358fae",
+          "Original rose velocity mural": "bd9c917905b5ab1963222b27798bf97ad58e2cd97fe560d50d9c42d952671555",
+          "Pale ceramic powdercoat": "29785707a71fa3b6b01b816bb3da146aaa48327672427ce7df5a975af84b053b",
+          "Safety enamel": "045581d641694444fc2abdc0a22aa8603067d7afdfb52c0df463143a0e85d1a5",
+          "Satin sectional door": "918725b9a8fe512438dee15d4b9a2dbf23d73d877e75de99887b7fd8f5c1305e",
+          "Signal amber enamel": "15f689fbcd12d4181d40e9b3eae99730a683c8d190eb3762261cf107bfcf8179",
+          "Treated warm workshop laminate": "0ba0f17dec2ec5e5bf5e3fa9101cce5fcc302a32f20122dee06e7a5e3a1d6e06",
+          "Warm diagnostic indicator": "62dd3cf753ff523320b8a70f286d0910c06debb3e407036d1954984401583085",
+          "Warm graphic enamel": "bc858094701099d96b0d5497bc086f5393eb3cf8d6e0b98eb52770d3ea2bfac9",
+          "Workshop petrol powdercoat": "cd4c132b1f78c7596c507cf08b50e8611bbbfc86858cc0340fde2d9bd355c49b",
+          "Workshop rubber": "fa6fe421389f3648894bfa409aeb4461d517e11e5ee87fab4dfa1f9c8a4e744b"
+        },
+        "non_surface_packed_image_hashes": {
+          "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd",
+          "roadster-screen-poster": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424"
+        },
+        "geometry": "c225a80933bf2f3dd5c2b1a86b44f1c6682f4079466e56f423da664bf1363622",
+        "objects": "36bbf7f981bd6209ab74c639f6169cbcff542ae29a78232d63c25edc1462f88a",
+        "camera_contract": "0d8d4d33d1e755a79b61eb270f9a77ce06e6cd096d4f1f24e8d7e40a84963c78",
+        "camera_obstacle_count": 298,
+        "statistics": {
+          "objects": 1115,
+          "meshes": 1110,
+          "vertices": 28020,
+          "faces": 23135,
+          "triangles": 50222,
+          "materials": 21,
+          "armatures": 0,
+          "actions": 0
+        },
+        "source_bytes": 11062336,
+        "source_sha256": "978d728f4ad52c7c516f5bd2f8cba386589509d69bfdf8cc90a6c6a039ea4b41",
+        "relative_packed_paths_verified": true,
+        "surface_contract": {
+          "wall": {
+            "material": "Warm architectural concrete",
+            "tile_metres": 0.75,
+            "resolution": 512,
+            "images": {
+              "basecolor": {
+                "name": "original-workshop-wall-basecolor",
+                "packed_bytes": 132414,
+                "sha256": "8ef7007f9ad917e34de0a561b240d641e501a318b0335a07c7fdba5400961d7c",
+                "colour_space": "sRGB"
+              },
+              "normal": {
+                "name": "original-workshop-wall-normal",
+                "packed_bytes": 254293,
+                "sha256": "f3922cb4e56f7ed1433f395225ae73288162287ad6de21adde4834f97c4acca3",
+                "colour_space": "Non-Color"
+              },
+              "roughness": {
+                "name": "original-workshop-wall-roughness",
+                "packed_bytes": 147886,
+                "sha256": "eaf7dd4bc887aa1b39fb011f5debdcc3e11c0908e73706e370b82ba2564e6da8",
+                "colour_space": "Non-Color"
+              }
+            },
+            "shader": "4d1f5c6432b9077ee39c889d237398b0ea68aab8c997656387369639413d0f4d"
+          },
+          "floor": {
+            "material": "Original mottled concrete",
+            "tile_metres": 1.0,
+            "resolution": 512,
+            "images": {
+              "basecolor": {
+                "name": "original-workshop-floor-basecolor",
+                "packed_bytes": 166778,
+                "sha256": "434a192bedbe72a29fb58e756cccac7cc97f358ec1cf94be76bca75ed34eed69",
+                "colour_space": "sRGB"
+              },
+              "normal": {
+                "name": "original-workshop-floor-normal",
+                "packed_bytes": 192276,
+                "sha256": "9fe07834ef5166d28dc9bba02a7dafc0e56211d790ace34c5d2f7a207e6b08a1",
+                "colour_space": "Non-Color"
+              },
+              "roughness": {
+                "name": "original-workshop-floor-roughness",
+                "packed_bytes": 166674,
+                "sha256": "87112579119c470c7f4279c7a7ceab7a510fe8bfaa5787ba78216c95651a6490",
+                "colour_space": "Non-Color"
+              }
+            },
+            "shader": "b596cde6c487b9a9ca1cd62e38c9c1abb71406ee41861222ec95cbdd5ec7c52b"
+          }
+        },
+        "retired_surface_payloads": [],
+        "approved_new_packed_images": {
+          "roadster-screen-poster": {
+            "file": "public/assets/garage/roadster-screen-poster.jpg",
+            "bytes": 20303,
+            "sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+            "dimensions": [
+              640,
+              360
+            ],
+            "provenance": "art/garage/screen/supplied-video-provenance.json",
+            "authorship": "Poster derived from third-party Tesla footage supplied by the user; not original game artwork.",
+            "redistribution_license": "Unverified; not inferred from user possession. Public release approval is separate."
+          }
+        }
+      },
+      "baseline_non_surface_state_unchanged": true,
+      "approved_new_materials": {
+        "garage_screen_display": "5bd228e0946594fdbe44a83001d7ce4e338b6fdb3344c53403d53a187ea04dd2"
+      },
+      "source_byte_delta": 1257876
+    },
+    {
+      "tier": 3,
+      "source": "art/garage/tier3.blend",
+      "before": {
+        "preserved": {
+          "baseline_non_surface_materials": "d61ec3f698cf6ece922944dc51f30c5b7709f0e5fbd59f2af3b9758b92a5dceb",
+          "lighting_and_camera": "e5546367313460e9fd48218261e9934d360bfecdcce770673a5323545ecde0c6",
+          "render_settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "baseline_non_surface_packed_images": {
+            "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+          }
+        },
+        "non_surface_material_graphs": {
+          "Brushed stainless steel": "50711f5201608bb7105669f9fcc0aa0a3652180be257364dae61a8db8eaacaaa",
+          "Concrete expansion gasket": "c23f396897951f4165bb53c9699bf113bd5de7f12d56cdd1d6e0caaf3c992ed4",
+          "Diagnostic screen": "afe542adb9a3c359359229edca509a366e7fa1f973fbb9be589d9660d4dd16c3",
+          "Faded floor marking": "fc49e7691938f335a9d32ed0d321a89609ecbeea829fea25c1f472c61e70b422",
+          "Graphite structural powdercoat": "5e03c943da3865958dfcfcb356c5a92c1ad6cc8a17b267ccd1f9943745e0d3b8",
+          "Instrument soft teal": "31d0621ea2db76c734f196a62209265d4d8525806764eff60cd3ae7d289d5e05",
+          "Neutral warm LED diffuser": "0917e2ba0ff112ea0193646f20c3cc9d32b42d5d52398bd979f256eda4f9e51c",
+          "Original rose velocity mural": "bd9c917905b5ab1963222b27798bf97ad58e2cd97fe560d50d9c42d952671555",
+          "Pale ceramic powdercoat": "29785707a71fa3b6b01b816bb3da146aaa48327672427ce7df5a975af84b053b",
+          "Safety enamel": "045581d641694444fc2abdc0a22aa8603067d7afdfb52c0df463143a0e85d1a5",
+          "Satin sectional door": "918725b9a8fe512438dee15d4b9a2dbf23d73d877e75de99887b7fd8f5c1305e",
+          "Signal amber enamel": "15f689fbcd12d4181d40e9b3eae99730a683c8d190eb3762261cf107bfcf8179",
+          "Treated warm workshop laminate": "0ba0f17dec2ec5e5bf5e3fa9101cce5fcc302a32f20122dee06e7a5e3a1d6e06",
+          "Warm diagnostic indicator": "62dd3cf753ff523320b8a70f286d0910c06debb3e407036d1954984401583085",
+          "Warm graphic enamel": "bc858094701099d96b0d5497bc086f5393eb3cf8d6e0b98eb52770d3ea2bfac9",
+          "Workshop petrol powdercoat": "cd4c132b1f78c7596c507cf08b50e8611bbbfc86858cc0340fde2d9bd355c49b",
+          "Workshop rubber": "fa6fe421389f3648894bfa409aeb4461d517e11e5ee87fab4dfa1f9c8a4e744b"
+        },
+        "non_surface_packed_image_hashes": {
+          "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+        },
+        "geometry": "6e95c07b51c88c376d4e3ebf41a193ccdec3d9fc2bda4743831a1cd725832207",
+        "objects": "57adc3f5944072ac62638bf8e1c284d4427aa1906d8ff202a7208baecbb2e369",
+        "camera_contract": "fdcac79f7540931caa09aed22ad44b4502e873f00597bb067f661e62b9bfca1d",
+        "camera_obstacle_count": 255,
+        "statistics": {
+          "objects": 591,
+          "meshes": 586,
+          "vertices": 16598,
+          "faces": 14215,
+          "triangles": 28864,
+          "materials": 19,
+          "armatures": 0,
+          "actions": 0
+        },
+        "source_bytes": 7790592,
+        "source_sha256": "69783a138fb07cc812678e8853c9b2acc3f7fe40284aaeb4d8265a8028875606",
+        "relative_packed_paths_verified": true
+      },
+      "after": {
+        "preserved": {
+          "baseline_non_surface_materials": "d61ec3f698cf6ece922944dc51f30c5b7709f0e5fbd59f2af3b9758b92a5dceb",
+          "lighting_and_camera": "e5546367313460e9fd48218261e9934d360bfecdcce770673a5323545ecde0c6",
+          "render_settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "baseline_non_surface_packed_images": {
+            "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+          }
+        },
+        "non_surface_material_graphs": {
+          "Brushed stainless steel": "50711f5201608bb7105669f9fcc0aa0a3652180be257364dae61a8db8eaacaaa",
+          "Concrete expansion gasket": "c23f396897951f4165bb53c9699bf113bd5de7f12d56cdd1d6e0caaf3c992ed4",
+          "Diagnostic screen": "afe542adb9a3c359359229edca509a366e7fa1f973fbb9be589d9660d4dd16c3",
+          "Faded floor marking": "fc49e7691938f335a9d32ed0d321a89609ecbeea829fea25c1f472c61e70b422",
+          "garage_screen_display": "5bd228e0946594fdbe44a83001d7ce4e338b6fdb3344c53403d53a187ea04dd2",
+          "Graphite structural powdercoat": "5e03c943da3865958dfcfcb356c5a92c1ad6cc8a17b267ccd1f9943745e0d3b8",
+          "Instrument soft teal": "31d0621ea2db76c734f196a62209265d4d8525806764eff60cd3ae7d289d5e05",
+          "Neutral warm LED diffuser": "0917e2ba0ff112ea0193646f20c3cc9d32b42d5d52398bd979f256eda4f9e51c",
+          "Original rose velocity mural": "bd9c917905b5ab1963222b27798bf97ad58e2cd97fe560d50d9c42d952671555",
+          "Pale ceramic powdercoat": "29785707a71fa3b6b01b816bb3da146aaa48327672427ce7df5a975af84b053b",
+          "Safety enamel": "045581d641694444fc2abdc0a22aa8603067d7afdfb52c0df463143a0e85d1a5",
+          "Satin sectional door": "918725b9a8fe512438dee15d4b9a2dbf23d73d877e75de99887b7fd8f5c1305e",
+          "Signal amber enamel": "15f689fbcd12d4181d40e9b3eae99730a683c8d190eb3762261cf107bfcf8179",
+          "Treated warm workshop laminate": "0ba0f17dec2ec5e5bf5e3fa9101cce5fcc302a32f20122dee06e7a5e3a1d6e06",
+          "Warm diagnostic indicator": "62dd3cf753ff523320b8a70f286d0910c06debb3e407036d1954984401583085",
+          "Warm graphic enamel": "bc858094701099d96b0d5497bc086f5393eb3cf8d6e0b98eb52770d3ea2bfac9",
+          "Workshop petrol powdercoat": "cd4c132b1f78c7596c507cf08b50e8611bbbfc86858cc0340fde2d9bd355c49b",
+          "Workshop rubber": "fa6fe421389f3648894bfa409aeb4461d517e11e5ee87fab4dfa1f9c8a4e744b"
+        },
+        "non_surface_packed_image_hashes": {
+          "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd",
+          "roadster-screen-poster": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424"
+        },
+        "geometry": "8857268901573d5b4e1dce2c6aa1bdc6b276e72e7e43777d634b38b941f42d36",
+        "objects": "e9a0425912265b51d94cfadf72b44318f554b6190496f94d579a05810b4a9760",
+        "camera_contract": "571c6ce6ab1aaad3c387b32def37d25ea45f269a9258ad0efc7e3f07df62b1b8",
+        "camera_obstacle_count": 331,
+        "statistics": {
+          "objects": 805,
+          "meshes": 800,
+          "vertices": 21544,
+          "faces": 18620,
+          "triangles": 37834,
+          "materials": 20,
+          "armatures": 0,
+          "actions": 0
+        },
+        "source_bytes": 9132732,
+        "source_sha256": "376d07fce5b42179ba36b4a9f6aa7f3695e381e494fb647ce34af13600cc026e",
+        "relative_packed_paths_verified": true,
+        "surface_contract": {
+          "wall": {
+            "material": "Warm architectural concrete",
+            "tile_metres": 0.75,
+            "resolution": 512,
+            "images": {
+              "basecolor": {
+                "name": "original-workshop-wall-basecolor",
+                "packed_bytes": 132414,
+                "sha256": "8ef7007f9ad917e34de0a561b240d641e501a318b0335a07c7fdba5400961d7c",
+                "colour_space": "sRGB"
+              },
+              "normal": {
+                "name": "original-workshop-wall-normal",
+                "packed_bytes": 254293,
+                "sha256": "f3922cb4e56f7ed1433f395225ae73288162287ad6de21adde4834f97c4acca3",
+                "colour_space": "Non-Color"
+              },
+              "roughness": {
+                "name": "original-workshop-wall-roughness",
+                "packed_bytes": 147886,
+                "sha256": "eaf7dd4bc887aa1b39fb011f5debdcc3e11c0908e73706e370b82ba2564e6da8",
+                "colour_space": "Non-Color"
+              }
+            },
+            "shader": "4d1f5c6432b9077ee39c889d237398b0ea68aab8c997656387369639413d0f4d"
+          },
+          "floor": {
+            "material": "Original mottled concrete",
+            "tile_metres": 1.0,
+            "resolution": 512,
+            "images": {
+              "basecolor": {
+                "name": "original-workshop-floor-basecolor",
+                "packed_bytes": 166778,
+                "sha256": "434a192bedbe72a29fb58e756cccac7cc97f358ec1cf94be76bca75ed34eed69",
+                "colour_space": "sRGB"
+              },
+              "normal": {
+                "name": "original-workshop-floor-normal",
+                "packed_bytes": 192276,
+                "sha256": "9fe07834ef5166d28dc9bba02a7dafc0e56211d790ace34c5d2f7a207e6b08a1",
+                "colour_space": "Non-Color"
+              },
+              "roughness": {
+                "name": "original-workshop-floor-roughness",
+                "packed_bytes": 166674,
+                "sha256": "87112579119c470c7f4279c7a7ceab7a510fe8bfaa5787ba78216c95651a6490",
+                "colour_space": "Non-Color"
+              }
+            },
+            "shader": "b596cde6c487b9a9ca1cd62e38c9c1abb71406ee41861222ec95cbdd5ec7c52b"
+          }
+        },
+        "retired_surface_payloads": [],
+        "approved_new_packed_images": {
+          "roadster-screen-poster": {
+            "file": "public/assets/garage/roadster-screen-poster.jpg",
+            "bytes": 20303,
+            "sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+            "dimensions": [
+              640,
+              360
+            ],
+            "provenance": "art/garage/screen/supplied-video-provenance.json",
+            "authorship": "Poster derived from third-party Tesla footage supplied by the user; not original game artwork.",
+            "redistribution_license": "Unverified; not inferred from user possession. Public release approval is separate."
+          }
+        }
+      },
+      "baseline_non_surface_state_unchanged": true,
+      "approved_new_materials": {
+        "garage_screen_display": "5bd228e0946594fdbe44a83001d7ce4e338b6fdb3344c53403d53a187ea04dd2"
+      },
+      "source_byte_delta": 1342140
+    },
+    {
+      "tier": 4,
+      "source": "art/garage/tier4.blend",
+      "before": {
+        "preserved": {
+          "baseline_non_surface_materials": "911a53acde5b5c139aff164ea3af261b464749b45dca43d4a0857966e868f53c",
+          "lighting_and_camera": "51527add31de3a476371a8650d6f7c4153f9e296e6c5573570a0269e403891cb",
+          "render_settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "baseline_non_surface_packed_images": {
+            "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+          }
+        },
+        "non_surface_material_graphs": {
+          "Brushed stainless steel": "50711f5201608bb7105669f9fcc0aa0a3652180be257364dae61a8db8eaacaaa",
+          "Concrete expansion gasket": "c23f396897951f4165bb53c9699bf113bd5de7f12d56cdd1d6e0caaf3c992ed4",
+          "Diagnostic screen": "afe542adb9a3c359359229edca509a366e7fa1f973fbb9be589d9660d4dd16c3",
+          "Faded floor marking": "fc49e7691938f335a9d32ed0d321a89609ecbeea829fea25c1f472c61e70b422",
+          "Graphite structural powdercoat": "5e03c943da3865958dfcfcb356c5a92c1ad6cc8a17b267ccd1f9943745e0d3b8",
+          "Instrument soft teal": "31d0621ea2db76c734f196a62209265d4d8525806764eff60cd3ae7d289d5e05",
+          "Neutral warm LED diffuser": "0917e2ba0ff112ea0193646f20c3cc9d32b42d5d52398bd979f256eda4f9e51c",
+          "Optical recess": "35f1832f3cb27179e7892a7d2f2eb6bf907848f8bf77bdf777d6dd09bd358fae",
+          "Original rose velocity mural": "bd9c917905b5ab1963222b27798bf97ad58e2cd97fe560d50d9c42d952671555",
+          "Pale ceramic powdercoat": "29785707a71fa3b6b01b816bb3da146aaa48327672427ce7df5a975af84b053b",
+          "Safety enamel": "045581d641694444fc2abdc0a22aa8603067d7afdfb52c0df463143a0e85d1a5",
+          "Satin sectional door": "918725b9a8fe512438dee15d4b9a2dbf23d73d877e75de99887b7fd8f5c1305e",
+          "Signal amber enamel": "15f689fbcd12d4181d40e9b3eae99730a683c8d190eb3762261cf107bfcf8179",
+          "Warm diagnostic indicator": "62dd3cf753ff523320b8a70f286d0910c06debb3e407036d1954984401583085",
+          "Warm graphic enamel": "bc858094701099d96b0d5497bc086f5393eb3cf8d6e0b98eb52770d3ea2bfac9",
+          "Workshop petrol powdercoat": "cd4c132b1f78c7596c507cf08b50e8611bbbfc86858cc0340fde2d9bd355c49b",
+          "Workshop rubber": "fa6fe421389f3648894bfa409aeb4461d517e11e5ee87fab4dfa1f9c8a4e744b"
+        },
+        "non_surface_packed_image_hashes": {
+          "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+        },
+        "geometry": "e46c3e7d9af26c43c0985210cf11b66dbf3f5253fba003c2113f8ce695ed22a5",
+        "objects": "827b337471139476562e09cf9a3719258a50c9c1bbb2db28a3794460785ffb55",
+        "camera_contract": "378853c980ad50cf5b3a2086e1109b7d5224199280bd2bd94795dc7bd8fea54b",
+        "camera_obstacle_count": 250,
+        "statistics": {
+          "objects": 720,
+          "meshes": 715,
+          "vertices": 19226,
+          "faces": 16479,
+          "triangles": 33752,
+          "materials": 19,
+          "armatures": 0,
+          "actions": 0
+        },
+        "source_bytes": 8628388,
+        "source_sha256": "2c81999ab650d0baa826aa417e8e273641789ba7c5018d7ed03db696e86507f5",
+        "relative_packed_paths_verified": true
+      },
+      "after": {
+        "preserved": {
+          "baseline_non_surface_materials": "911a53acde5b5c139aff164ea3af261b464749b45dca43d4a0857966e868f53c",
+          "lighting_and_camera": "51527add31de3a476371a8650d6f7c4153f9e296e6c5573570a0269e403891cb",
+          "render_settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "baseline_non_surface_packed_images": {
+            "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd"
+          }
+        },
+        "non_surface_material_graphs": {
+          "Brushed stainless steel": "50711f5201608bb7105669f9fcc0aa0a3652180be257364dae61a8db8eaacaaa",
+          "Concrete expansion gasket": "c23f396897951f4165bb53c9699bf113bd5de7f12d56cdd1d6e0caaf3c992ed4",
+          "Diagnostic screen": "afe542adb9a3c359359229edca509a366e7fa1f973fbb9be589d9660d4dd16c3",
+          "Faded floor marking": "fc49e7691938f335a9d32ed0d321a89609ecbeea829fea25c1f472c61e70b422",
+          "garage_screen_display": "5bd228e0946594fdbe44a83001d7ce4e338b6fdb3344c53403d53a187ea04dd2",
+          "Graphite structural powdercoat": "5e03c943da3865958dfcfcb356c5a92c1ad6cc8a17b267ccd1f9943745e0d3b8",
+          "Instrument soft teal": "31d0621ea2db76c734f196a62209265d4d8525806764eff60cd3ae7d289d5e05",
+          "Neutral warm LED diffuser": "0917e2ba0ff112ea0193646f20c3cc9d32b42d5d52398bd979f256eda4f9e51c",
+          "Optical recess": "35f1832f3cb27179e7892a7d2f2eb6bf907848f8bf77bdf777d6dd09bd358fae",
+          "Original rose velocity mural": "bd9c917905b5ab1963222b27798bf97ad58e2cd97fe560d50d9c42d952671555",
+          "Pale ceramic powdercoat": "29785707a71fa3b6b01b816bb3da146aaa48327672427ce7df5a975af84b053b",
+          "Safety enamel": "045581d641694444fc2abdc0a22aa8603067d7afdfb52c0df463143a0e85d1a5",
+          "Satin sectional door": "918725b9a8fe512438dee15d4b9a2dbf23d73d877e75de99887b7fd8f5c1305e",
+          "Signal amber enamel": "15f689fbcd12d4181d40e9b3eae99730a683c8d190eb3762261cf107bfcf8179",
+          "Warm diagnostic indicator": "62dd3cf753ff523320b8a70f286d0910c06debb3e407036d1954984401583085",
+          "Warm graphic enamel": "bc858094701099d96b0d5497bc086f5393eb3cf8d6e0b98eb52770d3ea2bfac9",
+          "Workshop petrol powdercoat": "cd4c132b1f78c7596c507cf08b50e8611bbbfc86858cc0340fde2d9bd355c49b",
+          "Workshop rubber": "fa6fe421389f3648894bfa409aeb4461d517e11e5ee87fab4dfa1f9c8a4e744b"
+        },
+        "non_surface_packed_image_hashes": {
+          "original-rose-velocity-mural": "996ac11896fe59aa172ad3c8b1b0a60a1743afa5b0a7d5dcbea6a39ffbb472fd",
+          "roadster-screen-poster": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424"
+        },
+        "geometry": "a7fc93f6c4bbdaf7d7a6c475c27b8ef06d623977d7529fd68c588d11c430827e",
+        "objects": "32b94285f61a0fedbcca2f96f79d0b2161e8027284ae56c5700cc5f6be892b10",
+        "camera_contract": "3a8b134eeb7dcad7daae73b6bf5b4b05e5a44e4a30b85766a897ab174d58f55d",
+        "camera_obstacle_count": 329,
+        "statistics": {
+          "objects": 944,
+          "meshes": 939,
+          "vertices": 24468,
+          "faces": 21124,
+          "triangles": 43274,
+          "materials": 20,
+          "armatures": 0,
+          "actions": 0
+        },
+        "source_bytes": 10056168,
+        "source_sha256": "313b5030694560fa4c17561112b1733e549091078a650da7131628184813e920",
+        "relative_packed_paths_verified": true,
+        "surface_contract": {
+          "wall": {
+            "material": "Warm architectural concrete",
+            "tile_metres": 0.75,
+            "resolution": 512,
+            "images": {
+              "basecolor": {
+                "name": "original-workshop-wall-basecolor",
+                "packed_bytes": 132414,
+                "sha256": "8ef7007f9ad917e34de0a561b240d641e501a318b0335a07c7fdba5400961d7c",
+                "colour_space": "sRGB"
+              },
+              "normal": {
+                "name": "original-workshop-wall-normal",
+                "packed_bytes": 254293,
+                "sha256": "f3922cb4e56f7ed1433f395225ae73288162287ad6de21adde4834f97c4acca3",
+                "colour_space": "Non-Color"
+              },
+              "roughness": {
+                "name": "original-workshop-wall-roughness",
+                "packed_bytes": 147886,
+                "sha256": "eaf7dd4bc887aa1b39fb011f5debdcc3e11c0908e73706e370b82ba2564e6da8",
+                "colour_space": "Non-Color"
+              }
+            },
+            "shader": "4d1f5c6432b9077ee39c889d237398b0ea68aab8c997656387369639413d0f4d"
+          },
+          "floor": {
+            "material": "Original mottled concrete",
+            "tile_metres": 1.0,
+            "resolution": 512,
+            "images": {
+              "basecolor": {
+                "name": "original-workshop-floor-basecolor",
+                "packed_bytes": 166778,
+                "sha256": "434a192bedbe72a29fb58e756cccac7cc97f358ec1cf94be76bca75ed34eed69",
+                "colour_space": "sRGB"
+              },
+              "normal": {
+                "name": "original-workshop-floor-normal",
+                "packed_bytes": 192276,
+                "sha256": "9fe07834ef5166d28dc9bba02a7dafc0e56211d790ace34c5d2f7a207e6b08a1",
+                "colour_space": "Non-Color"
+              },
+              "roughness": {
+                "name": "original-workshop-floor-roughness",
+                "packed_bytes": 166674,
+                "sha256": "87112579119c470c7f4279c7a7ceab7a510fe8bfaa5787ba78216c95651a6490",
+                "colour_space": "Non-Color"
+              }
+            },
+            "shader": "b596cde6c487b9a9ca1cd62e38c9c1abb71406ee41861222ec95cbdd5ec7c52b"
+          }
+        },
+        "retired_surface_payloads": [],
+        "approved_new_packed_images": {
+          "roadster-screen-poster": {
+            "file": "public/assets/garage/roadster-screen-poster.jpg",
+            "bytes": 20303,
+            "sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+            "dimensions": [
+              640,
+              360
+            ],
+            "provenance": "art/garage/screen/supplied-video-provenance.json",
+            "authorship": "Poster derived from third-party Tesla footage supplied by the user; not original game artwork.",
+            "redistribution_license": "Unverified; not inferred from user possession. Public release approval is separate."
+          }
+        }
+      },
+      "baseline_non_surface_state_unchanged": true,
+      "approved_new_materials": {
+        "garage_screen_display": "5bd228e0946594fdbe44a83001d7ce4e338b6fdb3344c53403d53a187ea04dd2"
+      },
+      "source_byte_delta": 1427780
+    }
+  ]
+}

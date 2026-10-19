@@ -1,0 +1,128 @@
+{
+  "scope": "Original accepted source geometry is checked inside Blender before and after adding the closed interior. Per-tier source signatures include original object names, local transforms, mesh positions/topology/UVs/material assignments. All textures and original material values are retained. Camera, finite-normal, full triangle clear-zone and portable-source assertions are independently covered by tests.",
+  "exports": [
+    {
+      "tier": 1,
+      "before": {
+        "bytes": 4393932,
+        "sha256": "6b77c8f1c6d177a34d8ed9f0031079dc6f99be50e63a1fdd3a10adac3473d105",
+        "draw_batches": 17,
+        "triangles": 33202,
+        "editable_parts": 673
+      },
+      "after": {
+        "bytes": 4540332,
+        "sha256": "62ff8affc3a76094c349983175ad3795c26e5fea81bbf9e7555802cf27bc204c",
+        "draw_batches": 17,
+        "triangles": 34854,
+        "editable_parts": 800
+      },
+      "change": {
+        "bytes": 146400,
+        "draw_batches": 0,
+        "triangles": 1652,
+        "editable_parts": 127
+      },
+      "preserved_rear_geometry_sha256": "0f671b08cd67db4723327289bbaa5408c4caa0352f34f02254cfa11a01fa6cdf",
+      "camera_obstacle_count": 203,
+      "original_rear_geometry_unchanged": true,
+      "new_external_assets": []
+    },
+    {
+      "tier": 2,
+      "before": {
+        "bytes": 4832924,
+        "sha256": "31f7621b8929e596ecd342effbb2c6577926bc70ba2e9beb095db79e5482c5da",
+        "draw_batches": 20,
+        "triangles": 40164,
+        "editable_parts": 768
+      },
+      "after": {
+        "bytes": 4989848,
+        "sha256": "5095c6a2df803eb4ca5767c62b4c49762f56551b61d30ef6353aaf1dfbc1e867",
+        "draw_batches": 20,
+        "triangles": 41924,
+        "editable_parts": 904
+      },
+      "change": {
+        "bytes": 156924,
+        "draw_batches": 0,
+        "triangles": 1760,
+        "editable_parts": 136
+      },
+      "preserved_rear_geometry_sha256": "87a16e071efa59f696d37a247a07bd12167ed1824f4c9db0a519fc0ed6298e2a",
+      "camera_obstacle_count": 228,
+      "original_rear_geometry_unchanged": true,
+      "new_external_assets": []
+    },
+    {
+      "tier": 3,
+      "before": {
+        "bytes": 4224948,
+        "sha256": "8d3a7788c2d24a008c731810d9bc06ea7d38d627694466c01bc2bc8a65523de3",
+        "draw_batches": 18,
+        "triangles": 26936,
+        "editable_parts": 436
+      },
+      "after": {
+        "bytes": 4399440,
+        "sha256": "33c654486b83f4e6a1c4811b666248d01f2451168924db2b15778348614d0d29",
+        "draw_batches": 19,
+        "triangles": 28864,
+        "editable_parts": 586
+      },
+      "change": {
+        "bytes": 174492,
+        "draw_batches": 1,
+        "triangles": 1928,
+        "editable_parts": 150
+      },
+      "preserved_rear_geometry_sha256": "2f5e4313f8a40a77a14f1f8a17eece510d83526a19db15f2db6e2cd418d59aca",
+      "camera_obstacle_count": 255,
+      "original_rear_geometry_unchanged": true,
+      "new_external_assets": []
+    },
+    {
+      "tier": 4,
+      "before": {
+        "bytes": 4593108,
+        "sha256": "fecaddad8b4d862640a0d9451f7bcbb022784b9077b3709d1d13d33fcd18c5d3",
+        "draw_batches": 19,
+        "triangles": 31824,
+        "editable_parts": 565
+      },
+      "after": {
+        "bytes": 4766128,
+        "sha256": "1c64a3e84a02ecf108260ceffae4ce70e02b6232476ccc95439200b5f29a073b",
+        "draw_batches": 19,
+        "triangles": 33752,
+        "editable_parts": 715
+      },
+      "change": {
+        "bytes": 173020,
+        "draw_batches": 0,
+        "triangles": 1928,
+        "editable_parts": 150
+      },
+      "preserved_rear_geometry_sha256": "b73f94e91a1fc8145e9444fad8e36ea5fe7ba50fe2aa5d6c7a3f1a1c657fe386",
+      "camera_obstacle_count": 250,
+      "original_rear_geometry_unchanged": true,
+      "new_external_assets": []
+    }
+  ],
+  "interior_bounds_m": {
+    "min": [
+      -9.88,
+      0.02,
+      -8.97
+    ],
+    "max": [
+      9.88,
+      6.45,
+      7.57
+    ]
+  },
+  "new_geometry_clearance": "Central x\u00b12,z\u00b13.6 and side bays x\u00b16.2,z=-.8 remain clear above floor and below2.6m.",
+  "reproduction": "blender -b --python scripts/create_garage.py -- --tiers 1 2 3 4 --resume --interior-only",
+  "subsequent_material_stage": "This records the accepted pre-wall-finish interior exports. Current wall-only correction, preserved geometry and exact current costs are in wall-finish-audit.json; current final GLBs are in tierN-report.json and export-audit.json."
+}

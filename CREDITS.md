@@ -1,6 +1,6 @@
 # Roadster — asset credits and provenance
 
-This file supplements, and does not replace, the retained [runtime asset credits](public/assets/CREDITS.txt). Existing Ferrari/Poly Haven attribution, Three.js and Draco license notices remain applicable. New resources are original project artwork created for Roadster in October 2026. The common [asset manifest](public/assets/manifest.json) records their byte counts, SHA-256 hashes and source paths.
+This file supplements, and does not replace, the retained [runtime asset credits](public/assets/CREDITS.txt). Existing Ferrari/Poly Haven attribution, Three.js and Draco license notices remain applicable. New game geometry and authored material resources are original project artwork created for Roadster in October 2026; the separately credited, user-supplied Tesla television footage below is third-party content. The common [asset manifest](public/assets/manifest.json) records their byte counts, SHA-256 hashes and source paths.
 
 `Original-project-artwork` is a provenance label, not an assertion that a depicted vehicle design or trademark has been commercially cleared, and not a blanket third-party license grant.
 
@@ -12,7 +12,15 @@ This file supplements, and does not replace, the retained [runtime asset credits
 - Reproduction source: `scripts/create_garage.py`.
 - Provenance, export budgets and source hashes: `art/garage/provenance.json`; implementation notes: [art/garage/README.md](art/garage/README.md).
 
-All room geometry, equipment assemblies, concrete textures, diagnostic graphics and floor markings were authored procedurally in Blender for this project. No external model, purchased pack, image source or manufacturer CAD is used in these environment exports. Preview renders may show the retained Rocket for scale; that vehicle is not embedded in the garage GLBs or saved garage source scenes. Diagnostic panels are original decorative artwork, not manufacturer interfaces or certified measuring instruments.
+All room geometry, equipment assemblies, concrete textures, diagnostic graphics and floor markings were authored procedurally in Blender for this project. No external model, purchased pack or manufacturer CAD is used in these environments. The television embeds a poster from the separately credited user-supplied Tesla footage; all other environment textures are original project artwork. Preview renders may show the retained Rocket for scale; that vehicle is not embedded in the garage GLBs or saved garage source scenes. Diagnostic panels are original decorative artwork, not manufacturer interfaces or certified measuring instruments.
+
+### User-supplied garage television film
+
+The television plays **The Kickflip | Roadster**, credited to Tesla; reference: https://www.youtube.com/watch?v=r5vsHHPVhJg. The user supplied the local MP4 for this integration. This is not original project footage, a game-physics demonstration or evidence of unaided flight. Visible production cables and all original shots remain intact.
+
+Runtime media: `public/assets/garage/roadster-screen-loop.mp4` and `roadster-screen-poster.jpg`. The full 1,052-frame video track is retained at 640×360 and 24000/1001 fps (43.877167 seconds), without cropping, retiming or video re-encoding. Only the audio stream was removed and MP4 fast-start metadata was relocated. The original container's 43.932154 seconds includes a slightly longer audio tail. The poster is extracted at 14.2 seconds.
+
+Reproducible importer and provenance: `scripts/import_garage_screen.py` and `art/garage/screen/supplied-video-provenance.json`. The importer requires an explicitly supplied source file and verifies every decoded output frame against it; it does not download or scrape a service. User possession and this technical transformation do not establish a commercial redistribution license. No Tesla affiliation, endorsement or license grant is claimed; platform/commercial release rights remain a separate consideration.
 
 ### Rose Velocity wall artwork
 

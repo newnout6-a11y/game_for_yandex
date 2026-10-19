@@ -1,0 +1,570 @@
+{
+  "scope": "Current authored arrival/charging utilities and physical TV, original PBR room surfaces, and one declared user-provided Tesla-video poster. The poster-only update preserves all geometry, transforms, UVs, shader settings, camera metadata and other image bytes. Third-party poster/video authorship is attributed separately; redistribution license is not asserted.",
+  "source_geometry_audit": "art/garage/reverse-workshop-source-audit.json",
+  "source_material_audit": "art/garage/workshop-surface-source-audit.json",
+  "max_glb_bytes": 5338080,
+  "room_download_budget_bytes": 5500000,
+  "budget_reason": "The actual largest current room rounded up to the next 250 kB is 5.5 MB. Original arrival equipment and the physical TV add geometry; six original PBR maps reduce surface image bytes. The third-party user-provided poster is 20,303 bytes. Unchanged maxima: 100,000 triangles and 40 draws.",
+  "max_triangles": 100000,
+  "max_draw_batches": 40,
+  "texture_rgba8_base_bytes": 9310208,
+  "texture_rgba8_with_mip_bytes": 12413456,
+  "texture_estimate_scope": "Eight embedded room images including the original screen poster; assumes RGBA8/full mip chains, excludes external video texture, runtime vehicles/environment and driver allocation padding.",
+  "runtime_lights_added": 0,
+  "external_assets_added": [
+    {
+      "path": "public/assets/garage/roadster-screen-poster.jpg",
+      "source": "user-provided MP4",
+      "credited_creator": "Tesla",
+      "redistribution_license_verified": false
+    }
+  ],
+  "transport_assets_modified": false,
+  "exports": [
+    {
+      "tier": 1,
+      "before": {
+        "bytes": 4550288,
+        "draw_batches": 17,
+        "triangles": 34854,
+        "editable_parts": 800
+      },
+      "after": {
+        "bytes": 4831864,
+        "draw_batches": 18,
+        "triangles": 42428,
+        "editable_parts": 990
+      },
+      "change": {
+        "bytes": 281576,
+        "draw_batches": 1,
+        "triangles": 7574,
+        "editable_parts": 190
+      },
+      "sha256": "652446d31e1b16af24f1ae98ae181723fac6055e5530d85c7a5a0c3bb89a69bd",
+      "embedded_images": 8,
+      "embedded_image_bytes": 1758074,
+      "embedded_surface_image_bytes": 1150397,
+      "embedded_screen_poster_bytes": 20303,
+      "screen": {
+        "version": 1,
+        "material": "garage_screen_display",
+        "width": 4.2,
+        "height": 2.3625,
+        "center": [
+          -9.02,
+          2.65,
+          -4.3
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "corners": [
+          {
+            "uv": [
+              0,
+              0
+            ],
+            "position": [
+              -9.02,
+              1.46875,
+              -2.2
+            ]
+          },
+          {
+            "uv": [
+              1,
+              0
+            ],
+            "position": [
+              -9.02,
+              1.46875,
+              -6.4
+            ]
+          },
+          {
+            "uv": [
+              1,
+              1
+            ],
+            "position": [
+              -9.02,
+              3.83125,
+              -6.4
+            ]
+          },
+          {
+            "uv": [
+              0,
+              1
+            ],
+            "position": [
+              -9.02,
+              3.83125,
+              -2.2
+            ]
+          }
+        ],
+        "fixtureMin": [
+          -9.76,
+          1.356,
+          -6.519
+        ],
+        "fixtureMax": [
+          -8.965,
+          3.944,
+          -2.081
+        ],
+        "poster": "assets/garage/roadster-screen-poster.jpg",
+        "video": "assets/garage/roadster-screen-loop.mp4"
+      },
+      "camera_obstacle_count": 271,
+      "preserved_rear_geometry_sha256": "0f671b08cd67db4723327289bbaa5408c4caa0352f34f02254cfa11a01fa6cdf",
+      "poster_swap": {
+        "method": "Exact image bufferView replacement, no geometry export or rebatching",
+        "source_before_sha256": "dfdc53533e16c9e6a5747e51ee76bc3689edabcea5a90211e538771cb66f2320",
+        "source_after_sha256": "e649da776da3c5f260e7a3f05df6853a1e6a6d82c231bfb0db3cbec67a22141a",
+        "glb_before_sha256": "3d99346dafa212389df1a804ded7ec271f24eaefd2707a9359783c23db7ab55a",
+        "glb_after_sha256": "652446d31e1b16af24f1ae98ae181723fac6055e5530d85c7a5a0c3bb89a69bd",
+        "poster_sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+        "poster_bytes": 20303,
+        "all_geometry_transforms_uvs_shaders_settings_unchanged": true,
+        "garage_camera_unchanged": true,
+        "other_image_bytes_unchanged": true,
+        "all_other_glb_buffer_views_byte_identical": true,
+        "attribution_only_metadata_updated": [
+          "root.asset_provenance",
+          "garage_screen_display.extras.screen_asset"
+        ],
+        "preserved_fingerprint": {
+          "meshes": "52b62d72fd7438c03b2511eef6586245b092eaad836f3287c2915e531174e64a",
+          "objects": "9564fdd5d1467bdca7c2730e5de8502248ed973e2d5775e90ba872e72bd7ff8f",
+          "materials": "12d900985055c6caeb37b6255689a1a91222617a9946ca2bbe5992b79249d7d8",
+          "armatures": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "statistics": {
+            "objects": 995,
+            "meshes": 990,
+            "vertices": 24154,
+            "faces": 19945,
+            "triangles": 42428,
+            "materials": 18,
+            "armatures": 0,
+            "actions": 0
+          }
+        }
+      }
+    },
+    {
+      "tier": 2,
+      "before": {
+        "bytes": 4999804,
+        "draw_batches": 20,
+        "triangles": 41924,
+        "editable_parts": 904
+      },
+      "after": {
+        "bytes": 5338080,
+        "draw_batches": 21,
+        "triangles": 50222,
+        "editable_parts": 1110
+      },
+      "change": {
+        "bytes": 338276,
+        "draw_batches": 1,
+        "triangles": 8298,
+        "editable_parts": 206
+      },
+      "sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
+      "embedded_images": 8,
+      "embedded_image_bytes": 1758074,
+      "embedded_surface_image_bytes": 1150397,
+      "embedded_screen_poster_bytes": 20303,
+      "screen": {
+        "version": 1,
+        "material": "garage_screen_display",
+        "width": 4.2,
+        "height": 2.3625,
+        "center": [
+          -9.02,
+          2.65,
+          -4.3
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "corners": [
+          {
+            "uv": [
+              0,
+              0
+            ],
+            "position": [
+              -9.02,
+              1.46875,
+              -2.2
+            ]
+          },
+          {
+            "uv": [
+              1,
+              0
+            ],
+            "position": [
+              -9.02,
+              1.46875,
+              -6.4
+            ]
+          },
+          {
+            "uv": [
+              1,
+              1
+            ],
+            "position": [
+              -9.02,
+              3.83125,
+              -6.4
+            ]
+          },
+          {
+            "uv": [
+              0,
+              1
+            ],
+            "position": [
+              -9.02,
+              3.83125,
+              -2.2
+            ]
+          }
+        ],
+        "fixtureMin": [
+          -9.76,
+          1.356,
+          -6.519
+        ],
+        "fixtureMax": [
+          -8.965,
+          3.944,
+          -2.081
+        ],
+        "poster": "assets/garage/roadster-screen-poster.jpg",
+        "video": "assets/garage/roadster-screen-loop.mp4"
+      },
+      "camera_obstacle_count": 298,
+      "preserved_rear_geometry_sha256": "87a16e071efa59f696d37a247a07bd12167ed1824f4c9db0a519fc0ed6298e2a",
+      "poster_swap": {
+        "method": "Exact image bufferView replacement, no geometry export or rebatching",
+        "source_before_sha256": "618efc6d587a21d13587c84531e23818f8d34d7a890a32bb0f1fc35d9e7a6764",
+        "source_after_sha256": "978d728f4ad52c7c516f5bd2f8cba386589509d69bfdf8cc90a6c6a039ea4b41",
+        "glb_before_sha256": "094b4ed3e51b4cf803dd29801b8c7cb520b9cd7235f6f9965b29218437e0e848",
+        "glb_after_sha256": "55621a4f24d07242c7536acc66ac657e1e37ae7773bbaefa5270ec76afe2945d",
+        "poster_sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+        "poster_bytes": 20303,
+        "all_geometry_transforms_uvs_shaders_settings_unchanged": true,
+        "garage_camera_unchanged": true,
+        "other_image_bytes_unchanged": true,
+        "all_other_glb_buffer_views_byte_identical": true,
+        "attribution_only_metadata_updated": [
+          "root.asset_provenance",
+          "garage_screen_display.extras.screen_asset"
+        ],
+        "preserved_fingerprint": {
+          "meshes": "c225a80933bf2f3dd5c2b1a86b44f1c6682f4079466e56f423da664bf1363622",
+          "objects": "36bbf7f981bd6209ab74c639f6169cbcff542ae29a78232d63c25edc1462f88a",
+          "materials": "e0c7791f7ff66c2f2376c6569611730a6309507ba483f70fd53cc8076c557905",
+          "armatures": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "statistics": {
+            "objects": 1115,
+            "meshes": 1110,
+            "vertices": 28020,
+            "faces": 23135,
+            "triangles": 50222,
+            "materials": 21,
+            "armatures": 0,
+            "actions": 0
+          }
+        }
+      }
+    },
+    {
+      "tier": 3,
+      "before": {
+        "bytes": 4409396,
+        "draw_batches": 19,
+        "triangles": 28864,
+        "editable_parts": 586
+      },
+      "after": {
+        "bytes": 4811228,
+        "draw_batches": 20,
+        "triangles": 37834,
+        "editable_parts": 800
+      },
+      "change": {
+        "bytes": 401832,
+        "draw_batches": 1,
+        "triangles": 8970,
+        "editable_parts": 214
+      },
+      "sha256": "5548bcd400de5733e42adb0b02d7ae9e1c40a86b1a60ce64a1b995d50f265495",
+      "embedded_images": 8,
+      "embedded_image_bytes": 1758074,
+      "embedded_surface_image_bytes": 1150397,
+      "embedded_screen_poster_bytes": 20303,
+      "screen": {
+        "version": 1,
+        "material": "garage_screen_display",
+        "width": 4.2,
+        "height": 2.3625,
+        "center": [
+          -9.02,
+          2.65,
+          -4.3
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "corners": [
+          {
+            "uv": [
+              0,
+              0
+            ],
+            "position": [
+              -9.02,
+              1.46875,
+              -2.2
+            ]
+          },
+          {
+            "uv": [
+              1,
+              0
+            ],
+            "position": [
+              -9.02,
+              1.46875,
+              -6.4
+            ]
+          },
+          {
+            "uv": [
+              1,
+              1
+            ],
+            "position": [
+              -9.02,
+              3.83125,
+              -6.4
+            ]
+          },
+          {
+            "uv": [
+              0,
+              1
+            ],
+            "position": [
+              -9.02,
+              3.83125,
+              -2.2
+            ]
+          }
+        ],
+        "fixtureMin": [
+          -9.76,
+          1.356,
+          -6.519
+        ],
+        "fixtureMax": [
+          -8.965,
+          3.944,
+          -2.081
+        ],
+        "poster": "assets/garage/roadster-screen-poster.jpg",
+        "video": "assets/garage/roadster-screen-loop.mp4"
+      },
+      "camera_obstacle_count": 331,
+      "preserved_rear_geometry_sha256": "2f5e4313f8a40a77a14f1f8a17eece510d83526a19db15f2db6e2cd418d59aca",
+      "poster_swap": {
+        "method": "Exact image bufferView replacement, no geometry export or rebatching",
+        "source_before_sha256": "e92947e8f9909afbe0005f9c3b3a66afaeb7e0ceb2588af9cb86887b16d84c7a",
+        "source_after_sha256": "376d07fce5b42179ba36b4a9f6aa7f3695e381e494fb647ce34af13600cc026e",
+        "glb_before_sha256": "2d67170c168d93fc1b13ff16a61057dac90dc5df276952e785df5e841fb948ef",
+        "glb_after_sha256": "5548bcd400de5733e42adb0b02d7ae9e1c40a86b1a60ce64a1b995d50f265495",
+        "poster_sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+        "poster_bytes": 20303,
+        "all_geometry_transforms_uvs_shaders_settings_unchanged": true,
+        "garage_camera_unchanged": true,
+        "other_image_bytes_unchanged": true,
+        "all_other_glb_buffer_views_byte_identical": true,
+        "attribution_only_metadata_updated": [
+          "root.asset_provenance",
+          "garage_screen_display.extras.screen_asset"
+        ],
+        "preserved_fingerprint": {
+          "meshes": "8857268901573d5b4e1dce2c6aa1bdc6b276e72e7e43777d634b38b941f42d36",
+          "objects": "e9a0425912265b51d94cfadf72b44318f554b6190496f94d579a05810b4a9760",
+          "materials": "d28691610d3873da4ddc90cb4e752bf9e17ee05be173d74b4c75860d0f0da212",
+          "armatures": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "statistics": {
+            "objects": 805,
+            "meshes": 800,
+            "vertices": 21544,
+            "faces": 18620,
+            "triangles": 37834,
+            "materials": 20,
+            "armatures": 0,
+            "actions": 0
+          }
+        }
+      }
+    },
+    {
+      "tier": 4,
+      "before": {
+        "bytes": 4776084,
+        "draw_batches": 19,
+        "triangles": 33752,
+        "editable_parts": 715
+      },
+      "after": {
+        "bytes": 5218628,
+        "draw_batches": 20,
+        "triangles": 43274,
+        "editable_parts": 939
+      },
+      "change": {
+        "bytes": 442544,
+        "draw_batches": 1,
+        "triangles": 9522,
+        "editable_parts": 224
+      },
+      "sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
+      "embedded_images": 8,
+      "embedded_image_bytes": 1758074,
+      "embedded_surface_image_bytes": 1150397,
+      "embedded_screen_poster_bytes": 20303,
+      "screen": {
+        "version": 1,
+        "material": "garage_screen_display",
+        "width": 4.2,
+        "height": 2.3625,
+        "center": [
+          -9.02,
+          2.65,
+          -4.3
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "corners": [
+          {
+            "uv": [
+              0,
+              0
+            ],
+            "position": [
+              -9.02,
+              1.46875,
+              -2.2
+            ]
+          },
+          {
+            "uv": [
+              1,
+              0
+            ],
+            "position": [
+              -9.02,
+              1.46875,
+              -6.4
+            ]
+          },
+          {
+            "uv": [
+              1,
+              1
+            ],
+            "position": [
+              -9.02,
+              3.83125,
+              -6.4
+            ]
+          },
+          {
+            "uv": [
+              0,
+              1
+            ],
+            "position": [
+              -9.02,
+              3.83125,
+              -2.2
+            ]
+          }
+        ],
+        "fixtureMin": [
+          -9.76,
+          1.356,
+          -6.519
+        ],
+        "fixtureMax": [
+          -8.965,
+          3.944,
+          -2.081
+        ],
+        "poster": "assets/garage/roadster-screen-poster.jpg",
+        "video": "assets/garage/roadster-screen-loop.mp4"
+      },
+      "camera_obstacle_count": 329,
+      "preserved_rear_geometry_sha256": "b73f94e91a1fc8145e9444fad8e36ea5fe7ba50fe2aa5d6c7a3f1a1c657fe386",
+      "poster_swap": {
+        "method": "Exact image bufferView replacement, no geometry export or rebatching",
+        "source_before_sha256": "97bafb1f70ac4c1398b193a46efb41c7dc5c884ac29555b55177165229c33f63",
+        "source_after_sha256": "313b5030694560fa4c17561112b1733e549091078a650da7131628184813e920",
+        "glb_before_sha256": "87d709e3e98a3e9c8630f3438c829ff46e09a885a2cfb14bb7d2a533e2700e0f",
+        "glb_after_sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
+        "poster_sha256": "9f37f6324365999516ee6a9ab18951d1c9a6feb91f8921f2fe8335d82e0e8424",
+        "poster_bytes": 20303,
+        "all_geometry_transforms_uvs_shaders_settings_unchanged": true,
+        "garage_camera_unchanged": true,
+        "other_image_bytes_unchanged": true,
+        "all_other_glb_buffer_views_byte_identical": true,
+        "attribution_only_metadata_updated": [
+          "root.asset_provenance",
+          "garage_screen_display.extras.screen_asset"
+        ],
+        "preserved_fingerprint": {
+          "meshes": "a7fc93f6c4bbdaf7d7a6c475c27b8ef06d623977d7529fd68c588d11c430827e",
+          "objects": "32b94285f61a0fedbcca2f96f79d0b2161e8027284ae56c5700cc5f6be892b10",
+          "materials": "8733c6e21c6ccd2b3bd0014ba170a985b04d7e26b2bfe48223f3dceb8822ae56",
+          "armatures": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "settings": "725957b00f08ca648478bb5435afdf157bc9080b3d952bb3b68c501320355bcd",
+          "statistics": {
+            "objects": 944,
+            "meshes": 939,
+            "vertices": 24468,
+            "faces": 21124,
+            "triangles": 43274,
+            "materials": 20,
+            "armatures": 0,
+            "actions": 0
+          }
+        }
+      }
+    }
+  ],
+  "screen_media_provenance": "art/garage/screen/supplied-video-provenance.json"
+}

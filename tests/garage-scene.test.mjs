@@ -47,3 +47,37 @@ test('inspection views use actual wheel and driver geometry and reset for ground
  scene.setInspection('cockpit');scene.advance(2);scene.render(1440,900,{x:230,y:150,width:700,height:500});assert.ok(scene.camera.position.distanceTo(new T.Vector3(-.43,1.046,.33))<.01);assert.equal(scene.camera.near,.025);
  scene.setVehicle('hatch');assert.equal(scene.inspection,'overview');scene.render(1440,900);assert.equal(scene.camera.near,.08);assert.equal(scene.camera.fov,38);scene.dispose();
 });
+
+for(const [compact,cap,expected] of [[false,16,8],[true,16,4],[false,2,2],[true,undefined,1]])test(`garage texture sampling is bounded for ${compact?'compact':'desktop'} capability ${cap}`,async()=>{
+ const {scene,renderer}=fixture();scene.dispose();renderer.capabilities={getMaxAnisotropy:()=>cap};
+ const garage=new GarageScene({renderer,compact,makeVehicle:()=>new T.Group()});garage.rebuildEnvironment=()=>{};
+ const colour=new T.Texture(),normal=new T.Texture(),renderTarget=new T.Texture();renderTarget.isRenderTargetTexture=true;
+ colour.colorSpace=T.SRGBColorSpace;const material=new T.MeshStandardMaterial({map:colour,normalMap:normal,envMap:renderTarget});
+ const room=new T.Group();room.add(new T.Mesh(new T.BoxGeometry(),[material,material]));
+ garage.loader.loadAsync=async()=>({scene:room});await garage.setTier(1);
+ assert.equal(colour.anisotropy,expected);assert.equal(normal.anisotropy,expected);
+ assert.equal(colour.colorSpace,T.SRGBColorSpace);assert.equal(normal.colorSpace,T.NoColorSpace);
+ assert.equal(colour.minFilter,T.LinearMipmapLinearFilter);assert.equal(colour.magFilter,T.LinearFilter);
+ assert.equal(colour.version,1,'Shared material texture configured once');assert.equal(renderTarget.anisotropy,1,'Reflection target untouched');
+ garage.dispose();
+});
+
+
+test('a moving TV reuses garage shadows; geometry, cabin visibility and restored GPU invalidate them',async()=>{
+ const {scene,listeners,renderer}=fixture();scene.loader.loadAsync=async()=>({scene:new T.Group()});await scene.setTier(1);scene.setVehicle('rocket');
+ assert.equal(scene.key.shadow.autoUpdate,false);assert.equal(scene.key.shadow.needsUpdate,true);
+ renderer.render=()=>{scene.key.shadow.needsUpdate=false;};scene.render(1440,900);assert.equal(scene.key.shadow.needsUpdate,false);
+ scene.screenDisplay.advance=()=>true;scene.advance(1/12);assert.equal(scene.key.shadow.needsUpdate,false,'Video pixels do not move shadow casters');
+ scene.orbit(20,0);scene.render(1440,900);assert.equal(scene.key.shadow.needsUpdate,false,'View orbit preserves the same light-space map');
+ scene.setInspection('rear');assert.equal(scene.key.shadow.needsUpdate,true);scene.render(1440,900);
+ scene.setVehicle('hatch');assert.equal(scene.key.shadow.needsUpdate,true);scene.render(1440,900);
+ scene.tier=2;scene.setParking([{id:'van'}]);assert.equal(scene.key.shadow.needsUpdate,true);scene.render(1440,900);
+ listeners.get('webglcontextrestored')();assert.equal(scene.key.shadow.needsUpdate,true);scene.dispose();
+});
+
+
+test('TV visibility retains the transparent heading strip above a landscape phone car-fit region',async()=>{
+ const {scene}=fixture();scene.loader.loadAsync=async()=>({scene:new T.Group()});await scene.setTier(1);scene.setVehicle('rocket');
+ scene.render(844,390,{x:153,y:139,width:401,height:126});
+ assert.deepEqual(scene.screenRegion,{x:153,y:0,width:401,height:390});scene.dispose();
+});

@@ -55,19 +55,32 @@ test('car instances normalize imported scale, retain wheel animation and isolate
   assert.throws(()=>createCar(null),/loaded/);
   assert.throws(()=>createCar(new T.Group()),/finite length/);
 });
-test('all runtime artwork matches the recorded source hashes and has a distribution license', async () => {
+test('all runtime artwork matches hashes and explicitly records its provenance and license status', async () => {
   const manifest=JSON.parse(await readFile('public/assets/manifest.json'));
   assert.ok(manifest.length>=14);
+  const suppliedMedia = new Set(['assets/garage/roadster-screen-poster.jpg','assets/garage/roadster-screen-loop.mp4']);
+  const mixedRooms = new Set([1,2,3,4].map(tier=>`assets/garage/tier${tier}.glb`));
+  let disclosedThirdParty = 0;
   for(const item of manifest){
     const bytes=await readFile('public/'+item.file);
     assert.equal(createHash('sha256').update(bytes).digest('hex'),item.sha256,item.file);
     assert.equal(bytes.length,item.bytes);
-    assert.ok(['CC0-1.0','CC-BY-4.0','Original-project-artwork'].includes(item.license));
+    // Only these six specifically requested files contain the supplied film.
+    // This is a provenance check, not a commercial redistribution clearance.
+    if (suppliedMedia.has(item.file)) {
+      assert.equal(item.license,'Third-party user-supplied footage; redistribution license unverified');
+      assert.equal(item.source,'https://www.youtube.com/watch?v=r5vsHHPVhJg');
+      assert.equal(item.provenance,'art/garage/screen/supplied-video-provenance.json'); disclosedThirdParty++;
+    } else if (mixedRooms.has(item.file)) {
+      assert.equal(item.license,'Mixed: original project room artwork; user-provided third-party TV poster, redistribution license unverified');
+      assert.match(item.changes,/user-provided Tesla footage/); disclosedThirdParty++;
+    } else assert.ok(['CC0-1.0','CC-BY-4.0','Original-project-artwork'].includes(item.license),item.file);
     assert.match(item.source,/^(https:|project:)/);
     if(item.file.includes('/fir-')){assert.equal(bytes.readUInt32BE(16),1024);assert.equal(bytes.readUInt32BE(20),1024);assert.equal(bytes[25],6,'PNG includes alpha');}
   }
+  assert.equal(disclosedThirdParty,6);
   const credits=await readFile('public/assets/CREDITS.txt','utf8');
-  assert.match(credits,/vicent091036/);assert.match(credits,/CC BY 4.0/);assert.match(credits,/Poly Haven/);
+  assert.match(credits,/vicent091036/);assert.match(credits,/CC BY 4.0/);assert.match(credits,/Poly Haven/);assert.match(credits,/Third-party|third-party/);assert.match(credits,/does not establish a commercial redistribution license/);
 });
 test('road curvature remains finite and centered at the player through route changes', () => {
   for(const distance of [0,1000,1000000]){

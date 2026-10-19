@@ -350,11 +350,119 @@ test('revive is an explicit eligible action and local label does not imply adver
   h.render({ screen: 'results', runResult: { canRevive: true, bonusClaimed: true } }); assert.equal(h.button('revive'), undefined);
 });
 test('cloud conflict keeps snapshots separate and emits only the explicit choice', () => {
-  const h = harness(); h.render({ platform: { conflict: { local: { credits: 300, runs: 2 }, cloud: { credits: 800, runs: 7 } } } });
+  const h = harness(); h.profile.stats.runs = 2;
+  const cloud = createProfile({ now: 456, id: 'cloud' }); cloud.wallet.credits = 800; cloud.stats.runs = 7;
+  const conflict = { reason: 'different-progress', source: 'sdk', local: structuredClone(h.profile), cloud };
+  const before = structuredClone(conflict); h.render({ platform: { conflict } });
   assert.equal(h.root.querySelector('.gs-layout').inert, true); assert.ok(h.root.textContent.includes('300')); assert.ok(h.root.textContent.includes('800'));
   assert.equal(h.root.querySelectorAll('.gs-cloud-option').length, 2);
+  assert.ok(h.button('resolveCloudConflict', action => action.choice === 'local'));
+  assert.match(h.root.querySelector('#gs-cloud-title').textContent, /Два разных маршрута/);
   h.click(h.button('resolveCloudConflict', action => action.choice === 'cloud'));
   assert.deepEqual(h.actions.at(-1), { type: 'resolveCloudConflict', choice: 'cloud' }); assert.equal(h.profile.wallet.credits, 300);
+  assert.deepEqual(conflict, before);
+});
+test('confirmed empty SDK cloud offers only explicit transfer of the existing whole profile', () => {
+  const h = harness(); h.profile.stats.runs = 12;
+  const conflict = { reason: 'local-unlinked', source: 'sdk', local: structuredClone(h.profile), cloud: null };
+  const before = structuredClone(conflict); h.render({ platform: { conflict } });
+  const dialog = h.root.querySelector('.gs-cloud-dialog');
+  assert.equal(dialog.querySelector('#gs-cloud-title').textContent, 'В облаке пока нет сохранения');
+  assert.equal(dialog.textContent.includes('Два разных маршрута'), false);
+  assert.equal(dialog.textContent.includes('разный прогресс'), false);
+  assert.match(dialog.textContent, /Текущий прогресс с этого устройства можно сохранить в облаке Яндекс Игр/);
+  assert.equal(dialog.querySelectorAll('.gs-cloud-option').length, 1);
+  assert.deepEqual(dialog.querySelectorAll('.gs-stat-value').map(node => node.textContent), ['300₵', '12']);
+  assert.match(dialog.textContent, /Автомобилей: 1/);
+  assert.equal(h.button('resolveCloudConflict', action => action.choice === 'cloud'), undefined);
+  const transfer = h.button('resolveCloudConflict', action => action.choice === 'local');
+  assert.equal(transfer.textContent, 'Создать облачное сохранение'); assert.equal(transfer.disabled, false);
+  assert.equal(h.doc.activeElement, transfer); assert.equal(h.actions.length, 0);
+  h.click(transfer); assert.deepEqual(h.actions, [{ type: 'resolveCloudConflict', choice: 'local' }]);
+  assert.deepEqual(conflict, before); assert.equal(h.profile.wallet.credits, 300);
+});
+test('zero-balance zero-run profiles are real snapshots, not absent cloud saves', () => {
+  const h = harness(); h.profile.wallet.credits = 0;
+  const cloud = createProfile({ now: 456, id: 'cloud' }); cloud.wallet.credits = 0;
+  const conflict = { reason: 'different-progress', source: 'sdk', local: h.profile, cloud };
+  h.render({ platform: { conflict } });
+  const dialog = h.root.querySelector('.gs-cloud-dialog');
+  assert.equal(dialog.querySelector('#gs-cloud-title').textContent, 'Два разных маршрута');
+  assert.deepEqual(dialog.querySelectorAll('.gs-stat-value').map(node => node.textContent), ['0₵', '0', '0₵', '0']);
+  assert.equal(dialog.querySelectorAll('button:not(:disabled)').length, 2);
+  h.render({ platform: { conflict: { ...conflict, reason: 'local-unlinked', cloud: null } } });
+  assert.equal(h.button('resolveCloudConflict', action => action.choice === 'local').disabled, false);
+});
+test('missing display statistics do not turn a usable cloud profile into an empty cloud', () => {
+  const h = harness(); const cloud = createProfile({ now: 456, id: 'cloud' }); delete cloud.stats;
+  h.render({ platform: { conflict: { reason: 'different-progress', source: 'sdk', local: h.profile, cloud } } });
+  assert.equal(h.root.querySelector('#gs-cloud-title').textContent, 'Два разных маршрута');
+  assert.equal(h.button('resolveCloudConflict', action => action.choice === 'cloud').disabled, false);
+  assert.equal(h.root.querySelectorAll('.gs-cloud-option')[1].querySelectorAll('.gs-stat-value')[1].textContent, '—');
+});
+test('profile aliases and wrapped display summaries retain full-profile choices', () => {
+  const h = harness(); const cloud = createProfile({ now: 456, id: 'cloud' }); cloud.wallet.credits = 800;
+  h.render({ platform: { conflict: { reason: 'different-progress', source: 'sdk', localProfile: { profile: h.profile, credits: 300, runs: 2 }, cloudProfile: { profile: cloud, credits: 800, runs: 7 } } } });
+  assert.deepEqual(h.root.querySelector('.gs-cloud-dialog').querySelectorAll('.gs-stat-value').map(node => node.textContent), ['300₵', '2', '800₵', '7']);
+  assert.equal(h.root.querySelector('.gs-cloud-dialog').querySelectorAll('button:not(:disabled)').length, 2);
+});
+test('missing, malformed and summary-only cloud data never offer restore or overwrite', () => {
+  const h = harness(); const cloud = createProfile({ now: 456, id: 'cloud' });
+  const malformed = [undefined, null, {}, [], 'invalid', { credits: 800, runs: 7 },
+    { ...cloud, schemaVersion: 999 }, { ...cloud, revision: -1 }, { ...cloud, wallet: { credits: NaN } },
+    { ...cloud, wallet: { credits: -1 } }, { ...cloud, wallet: { credits: '800' } }];
+  for (const candidate of malformed) {
+    h.render({ platform: { conflict: { reason: 'different-progress', source: 'sdk', local: h.profile, cloud: candidate } } });
+    const dialog = h.root.querySelector('.gs-cloud-dialog');
+    assert.equal(h.button('resolveCloudConflict'), undefined);
+    assert.equal(dialog.querySelector('#gs-cloud-title').textContent, 'Облачное сохранение недоступно');
+    assert.equal(h.doc.activeElement, dialog); assert.equal(dialog.tabIndex, -1);
+    let prevented = false;
+    h.ui.handleKey({ key: 'Tab', target: dialog, preventDefault() { prevented = true; } });
+    assert.equal(prevented, true); assert.equal(h.doc.activeElement, dialog);
+  }
+  // Missing data is not a successful read of an empty account, even with the empty-account reason.
+  h.render({ platform: { conflict: { reason: 'local-unlinked', source: 'sdk', local: h.profile } } });
+  assert.equal(h.button('resolveCloudConflict'), undefined);
+  assert.equal(h.root.textContent.includes('В облаке пока нет сохранения'), false);
+  // An explicit null cannot accidentally fall back to an unrelated legacy alias.
+  h.render({ platform: { conflict: { reason: 'local-unlinked', source: 'sdk', local: h.profile, cloud: null, cloudProfile: cloud } } });
+  assert.equal(h.button('resolveCloudConflict', action => action.choice === 'cloud'), undefined);
+  assert.equal(h.actions.length, 0);
+});
+test('backend conflicts retain local stats but only offer the canonical cloud profile', () => {
+  const h = harness(); const cloud = createProfile({ now: 456, id: 'cloud' }); cloud.wallet.credits = 800;
+  const conflict = { reason: 'different-progress', source: 'backend', local: h.profile, cloud };
+  h.render({ platform: { conflict } });
+  assert.equal(h.button('resolveCloudConflict', action => action.choice === 'local'), undefined);
+  assert.equal(h.root.querySelectorAll('.gs-cloud-option').length, 2);
+  assert.match(h.root.querySelectorAll('.gs-cloud-option')[0].textContent, /300/);
+  const restore = h.button('resolveCloudConflict', action => action.choice === 'cloud');
+  assert.equal(restore.disabled, false); assert.equal(h.doc.activeElement, restore);
+  h.click(restore); assert.deepEqual(h.actions, [{ type: 'resolveCloudConflict', choice: 'cloud' }]);
+  h.render({ platform: { conflict: { ...conflict, reason: 'local-unlinked', cloud: null } } });
+  assert.equal(h.button('resolveCloudConflict'), undefined);
+  assert.equal(h.root.textContent.includes('В облаке пока нет сохранения'), false);
+});
+test('conflict focus survives rerenders and falls back when a cloud choice disappears', () => {
+  const h = harness(); const cloud = createProfile({ now: 456, id: 'cloud' });
+  const conflict = { reason: 'different-progress', source: 'sdk', local: h.profile, cloud };
+  h.render({ platform: { conflict } }); h.button('resolveCloudConflict', action => action.choice === 'cloud').focus();
+  h.render({ platform: { conflict } });
+  assert.equal(h.doc.activeElement, h.button('resolveCloudConflict', action => action.choice === 'cloud'));
+  const empty = { ...conflict, reason: 'local-unlinked', cloud: null };
+  h.render({ platform: { conflict: empty } });
+  const transfer = h.button('resolveCloudConflict', action => action.choice === 'local');
+  assert.equal(h.doc.activeElement, transfer);
+  for (const shiftKey of [false, true]) {
+    let prevented = false;
+    h.ui.handleKey({ key: 'Tab', target: transfer, shiftKey, preventDefault() { prevented = true; } });
+    assert.equal(prevented, true); assert.equal(h.doc.activeElement, transfer);
+  }
+  h.ui.setBusy(true); h.render({ platform: { conflict: empty } });
+  assert.equal(h.doc.activeElement, h.root.querySelector('.gs-cloud-dialog'));
+  h.ui.setBusy(false); h.render({ platform: { conflict: empty } });
+  assert.equal(h.doc.activeElement, h.button('resolveCloudConflict', action => action.choice === 'local'));
 });
 
 test('integer loading progress is percentage, not accidentally a completed fraction', () => {
@@ -380,10 +488,12 @@ test('healthy guest cloud still exposes explicit benefit-labelled Yandex ID sign
 });
 test('authorized failed cloud read offers a retry, not another login or an automatic action', () => {
   const h = harness();
-  for (const error of ['cloud-load-failed', 'timeout']) {
+  for (const error of ['cloud-load-failed', 'invalid-cloud-response', 'invalid-cloud-profile', 'timeout']) {
     h.render({ platform: { sdk: true, auth: 'authorized', authenticated: true, cloud: true }, cloud: { available: true, status: 'error', error } });
     assert.equal(h.button('cloudConnect'), undefined); assert.ok(h.button('retryCloud'));
     assert.match(h.button('retryCloud').textContent, /Повторить загрузку из облака/);
+    assert.equal(h.root.querySelector('.gs-cloud-dialog'), null);
+    assert.equal(h.root.textContent.includes('В облаке пока нет сохранения'), false);
   }
   assert.equal(h.actions.length, 0); h.click(h.button('retryCloud')); assert.deepEqual(h.actions, [{ type: 'retryCloud' }]);
   for (const cloud of [{ status: 'durable' }, { status: 'loading' }, { status: 'error', error: 'cloud-write-failed' }]) {
@@ -687,4 +797,48 @@ test('upgrade buttons retain the displayed next-level intent rather than silentl
  h.click(h.button('upgradeEngineering',action=>action.branch==='drive'));
  assert.deepEqual(h.actions.at(-1),{type:'upgradeEngineering',branch:'drive',expectedLevel:3});
  h.click(h.button('upgradeGarage'));assert.deepEqual(h.actions.at(-1),{type:'upgradeGarage',expectedLevel:3});
+});
+
+test('selected car heading remains dynamic and accessible in the lower-right title dock', () => {
+  const h=harness();
+  for(const selectedVehicle of ['rocket','hatch','sedan','suv','van']) {
+    h.render({screen:'garage',tab:'fleet',selectedVehicle});
+    const title=h.root.querySelector('[data-gs-heading]'),dock=h.root.querySelector('.gs-vehicle-title-dock');
+    assert.ok(dock.contains(title));assert.equal(title.tagName,'H1');assert.equal(title.tabIndex,-1);
+    assert.equal(title.textContent,h.ui.view.selected.name);assert.equal(h.root.querySelectorAll('[data-gs-heading]').length,1);
+    const spacer=h.root.querySelector('.gs-title-reservation');assert.equal(spacer.getAttribute('aria-hidden'),'true');assert.equal(spacer.textContent,title.textContent);
+    const stage=h.root.querySelector('.gs-stage');assert.ok(stage.querySelector('.gs-stage-bottom').contains(dock));assert.equal(h.root.querySelector('.gs-workbench-column'),null);assert.equal(h.root.querySelector('.gs-garage').children[2],h.root.querySelector('.gs-workbench'));assert.equal(h.root.querySelectorAll('.gs-vehicle-title').length,1);
+    assert.ok(h.root.querySelector('.gs-brand').textContent.includes('Roadster'));
+  }
+});
+
+test('fleet cards expose five real-model canvases rather than reused car icons', () => {
+  const h=harness();let targets;h.ui.onMiniatures=value=>{targets=value;};h.render({tab:'fleet'});
+  assert.deepEqual(targets.map(x=>x.id),['rocket','hatch','sedan','suv','van']);
+  for(const target of targets){assert.equal(target.canvas.tagName,'CANVAS');assert.equal(target.canvas.width,320);assert.equal(target.canvas.height,180);assert.equal(target.canvas.parentElement.querySelector('svg'),null);assert.equal(target.canvas.parentElement.getAttribute('aria-hidden'),'true');}
+  assert.equal(h.root.querySelectorAll('[data-fleet-id]').length,5);assert.equal(h.actions.length,0);
+});
+test('fleet miniature appearance is saved owned equipment, while locked cars remain stock', () => {
+  const profile=createProfile({now:123});profile.cosmetics.owned.push('paint_copper','rim_copper');profile.loadouts.rocket.cosmetics={'body.paint':'paint_copper','wheels.finish':'rim_copper'};profile.loadouts.hatch={cosmetics:{'body.paint':'paint_copper'}};
+  const h=harness(profile);h.render({tab:'fleet'});const targets=h.ui.getFleetMiniatureTargets();
+  assert.deepEqual(targets[0].appearance,profile.loadouts.rocket.cosmetics);assert.notEqual(targets[0].appearance,profile.loadouts.rocket.cosmetics);assert.deepEqual(targets[1].appearance,{});assert.equal(h.actions.length,0);
+});
+test('fleet hover, keyboard focus and touch request visual turns without acquiring or selecting cars', () => {
+  const h=harness();const calls=[];h.ui.onMiniatureInteraction=(...value)=>calls.push(value);h.render({tab:'fleet'});calls.length=0;
+  const row=h.root.querySelector('[data-fleet-id="hatch"]'),canvas=row.querySelector('canvas');
+  h.ui.handleMiniatureInteraction({type:'pointerover',pointerType:'mouse',target:canvas});assert.deepEqual(calls.at(-1),['hatch','hover']);
+  const count=calls.length;h.ui.handleMiniatureInteraction({type:'pointerout',pointerType:'mouse',target:canvas,relatedTarget:row});assert.equal(calls.length,count);
+  h.ui.handleMiniatureInteraction({type:'pointerout',pointerType:'mouse',target:row});assert.deepEqual(calls.at(-1),[null,'hover']);
+  h.ui.handleMiniatureInteraction({type:'focusin',target:row});assert.deepEqual(calls.at(-1),['hatch','focus']);
+  h.ui.handleMiniatureInteraction({type:'focusout',target:row});assert.deepEqual(calls.at(-1),[null,'focus']);
+  h.ui.handleMiniatureInteraction({type:'pointerdown',pointerType:'touch',target:canvas});assert.deepEqual(calls.at(-1),['hatch','touch']);assert.equal(h.actions.length,0);
+});
+test('fleet interaction respects overlays and clears models when the catalog unmounts', () => {
+  const h=harness();const turns=[],targets=[];h.ui.onMiniatureInteraction=id=>turns.push(id);h.ui.onMiniatures=value=>targets.push(value);h.render({tab:'fleet'});
+  const row=h.root.querySelector('[data-fleet-id="rocket"]'),event={type:'pointerover',target:row};const count=turns.length;
+  h.ui.setBusy(true);h.ui.handleMiniatureInteraction(event);assert.equal(turns.length,count);h.ui.setBusy(false);
+  h.ui.settingsOpen=true;h.ui.handleMiniatureInteraction(event);assert.equal(turns.length,count);h.ui.settingsOpen=false;
+  h.ui.setVisible(false);assert.equal(turns.at(-1),null);h.ui.handleMiniatureInteraction(event);assert.equal(turns.at(-1),null);
+  h.ui.setVisible(true);h.render({tab:'style'});assert.deepEqual(targets.at(-1),[]);assert.equal(turns.at(-1),null);
+  h.ui.dispose();assert.deepEqual(targets.at(-1),[]);for(const key of ['pointerover','pointerout','pointerdown','focusin','focusout'])assert.equal(h.root.listeners[key],undefined);
 });

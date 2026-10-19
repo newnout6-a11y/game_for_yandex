@@ -15,7 +15,7 @@ const workspace = fileURLToPath(new URL('../', import.meta.url));
  * @returns {http.Server} Listening server; await its listening event before use.
  */
 export function startServer({ root = workspace, port = 4173, host = '127.0.0.1' } = {}) {
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json', '.wasm': 'application/wasm', '.txt': 'text/plain; charset=utf-8' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json', '.wasm': 'application/wasm', '.txt': 'text/plain; charset=utf-8' };
   /**
    * Resolve an HTTP path within the allowed app tree and return local bytes.
    * Decodes the URL once, rejects dot segments/backslashes escaping the root,
@@ -34,8 +34,23 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
       }
       if (!(await stat(target)).isFile()) throw new Error('Not a file');
       const data = await readFile(target);
-      res.writeHead(200, { 'Content-Type': types[path.extname(target)] || 'application/octet-stream', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
-      res.end(data);
+      const headers = { 'Content-Type': types[path.extname(target)] || 'application/octet-stream', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Accept-Ranges': 'bytes' };
+      // A single byte range lets native video seek/loop without restarting its
+      // stream at zero. Invalid or multi-range requests are never expanded.
+      if (req.headers.range) {
+        const match = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
+        let start = match?.[1] ? Number(match[1]) : 0;
+        let end = match?.[2] ? Number(match[2]) : data.length - 1;
+        if (match && !match[1] && match[2]) { start = Math.max(0, data.length - Number(match[2])); end = data.length - 1; }
+        if (!match || (!match[1] && !match[2]) || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start >= data.length || end < start) {
+          res.writeHead(416, { ...headers, 'Content-Range': 'bytes */' + data.length }); res.end(); return;
+        }
+        end = Math.min(end, data.length - 1);
+        res.writeHead(206, { ...headers, 'Content-Range': `bytes ${start}-${end}/${data.length}`, 'Content-Length': end - start + 1 });
+        res.end(req.method === 'HEAD' ? undefined : data.subarray(start, end + 1)); return;
+      }
+      res.writeHead(200, { ...headers, 'Content-Length': data.length });
+      res.end(req.method === 'HEAD' ? undefined : data);
     } catch { res.writeHead(404); res.end('Not found'); }
   });
   server.listen(port, host);

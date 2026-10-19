@@ -4,7 +4,9 @@ import { Game } from './game.js';
 import { RoadRenderer } from './world.js';
 import { loadOwnGames, openOwnGame } from './own-games.js';
 import { GarageScene } from './garage-scene.js';
+import { bindGarageOrbitInput } from './garage-orbit-input.js';
 import { GarageUI } from './garage-ui.js';
+import { FleetMiniatures } from './garage-fleet-miniatures.js';
 import { createProgressionStorage } from './progression-storage.js';
 import { deriveGarageView, getEngineeringModifiers, LIMITS } from './progression.js';
 import { CATALOG, ADS, vehicleDefinition } from './progression-catalog.js';
@@ -25,16 +27,17 @@ const byId=id=>document.getElementById(id);
 const storage=createStorage(), profileStore=createProgressionStorage();
 const settings={...storage.get(),...profileStore.get().settings};
 const sdk=createSdk(),audio=new GameAudio(settings.sound),input=new DrivingInput();
-let otherGames=[],inspection='overview',orientationBlocked=false,thumbDrive=null;
+let otherGames=[],inspection='overview',orientationBlocked=false,thumbDrive=null,garageOrbitInput=null;
 let screen='loading',tab='fleet',busy=false,assetsReady=false,assetsFailed=false,garageScene=null,platform=null;
 let startingRun=false;
+let fleetMiniatures=null,fleetTargets=[],fleetVisibilityDirty=true,fleetTouchRemaining=0;
 let run=null,telemetry=null,runResult=null,runBest=0,continuedBest=0,savedDistance=0,runCounted=false,crashElapsed=0,helpFromGame=false;
 let appliedSettingsKey='',appliedSelectedId=profileStore.get().selectedVehicleId;
 let appliedProfileId=profileStore.get().profileId,observedNextSequence=profileStore.get().ledger.nextSequence,appliedReplacementEpoch=profileStore.getReplacementEpoch();
 let previewId=profileStore.get().selectedVehicleId,loading={progress:0,message:'Подготавливаем мастерскую…'},garageDirty=true;
 let adCadence=createAdCadence(ADS.interstitial);
 const ui=new UI(action=>void handleAction(action));
-const garageUI=new GarageUI({root:byId('garageShell'),onAction:action=>void handleGarageAction(action)});
+const garageUI=new GarageUI({root:byId('garageShell'),onAction:action=>void handleGarageAction(action),onMiniatures:targets=>syncFleetMiniatures(targets),onMiniatureInteraction:(id,kind)=>{if(kind==='focus'&&fleetTouchRemaining>0&&(!id||id===fleetMiniatures?.activeId))return;if(kind==='touch')fleetTouchRemaining=1.8;else fleetTouchRemaining=0;fleetMiniatures?.setInteraction(id);}});
 const playButton=byId('playBtn');playButton.disabled=true;
 const renderer=new RoadRenderer(byId('scene'),percent=>{loading={progress:Math.round(percent*.85),message:'Модели, материалы и трасса'};refreshGarage();},{quality:settings.renderQuality,cameraMode:settings.cameraMode,onRenderSettings:info=>ui.renderSettings(info)});
 const glance=new CockpitGlanceControls(direction=>renderer.setLookDirection(direction));
@@ -84,11 +87,12 @@ function hydrateStoredSettings(){
   renderer.setQuality(settings.renderQuality);renderer.setCameraMode(settings.cameraMode);renderer.setRoute(settings.route);ui.sound(settings.sound);garageDirty=true;
 }
 /** Release input owners at every screen or lifecycle boundary, including mirror glances. */
-function clearInput(){thumbDrive?.clear();input.clear();game.releaseControls();glance.clear();}
+function clearInput(){garageOrbitInput?.cancel();thumbDrive?.clear();input.clear();game.releaseControls();glance.clear();}
 /** Only genuine active simulation is reported as gameplay or produces engine audio. */
 function syncGameplay(){syncThumbControls();const active=screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing';sdk.gameplay(active);audio.update(game.state,active);}
 /** Keep legacy driving HUD separate from the new menu; hidden legacy controls cannot receive focus. */
 function applyScreen(){
+  garageOrbitInput?.cancel();
   const driving=['playing','paused'].includes(screen);ui.setScreen(driving?screen:'menu');
   byId('menu').hidden=true;byId('hud').hidden=!driving;document.querySelector('.topbar').hidden=!driving;
   byId('app').dataset.screen=screen;garageUI.setVisible(!driving);
@@ -110,6 +114,17 @@ function refreshGarage(){
     garageScene.setVehicle(id,cosmetics);garageScene.setParking?.(profile.ownedVehicles.filter(owned=>owned!==id).map(owned=>({id:owned,appearance:profile.loadouts[owned]?.cosmetics||{}})));
     if(garageScene.tier!==profile.garage.level&&garageScene.failedTier!==profile.garage.level&&garageScene.loadingTier!==profile.garage.level)void garageScene.setTier(profile.garage.level).then(()=>{garageDirty=true;});
   }
+}
+/** Bind real catalog canvases to exact saved appearances; no inventory or selection is changed. */
+function syncFleetMiniatures(targets=garageUI.getFleetMiniatureTargets()){
+  fleetTargets=targets;fleetVisibilityDirty=true;if(!fleetMiniatures)return;refreshFleetVisibility();
+}
+/** Lazy snapshots use the scroll-panel clip, not merely viewport visibility. */
+function refreshFleetVisibility(){
+  fleetVisibilityDirty=false;if(!fleetMiniatures)return;
+  const panel=byId('garageShell').querySelector('.gs-workbench')?.getBoundingClientRect();
+  const targets=fleetTargets.map(target=>{const r=target.canvas.getBoundingClientRect();return {...target,visible:!!panel&&r.width>0&&r.height>0&&Math.min(r.right,panel.right,innerWidth)-Math.max(r.left,panel.left,0)>8&&Math.min(r.bottom,panel.bottom,innerHeight)-Math.max(r.top,panel.top,0)>8};});
+  const profile=profileStore.get();fleetMiniatures.sync(targets,{scopeKey:`${profile.profileId}:${profileStore.getReplacementEpoch()}`});
 }
 /** Queue cloud sync only after the local transactional reducer has accepted a real change. */
 function changed(result){
@@ -413,7 +428,7 @@ window.addEventListener('blur', () => { clearInput(); gesture = null; pauseRun('
 window.addEventListener('focus', () => lifecycle.resume('blur'));
 sdk.on('game_api_pause', () => pauseRun('platform'));
 sdk.on('game_api_resume', () => lifecycle.resume('platform'));
-window.addEventListener('resize', () => {renderer.resize();garageDirty=true;});
+window.addEventListener('resize', () => {renderer.resize();garageDirty=true;fleetVisibilityDirty=true;});
 observeRenderPixelRatio(() => renderer.resize());
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', event => { renderer.reducedMotion = event.matches; renderer.needsRender = true; });
 
@@ -424,7 +439,8 @@ async function initialize(){
     await Promise.all([renderer.ready,platform.init()]);
     hydrateStoredSettings();previewId=profileStore.get().selectedVehicleId;
     profileStore.setCapabilities(renderer.cosmeticCapabilities||{});
-    garageScene=new GarageScene({renderer:renderer.renderer,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),onStatus:status=>{if(status.error){loading={...loading,error:'Не удалось загрузить мастерскую. Проверь соединение.'};if(assetsReady)garageUI.notice('Новый бокс не загрузился. Сохранение цело, прежний бокс остаётся доступен. Повтори загрузку в разделе бокса.');}garageDirty=true;}});
+    garageScene=new GarageScene({renderer:renderer.renderer,compact:renderer.compact,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),onStatus:status=>{if(status.error){loading={...loading,error:'Не удалось загрузить мастерскую. Проверь соединение.'};if(assetsReady)garageUI.notice('Новый бокс не загрузился. Сохранение цело, прежний бокс остаётся доступен. Повтори загрузку в разделе бокса.');}garageDirty=true;}});
+    fleetMiniatures=new FleetMiniatures({renderer:renderer.renderer,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),environment:renderer.scene.environment,onChange:({id,canvas,status})=>{if(!canvas?.isConnected||fleetTargets.find(target=>target.id===id)?.canvas!==canvas)return;canvas.parentElement.dataset.state=status;const label=canvas.parentElement.querySelector('.gs-miniature-status');if(label)label.textContent=status==='error'?'Нет превью':'3D';}});
     loading={progress:90,message:'Открываем бокс…'};refreshGarage();
     garageScene.setVehicle(previewId,profileStore.get().loadouts[previewId]?.cosmetics||{});
     if(!await garageScene.setTier(profileStore.get().garage.level))throw new Error('Garage asset unavailable');
@@ -432,10 +448,8 @@ async function initialize(){
   }catch(error){console.error('Interactive startup failed:',error);assetsFailed=true;loading={...loading,error:'Не удалось загрузить игру. Проверь соединение и повтори.'};refreshGarage();}
 }
 void initialize();
-let previous=performance.now(),garagePointer=null;
-byId('scene').addEventListener('pointerdown',event=>{if(['hub','garage'].includes(screen))garagePointer={id:event.pointerId,x:event.clientX,y:event.clientY};});
-byId('scene').addEventListener('pointermove',event=>{if(!garagePointer||event.pointerId!==garagePointer.id)return;garageScene?.orbit(event.clientX-garagePointer.x,event.clientY-garagePointer.y);garagePointer.x=event.clientX;garagePointer.y=event.clientY;garageDirty=true;});
-for(const name of ['pointerup','pointercancel'])window.addEventListener(name,()=>{garagePointer=null;});
+let previous=performance.now();
+garageOrbitInput=bindGarageOrbitInput({element:byId('scene'),window,document,enabled:()=>!orientationBlocked&&!document.hidden&&!busy&&!loading.adPending&&!garageUI.settingsOpen&&!garageUI.view?.platform?.conflict&&['hub','garage'].includes(screen),onOrbit:(dx,dy)=>{garageScene?.orbit(dx,dy);garageDirty=true;}});
 /** Reserve the real visible inspection rectangle, including the mobile drawer, rather than hiding half the car under UI. */
 function garageFraming(){
   const stage=document.querySelector('.gs-stage');
@@ -447,12 +461,13 @@ function garageFraming(){
   if(innerWidth<700)return{x:18,y:innerHeight*.29,width:innerWidth-36,height:innerHeight*.265};
   return null;
 }
-byId('garageShell').addEventListener('garage-layout-change',()=>{garageDirty=true;});
+byId('garageShell').addEventListener('garage-layout-change',()=>{garageDirty=true;fleetVisibilityDirty=true;});
+byId('garageShell').addEventListener('scroll',()=>{fleetVisibilityDirty=true;},true);
 /** Advance only live simulation; a settled garage has no recurring render or shadow work. */
 function tick(time){
   const dt=Math.min((time-previous)/1000,.1);previous=time;
   const garageVisible=!orientationBlocked&&!document.hidden&&['hub','garage','results'].includes(screen);
-  const paintChanged=garageScene?.advance?.(dt,{visible:garageVisible,reducedMotion:renderer.reducedMotion===true});
+  const paintChanged=garageScene?.advance?.(dt,{visible:garageVisible,reducedMotion:renderer.reducedMotion===true,mediaActive:!lifecycle.paused&&!loading.adPending&&!garageUI.settingsOpen});
   if(paintChanged)garageDirty=true;
   if(screen==='playing'&&!lifecycle.paused){game.update(dt,input.read());telemetry?.observe(game.state,dt);if(game.state.phase==='crashed'){clearInput();syncGameplay();crashElapsed+=dt;if(crashElapsed>=.65){crashElapsed=0;showResults();}}}
   if(!orientationBlocked&&['playing','paused'].includes(screen)){
@@ -460,6 +475,11 @@ function tick(time){
     for(const[id,action]of controlBindings){const held=String(input.active(action)),button=byId(id);if(button.dataset.held!==held)button.dataset.held=held;if(button.getAttribute('aria-pressed')!==held)button.setAttribute('aria-pressed',held);}
     syncGlanceControls();renderer.render(game.state,{dt,paused:screen!=='playing'||lifecycle.paused});
   }else if(!orientationBlocked&&garageScene?.ready&&(garageDirty||renderer.needsRender||garageScene.animating)&&!document.hidden){garageScene.render(innerWidth,innerHeight,garageFraming());garageDirty=false;renderer.needsRender=false;}
+  const fleetVisible=garageVisible&&screen==='garage'&&tab==='fleet';
+  const fleetPaused=lifecycle.paused||busy||loading.adPending||garageUI.settingsOpen||!!garageUI.view?.platform?.conflict;
+  if(fleetVisible&&fleetVisibilityDirty)refreshFleetVisibility();
+  if(fleetTouchRemaining>0&&fleetVisible&&!fleetPaused){fleetTouchRemaining=Math.max(0,fleetTouchRemaining-dt);if(!fleetTouchRemaining)fleetMiniatures?.setInteraction(null);}
+  fleetMiniatures?.update(dt,{visible:fleetVisible,paused:fleetPaused,reducedMotion:renderer.reducedMotion===true});
   audio.update(game.state,screen==='playing'&&!lifecycle.paused);requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
