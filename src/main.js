@@ -1,5 +1,6 @@
 import { recoverPendingRunResult } from './pending-run-result.js';
 import { homeVehicleFraming } from './home-framing.js';
+import { compactGarageFraming } from './garage-framing.js';
 import { createThumbDrive } from './thumb-drive.js';
 import { createOrientationGate } from './orientation-gate.js';
 import { Game } from './game.js';
@@ -130,11 +131,11 @@ function refreshGarage(){
 function syncFleetMiniatures(targets=garageUI.getFleetMiniatureTargets()){
   fleetTargets=targets;fleetVisibilityDirty=true;if(!fleetMiniatures)return;refreshFleetVisibility();
 }
-/** Lazy snapshots use the scroll-panel clip, not merely viewport visibility. */
+/** Lazy snapshots intersect both the workbench and nested Fleet scrollport, not merely the viewport. */
 function refreshFleetVisibility(){
   fleetVisibilityDirty=false;if(!fleetMiniatures)return;
   const panel=byId('garageShell').querySelector('.gs-workbench')?.getBoundingClientRect();
-  const targets=fleetTargets.map(target=>{const r=target.canvas.getBoundingClientRect();return {...target,visible:!!panel&&r.width>0&&r.height>0&&Math.min(r.right,panel.right,innerWidth)-Math.max(r.left,panel.left,0)>8&&Math.min(r.bottom,panel.bottom,innerHeight)-Math.max(r.top,panel.top,0)>8};});
+  const targets=fleetTargets.map(target=>{const r=target.canvas.getBoundingClientRect(),list=target.canvas.closest('.gs-vehicle-list')?.getBoundingClientRect()||panel;return {...target,visible:!!panel&&!!list&&r.width>0&&r.height>0&&Math.min(r.right,panel.right,list.right,innerWidth)-Math.max(r.left,panel.left,list.left,0)>8&&Math.min(r.bottom,panel.bottom,list.bottom,innerHeight)-Math.max(r.top,panel.top,list.top,0)>8};});
   const profile=profileStore.get();fleetMiniatures.sync(targets,{scopeKey:`${profile.profileId}:${profileStore.getReplacementEpoch()}`});
 }
 /** Queue cloud sync only after the local transactional reducer has accepted a real change. */
@@ -497,6 +498,9 @@ function garageFraming(){
   const stage=document.querySelector('.gs-stage');
   if(stage&&screen==='garage'){
     const rect=stage.getBoundingClientRect(),heading=stage.querySelector('.gs-stage-heading')?.getBoundingClientRect(),controls=stage.querySelector('.gs-stage-bottom')?.getBoundingClientRect();
+    if(typeof getComputedStyle==='function'&&getComputedStyle(byId('garageShell')).getPropertyValue('--gs-compact-garage').trim()==='1'){
+      return compactGarageFraming({stage:rect,controls});
+    }
     const top=Math.max(rect.top+12,(heading?.bottom||rect.top+70)+12),bottom=Math.min(rect.bottom-12,(controls?.top||rect.bottom-55)-12);
     return{x:rect.x+20,y:top,width:Math.max(60,rect.width-40),height:Math.max(60,bottom-top)};
   }

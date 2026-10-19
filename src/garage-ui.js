@@ -253,8 +253,13 @@ export class GarageUI {
     if (this.disposed) return;
     const oldScreen = this.view.screen;
     const oldTab = this.view.tab;
+    const oldVehicle = this.view.selected.id;
     const scroll = this.root.querySelector('.gs-workbench')?.scrollTop;
     const hubScroll = this.root.querySelector('.gs-hub')?.scrollTop;
+    const fleetScroll = this.root.querySelector('.gs-vehicle-list')?.scrollTop;
+    const horizontalScroll = ['.gs-tabs', '.gs-inspection', '.gs-atelier-categories', '.gs-body-sections']
+      .map(selector => [selector, this.root.querySelector(selector)?.scrollLeft])
+      .filter(([, offset]) => Number.isFinite(offset));
     const focus = this.doc.activeElement?.dataset?.gsFocus;
     this.view = normalizeGarageView(input);
     this.root.dataset.screen = this.view.screen; this.root.dataset.tab = this.view.tab;
@@ -284,6 +289,19 @@ export class GarageUI {
     }
     if (oldScreen === this.view.screen && Number.isFinite(hubScroll)) {
       const hub = this.root.querySelector('.gs-hub'); if (hub) hub.scrollTop = hubScroll;
+    }
+    // The compact Fleet catalogue scrolls independently of its workbench.
+    if (oldScreen === 'garage' && this.view.screen === 'garage' && oldTab === 'fleet' && this.view.tab === 'fleet' && Number.isFinite(fleetScroll)) {
+      const list = this.root.querySelector('.gs-vehicle-list'); if (list) list.scrollTop = fleetScroll;
+    }
+    // Keep an offscreen control in view after its action replaces the DOM.
+    // Only navigation crosses tabs/vehicles; a removed strip never retains a cache.
+    if (oldScreen === 'garage' && this.view.screen === 'garage') {
+      for (const [selector, offset] of horizontalScroll) {
+        if (selector !== '.gs-tabs' && oldVehicle !== this.view.selected.id) continue;
+        if (['.gs-atelier-categories', '.gs-body-sections'].includes(selector) && (oldTab !== 'style' || this.view.tab !== 'style')) continue;
+        const strip = this.root.querySelector(selector); if (strip) strip.scrollLeft = offset;
+      }
     }
     if (conflict) {
       const dialog = this.root.querySelector('.gs-cloud-dialog');
