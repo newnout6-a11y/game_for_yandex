@@ -21,13 +21,18 @@ export class GarageScene {
     this.screenDisplay = new GarageScreenPlayer({onChange:()=>this.onStatus({screenFrame:true})});
     this.scene = new T.Scene(); this.scene.background = new T.Color('#20282b');
     this.camera = new T.PerspectiveCamera(38, 1, .1, 80);
-    this.scene.add(new T.HemisphereLight('#e6eff0', '#575047', 1.3));
-    this.key = new T.DirectionalLight('#fff0d6', 3.0); this.key.position.set(-4, 5.7, -3);
+    this.scene.add(new T.HemisphereLight('#e6eff0', '#575047', 1.6));
+    // A local ceiling fixture cannot be shadowed by the roof above it. The old
+    // infinite directional light clipped that roof across its finite ortho map,
+    // projecting a hard triangular coverage boundary onto the room shell.
+    this.key = new T.SpotLight('#fff0d6', 100, 24, Math.PI*.42, .7, 2); this.key.position.set(-4, 5.7, -3);
     this.key.castShadow = true; this.key.shadow.mapSize.set(1024, 1024);
     // The TV changes pixels, not occluders. Rebuild this static light map only
     // when authored geometry, visibility, parking or GPU context actually changes.
     this.key.shadow.autoUpdate=false;this.key.shadow.needsUpdate=true;
-    Object.assign(this.key.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: .1, far: 24 });
+    // Keep the shadow projection tied to the spotlight cone, not a smaller
+    // manually clipped rectangle. The broad penumbra fades at that same edge.
+    this.key.shadow.camera.near=.1;this.key.shadow.camera.far=24;this.key.shadow.focus=1;
     this.key.shadow.normalBias = .025; this.key.shadow.bias = -.0002;
     this.scene.add(this.key, this.key.target);
     this.fill = new T.DirectionalLight('#a7d6df', 1.1); this.fill.position.set(5, 3, 4); this.scene.add(this.fill);

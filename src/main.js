@@ -105,6 +105,7 @@ function syncGameplay(){syncThumbControls();const active=screen==='playing'&&!li
 function applyScreen(){
   garageOrbitInput?.cancel();
   const driving=['playing','paused'].includes(screen);ui.setScreen(driving?screen:'menu');
+  renderer.setShowcase(!driving);
   byId('menu').hidden=true;byId('hud').hidden=!driving;document.querySelector('.topbar').hidden=!driving;
   byId('app').dataset.screen=screen;garageUI.setVisible(!driving);
   const flight=vehicleDefinition(profileStore.get().selectedVehicleId)?.flight!==false;

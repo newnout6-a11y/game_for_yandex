@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const css = await readFile(new URL('../styles/garage.css', import.meta.url), 'utf8');
-const compact = css.slice(css.indexOf('/* HOME_ENTRY_COMPACT:'));
+// Check the HOME layout section, not later opt-in material-only surface rules.
+const start = css.indexOf('/* HOME_ENTRY_COMPACT:'), end = css.indexOf('/* LIQUID_GLASS_SURFACES:');
+assert.ok(start >= 0 && end > start, 'HOME and glass sections need explicit boundaries');
+const compact = css.slice(start, end);
 
 test('compact HOME uses the landscape iframe dimensions without a 600/701px width floor', () => {
   assert.match(compact, /@media \(orientation: landscape\) and \(max-height: 620px\), \(orientation: landscape\) and \(max-width: 900px\)/);

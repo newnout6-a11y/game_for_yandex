@@ -63,6 +63,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
   class RoadRenderer {
     constructor(_canvas,_progress,options) { this.ready=Promise.resolve();this.renderer={};this.scene={environment:null};this.cosmeticCapabilities={};this.cameraMode=options.cameraMode;this.quality=options.quality;this.playerMirrors={suspend(){}}; }
     setRoute(value) { this.route=value; } setQuality(value) { this.quality=value; }
+    setShowcase(value) { this.showcase=value; }
     setCameraMode(value) { this.cameraMode=value; } setLookDirection() {} resize() {} effect() {} render() {}
     selectOwnedVehicle(id) { this.playerVehicleId=id; } createShowcaseVehicle(id) { return {id}; }
   }
@@ -123,8 +124,8 @@ function restoredProfile() {
 }
 
 test('controller initializes an immediately playable local starter with one workshop load',async()=>{
-  const h=await controller();assert.equal(h.api.state.screen,'hub');assert.deepEqual(h.requests,[1]);
-  await h.api.startRun();assert.equal(h.api.state.screen,'playing');assert.equal(h.api.state.game.state.vehicleId,'rocket');
+  const h=await controller();assert.equal(h.api.state.screen,'hub');assert.deepEqual(h.requests,[1]);assert.equal(h.api.state.renderer.showcase,true);
+  await h.api.startRun();assert.equal(h.api.state.screen,'playing');assert.equal(h.api.state.game.state.vehicleId,'rocket');assert.equal(h.api.state.renderer.showcase,false);
   assert.equal(h.api.state.run.sequence,1);
 });
 
@@ -217,7 +218,7 @@ test('results revive retains run identity and counts distance/rewards only once'
   assert.ok(h.profileStore.get().stats.distanceM>firstDistance);
   assert.ok(h.profileStore.get().wallet.credits>=firstCredits);
   const balance=h.profileStore.get().wallet.credits;await h.api.handleAction('menu');
-  assert.equal(h.api.state.screen,'hub');assert.equal(h.profileStore.get().wallet.credits,balance);
+  assert.equal(h.api.state.screen,'hub');assert.equal(h.profileStore.get().wallet.credits,balance);assert.equal(h.api.state.renderer.showcase,true);
   assert.equal(h.profileStore.get().ledger.activeRun,null);assert.equal(h.profileStore.get().ledger.finalizedThrough,sequence);
 });
 
@@ -270,7 +271,7 @@ test('revived results compare against the continued record class rather than the
 
 test('external blur pauses retain explicit user resume and cannot accrue telemetry',async()=>{
   const h=await controller();await h.api.startRun();
-  h.listeners.get('window:blur')();assert.equal(h.api.state.screen,'paused');
+  h.listeners.get('window:blur')();assert.equal(h.api.state.screen,'paused');assert.equal(h.api.state.renderer.showcase,false);
   assert.ok(h.api.state.lifecycle.has('blur'));assert.ok(h.api.state.lifecycle.has('user'));
   const before=h.api.state.telemetry.snapshot();h.api.tick(100);h.api.tick(200);
   assert.deepEqual(h.api.state.telemetry.snapshot(),before);

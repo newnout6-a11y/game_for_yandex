@@ -238,7 +238,7 @@ export class GarageUI {
     this.onMiniatures = onMiniatures; this.onMiniatureInteraction = onMiniatureInteraction; this.miniatureHoverId = null; this.miniatureFocusId = null;
     this.visible = true; this.busy = false; this.settingsOpen = false; this.mobileOpen = false; this.atelierSection = 'body'; this.atelierBodySection = 'surface';
     this.view = normalizeGarageView(); this.noticeText = ''; this.disposed = false;
-    root.classList.add('garage-shell'); root.setAttribute('aria-label', 'Roadster — гараж и меню');
+    root.classList.add('garage-shell'); root.classList.add('gs-liquid-glass'); root.setAttribute('aria-label', 'Roadster — гараж и меню');
     this.clickHandler = event => this.handleClick(event);
     this.changeHandler = event => this.handleChange(event);
     this.keyHandler = event => this.handleKey(event);
@@ -279,6 +279,7 @@ export class GarageUI {
     live.setAttribute('role', 'status'); live.setAttribute('aria-live', 'polite'); live.setAttribute('aria-atomic', 'true');
     live.hidden = !this.noticeText; main.append(live); this.root.append(main);
     const conflict = this.view.platform.conflict;
+    this.root.dataset.modal = conflict || this.settingsOpen ? 'open' : 'closed';
     main.inert = !!conflict || this.settingsOpen;
     if (conflict) this.root.append(this.renderCloudConflict(conflict));
     else if (this.settingsOpen) this.root.append(this.renderSettings());
@@ -335,7 +336,7 @@ export class GarageUI {
     this.root.removeEventListener('click', this.clickHandler); this.root.removeEventListener('change', this.changeHandler); this.root.removeEventListener('keydown', this.keyHandler);
     for (const [type, handler] of Object.entries(this.miniatureHandlers)) this.root.removeEventListener(type, handler);
     this.onMiniatureInteraction(null); this.onMiniatures([]);
-    this.root.replaceChildren(); this.root.classList.remove('garage-shell'); this.disposed = true;
+    this.root.replaceChildren(); this.root.classList.remove('garage-shell'); this.root.classList.remove('gs-liquid-glass'); delete this.root.dataset.modal; this.disposed = true;
   }
   /** Exact authored-model targets; unowned catalog entries always use their stock appearance. */
   getFleetMiniatureTargets() {
@@ -613,7 +614,7 @@ export class GarageUI {
       const thumb = element(this.doc, 'div', 'gs-car-thumb'); thumb.setAttribute('aria-hidden', 'true'); thumb.dataset.state='pending';
       const canvas=element(this.doc,'canvas','gs-car-miniature');canvas.width=320;canvas.height=180;canvas.dataset.fleetModel=car.id;
       thumb.append(canvas,element(this.doc,'span','gs-miniature-status','3D'));
-      const copy = element(this.doc, 'div', 'gs-vehicle-row-copy'); copy.append(element(this.doc, 'strong', '', car.name), element(this.doc, 'span', '', car.owned ? car.id === 'rocket' ? 'Стартовая машина · в гараже' : 'В твоём гараже' : car.price == null ? 'Скоро в каталоге' : `${garageNumber(car.price)} ₵`));
+      const copy = element(this.doc, 'div', 'gs-vehicle-row-copy'); copy.append(element(this.doc, 'strong', '', car.name), element(this.doc, 'span', '', car.owned ? 'В твоём гараже' : car.price == null ? 'Скоро в каталоге' : `${garageNumber(car.price)} ₵`));
       button.append(element(this.doc, 'span', 'gs-list-index', String(index + 1).padStart(2, '0')), thumb, copy, icon(this.doc, selected ? 'check' : 'arrow')); list.append(button);
     }
     content.append(list, element(this.doc, 'p', 'gs-small-note', 'Выбор открывает осмотр. Кредиты списываются только после нажатия «Купить».')); return content;

@@ -111,6 +111,10 @@ export class UI {
     byId('renderQuality').value = quality;
     byId('renderResolution').textContent = info.width + ' × ' + info.height;
     const compact = info.compact;
+    if(compact&&info.showcase){
+      byId('renderQualityHint').textContent='Гараж: до '+(quality==='auto'?'1,6':'2,1')+' млн пикселей для чётких контуров. В заезде действует отдельный экономный лимит; это не 4K. Повышенная детализация увеличивает нагрузку на графику и расход батареи.';
+      return;
+    }
     byId('renderQualityHint').textContent = quality === 'auto'
       ? 'Авто ограничивает разрешение ради плавности. Лимит: ' + (compact ? '0,8' : '1,6') + ' млн пикселей.'
       : (quality === 'high'

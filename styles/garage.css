@@ -1542,3 +1542,151 @@
   .garage-shell[data-screen='hub'] .gs-hub { padding-block: 0; gap: 2px; }
   .garage-shell[data-screen='hub'] .gs-footer { border-top: 0; }
 }
+
+/* LIQUID_GLASS_SURFACES: material only. Keep the accepted desktop/mobile grid,
+   type, spacing, scroll budgets and hit targets exactly where they already are. */
+.garage-shell.gs-liquid-glass {
+  --gs-muted: #c9c1d5; --gs-dim: #c2b9d0;
+  --gs-glass-panel: linear-gradient(135deg, #241c2db3 0%, #171b26ad 44%, #171f2db3 100%);
+  --gs-glass-tile: linear-gradient(135deg, #6b50722e 0%, #26253770 46%, #20273457 100%);
+  --gs-glass-selected: linear-gradient(125deg, #69445e38 0%, #48324f85 50%, #2d304280 100%);
+  --gs-glass-edge: inset 0 1px 0 #fff0fb14;
+}
+/* The scrim dims only: no full-scene blur or stacked blur on cards/navigation. */
+.garage-shell.gs-liquid-glass :is(.gs-rail, .gs-hub-dock, .gs-settings-backdrop) {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.garage-shell.gs-liquid-glass .gs-settings-backdrop { background: #10111d80; }
+.garage-shell.gs-liquid-glass .gs-garage > .gs-workbench {
+  --gs-panel-muted: #e7e1ed;
+  border-radius: 18px; border-color: #f2dfea3d #c9bdd020 #b9c3dd1a #e8cde42b;
+  background: var(--gs-glass-panel); background-clip: padding-box;
+  box-shadow: var(--gs-glass-edge);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.garage-shell.gs-liquid-glass .gs-settings-dialog {
+  border-radius: 20px; border-top-color: #ecc1df40;
+  background: var(--gs-glass-panel); background-clip: padding-box;
+  box-shadow: var(--gs-glass-edge), 0 16px 48px #10101b40;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.garage-shell.gs-liquid-glass[data-modal='open'] .gs-workbench {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.garage-shell.gs-liquid-glass .gs-workbench .gs-panel-heading {
+  border-radius: 17px 17px 0 0;
+  background: linear-gradient(125deg, #986c9426, #44364e47 55%, #34324826);
+}
+.garage-shell.gs-liquid-glass .gs-settlement {
+  border-radius: 18px; border-top-color: #ecc1df40;
+  background: var(--gs-glass-panel); box-shadow: var(--gs-glass-edge);
+}
+.garage-shell.gs-liquid-glass .gs-result-actions { background: #2d293ceb; }
+.garage-shell.gs-liquid-glass :is(.gs-notice, .gs-busy) {
+  border-radius: 12px; color: var(--gs-chalk); border-color: #e6b5d347;
+  background: var(--gs-glass-panel); box-shadow: var(--gs-glass-edge), 0 8px 24px #10101b40;
+}
+/* A rounded highlight follows each surface, rather than painting over the car. */
+.garage-shell.gs-liquid-glass .gs-rail > .gs-tabs {
+  border-radius: 10px; background: linear-gradient(125deg, #302737bf, #202535b8 55%, #202735b3);
+  box-shadow: var(--gs-glass-edge);
+}
+.garage-shell.gs-liquid-glass .gs-tabs > .gs-tab { border-radius: 6px; }
+.garage-shell.gs-liquid-glass .gs-tab .gs-tab-name { color: #c9c1d5; }
+.garage-shell.gs-liquid-glass .gs-tab[aria-selected='true'] .gs-tab-name { color: #f1e6f0; }
+.garage-shell.gs-liquid-glass .gs-tabs > .gs-tab[aria-selected='true'] {
+  background: var(--gs-glass-selected); border-color: #dfb8d147;
+  box-shadow: var(--gs-glass-edge);
+}
+.garage-shell.gs-liquid-glass .gs-stage-actions > .gs-inspection {
+  border-radius: 10px; background: linear-gradient(120deg, #2f2739bf, #202737b8);
+  box-shadow: var(--gs-glass-edge);
+}
+.garage-shell.gs-liquid-glass :is(.gs-button, .gs-setting select) { border-radius: 8px; }
+.garage-shell.gs-liquid-glass .gs-workbench :is(.gs-button, .gs-setting select) { border-radius: 8px; }
+.garage-shell.gs-liquid-glass .gs-inspection > .gs-inspection-button { border-radius: 8px; }
+.garage-shell.gs-liquid-glass :is(.gs-secondary, .gs-setting select),
+.garage-shell.gs-liquid-glass .gs-workbench .gs-secondary,
+.garage-shell.gs-liquid-glass .gs-workbench .gs-setting select,
+.garage-shell.gs-liquid-glass[data-screen='hub'] .gs-hub-actions .gs-secondary,
+.garage-shell.gs-liquid-glass[data-screen='hub'] .gs-route-cell select {
+  color: #eee5f1; border-color: #dfc9dc2b;
+  background: linear-gradient(130deg, #42334b85, #29283899 48%, #232c3b8c);
+  box-shadow: none;
+}
+.garage-shell.gs-liquid-glass .gs-primary,
+.garage-shell.gs-liquid-glass .gs-workbench .gs-primary,
+.garage-shell.gs-liquid-glass .gs-inspection-button[aria-pressed='true'] {
+  color: #2c2034; border-color: #f0c1dd33;
+  background: linear-gradient(125deg, #e6b6d2 0%, #dca4c5 48%, #c4a9d6 100%);
+}
+.garage-shell.gs-liquid-glass .gs-primary:hover:not(:disabled),
+.garage-shell.gs-liquid-glass .gs-workbench .gs-primary:hover:not(:disabled) {
+  background: linear-gradient(125deg, #f4d0e6, #eab5d5 48%, #d7c0ec); border-color: #f4d0e6;
+}
+.garage-shell.gs-liquid-glass .gs-workbench :is(.gs-vehicle-row, .gs-color-choice, .gs-material-choice, .gs-material-feature, .gs-contract, .gs-season-tier) {
+  border-radius: 10px; border-color: #e0cede24; background: var(--gs-glass-tile);
+}
+.garage-shell.gs-liquid-glass .gs-workbench :is(.gs-vehicle-row, .gs-color-choice, .gs-material-choice)[aria-pressed='true'] {
+  border-radius: 10px; border-color: #e4bed247; background: var(--gs-glass-selected);
+  box-shadow: var(--gs-glass-edge);
+}
+.garage-shell.gs-liquid-glass .gs-workbench :is(.gs-vehicle-row, .gs-color-choice, .gs-material-choice):hover:not(:disabled) {
+  background: linear-gradient(125deg, #624663a6, #45374fd9); border-color: #dbb4d14d;
+}
+.garage-shell.gs-liquid-glass .gs-workbench .gs-sample-card[data-unavailable='true'] { background: #2d2b3de8; border-color: #aa91b140; }
+.garage-shell.gs-liquid-glass .gs-workbench :is(.gs-atelier-category, .gs-body-section, .gs-level-button) { border-radius: 6px; }
+.garage-shell.gs-liquid-glass .gs-workbench .gs-atelier-category[aria-pressed='true'] {
+  background: var(--gs-glass-selected); border-color: #d8a9cb40; color: #f1dfec;
+}
+/* A single shared strip supports navigation; individual inactive controls are clear. */
+.garage-shell.gs-liquid-glass .gs-tabs > .gs-tab:not([aria-selected='true']),
+.garage-shell.gs-liquid-glass .gs-inspection > .gs-inspection-button:not([aria-pressed='true']),
+.garage-shell.gs-liquid-glass .gs-header .gs-icon-button {
+  background: transparent; border-color: transparent; box-shadow: none;
+}
+/* Brighter secondary ink keeps transparent text-only rows readable over light walls. */
+.garage-shell.gs-liquid-glass .gs-workbench :is(.gs-section-label, .gs-kicker, .gs-stat-label, .gs-panel-caption) { color: var(--gs-panel-muted); }
+/* Direct catalog labels must use readable ink too, not the old opaque-panel colors. */
+.garage-shell.gs-liquid-glass .gs-workbench .gs-material-count,
+.garage-shell.gs-liquid-glass .gs-workbench .gs-feature-label { color: var(--gs-panel-muted); }
+.garage-shell.gs-liquid-glass .gs-workbench .gs-effect,
+.garage-shell.gs-liquid-glass .gs-workbench .gs-comparison-label,
+.garage-shell.gs-liquid-glass .gs-workbench .gs-comparison-tuned { color: #eee4f6; }
+.garage-shell.gs-liquid-glass .gs-workbench .gs-sample-card .gs-sample-action { color: #f5deed; }
+
+@media (orientation: landscape) and (max-height: 620px) and (max-width: 1100px) {
+  .garage-shell.gs-liquid-glass .gs-garage > .gs-workbench { border-radius: 14px; }
+  .garage-shell.gs-liquid-glass .gs-tabs > .gs-tab { border-radius: 6px; }
+  .garage-shell.gs-liquid-glass .gs-workbench :is(.gs-vehicle-row, .gs-color-choice, .gs-material-choice, .gs-contract, .gs-season-tier),
+  .garage-shell.gs-liquid-glass .gs-workbench :is(.gs-vehicle-row, .gs-color-choice, .gs-material-choice)[aria-pressed='true'] { border-radius: 8px; }
+}
+/* Opaque materials remain complete when transparency is reduced or unsupported. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .garage-shell.gs-liquid-glass { --gs-glass-panel: linear-gradient(135deg, #44364c, #302c40 44%, #232634); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .garage-shell.gs-liquid-glass {
+    --gs-glass-panel: linear-gradient(135deg, #44364c, #302c40 44%, #232634);
+    --gs-glass-tile: linear-gradient(135deg, #45384e, #393449 46%, #2c2e41);
+    --gs-glass-selected: linear-gradient(125deg, #63465f, #51405c 50%, #38384e);
+  }
+  .garage-shell.gs-liquid-glass .gs-garage > .gs-workbench,
+  .garage-shell.gs-liquid-glass .gs-settings-dialog { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .garage-shell.gs-liquid-glass .gs-settings-backdrop { background: #10111dbf; }
+  .garage-shell.gs-liquid-glass :is(.gs-secondary, .gs-setting select),
+  .garage-shell.gs-liquid-glass .gs-workbench .gs-secondary,
+  .garage-shell.gs-liquid-glass .gs-workbench .gs-setting select,
+  .garage-shell.gs-liquid-glass[data-screen='hub'] .gs-hub-actions .gs-secondary,
+  .garage-shell.gs-liquid-glass[data-screen='hub'] .gs-route-cell select { background: #353045; }
+}
+@media (forced-colors: active) {
+  .garage-shell.gs-liquid-glass { --gs-chalk: CanvasText; --gs-muted: CanvasText; --gs-panel-muted: CanvasText; --gs-glass-panel: Canvas; --gs-glass-tile: Canvas; --gs-glass-selected: Canvas; }
+  .garage-shell.gs-liquid-glass .gs-garage > .gs-workbench,
+  .garage-shell.gs-liquid-glass .gs-settings-dialog { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .garage-shell.gs-liquid-glass :is(.gs-workbench, .gs-settings-dialog, .gs-settlement, .gs-notice, .gs-busy, .gs-button, .gs-setting select, .gs-tab, .gs-inspection, .gs-tabs) {
+    background: Canvas; color: CanvasText; border-color: CanvasText; box-shadow: none;
+  }
+  .garage-shell.gs-liquid-glass :is(button[aria-pressed='true'], button[aria-selected='true']) { outline: 2px solid Highlight; outline-offset: -2px; }
+}
+/* LIQUID_GLASS_SURFACES_END */

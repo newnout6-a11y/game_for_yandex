@@ -281,6 +281,12 @@ export class RoadRenderer {
    * @returns {void} Reads current browser dimensions/DPR, updates compact mode and requests a redraw.
    */
   setQuality(value) { this.quality = normalizeRenderQuality(value); this.resize(); }
+  /** Switch only at menu/road boundaries; repeated UI refreshes do not reallocate the canvas. */
+  setShowcase(value) {
+    const next=value===true;
+    if(this.showcase===next)return;
+    this.showcase=next;this.resize();
+  }
   /** Replace the existing shadow target only when its selected resource bucket changes. */
   applyShadowQuality() {
     if (!this.sun) return;
@@ -306,11 +312,11 @@ export class RoadRenderer {
     const w=innerWidth,h=innerHeight;
     this.canvas.style.width=w+'px';this.canvas.style.height=h+'px';
     this.compact = matchMedia('(pointer: coarse)').matches || Math.min(w,h)<600;
-    const size=renderDimensions(w,h,devicePixelRatio||1,this.compact,this.quality);
+    const size=renderDimensions(w,h,devicePixelRatio||1,this.compact,this.quality,this.showcase===true);
     this.applyShadowQuality();
     if(this.canvas.width!==size.width||this.canvas.height!==size.height)this.renderer.setSize(size.width,size.height,false);
     this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.needsRender=true;
-    this.onRenderSettings?.({quality:this.quality,width:size.width,height:size.height,compact:this.compact});
+    this.onRenderSettings?.({quality:this.quality,width:size.width,height:size.height,compact:this.compact,showcase:this.showcase===true});
   }
   /**
    * Remove one live traffic vehicle and retain it in its kind-specific reuse pool.
