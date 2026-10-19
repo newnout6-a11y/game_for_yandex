@@ -7,7 +7,7 @@ const html=read('index.html'),css=read('styles/mobile-drive.css'),main=read('src
 test('production shell loads arrow layout instead of the retired thumbpad',()=>{
  assert.match(html,/\.\/styles\/mobile-drive\.css/);assert.doesNotMatch(html,/thumb-drive\.css|id="thumbDrive"/);assert.doesNotMatch(main,/createThumbDrive|syncThumbControls/);
  for(const id of ['leftBtn','rightBtn','gasBtn','brakeBtn','boostBtn','flightBtn','hornBtn','rollLeftBtn','rollRightBtn'])assert.equal([...html.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id);
- assert.match(html,/id="boostStatus"/);assert.match(html,/aria-describedby="boostStatus"/);
+ assert.match(html,/id="boostStatus"/);assert.match(html,/aria-describedby="boostStatus sharedEnergyStatus"/);
 });
 test('mobile layout parses and uses defined palette tokens without globally resizing desktop',async()=>{
  const result=await transform(css,{loader:'css'});assert.equal(result.warnings.length,0);

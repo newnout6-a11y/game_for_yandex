@@ -63,7 +63,7 @@ test('mobile surfaces are thin transparent circles rather than filled tiles or g
 });
 
 test('actual boost gets its own cyan effect while accessible feedback and independent hit areas remain', () => {
-  assert.match(button('boostBtn'), /aria-describedby="boostStatus"/);
+  assert.match(button('boostBtn'), /aria-describedby="boostStatus sharedEnergyStatus"/);
   assert.match(button('boostBtn'), /<small id="boostStatus">УДЕРЖИВАЙ<\/small>/);
   assert.match(face('boostBtn'), /class="nitro-bolt"/);
   assert.match(face('boostBtn'), /class="boost-plume"/);
@@ -75,7 +75,7 @@ test('actual boost gets its own cyan effect while accessible feedback and indepe
   assert.match(css, /\.ability-pair button \{\s*position: relative;\s*inset: auto;/, 'relative artwork must not reactivate the desktop nitro bottom offset');
   assert.match(css, /safe-area-inset-bottom/);
   assert.match(css, /:focus-visible \.mobile-control-face/);
-  assert.match(button('flightBtn'), /aria-describedby="flightHint"/);
+  assert.match(button('flightBtn'), /aria-describedby="flightHint sharedEnergyStatus"/);
   for (const id of ['rollLeftBtn', 'rollRightBtn']) assert.match(button(id), /aria-describedby="rollHint"/);
 });
 
@@ -111,7 +111,7 @@ test('annotated HUD removals apply only in mobile playing or paused and preserve
   assert.match(status, /width: 1px;\s*height: 1px/);
   assert.match(status, /clip-path: inset\(50%\)/);
   assert.doesNotMatch(status, /display:|visibility:|content-visibility:/);
-  assert.match(button('flightBtn'), /aria-describedby="flightHint"/);
+  assert.match(button('flightBtn'), /aria-describedby="flightHint sharedEnergyStatus"/);
   assert.match(html, /id="flightAnnouncement"[^>]*aria-live="polite"/);
   assert.match(html, /id="rollAnnouncement"[^>]*aria-live="polite"/);
   assert.match(hud, /\.score-block > strong \{ font-size: 20px/);

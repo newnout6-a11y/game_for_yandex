@@ -89,8 +89,9 @@ function restoreRenderer(renderer, saved) {
  */
 export class FleetMiniatures {
   /** maxWidth/maxHeight are pixel budgets, independent of DPR. environment is borrowed. */
-  constructor({ renderer, makeVehicle, environment = null, onChange = () => {}, maxWidth = 320, maxHeight = 180 }) {
+  constructor({ renderer, makeVehicle, environment = null, onChange = () => {}, maxWidth = 320, maxHeight = 180, idleYaw = IDLE_YAW, fitCamera = fitFleetCamera }) {
     this.renderer = renderer; this.makeVehicle = makeVehicle; this.onChange = onChange;
+    this.idleYaw = Number.isFinite(idleYaw) ? idleYaw : IDLE_YAW; this.fitCamera = fitCamera;
     this.width = Math.max(16, Math.min(320, Math.floor(maxWidth) || 320));
     this.height = Math.max(16, Math.min(180, Math.floor(maxHeight) || 180));
     this.scene = new T.Scene(); this.scene.environment = environment; this.scene.environmentIntensity = .65;
@@ -125,7 +126,7 @@ export class FleetMiniatures {
       const key = appearanceKey(item.appearance); let record = this.records.get(item.id);
       if (record && record.key !== key) { releaseVehicle(record); record = null; }
       if (!record) record = { id: item.id, key, appearance: { ...item.appearance }, canvas: null, version: 0, revision: 0, vehicle: null,
-        pivot: null, bounds: null, pixels: null, dirty: true, failed: false, yaw: IDLE_YAW, turnFrom: IDLE_YAW, turnTarget: IDLE_YAW, turnTime: TURN_SECONDS };
+        pivot: null, bounds: null, pixels: null, dirty: true, failed: false, yaw: this.idleYaw, turnFrom: this.idleYaw, turnTarget: this.idleYaw, turnTime: TURN_SECONDS };
       const changedCanvas = record.canvas !== item.canvas;
       if (changedCanvas) { record.canvas = item.canvas; record.version++; if (!record.pixels) record.dirty = true; }
       const wasVisible = record.visible; record.visible = item.visible !== false;
@@ -146,18 +147,18 @@ export class FleetMiniatures {
     const nextId = this.records.has(id) ? id : null;
     const returning = this.records.get(this.returningId);
     if (returning && this.returningId !== nextId) {
-      returning.yaw = IDLE_YAW; returning.turnTime = TURN_SECONDS; returning.revision++; returning.dirty = true;
+      returning.yaw = this.idleYaw; returning.turnTime = TURN_SECONDS; returning.revision++; returning.dirty = true;
     }
     this.returningId = null;
     const previous = this.records.get(this.activeId);
-    if (previous && previous.yaw !== IDLE_YAW) {
-      previous.turnFrom = previous.yaw; previous.turnTarget = IDLE_YAW; previous.turnTime = 0;
+    if (previous && previous.yaw !== this.idleYaw) {
+      previous.turnFrom = previous.yaw; previous.turnTarget = this.idleYaw; previous.turnTime = 0;
       this.returningId = previous.id;
     }
     this.activeId = nextId;
     const next = this.records.get(this.activeId);
     if (next && !this.reducedMotion) {
-      next.turnFrom = next.yaw; next.turnTarget = IDLE_YAW + HOVER_TURN; next.turnTime = 0;
+      next.turnFrom = next.yaw; next.turnTarget = this.idleYaw + HOVER_TURN; next.turnTime = 0;
     }
   }
 
@@ -179,8 +180,8 @@ export class FleetMiniatures {
     if (reducedMotion !== this.reducedMotion) {
       this.reducedMotion = reducedMotion;
       if (reducedMotion) for (const record of this.records.values()) {
-        if (record.yaw !== IDLE_YAW) { record.yaw = IDLE_YAW; record.revision++; record.dirty = true; }
-        record.turnTarget = IDLE_YAW; record.turnTime = TURN_SECONDS;
+        if (record.yaw !== this.idleYaw) { record.yaw = this.idleYaw; record.revision++; record.dirty = true; }
+        record.turnTarget = this.idleYaw; record.turnTime = TURN_SECONDS;
       }
     }
     if (!visible || paused || this.contextLost) return false;
@@ -291,7 +292,7 @@ export class FleetMiniatures {
     try {
       this.prepare(record); this.ensureTarget();
       record.pivot.rotation.y = record.yaw; this.scene.add(record.pivot);
-      fitFleetCamera(this.camera, record.bounds, this.width / this.height);
+      this.fitCamera(this.camera, record.bounds, this.width / this.height, record.yaw);
       const renderer = this.renderer; saved = captureRenderer(renderer);
       renderer.autoClear = true; renderer.autoClearColor = true; renderer.autoClearDepth = true; renderer.autoClearStencil = true;
       if (renderer.xr) renderer.xr.enabled = false;

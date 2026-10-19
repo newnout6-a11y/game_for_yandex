@@ -65,8 +65,8 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     constructor(_canvas,_progress,options) { this.ready=Promise.resolve();this.renderer={};this.scene={environment:null};this.cosmeticCapabilities={};this.cameraMode=options.cameraMode;this.quality=options.quality;this.playerMirrors={suspend(){}}; }
     setRoute(value) { this.route=value; } setQuality(value) { this.quality=value; }
     setShowcase(value) { this.showcase=value; }
-    setCameraMode(value) { this.cameraMode=value; } setLookDirection() {} resize() {} effect() {} render() {}
-    selectOwnedVehicle(id) { this.playerVehicleId=id; } createShowcaseVehicle(id) { return {id}; }
+    setCameraMode(value) { this.cameraMode=value; } setLookDirection() {} resize() {} effect() {} bonus() {} render() {}
+    selectOwnedVehicle(id,appearance) { this.playerVehicleId=id;this.playerAppearance=structuredClone(appearance||{}); } createShowcaseVehicle(id) { return {id}; }
   }
   class GarageScene {
     constructor(options) { this.options=options;this.tier=0;this.ready=false; }
@@ -90,6 +90,13 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     setInteraction(id){this.activeId=id;}
     update(dt,options){this.lastUpdate={dt,...options};return false;}
   }
+  class RouteVehicleMarker {
+    constructor(options){this.options=options;this.selection=null;}
+    sync(selection){this.selection=selection?structuredClone(selection):null;}
+    setActivity(options){this.activity=options;}
+    update(dt,options){this.lastUpdate={dt,...options};return false;}
+    dispose(){this.disposed=true;}
+  }
   class CockpitGlanceControls { constructor(){this.direction=0;} clear() {} setEnabled(value) {this.enabled=value;} release() {} }
   class GameAudio { constructor(enabled){this.enabled=enabled;} update() {} tone() {} async unlock() {} }
   const sdk={init:async()=>platformSdk,get:()=>platformSdk,on(){},ready(){readyCalls++;},gameplay(){}};
@@ -106,11 +113,11 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
       if(useRealPlatform)return platformServices=createRealPlatformServices({...options,minSaveIntervalMs:0});
       return {getState:()=>structuredClone(platformState),async init(){if(cloudProfile){profileStore.replaceFromCloud(cloudProfile);onState();}},queueSave(snapshot){cloudSaves.push(structuredClone(snapshot));},async authorize(){},async resolveCloudConflict(){}};
     },
-    UI,GarageUI,RoadRenderer,GarageScene,FleetMiniatures,DrivingInput,CockpitGlanceControls,GameAudio,
+    UI,GarageUI,RoadRenderer,GarageScene,FleetMiniatures,RouteVehicleMarker,DrivingInput,CockpitGlanceControls,GameAudio,
     cameraShortcutAllowed:()=>false,glanceShortcutAllowed:()=>false,normalizeRenderQuality:value=>value,observeRenderPixelRatio() {},
   });
   const source=(await readFile(new URL('../src/main.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
-  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,syncFleetMiniatures,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,ui,storage,lifecycle,garageDirty,fleetMiniatures,fleetTouchRemaining}}};',context,{filename:'src/main.js'});
+  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,syncFleetMiniatures,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,ui,storage,lifecycle,garageDirty,fleetMiniatures,fleetTouchRemaining,routeVehicleMarker,routeVehicleSelection}}};',context,{filename:'src/main.js'});
   if(useRealPlatform)await platformServices.init();
   for(let i=0;i<5;i++)await Promise.resolve();
   return {api:context.controller,profileStore,requests,listeners,nodes,cloudSaves,cloudWrites,platformServices,storageValues:saved,rejectSettings(){rejectSettings=true;},failStorageWrites(){failStorageWrites=true;},failCloudWrites(){failCloudWrites=true;},replaceCloud(profile){const result=profileStore.replaceFromCloud(profile);platformChanged();return result;},setPlatformState(patch){platformState={...platformState,...patch};platformChanged();},setOrientation:value=>orientationHandler(value),get readyCalls(){return readyCalls;}};
@@ -776,4 +783,29 @@ test('pause-only utility actions ignore playing or other modals and never bypass
   assert.equal(h.api.state.settings.sound,before.settings.sound);assert.equal(h.cloudSaves.length,queues);
   await h.api.handleAction('pauseHelp');await h.api.handleAction('pauseSound');
   assert.deepEqual(h.profileStore.get(),before);assert.equal(h.api.state.ui.modalType,'help');
+});
+
+test('route marker copies the real started selection and paint, never an unowned preview',async()=>{
+  const profile=restoredProfile();profile.loadouts.hatch={cosmetics:{'body.paint':'paint_copper'},engineering:{}};
+  profile.cosmetics.owned.push('paint_copper');
+  const h=await controller({initialProfile:profile});
+  await h.api.handleGarageAction({type:'selectVehicle',id:'sedan'});
+  assert.equal(h.api.state.previewId,'sedan');assert.equal(h.profileStore.get().selectedVehicleId,'hatch');
+  await h.api.startRun();
+  const {renderer,routeVehicleMarker,routeVehicleSelection}=h.api.state;
+  assert.equal(routeVehicleSelection.id,renderer.playerVehicleId);assert.equal(routeVehicleSelection.id,'hatch');
+  assert.equal(routeVehicleSelection.appearance['body.paint'],'paint_copper');
+  assert.equal(renderer.playerAppearance['body.paint'],'paint_copper');
+  assert.deepEqual(structuredClone(routeVehicleSelection.appearance),renderer.playerAppearance);
+  assert.deepEqual(routeVehicleMarker.selection.appearance,renderer.playerAppearance);
+  assert.notEqual(routeVehicleSelection.appearance,h.profileStore.get().loadouts.hatch.cosmetics);
+  assert.equal(routeVehicleMarker.activity.visible,false,'desktop cannot show route marker');
+});
+
+test('replacement profile clears marker identity and next run adopts its actual equipped vehicle',async()=>{
+  const h=await controller();await h.api.startRun();assert.equal(h.api.state.routeVehicleMarker.selection.id,'rocket');
+  const profile=restoredProfile();h.replaceCloud(profile);
+  assert.equal(h.api.state.routeVehicleSelection,null);assert.equal(h.api.state.routeVehicleMarker.selection,null);
+  await h.api.startRun();assert.equal(h.api.state.routeVehicleMarker.selection.id,'hatch');
+  assert.equal(h.api.state.routeVehicleMarker.selection.scopeKey,`${h.profileStore.get().profileId}:${h.profileStore.getReplacementEpoch()}`);
 });

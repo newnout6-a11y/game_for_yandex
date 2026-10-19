@@ -9,6 +9,7 @@ import { GarageScene } from './garage-scene.js';
 import { bindGarageOrbitInput } from './garage-orbit-input.js';
 import { GarageUI } from './garage-ui.js';
 import { FleetMiniatures } from './garage-fleet-miniatures.js';
+import { RouteVehicleMarker } from './route-vehicle-marker.js';
 import { createProgressionStorage } from './progression-storage.js';
 import { deriveGarageView, getEngineeringModifiers, getRunDoubleOffer, LIMITS } from './progression.js';
 import { CATALOG, ADS, vehicleDefinition } from './progression-catalog.js';
@@ -33,6 +34,7 @@ let otherGames=[],inspection='overview',orientationBlocked=false,mobileControls=
 let screen='loading',tab='fleet',busy=false,assetsReady=false,assetsFailed=false,garageScene=null,platform=null;
 let startingRun=false;
 let fleetMiniatures=null,fleetTargets=[],fleetVisibilityDirty=true,fleetTouchRemaining=0;
+let routeVehicleMarker=null,routeVehicleSelection=null;
 let run=null,telemetry=null,runResult=null,runBest=0,continuedBest=0,savedDistance=0,runCounted=false,crashElapsed=0,helpFromGame=false;
 let appliedSettingsKey='',appliedSelectedId=profileStore.get().selectedVehicleId;
 let appliedProfileId=profileStore.get().profileId,observedNextSequence=profileStore.get().ledger.nextSequence,appliedReplacementEpoch=profileStore.getReplacementEpoch();
@@ -43,14 +45,14 @@ const garageUI=new GarageUI({root:byId('garageShell'),onAction:action=>void hand
 const playButton=byId('playBtn');playButton.disabled=true;
 const renderer=new RoadRenderer(byId('scene'),percent=>{loading={progress:Math.round(percent*.85),message:'Модели, материалы и трасса'};refreshGarage();},{quality:settings.renderQuality,cameraMode:settings.cameraMode,onRenderSettings:info=>ui.renderSettings(info)});
 const glance=new CockpitGlanceControls(direction=>renderer.setLookDirection(direction));
-const game=new Game({onEvent:(event,value)=>{
+const game=new Game({onEvent:(event,value,feedback)=>{
   if(event==='boost-empty'){input.releaseEmptyTouchBoost(0);return;}
+  // Ordinary passes have no new reward, telemetry observation or audio cue.
+  if(event==='pass'){renderer.bonus(event,feedback,game.state);return;}
   telemetry?.event(event,value,game.state);audio.tone(event);renderer.effect(event);
-  if(event==='near')ui.toast('БЛИЗКО! ×'+value);
-  if(event==='charge')ui.toast('+22% ЭНЕРГИИ');
-  if(event==='goal')ui.toast('1 500 М · ЦЕЛЬ ПРОЙДЕНА');
+  if(event==='near'||event==='charge'||event==='goal'||(event==='event-clear'&&value.success))renderer.bonus(event,feedback,game.state);
   if(event==='cone')ui.toast('КОНУС · −50 ОЧКОВ');
-  if(event==='event-clear')ui.toast(value.success?'+'+value.points+' · СОБЫТИЕ ПРОЙДЕНО':'СОБЫТИЕ НЕ ПРОЙДЕНО');
+  if(event==='event-clear'&&!value.success)ui.toast('СОБЫТИЕ НЕ ПРОЙДЕНО');
 }});
 const lifecycle=createLifecycle(()=>{
   clearInput();
@@ -66,7 +68,7 @@ const orientationGate=createOrientationGate({window,document,appRoot:byId('app')
 }});
 syncMobileControls();
 /** Compact arrows are selected by the real touch viewport, never by desktop width alone. */
-function syncMobileControls(){const nav=window.navigator||{};const eligible=Number(nav.maxTouchPoints)>0&&matchMedia('(pointer: coarse)').matches&&innerWidth>=innerHeight&&!orientationBlocked;if(mobileControls!==eligible)clearInput();mobileControls=eligible;byId('app').dataset.mobileControls=String(eligible);}
+function syncMobileControls(){const nav=window.navigator||{};const eligible=Number(nav.maxTouchPoints)>0&&matchMedia('(pointer: coarse)').matches&&innerWidth>=innerHeight&&!orientationBlocked;if(mobileControls!==eligible)clearInput();mobileControls=eligible;byId('app').dataset.mobileControls=String(eligible);syncRouteVehicleActivity();}
 window.addEventListener('resize',()=>syncMobileControls());
 /** Loading completion is sent once only after an interactive landscape entry is available. */
 function signalReady(){if(assetsReady&&!orientationBlocked)sdk.ready();}
@@ -77,7 +79,7 @@ function reconcileProfileLineage(){
   const replaced=profileStore.getReplacementEpoch()!==appliedReplacementEpoch||profile.profileId!==appliedProfileId||profile.ledger.nextSequence<observedNextSequence||(run&&profile.ledger.activeRun?.id!==run.id);
   appliedProfileId=profile.profileId;observedNextSequence=profile.ledger.nextSequence;appliedReplacementEpoch=profileStore.getReplacementEpoch();
   if(!replaced)return;
-  adCadence=createAdCadence(ADS.interstitial);run=null;telemetry=null;runResult=null;clearInput();
+  adCadence=createAdCadence(ADS.interstitial);run=null;telemetry=null;runResult=null;routeVehicleSelection=null;routeVehicleMarker?.sync(null);clearInput();
   if(assetsReady){ui.close();game.state.phase='ready';screen='hub';lifecycle.resume('user');restorePendingResult();applyScreen();syncGameplay();}
 }
 /** Restore only persisted results from the accepted profile, never a fabricated road simulation or fresh award. */
@@ -111,7 +113,7 @@ function applyScreen(){
   byId('app').dataset.flight=String(flight);byId('cameraBtn').hidden=!driving||!flight;
   document.querySelector('.nitro-hint').textContent=flight?'Нитро + полёт · общий запас':'Нитро · запас энергии';
   byId('runHint').textContent=flight?'W / ↑ — газ · S / ↓ — тормоз · A D / ← → — руль · F — полёт · Q / E — кувырок · C — камера · H — сигнал':'W / ↑ — газ · S / ↓ — тормоз · A D / ← → — руль · SPACE — нитро · H — сигнал';
-  if(!driving){glance.clear();renderer.playerMirrors?.suspend?.();}garageDirty=true;
+  if(!driving){glance.clear();renderer.playerMirrors?.suspend?.();}syncRouteVehicleActivity();garageDirty=true;
 }
 /** Reflect authored capabilities, exact prices and honest platform persistence without computing awards in the UI. */
 function refreshGarage(){
@@ -137,6 +139,10 @@ function refreshFleetVisibility(){
   const panel=byId('garageShell').querySelector('.gs-workbench')?.getBoundingClientRect();
   const targets=fleetTargets.map(target=>{const r=target.canvas.getBoundingClientRect(),list=target.canvas.closest('.gs-vehicle-list')?.getBoundingClientRect()||panel;return {...target,visible:!!panel&&!!list&&r.width>0&&r.height>0&&Math.min(r.right,panel.right,list.right,innerWidth)-Math.max(r.left,panel.left,list.left,0)>8&&Math.min(r.bottom,panel.bottom,list.bottom,innerHeight)-Math.max(r.top,panel.top,list.top,0)>8};});
   const profile=profileStore.get();fleetMiniatures.sync(targets,{scopeKey:`${profile.profileId}:${profileStore.getReplacementEpoch()}`});
+}
+/** The route marker is independent of unowned Fleet previews and follows only the live run. */
+function syncRouteVehicleActivity(){
+  routeVehicleMarker?.setActivity({visible:mobileControls&&!orientationBlocked&&!document.hidden&&['playing','paused'].includes(screen),paused:screen!=='playing'||lifecycle.paused||busy||!!loading.adPending});
 }
 /** Queue cloud sync only after the local transactional reducer has accepted a real change. */
 function changed(result){
@@ -212,6 +218,9 @@ async function startRun(){
     // The previous phase is closed before reconfiguration; no live car can change dimensions mid-run.
     game.state.phase='ready';game.configureVehicle(id,getEngineeringModifiers(profile,id,profile.mode));game.reset(settings.difficulty);
     renderer.selectOwnedVehicle(id,profile.loadouts[id]?.cosmetics);renderer.setRoute(settings.route);renderer.setCameraMode(settings.cameraMode);
+    // Freeze precisely the loadout used by the real run; garage browsing must never replace it.
+    routeVehicleSelection={id:renderer.playerVehicleId,appearance:{...profile.loadouts[id]?.cosmetics},scopeKey:`${profile.profileId}:${profileStore.getReplacementEpoch()}`};
+    routeVehicleMarker?.sync(routeVehicleSelection);
     game.start();runBest=profile.records[profile.mode]?.[`${id}:${settings.difficulty}`]?.score||0;continuedBest=profile.records.continued?.[`${id}:${settings.difficulty}`]?.score||0;savedDistance=0;runCounted=false;crashElapsed=0;
     ui.close();clearInput();lifecycle.resume('user');screen='playing';applyScreen();ui.hud(game.state);void audio.unlock();
     if(lifecycle.paused){screen='paused';applyScreen();lifecycle.pause('user');ui.pause();}
@@ -467,6 +476,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) { clearInput(); gesture = null; pauseRun('hidden'); }
   else lifecycle.resume('hidden');
 });
+window.addEventListener('pagehide',event=>{if(!event.persisted){routeVehicleMarker?.dispose();fleetMiniatures?.dispose();}});
 window.addEventListener('blur', () => { clearInput(); gesture = null; pauseRun('blur'); });
 window.addEventListener('focus', () => lifecycle.resume('blur'));
 sdk.on('game_api_pause', () => pauseRun('platform'));
@@ -484,6 +494,8 @@ async function initialize(){
     profileStore.setCapabilities(renderer.cosmeticCapabilities||{});
     garageScene=new GarageScene({renderer:renderer.renderer,compact:renderer.compact,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),onStatus:status=>{if(status.error){loading={...loading,error:'Не удалось загрузить мастерскую. Проверь соединение.'};if(assetsReady)garageUI.notice('Новый бокс не загрузился. Сохранение цело, прежний бокс остаётся доступен. Повтори загрузку в разделе бокса.');}garageDirty=true;}});
     fleetMiniatures=new FleetMiniatures({renderer:renderer.renderer,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),environment:renderer.scene.environment,onChange:({id,canvas,status})=>{if(!canvas?.isConnected||fleetTargets.find(target=>target.id===id)?.canvas!==canvas)return;canvas.parentElement.dataset.state=status;const label=canvas.parentElement.querySelector('.gs-miniature-status');if(label)label.textContent=status==='error'?'Нет превью':'3D';}});
+    routeVehicleMarker=new RouteVehicleMarker({renderer:renderer.renderer,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),environment:renderer.scene.environment,canvas:byId('mobileGoalVehicleCanvas'),element:byId('mobileGoalVehicle'),label:byId('mobileGoalVehicleLabel'),status:byId('mobileGoalVehicleStatus')});
+    routeVehicleMarker.sync(routeVehicleSelection);syncRouteVehicleActivity();
     loading={progress:90,message:'Открываем бокс…'};refreshGarage();
     garageScene.setVehicle(previewId,profileStore.get().loadouts[previewId]?.cosmetics||{});
     void garageScene.prepareToy();
@@ -532,6 +544,7 @@ function tick(time){
   if(fleetVisible&&fleetVisibilityDirty)refreshFleetVisibility();
   if(fleetTouchRemaining>0&&fleetVisible&&!fleetPaused){fleetTouchRemaining=Math.max(0,fleetTouchRemaining-dt);if(!fleetTouchRemaining)fleetMiniatures?.setInteraction(null);}
   fleetMiniatures?.update(dt,{visible:fleetVisible,paused:fleetPaused,reducedMotion:renderer.reducedMotion===true});
+  routeVehicleMarker?.update(dt,{visible:mobileControls&&!orientationBlocked&&!document.hidden&&['playing','paused'].includes(screen),paused:screen!=='playing'||lifecycle.paused||busy||!!loading.adPending});
   audio.update(game.state,screen==='playing'&&!lifecycle.paused);requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);

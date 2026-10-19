@@ -1,5 +1,6 @@
 /* Original mobile HUD artwork is opt-in; desktop labels and icons are unchanged. */
 .mobile-control-face { display: none; }
+.mobile-goal-rail { display: none; }
 
 /* Mobile-only driving layout. main.js owns touch/landscape eligibility. */
 @media (orientation: landscape) {
@@ -8,6 +9,8 @@
     --mobile-drive-size: 52px;
     --mobile-drive-gap: 8px;
     --mobile-drive-row: 60px;
+    --mobile-goal-clearance-left: 132px;
+    --mobile-goal-clearance-right: 152px;
   }
 
   #app[data-mobile-controls="true"] .topbar {
@@ -67,7 +70,7 @@
     left: max(12px, env(safe-area-inset-left, 0px));
   }
 
-  /* Keep the reserve and speed in the top HUD, never behind an ability. */
+  /* Keep score and speed compact; ability reserve moves inside the two circles below. */
   #app[data-mobile-controls="true"] .score-block > strong { font-size: 26px; }
   #app[data-mobile-controls="true"] .score-block > .eyebrow { font-size: 9px; }
   #app[data-mobile-controls="true"] .speed-block {
@@ -181,6 +184,35 @@
     width: 32px;
     height: 32px;
   }
+
+  /* A single shared reserve, drawn as calm water inside the existing 36px circles.
+     The button owns --reserve-level (0..1); no second meter, timer or animation loop. */
+  #app[data-mobile-controls="true"] :is(#boostBtn, #flightBtn) { --reserve-level: .6; }
+  #app[data-mobile-controls="true"] :is(#boostBtn, #flightBtn) .mobile-control-face {
+    overflow: hidden;
+    isolation: isolate;
+  }
+  #app[data-mobile-controls="true"] .ability-reserve-fill {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: calc(clamp(0, var(--reserve-level), 1) * 100%);
+    background: rgba(82, 192, 244, .52);
+    /* The meniscus stays inside the fill, so an empty circle is genuinely empty. */
+    border-top: calc(clamp(0, var(--reserve-level) * 100, 1) * 1px) solid rgba(183, 247, 255, .82);
+    border-radius: 48% 48% 0 0 / 2px 2px 0 0;
+    pointer-events: none;
+  }
+  #app[data-mobile-controls="true"] :is(#boostBtn, #flightBtn) .mobile-control-icon {
+    position: relative;
+    z-index: 1;
+    color: #fff;
+  }
+  #app[data-mobile-controls="true"] :is(#boostBtn, #flightBtn) .ability-glyph-outline { stroke: rgba(9, 37, 45, .86); stroke-width: 4; }
+  #app[data-mobile-controls="true"] #boostBtn .ability-reserve-fill { background: rgba(255, 149, 51, .58); border-top-color: rgba(255, 219, 158, .9); }
+  #app[data-mobile-controls="true"][data-screen="playing"] .ability-reserve-fill { transition: height 120ms linear; }
+  /* End shared-reserve artwork. */
 
   /* One monochrome 2px icon family; a held action lights the ring, never the hitbox. */
   #app[data-mobile-controls="true"] .touch-controls button:is(:active, [data-held="true"]),
@@ -324,6 +356,65 @@
   /* End annotated mobile race HUD. */
 
 
+  /* The distance milestone sits at the safe top edge, not below the header.
+     Absolute placement keeps every existing toolbar target and control unchanged. */
+  #app[data-mobile-controls="true"]:is([data-screen="playing"], [data-screen="paused"]) :is(.nitro-block, .challenge) { display: none; }
+  #app[data-mobile-controls="true"]:is([data-screen="playing"], [data-screen="paused"]) .mobile-goal-rail {
+    --goal-progress: 0;
+    position: absolute;
+    top: calc(env(safe-area-inset-top, 0px) + 3px);
+    right: max(calc(env(safe-area-inset-right, 0px) + var(--mobile-goal-clearance-right)), calc(50% - 140px));
+    left: max(calc(env(safe-area-inset-left, 0px) + var(--mobile-goal-clearance-left)), calc(50% - 140px));
+    display: block;
+    height: 20px;
+    pointer-events: none;
+    color: #edfaff;
+  }
+  #app[data-mobile-controls="true"] .mobile-goal-track { position: relative; height: 100%; margin: 0 38px 0 20px; }
+  #app[data-mobile-controls="true"] .mobile-goal-track::before,
+  #app[data-mobile-controls="true"] .mobile-goal-track::after {
+    content: "";
+    position: absolute;
+    top: 14px;
+    left: 0;
+    height: 2px;
+    border-radius: 1px;
+  }
+  #app[data-mobile-controls="true"] .mobile-goal-track::before { width: 100%; border-top: 1px solid rgba(237, 250, 255, .5); background: rgba(13, 39, 47, .62); }
+  #app[data-mobile-controls="true"] .mobile-goal-track::after { width: calc(clamp(0, var(--goal-progress), 1) * 100%); background: #a3effa; }
+  #app[data-mobile-controls="true"] .mobile-goal-start {
+    position: absolute;
+    top: 12px;
+    left: -2px;
+    width: 6px;
+    height: 6px;
+    border: 1px solid rgba(237, 250, 255, .8);
+    border-radius: 50%;
+    background: #173640;
+  }
+  #app[data-mobile-controls="true"] .mobile-goal-car {
+    position: absolute;
+    z-index: 1;
+    top: -3px;
+    left: calc(clamp(0, var(--goal-progress), 1) * 100%);
+    width: 40px;
+    height: 20px;
+    transform: translateX(-50%);
+  }
+  /* Only a real selected-model snapshot is shown, never a placeholder vehicle. */
+  #app[data-mobile-controls="true"] .mobile-goal-car canvas { display: block; width: 100%; height: 100%; }
+  #app[data-mobile-controls="true"] .mobile-goal-car canvas[hidden] { display: none; }
+  #app[data-mobile-controls="true"] .mobile-goal-car-status { display: block; text-align: center; font-size: 9px; line-height: 20px; color: rgba(237, 250, 255, .75); }
+  #app[data-mobile-controls="true"] .mobile-goal-car-status[hidden] { display: none; }
+  #app[data-mobile-controls="true"] .mobile-goal-flag { position: absolute; top: 0; right: -38px; width: 17px; height: 19px; stroke-width: 1; }
+  #app[data-mobile-controls="true"] .mobile-goal-flag-field { fill: #f1fbff; stroke: #173640; }
+  #app[data-mobile-controls="true"] .mobile-goal-flag-checks { fill: #173640; stroke: none; }
+  #app[data-mobile-controls="true"] .mobile-goal-flag-pole { stroke: #173640; stroke-width: 1.5; }
+  #app[data-mobile-controls="true"] .mobile-goal-rail[data-complete="true"] .mobile-goal-track::after { background: #d4f9ff; }
+  #app[data-mobile-controls="true"][data-screen="playing"] .mobile-goal-car { transition: left 120ms linear; }
+  #app[data-mobile-controls="true"][data-screen="playing"] .mobile-goal-track::after { transition: width 120ms linear; }
+  /* End top-edge distance milestone. */
+
   /* Utility actions move into pause; they do not create replacement HUD clutter. */
   #app[data-mobile-controls="true"][data-screen="paused"] .pause-mobile-utilities {
     display: grid;
@@ -339,9 +430,14 @@
   }
 }
 
+/* Fullscreen is already absent at this width, leaving two unchanged utility targets. */
+@media (orientation: landscape) and (max-width: 600px) {
+  #app[data-mobile-controls="true"] { --mobile-goal-clearance-right: 108px; }
+}
+
 /* A narrow host iframe needs two ability rows, not overlapping left-hand controls. */
 @media (orientation: landscape) and (max-width: 480px) {
-  #app[data-mobile-controls="true"] { --mobile-drive-size: 44px; --mobile-drive-gap: 6px; --mobile-drive-row: 52px; }
+  #app[data-mobile-controls="true"] { --mobile-drive-size: 44px; --mobile-drive-gap: 6px; --mobile-drive-row: 52px; --mobile-goal-clearance-left: 108px; }
   #app[data-mobile-controls="true"] .brand > span { display: none; }
   #app[data-mobile-controls="true"] .touch-controls .ability-pair { grid-template-columns: 48px 64px; width: 118px; }
   #app[data-mobile-controls="true"] .horn-control { right: calc(50% - 22px); }
@@ -350,4 +446,11 @@
   #app[data-mobile-controls="true"] .roll-label { display: none; }
   #app[data-mobile-controls="true"] .roll-status { padding: 0; border: 0; }
   #app[data-mobile-controls="true"] .event-banner { width: min(40%, 160px); }
+}
+
+/* State changes are the only motion; never interpolate while paused or reducing motion. */
+@media (prefers-reduced-motion: reduce) {
+  #app[data-mobile-controls="true"] .ability-reserve-fill,
+  #app[data-mobile-controls="true"] .mobile-goal-car,
+  #app[data-mobile-controls="true"] .mobile-goal-track::after { transition: none; }
 }

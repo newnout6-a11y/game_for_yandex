@@ -11,6 +11,7 @@ import { canPlaceRoadworks } from './traffic-events.js';
 import { chooseDiverseTrafficKind, assessTrafficSpawn, assessTrafficWaveCorridor } from './traffic-demand.js';
 import { trafficDynamics } from './traffic-motion.js';
 import { updatePlayerPath, updatePlayerDynamics } from './player-motion.js';
+import { placeBonusAnchor, trafficBonusAnchor, eventBonusAnchor } from './bonus-feedback.js';
 /**
  * Coerces an input axis to a finite number and clamps it to the accepted range.
  * Non-finite input becomes zero, including when a negative minimum is allowed.
@@ -31,7 +32,8 @@ export class Game {
    * @param {Object} [options={}] - Simulation dependencies.
    * @param {Function} [options.random] - Generator returning values in [0, 1).
    * @param {Function} [options.onEvent] - Called synchronously with an event name
-   * and, where applicable, its combo or event-result payload.
+   * and, where applicable, its unchanged combo/event-result payload. An optional
+   * third argument is an immutable visual source snapshot, never a reward input.
    */
   constructor({ random = seededRandom(), onEvent = () => {} } = {}) { this.random=random;this.onEvent=onEvent;this.reset(); }
   /** Apply next-run catalog parameters only in ready state; a paused/crashed run may still resume with its original envelope. */
@@ -56,7 +58,7 @@ export class Game {
       traffic:[],pickups:[],obstacles:[],nextSpawn:68,safeLane:1,safeCorridor:null,pendingCorridorLane:null,corridorWaves:0,trafficDiagnostics:{interventions:0,emergencySteps:0,maxCount:0,deferredWaves:0,corridorChanges:0},recentTrafficKinds:[],goalReached:false,
       nextEvent:80,eventIndex:0,roadEvent:null,lastEvent:null,eventsCompleted:0,
     };
-    this.serial=0;this.pulse=0;this.pulseTime=0;return this.state;
+    this.serial=0;this.pulse=0;this.pulseTime=0;this.lastConvoyPass=null;return this.state;
   }
   /**
    * Reads the configured speed, spacing and scoring multipliers for this run.
@@ -173,7 +175,10 @@ export class Game {
       if(crosses&&s.invincible<=0&&trafficHitsPlayer(car,s,previousX,before)){this.crash();return;}
       if(!car.passed&&before>=-depth&&car.z<-depth){
         car.passed=true;s.overtakes++;
-        if(lateral<width+.45&&lateral>=width&&flightClearance<clearHeight){s.nearMisses++;s.combo=Math.min(5,s.combo+1);s.comboTime=5;s.score+=30*s.combo*this.rules.score;this.onEvent('near',s.combo);}
+        const feedback=trafficBonusAnchor(s,car);
+        if(s.roadEvent?.type==='convoy'&&car.eventId===s.roadEvent.id)this.lastConvoyPass={eventId:car.eventId,anchor:feedback};
+        if(lateral<width+.45&&lateral>=width&&flightClearance<clearHeight){s.nearMisses++;s.combo=Math.min(5,s.combo+1);s.comboTime=5;s.score+=30*s.combo*this.rules.score;this.onEvent('near',s.combo,feedback);}
+        else this.onEvent('pass',undefined,feedback);
       }
     }
     for(const obstacle of s.obstacles){
@@ -187,11 +192,11 @@ export class Game {
     }
     for(const pickup of s.pickups){
       const before=pickup.z;pickup.z-=travelled;
-      if(!pickup.collected&&before>=-2&&pickup.z<=2&&Math.abs(s.x-pickup.lane)<.5&&flightClearance<1.7){pickup.collected=true;s.nitro=Math.min(100,s.nitro+CONFIG.nitroPickup);s.score+=50*s.combo*this.rules.score;s.charges++;this.onEvent('charge');}
+      if(!pickup.collected&&before>=-2&&pickup.z<=2&&Math.abs(s.x-pickup.lane)<.5&&flightClearance<1.7){pickup.collected=true;s.nitro=Math.min(100,s.nitro+CONFIG.nitroPickup);s.score+=50*s.combo*this.rules.score;s.charges++;this.onEvent('charge',undefined,placeBonusAnchor(s,pickup.lane,pickup.z,1.5));}
     }
     // Rear traffic remains until its closest bumper has faded beyond the bounded 78 m mirror view.
     s.traffic=s.traffic.filter(car=>car.z>-78-trafficDefinition(car.kind).length/2&&car.z<420+trafficDefinition(car.kind).length/2);s.pickups=s.pickups.filter(p=>!p.collected&&p.z>-5);s.obstacles=s.obstacles.filter(o=>!o.hit&&o.z>-8);
-    if(!s.goalReached&&s.distance>=CONFIG.goal){s.goalReached=true;s.score+=1000;this.onEvent('goal');}
+    if(!s.goalReached&&s.distance>=CONFIG.goal){s.goalReached=true;s.score+=1000;this.onEvent('goal',undefined,placeBonusAnchor(s,s.x,CONFIG.goal-s.distance,(s.altitude||0)+1.8));}
   }
   /**
    * Marks the run crashed, disables boost/flight and cancels swipe steering.
@@ -353,8 +358,9 @@ export class Game {
     const s=this.state,e=s.roadEvent;if(!e)return;
     const points=success?e.points*this.rules.score:0;
     if(success){s.eventsCompleted++;s.score+=points;s.nitro=Math.min(100,s.nitro+15);}
+    const feedback=success?eventBonusAnchor(s,e,this.lastConvoyPass):undefined;
     s.lastEvent={title:e.title,success,points,until:s.elapsed+4};s.roadEvent=null;s.nextEvent=s.distance+120;
-    this.onEvent('event-clear',s.lastEvent);
+    this.onEvent('event-clear',s.lastEvent,feedback);
   }
   /**
    * Resumes an eligible crashed run with nearby hazards removed and 2.5 s immunity.

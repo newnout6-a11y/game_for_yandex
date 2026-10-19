@@ -1,4 +1,5 @@
 import { CONFIG, ROUTES } from './config.js';
+import { hudGaugePresentation } from './hud-gauges.js';
 import { FLIGHT } from './flight.js';
 import { formatNumber, clamp } from './util.js';
 import { normalizeRenderQuality } from './render-settings.js';
@@ -151,12 +152,24 @@ export class UI {
     byId('speed').textContent = String(Math.round(s.speed * 3.6));
     byId('distance').textContent = formatNumber(s.distance) + ' м';
     byId('challengeProgress').style.width = clamp(s.distance / CONFIG.goal * 100, 0, 100) + '%';
-    byId('challengeTitle').textContent = s.goalReached ? 'Цель выполнена · +1 000 очков' : 'Цель: проехать 1 500 м';
+    byId('challengeTitle').textContent = s.goalReached ? 'Цель выполнена' : 'Цель: проехать 1 500 м';
     byId('combo').hidden = s.combo <= 1;
     byId('combo').textContent = '×' + s.combo;
     const dialSpeed=clamp(s.speed*3.6/300,0,1);
     byId('speedNeedle').setAttribute('transform','rotate('+(-90+dialSpeed*180)+' 110 120)');
     byId('speedArc').style.strokeDashoffset=String(100-dialSpeed*100);
+    const gauges = hudGaugePresentation(s);
+    if (this.reserveLevel !== gauges.reserveLevel) {
+      for (const id of ['boostBtn', 'flightBtn']) byId(id).style.setProperty('--reserve-level', String(gauges.reserveLevel));
+      this.reserveLevel = gauges.reserveLevel;
+    }
+    byId('sharedEnergyStatus').textContent = gauges.reserveText;
+    const rail = byId('mobileGoalRail');
+    rail.style.setProperty('--goal-progress', String(gauges.progress));
+    rail.dataset.complete = String(gauges.complete);
+    rail.setAttribute('aria-valuemax', String(CONFIG.goal));
+    rail.setAttribute('aria-valuenow', String(gauges.value));
+    rail.setAttribute('aria-valuetext', gauges.goalText);
     byId('nitroValue').textContent = Math.round(s.nitro) + '%';
     byId('nitroFill').style.width = s.nitro + '%';
     byId('boostBtn').disabled = s.nitro <= 0;
@@ -192,11 +205,12 @@ export class UI {
       this.rollMode = roll.mode;
     }
     byId('runHint').hidden = (s.elapsed > 10 && s.distance > 15) || Boolean(s.roadEvent);
-    const e=s.roadEvent, last=s.lastEvent?.until>s.elapsed?s.lastEvent:null;
+    // Keep live instructions and failures, not a second text reward banner.
+    const e=s.roadEvent, last=s.lastEvent?.until>s.elapsed&&!s.lastEvent.success?s.lastEvent:null;
     byId('eventBanner').hidden=!e&&!last;
-    const title=e?.title||(last?(last.success?'Пройдено: ':'Не пройдено: ')+last.title:'');
+    const title=e?.title||(last?'Не пройдено: '+last.title:'');
     if(byId('eventTitle').textContent!==title)byId('eventTitle').textContent=title;
-    byId('eventHint').textContent=e?.hint||(last?.success?'Бонус +'+last.points+' очков и +15% нитро.':'Следующее событие впереди.');
+    byId('eventHint').textContent=e?.hint||'Следующее событие впереди.';
     byId('eventMeter').textContent=e?(e.type==='convoy'?e.carsLeft+' авто':(e.type==='checkpoint'?Math.ceil(e.seconds)+' с · ':'')+Math.max(0,Math.ceil(e.remaining))+' м'):'';
   }
   /**

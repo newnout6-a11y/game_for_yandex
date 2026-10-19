@@ -16,6 +16,7 @@ import { createThrusterEffects } from './thrusters.js';
 import { createPlayerHeadlights } from './player-headlights.js';
 import { createRoadsidePromos } from './roadside-promos.js';
 import { buildScenicLandscape, updateScenicLandscape, scenicTerrainHeight } from './landscape.js';
+import { createDrivingBonusEffects } from './driving-bonus-effects.js';
 
 let bendDistance = NaN, bendCoefficient = 0;
 /**
@@ -52,6 +53,7 @@ export class RoadRenderer {
     this.renderer.toneMapping = T.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .84;
     this.scene = new T.Scene(); this.scene.background = new T.Color('#c7dce5');
     this.scene.fog = new T.Fog('#c9d6d5', 160, 510);
+    this.bonusEffects = createDrivingBonusEffects(this.scene, { bend: roadBend, reducedMotion: this.reducedMotion });
     this.camera = new T.PerspectiveCamera(54, 1, .15, 1200);
     this.traffic = new Map(); this.pickups = new Map(); this.trafficPool = new Map(); this.pickupPool = []; this.props = []; this.impact = 0; this.particles = [];
     this.sparkGeometry = new T.SphereGeometry(.04,4,3); this.sparkMaterials = new Map();
@@ -251,14 +253,19 @@ export class RoadRenderer {
   }
   /**
    * Translate a gameplay effect notification into sparks and optional impact shake.
-   * @param {string} kind - Supported keys are crash, near, charge and cone; others do nothing.
+   * @param {string} kind - Supported keys are crash and cone; accepted bonuses use source-anchored bonus().
    * @returns {void} Updates visual effect state without changing gameplay outcomes.
    */
   effect(kind) {
     if(kind==='crash') {this.impact=1; this.spawnParticles(34,'#e8b96a');}
-    if(kind==='near') this.spawnParticles(5,'#b7a890');
-    if(kind==='charge') this.spawnParticles(12,'#d9d5b0');
     if(kind==='cone') this.spawnParticles(8,'#b7a890');
+  }
+  /** Show a short text-free cue at a captured gameplay source, never at the player by default. */
+  bonus(kind, anchor, state) {
+    if (!this.loaded || this.showcase) return false;
+    const accepted = this.bonusEffects.emit(kind, anchor, state);
+    if (accepted) this.needsRender = true;
+    return accepted;
   }
   /**
    * Emit short-lived spark meshes near the player using shared geometry/materials.
@@ -285,7 +292,7 @@ export class RoadRenderer {
   setShowcase(value) {
     const next=value===true;
     if(this.showcase===next)return;
-    this.showcase=next;this.resize();
+    this.showcase=next;if(next)this.bonusEffects?.clear();this.resize();
   }
   /** Replace the existing shadow target only when its selected resource bucket changes. */
   applyShadowQuality() {
@@ -374,6 +381,8 @@ export class RoadRenderer {
    * @returns {void} Mutates renderer-owned scene, caches and effects, not the gameplay state.
    */
   render(state,{menu=false,dt=0,paused=false}={}) {
+    // Lifecycle resets must clear even a settled paused/menu frame before its guard.
+    if(this.bonusEffects?.sync(state,menu||this.showcase===true))this.needsRender=true;
     if(!this.loaded)return;
     if(menu&&this.reducedMotion&&!this.needsRender&&this.wasMenu)return;
     if(paused&&!menu&&this.wasPaused&&!this.needsRender&&this.pausedFor>.6&&!this.particles.length&&!this.impact)return;
@@ -490,6 +499,7 @@ export class RoadRenderer {
       if(p.mesh.position.y<.03){p.mesh.position.y=.03;p.v.y=Math.abs(p.v.y)*.25;}
       if(p.life<=0){this.scene.remove(p.mesh);this.particles.splice(this.particles.indexOf(p),1);}
     }
+    if(!menu&&!this.showcase)this.bonusEffects?.update(state,dt,paused);
     // Reflect the same completed scene and real eye, without recursion or a
     // second shadow update. Inactive/offscreen panes keep their authored fallback.
     this.playerMirrors.update(this.camera, {dt:paused?0:dt,mode:this.effectiveCameraMode,paused,quality:this.quality,compact:this.compact});

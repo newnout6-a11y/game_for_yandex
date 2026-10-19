@@ -39,7 +39,7 @@ function sourceBetween(startMarker, endMarker) {
 /** A DOM/event shell only: ownership, gating, physics, lifecycle and HUD all remain production code. */
 function element() {
   return {
-    disabled: false, hidden: false, dataset: {}, attributes: {}, style: {}, textContent: '',
+    disabled: false, hidden: false, dataset: {}, attributes: {}, style: {setProperty(name,value){this[name]=value;}}, textContent: '',
     listeners: new Map(), captures: [], failCapture: false,
     getAttribute(name) { return this.attributes[name] ?? null; },
     setAttribute(name, value) { this.attributes[name] = String(value); },
@@ -90,9 +90,10 @@ function harness(state = {}) {
     renderer: {
       reducedMotion: false, render() { effects.renders++; },
       effect(event) { effects.visualEvents.push(event); },
+      bonus() {},
     },
     loading: {}, garageUI: { settingsOpen: false }, telemetry: null, crashElapsed: 0,
-    tab: 'fleet', fleetVisibilityDirty: false, fleetTouchRemaining: 0, fleetMiniatures: null,
+    tab: 'fleet', fleetVisibilityDirty: false, fleetTouchRemaining: 0, fleetMiniatures: null, routeVehicleMarker: null,
     audio: { update() {}, tone(event) { effects.audioEvents.push(event); } }, requestAnimationFrame() { effects.scheduled++; },
   };
   vm.createContext(s);
@@ -100,13 +101,13 @@ function harness(state = {}) {
   const gameExpression = sourceBetween('const game=new Game(', 'const lifecycle=').replace(/^const game=/, '');
   const game = s.game = vm.runInContext(gameExpression, s);
   const onEvent = game.onEvent;
-  game.onEvent = (event, value) => {
-    onEvent(event, value);
+  game.onEvent = (event, value, feedback) => {
+    onEvent(event, value, feedback);
     effects.events.push({ event, elapsed: game.state.elapsed, nitro: game.state.nitro, controls: s.input.read() });
   };
   game.start();
   Object.assign(game.state, { speed: 20, traffic: [], pickups: [], obstacles: [], nextSpawn: Infinity, nextEvent: Infinity }, state);
-  for (const name of ['clearInput', 'pauseRun', 'tick', 'syncMobileControls']) vm.runInContext(applicationFunction(name), s);
+  for (const name of ['clearInput', 'pauseRun', 'tick', 'syncMobileControls', 'syncRouteVehicleActivity']) vm.runInContext(applicationFunction(name), s);
   // Strip only the declaration; its actual lifecycle callback closes over this sandbox.
   const lifecycleExpression = sourceBetween('const lifecycle=createLifecycle(', 'const ads=').replace(/^const lifecycle=/, '');
   s.lifecycle = vm.runInContext(lifecycleExpression, s);

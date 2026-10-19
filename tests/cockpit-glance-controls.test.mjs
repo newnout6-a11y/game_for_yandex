@@ -228,7 +228,7 @@ test('glance buttons are cockpit-only, accessible 44px holds, with concise mirro
   assert.match(theme, /--control-size: 2\.75rem;/);
   assert.match(css, /\.glance-button \{[^}]*touch-action: none;/);
   assert.match(css, /\.game-hud:has\(\.glance-controls:not\(\[hidden\]\)\) \.flight-status \{ bottom: calc\(var\(--space-24\) \+ var\(--control-size\) \+ var\(--space-2\)\); \}/);
-  assert.equal((html.match(/<canvas\b/g) || []).length, 1);
+  assert.deepEqual([...html.matchAll(/<canvas\b[^>]*\bid="([^"]+)"/g)].map(match=>match[1]), ['scene','mobileGoalVehicleCanvas'], 'only the game surface and bounded selected-route model, never a mirror overlay');
   assert.doesNotMatch(html, /<video\b/);
   let help;
   UI.prototype.help.call({ open(type, markup) { help = markup; } });
