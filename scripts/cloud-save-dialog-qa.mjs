@@ -3,20 +3,32 @@ import {chromium} from 'playwright';
 import {once} from 'node:events';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {startServer} from './serve.mjs';
 import {createProfile} from '../src/progression.js';
 
-/** Inspect the actual missing-cloud dialog using an isolated in-memory SDK, never an online player or save. */
-const out='output/cloud-save-dialog-qa';await mkdir(out,{recursive:true});
+export const CLOUD_DIALOG_ROOT=fileURLToPath(new URL('../',import.meta.url));
+
+/**
+ * Inspect the real missing-cloud UI using an isolated SDK, never an online save.
+ * Paths belong to this checkout, independent of the caller's working directory.
+ * Injected launch/server functions let regressions exercise startup failures without a browser.
+ * @param {object} [options] - Optional output directory and QA resource factories.
+ * @returns {Promise<object>} Captured report; rejects on startup, assertion or cleanup failure.
+ */
+export async function runCloudSaveDialogQa({out=path.join(CLOUD_DIALOG_ROOT,'output/cloud-save-dialog-qa'),launchBrowser=options=>chromium.launch(options),serverFactory=startServer}={}){
+await mkdir(out,{recursive:true});
 const profile=createProfile({now:1000,id:'cloud_dialog_fixture'});profile.wallet.credits=170;profile.wallet.totalSpent=130;profile.stats.runs=2;profile.revision=7;
-const source=await readFile('src/main.js','utf8');
+const source=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
 const expose=`\nwindow.__cloudDialogQA={get ready(){return assetsReady&&garageScene?.ready},state(){return{profile:profileStore.get(),platform:platform.getState(),screen}}};`;
 const fixtureSdk=`const writes=[];window.__fixtureCloudWrites=writes;const player={getUniqueID:()=> 'isolated_test_player',isAuthorized:()=>false,getData:async()=>({}),setData:async(data,durable)=>{writes.push({data:structuredClone(data),durable});}};const api={getPlayer:async()=>player,environment:{i18n:{lang:'ru'}}};export function createSdk(){return{init:async()=>api,get:()=>api,on(){},ready(){},gameplay(){}};}`;
 const report={method:'Native renderer and real UI/controller/cloud adapter; only SDK transport and local test inventory are isolated fixtures. No real user save, authentication or remote write.',sourceHashes:{},devices:[],errors:[]};
-for(const file of ['src/platform-services.js','src/garage-ui.js'])report.sourceHashes[file]=createHash('sha256').update(await readFile(file)).digest('hex');
-const server=startServer({root:process.cwd(),port:0});await once(server,'listening');
-const browser=await chromium.launch({...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{channel:'chrome'}),headless:true,args:process.env.SOFTWARE_WEBGL?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
+for(const file of ['src/platform-services.js','src/garage-ui.js'])report.sourceHashes[file]=createHash('sha256').update(await readFile(path.join(CLOUD_DIALOG_ROOT,file))).digest('hex');
+let server,browser,failed=false;
 try{
+ server=serverFactory({root:CLOUD_DIALOG_ROOT,port:0});await once(server,'listening');
+ browser=await launchBrowser({...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{channel:'chrome'}),headless:true,args:process.env.SOFTWARE_WEBGL?['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']:[]});
  for(const [device,viewport,mobile] of [['desktop',{width:1280,height:720},false],['mobile',{width:844,height:390},true]]){
   const page=await browser.newPage({viewport,isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1,reducedMotion:'reduce'});page.setDefaultTimeout(180000);
   page.on('pageerror',e=>report.errors.push(e.message));
@@ -41,4 +53,19 @@ try{
   console.log(device,'CLOUD CREATE PASS');await writeFile(out+'/report.json',JSON.stringify(report,null,2));await page.close();
  }
  assert.deepEqual(report.errors,[]);console.log('CLOUD SAVE DIALOG QA PASS');
-}finally{await browser.close();await new Promise(resolve=>server.close(resolve));await writeFile(out+'/report.json',JSON.stringify(report,null,2));}
+}catch(error){failed=true;throw error;}finally{
+ // Each cleanup must run even if another fails. Preserve the original failure.
+ const cleanupErrors=[];
+ try{await browser?.close();}catch(error){cleanupErrors.push(error);}
+ if(server){
+  try{await new Promise((resolve,reject)=>{server.close(error=>error&&error.code!=='ERR_SERVER_NOT_RUNNING'?reject(error):resolve());server.closeAllConnections?.();});}
+  catch(error){cleanupErrors.push(error);}
+ }
+ try{await writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));}catch(error){cleanupErrors.push(error);}
+ if(!failed&&cleanupErrors.length)throw new AggregateError(cleanupErrors,'Cloud dialog QA cleanup failed');
+}
+return report;
+}
+
+// An optional isolated output folder never changes the served checkout or inputs.
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))await runCloudSaveDialogQa({out:process.env.CLOUD_DIALOG_QA_OUT?path.resolve(CLOUD_DIALOG_ROOT,process.env.CLOUD_DIALOG_QA_OUT):undefined});
