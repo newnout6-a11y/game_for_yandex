@@ -3,7 +3,7 @@ import { playerConfiguration } from './player-configuration.js';
 import { clamp, lerp, seededRandom } from './util.js';
 import { createFlightState, updateFlight } from './flight.js';
 import { trafficDefinition, trafficCenterGap } from './traffic-catalog.js';
-import { playerBottom, playerTrafficDepth, playerTrafficWidth, trafficHitsPlayer, updateTrailerKinematics, LANE_WIDTH } from './traffic-physics.js';
+import { playerBottom, playerTrafficDepth, playerTrafficWidth, updateTrailerKinematics, LANE_WIDTH } from './traffic-physics.js';
 import { trafficLateral, occupiedTrafficLanes, updateTrafficManoeuvres } from './traffic-behavior.js';
 import { updatePlayerHorn } from './player-horn.js';
 import { planTrafficLongitudinal } from './traffic-policy.js';
@@ -11,6 +11,7 @@ import { canPlaceRoadworks } from './traffic-events.js';
 import { chooseDiverseTrafficKind, assessTrafficSpawn, assessTrafficWaveCorridor } from './traffic-demand.js';
 import { trafficDynamics } from './traffic-motion.js';
 import { updatePlayerPath, updatePlayerDynamics } from './player-motion.js';
+import { captureContactFrame, resolveVehicleContacts, advanceTrafficImpact } from './vehicle-contacts.js';
 import { placeBonusAnchor, trafficBonusAnchor, eventBonusAnchor } from './bonus-feedback.js';
 /**
  * Coerces an input axis to a finite number and clamps it to the accepted range.
@@ -51,7 +52,7 @@ export class Game {
       maxLateralAcceleration:vehicle.maxLateralAcceleration,steeringSlewMultiplier:vehicle.steeringSlewMultiplier,flightAllowed:vehicle.flight,flightDrainMultiplier:vehicle.flightDrainMultiplier,
       bodyPitch:0,bodyRoll:0,bodyHeave:0,bodyPitchVelocity:0,bodyRollVelocity:0,bodyHeaveVelocity:0,
       hornTime:0,hornCooldown:0,hornHeld:false,hornSerial:0,
-      phase:'ready',lane:1,x:1,heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,rearDistance:0,wheelDistance:0,acceleration:0,throttle:0,braking:false,
+      phase:'ready',lane:1,x:1,lateralVelocity:0,forwardVelocity:0,slipAngle:0,impactCooldown:0,impactRemaining:0,sceneTravel:0,heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,rearDistance:0,wheelDistance:0,acceleration:0,throttle:0,braking:false,
       distance:0,score:0,elapsed:0,speed:0,nitro:60,boosting:false,
       ...createFlightState(),
       combo:1,comboTime:0,overtakes:0,nearMisses:0,charges:0,revives:0,invincible:0,
@@ -101,7 +102,9 @@ export class Game {
    * @returns {void}
    */
   update(dt, controls={}){
-    if(this.state.phase!=='playing'||!Number.isFinite(dt)||dt<=0)return;
+    if(!Number.isFinite(dt)||dt<=0)return;
+    if(this.state.phase==='crashed'){this.advanceCrashMotion(Math.min(dt,.1));return;}
+    if(this.state.phase!=='playing')return;
     const normalize=sample=>({throttle:axis(sample?.throttle),brake:axis(sample?.brake),steer:axis(sample?.steer,-1),boost:Boolean(sample?.boost),flight:Boolean(sample?.flight),horn:Boolean(sample?.horn),roll:axis(sample?.roll,-1)});
     const live=typeof controls==='function',snapshot=live?null:normalize(controls);
     let remaining=Math.min(dt,.1);
@@ -122,8 +125,14 @@ export class Game {
     this.pulseTime=Math.max(0,this.pulseTime-dt);
     const steering=c.steer||(this.pulseTime>0?this.pulse:0);
     s.throttle=c.brake>0?0:c.throttle;s.braking=c.brake>0;
+    const previous=captureContactFrame(s),previousX=s.x;
     const energyBeforeFlight=s.nitro;
-    updateFlight(s,dt,s.flightAllowed ? c : {...c,flight:false,roll:0},this.onEvent);
+    // Touchdown is reported only after this substep's physical hazard accounting.
+    // A clean-flight reward must never be committed ahead of a same-step impact.
+    let touchdown=null;const landingBefore={verticalSpeed:s.verticalSpeed,rollAngle:s.rollAngle};
+    updateFlight(s,dt,s.flightAllowed ? c : {...c,flight:false,roll:0},(name,...args)=>{
+      if(name==='land')touchdown={...landingBefore,assisted:s.touchdownPulse>0};else this.onEvent(name,...args);
+    });
     if(energyBeforeFlight>0&&s.nitro===0)this.onEvent('boost-empty');
     s.boosting=c.boost&&!s.flying&&s.altitude<.2&&s.throttle>0&&!s.braking&&s.speed>5&&s.nitro>0;
     if(s.boosting){s.nitro=Math.max(0,s.nitro-CONFIG.nitroDrain*dt);if(s.nitro===0)this.onEvent('boost-empty');}
@@ -135,18 +144,12 @@ export class Game {
     // Releasing boost/accelerator reduces speed gradually rather than cutting it.
     if(s.speed>maxSpeed)s.speed=Math.max(maxSpeed,s.speed-dt*3);
     s.acceleration=(s.speed-beforeSpeed)/dt;
-    const previousX=s.x;
-    const travelled=updatePlayerPath(s,steering,dt);
-    updatePlayerDynamics(s,dt);
-    s.distance+=travelled;s.score+=travelled*s.combo*this.rules.score;
-    if(s.safeCorridor){s.safeCorridor.z+=s.safeCorridor.speed*dt-travelled;if(s.safeCorridor.z+s.safeCorridor.halfLength < -35)s.safeCorridor=null;}
-    if(s.distance>=s.nextSpawn){this.spawnWave();s.nextSpawn+=CONFIG.spawnDistance*this.rules.spacing;}
-    if(!s.traffic.length&&s.speed>10&&Number.isFinite(s.nextSpawn)){this.spawnWave(160);s.nextSpawn=s.distance+CONFIG.spawnDistance;}
-    this.updateEvent(dt);
+    let travelled=updatePlayerPath(s,steering,dt);
+    s.acceleration=(s.speed-beforeSpeed)/dt;
     const flightClearance=playerBottom(s.altitude,s.rollAngle,s.playerBounds);
     // Front-to-back ordering gives each follower its updated leader position.
     // One sort replaces repeated filtering/sorting for every traffic vehicle.
-    for(const car of s.traffic){car.previousLateral=trafficLateral(car);car.previousZ=car.z;}
+    for(const car of s.traffic){car.previousLateral=trafficLateral(car);car.previousZ=car.z;if(car.impactActive)advanceTrafficImpact(car,dt);}
     updateTrafficManoeuvres(s,dt);
     const trafficOrder=[...s.traffic].sort((a,b)=>b.z-a.z),laneLeader=new Map();
     for(const car of trafficOrder){
@@ -169,29 +172,30 @@ export class Game {
       if(following&&before<=-depth&&car.z>stopZ){s.trafficDiagnostics.interventions++;car.z=stopZ;car.speed=Math.min(car.speed,s.speed);car.braking=true;}
       car.acceleration=(car.speed-beforeSpeed)/dt;
       car.travelDistance=(car.travelDistance||0)+Math.hypot(Math.max(0,car.z-before+travelled),(carX-car.previousLateral)*LANE_WIDTH);
-      if(spec.articulated)updateTrailerKinematics(car,s.distance,dt);
-      const crosses=Math.min(before,car.z)<=depth+.8&&Math.max(before,car.z)>=-depth-.8;
+      if(spec.articulated)updateTrailerKinematics(car,previous.distance+travelled,dt);
+    }
+    for(const obstacle of s.obstacles)obstacle.z-=travelled;
+    const contact=resolveVehicleContacts(s,previous,dt,travelled);travelled=contact.travelled;
+    s.acceleration=(s.speed-beforeSpeed)/dt;updatePlayerDynamics(s,dt);
+    s.distance+=travelled;s.sceneTravel+=contact.sceneCorrection||0;s.score+=travelled*s.combo*this.rules.score;
+    if(s.safeCorridor){s.safeCorridor.z+=s.safeCorridor.speed*dt-contact.physicalTravel;if(s.safeCorridor.z+s.safeCorridor.halfLength < -35)s.safeCorridor=null;}
+    this.handleContacts(contact);if(touchdown)this.onEvent('land',touchdown);if(contact.fatal){this.crash();return;}
+    if(s.distance>=s.nextSpawn){this.spawnWave();s.nextSpawn+=CONFIG.spawnDistance*this.rules.spacing;}
+    if(!s.traffic.length&&s.speed>10&&Number.isFinite(s.nextSpawn)){this.spawnWave(160);s.nextSpawn=s.distance+CONFIG.spawnDistance;}
+    this.updateEvent(dt);
+    for(const car of s.traffic){
+      const before=car.previousZ??car.z,carX=trafficLateral(car),depth=playerTrafficDepth(car,s.playerBounds),width=playerTrafficWidth(car,s.playerBounds)/LANE_WIDTH,clearHeight=trafficDefinition(car.kind).height+.08;
       const lateral=Math.min(Math.abs(s.x-carX),Math.abs(previousX-car.previousLateral));
-      if(crosses&&s.invincible<=0&&trafficHitsPlayer(car,s,previousX,before)){this.crash();return;}
       if(!car.passed&&before>=-depth&&car.z<-depth){
         car.passed=true;s.overtakes++;
         const feedback=trafficBonusAnchor(s,car);
         if(s.roadEvent?.type==='convoy'&&car.eventId===s.roadEvent.id)this.lastConvoyPass={eventId:car.eventId,anchor:feedback};
-        if(lateral<width+.45&&lateral>=width&&flightClearance<clearHeight){s.nearMisses++;s.combo=Math.min(5,s.combo+1);s.comboTime=5;s.score+=30*s.combo*this.rules.score;this.onEvent('near',s.combo,feedback);}
+        if(!car.contacted&&lateral<width+.45&&lateral>=width&&flightClearance<clearHeight){s.nearMisses++;s.combo=Math.min(5,s.combo+1);s.comboTime=5;s.score+=30*s.combo*this.rules.score;this.onEvent('near',s.combo,feedback);}
         else this.onEvent('pass',undefined,feedback);
       }
     }
-    for(const obstacle of s.obstacles){
-      const before=obstacle.z;obstacle.z-=travelled;
-      const obstacleDepth = 2.8 + (s.playerBounds.length - 4.7)/2;
-      const obstacleWidth = (obstacle.kind==='barrier'?.72:.36) + (s.playerBounds.width - 2.36)/7;
-      if(!obstacle.hit&&Math.min(before,obstacle.z)<=obstacleDepth&&Math.max(before,obstacle.z)>=-obstacleDepth&&Math.abs(s.x-obstacle.x)<obstacleWidth&&s.invincible<=0&&flightClearance<1.65){
-        if(obstacle.kind==='barrier'){this.crash();return;}
-        obstacle.hit=true;s.speed*=.8;s.score=Math.max(0,s.score-50);if(s.roadEvent)s.roadEvent.clean=false;this.onEvent('cone');
-      }
-    }
     for(const pickup of s.pickups){
-      const before=pickup.z;pickup.z-=travelled;
+      const before=pickup.z;pickup.z-=contact.physicalTravel;
       if(!pickup.collected&&before>=-2&&pickup.z<=2&&Math.abs(s.x-pickup.lane)<.5&&flightClearance<1.7){pickup.collected=true;s.nitro=Math.min(100,s.nitro+CONFIG.nitroPickup);s.score+=50*s.combo*this.rules.score;s.charges++;this.onEvent('charge',undefined,placeBonusAnchor(s,pickup.lane,pickup.z,1.5));}
     }
     // Rear traffic remains until its closest bumper has faded beyond the bounded 78 m mirror view.
@@ -203,7 +207,40 @@ export class Game {
    * Emits crash synchronously; speed, altitude and entities remain for the crash view.
    * @returns {void}
    */
-  crash(){this.state.phase='crashed';this.state.boosting=false;this.state.flying=false;this.pulseTime=0;this.onEvent('crash');}
+  crash(){if(this.state.phase==='crashed')return;this.state.phase='crashed';this.state.boosting=false;this.state.flying=false;this.pulseTime=0;this.onEvent('crash');}
+  /** Contact feedback has no reward or result side effects; only severe contacts call crash. */
+  handleContacts(result){
+    const s=this.state;
+    for(const hit of result.contacts){
+      if(hit.kind==='cone'){s.speed*=.8;s.forwardVelocity=s.speed;s.score=Math.max(0,s.score-50);if(s.roadEvent)s.roadEvent.clean=false;this.onEvent('cone');continue;}
+      // Physical hazard accounting is independent of sound/spark thresholds.
+      if(s.roadEvent)s.roadEvent.clean=false;s.combo=1;s.comboTime=0;this.onEvent('contact');
+      if(hit.closingSpeed>.3&&s.impactCooldown<=0){
+        s.impactCooldown=.12;
+        this.onEvent('impact',Object.freeze({kind:hit.kind,otherId:hit.entity?.id??null,x:hit.pointX,z:hit.pointZ+result.physicalTravel,normalX:hit.normalX,normalZ:hit.normalZ,closingSpeed:hit.closingSpeed,deltaSpeed:hit.deltaSpeed,severe:hit.severe}));
+      }
+    }
+  }
+  /**
+   * A terminal impact coasts/rotates for the existing .65 s result delay. This
+   * is physical presentation only: elapsed, distance, score and counters freeze.
+   * sceneTravel keeps road/traffic coordinates continuous after a revive without
+   * awarding the crash skid as paid distance. No input is sampled in this phase.
+   */
+  advanceCrashMotion(dt){
+    const s=this.state;if(!(s.impactRemaining>0))return;
+    let remaining=Math.min(dt,s.impactRemaining);
+    while(remaining>1e-9){const step=Math.min(remaining,1/120),life=s.impactRemaining,previous=captureContactFrame(s);
+      s.speed=s.forwardVelocity=Math.max(0,s.speed-18*step);s.lateralVelocity*=Math.exp(-4*step);s.yawRate*=Math.exp(-4*step);
+      s.x+=s.lateralVelocity*step/LANE_WIDTH;s.heading+=s.yawRate*step;
+      const travel=s.speed*step;
+      for(const car of s.traffic){if(car.impactActive)advanceTrafficImpact(car,step);car.z+=(car.speed||0)*step-travel;}
+      for(const o of s.obstacles)o.z-=travel;
+      const result=resolveVehicleContacts(s,previous,step,travel);
+      s.sceneTravel+=result.physicalTravel;for(const p of s.pickups)p.z-=result.physicalTravel;
+      updatePlayerDynamics(s,step);s.impactRemaining=Math.max(0,life-step);remaining-=step;
+    }
+  }
   /**
    * Attempts a varied staggered wave with a local, reachable moving corridor.
    * Respects closures, committed lane changes and full vehicle headway; may spawn
@@ -319,7 +356,7 @@ export class Game {
       s.traffic.push(...accepted.created);
       s.safeLane=accepted.corridor.lane;s.safeCorridor=accepted.corridor;
     }
-    s.roadEvent=event;this.serial=serial;
+    event.sceneTravelStart=s.sceneTravel||0;s.roadEvent=event;this.serial=serial;
     s.eventIndex++;this.onEvent('event-start',s.roadEvent);return true;
   }
   /**
@@ -373,7 +410,7 @@ export class Game {
     const s=this.state;if(s.phase!=='crashed'||s.revives>=CONFIG.maxRevives)return false;
     s.revives++;s.traffic=s.traffic.filter(c=>c.z>80);s.pickups=s.pickups.filter(p=>p.z>20);s.obstacles=[];
     if(s.roadEvent)this.finishEvent(false);
-    s.safeCorridor=null;s.hornTime=0;s.hornCooldown=0;s.hornHeld=false;s.speed=0;Object.assign(s,createFlightState(),{heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,acceleration:0,
+    s.safeCorridor=null;s.hornTime=0;s.hornCooldown=0;s.hornHeld=false;s.speed=0;Object.assign(s,createFlightState(),{heading:0,steerAngle:0,curvature:0,yawRate:0,lateralAcceleration:0,acceleration:0,lateralVelocity:0,forwardVelocity:0,slipAngle:0,impactRemaining:0,impactCooldown:0,
       bodyPitch:0,bodyPitchVelocity:0,bodyRoll:0,bodyRollVelocity:0,bodyHeave:0,bodyHeaveVelocity:0});s.throttle=0;s.braking=false;this.pulseTime=0;
     s.nitro=Math.max(40,s.nitro);s.invincible=2.5;s.combo=1;s.comboTime=0;s.phase='playing';return true;
   }

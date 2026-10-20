@@ -1,0 +1,577 @@
+{
+  "coordinates": "Game car-root coordinates, metres, -Z front, +X right; transform every local center with vehicle pose. For physics forward-positive convention use forward=-Z.",
+  "purpose": "Small ground/neutral-body compound proxy with measured per-band vertical bounds. Even with these Y extents it remains a union of filled boxes, not the exact correlated 3-D rolled silhouette, and not factory geometry.",
+  "rectangles": [
+    {
+      "id": "nose",
+      "role": "body",
+      "minX": -0.98,
+      "maxX": 0.98,
+      "minZ": -2.37,
+      "maxZ": -1.88,
+      "coreBand": [
+        -2.35,
+        -1.9
+      ],
+      "centerX": 0.0,
+      "centerZ": -2.125,
+      "halfWidth": 0.98,
+      "halfLength": 0.2450000000000001,
+      "endpointHeights": [
+        {
+          "deployment": 0,
+          "minY": 0.1361517882720953,
+          "maxY": 0.7632367215629787
+        },
+        {
+          "deployment": 1,
+          "minY": 0.1361517882720953,
+          "maxY": 0.7632367215629787
+        }
+      ],
+      "actualMinY": 0.1361517882720953,
+      "actualMaxY": 0.7632367215629787,
+      "heightBasis": "Exact triangle-interpolated Y extrema after clipping the original core Z band; neutral body, wing endpoints 0 and 1. Not a full-height extrusion.",
+      "minY": 0.11,
+      "maxY": 0.79,
+      "centerY": 0.45,
+      "halfHeight": 0.34
+    },
+    {
+      "id": "front_body",
+      "role": "body",
+      "minX": -1.07,
+      "maxX": 1.07,
+      "minZ": -1.92,
+      "maxZ": -0.98,
+      "coreBand": [
+        -1.9,
+        -1.0
+      ],
+      "centerX": 0.0,
+      "centerZ": -1.45,
+      "halfWidth": 1.07,
+      "halfLength": 0.47,
+      "endpointHeights": [
+        {
+          "deployment": 0,
+          "minY": 0.1361517882720953,
+          "maxY": 0.9388213727656234
+        },
+        {
+          "deployment": 1,
+          "minY": 0.1361517882720953,
+          "maxY": 0.9388213727656234
+        }
+      ],
+      "actualMinY": 0.1361517882720953,
+      "actualMaxY": 0.9388213727656234,
+      "heightBasis": "Exact triangle-interpolated Y extrema after clipping the original core Z band; neutral body, wing endpoints 0 and 1. Not a full-height extrusion.",
+      "minY": 0.11,
+      "maxY": 0.97,
+      "centerY": 0.54,
+      "halfHeight": 0.43
+    },
+    {
+      "id": "cabin",
+      "role": "body",
+      "minX": -1.0,
+      "maxX": 1.0,
+      "minZ": -1.02,
+      "maxZ": 0.77,
+      "coreBand": [
+        -1.0,
+        0.75
+      ],
+      "centerX": 0.0,
+      "centerZ": -0.125,
+      "halfWidth": 1.0,
+      "halfLength": 0.895,
+      "endpointHeights": [
+        {
+          "deployment": 0,
+          "minY": 0.1403013872200666,
+          "maxY": 1.213527060996083
+        },
+        {
+          "deployment": 1,
+          "minY": 0.1403013872200666,
+          "maxY": 1.213527060996083
+        }
+      ],
+      "actualMinY": 0.1403013872200666,
+      "actualMaxY": 1.213527060996083,
+      "heightBasis": "Exact triangle-interpolated Y extrema after clipping the original core Z band; neutral body, wing endpoints 0 and 1. Not a full-height extrusion.",
+      "minY": 0.11,
+      "maxY": 1.24,
+      "centerY": 0.675,
+      "halfHeight": 0.565
+    },
+    {
+      "id": "rear_body_wheels",
+      "role": "body_and_rear_wheels",
+      "minX": -1.09,
+      "maxX": 1.09,
+      "minZ": 0.73,
+      "maxZ": 1.87,
+      "coreBand": [
+        0.75,
+        1.85
+      ],
+      "centerX": 0.0,
+      "centerZ": 1.3,
+      "halfWidth": 1.09,
+      "halfLength": 0.5700000000000001,
+      "endpointHeights": [
+        {
+          "deployment": 0,
+          "minY": 0,
+          "maxY": 1.2020941594377614
+        },
+        {
+          "deployment": 1,
+          "minY": 0,
+          "maxY": 1.2521020997103698
+        }
+      ],
+      "actualMinY": 0,
+      "actualMaxY": 1.2521020997103698,
+      "heightBasis": "Exact triangle-interpolated Y extrema after clipping the original core Z band; neutral body, wing endpoints 0 and 1. Not a full-height extrusion.",
+      "minY": 0,
+      "maxY": 1.28,
+      "centerY": 0.64,
+      "halfHeight": 0.64
+    },
+    {
+      "id": "tail",
+      "role": "body",
+      "minX": -1.03,
+      "maxX": 1.03,
+      "minZ": 1.83,
+      "maxZ": 2.37,
+      "coreBand": [
+        1.85,
+        2.35
+      ],
+      "centerX": 0.0,
+      "centerZ": 2.1,
+      "halfWidth": 1.03,
+      "halfLength": 0.27,
+      "endpointHeights": [
+        {
+          "deployment": 0,
+          "minY": 0.09175446089585695,
+          "maxY": 0.8691531623995081
+        },
+        {
+          "deployment": 1,
+          "minY": 0.09175446089585695,
+          "maxY": 1.2445449338830776
+        }
+      ],
+      "actualMinY": 0.09175446089585695,
+      "actualMaxY": 1.2445449338830776,
+      "heightBasis": "Exact triangle-interpolated Y extrema after clipping the original core Z band; neutral body, wing endpoints 0 and 1. Not a full-height extrusion.",
+      "minY": 0.06,
+      "maxY": 1.27,
+      "centerY": 0.665,
+      "halfHeight": 0.605
+    },
+    {
+      "id": "front_wheel_left",
+      "role": "wheel",
+      "minX": -1.16,
+      "maxX": -0.63,
+      "minZ": -1.86,
+      "maxZ": -1.05,
+      "centerX": -0.895,
+      "centerZ": -1.455,
+      "halfWidth": 0.26499999999999996,
+      "halfLength": 0.405,
+      "actualMinY": 0,
+      "actualMaxY": 0.7557412620964092,
+      "heightBasis": "Continuous wheel cylinder envelope. Y center=.3778706204759123, maximum vertex radial distance=.37787064162049694. Lower value clamped from -2.11e-8 m numerical noise to grounded 0.",
+      "minY": 0,
+      "maxY": 0.78,
+      "centerY": 0.39,
+      "halfHeight": 0.39
+    },
+    {
+      "id": "front_wheel_right",
+      "role": "wheel",
+      "minX": 0.63,
+      "maxX": 1.16,
+      "minZ": -1.86,
+      "maxZ": -1.05,
+      "centerX": 0.895,
+      "centerZ": -1.455,
+      "halfWidth": 0.26499999999999996,
+      "halfLength": 0.405,
+      "actualMinY": 0,
+      "actualMaxY": 0.7557412620964092,
+      "heightBasis": "Continuous wheel cylinder envelope. Y center=.3778706204759123, maximum vertex radial distance=.37787064162049694. Lower value clamped from -2.11e-8 m numerical noise to grounded 0.",
+      "minY": 0,
+      "maxY": 0.78,
+      "centerY": 0.39,
+      "halfHeight": 0.39
+    },
+    {
+      "id": "mirror_left",
+      "role": "mirror",
+      "minX": -1.19,
+      "maxX": -0.81,
+      "minZ": -0.75,
+      "maxZ": -0.6,
+      "actualMinY": 0.8489039603672001,
+      "actualMaxY": 0.9893699466548527,
+      "suggestedPaddedMinY": 0.82,
+      "suggestedPaddedMaxY": 1.01,
+      "centerX": -1.0,
+      "centerZ": -0.675,
+      "halfWidth": 0.18999999999999995,
+      "halfLength": 0.07500000000000001,
+      "minY": 0.82,
+      "maxY": 1.01,
+      "centerY": 0.915,
+      "halfHeight": 0.09500000000000003
+    },
+    {
+      "id": "mirror_right",
+      "role": "mirror",
+      "minX": 0.81,
+      "maxX": 1.1,
+      "minZ": -0.73,
+      "maxZ": -0.59,
+      "actualMinY": 0.8307329054597549,
+      "actualMaxY": 0.9037894283038578,
+      "suggestedPaddedMinY": 0.81,
+      "suggestedPaddedMaxY": 0.93,
+      "centerX": 0.9550000000000001,
+      "centerZ": -0.6599999999999999,
+      "halfWidth": 0.14500000000000002,
+      "halfLength": 0.07,
+      "minY": 0.81,
+      "maxY": 0.93,
+      "centerY": 0.8700000000000001,
+      "halfHeight": 0.06
+    }
+  ],
+  "mirrorParts": {
+    "left": {
+      "actualNeutralBounds": {
+        "min": [
+          -1.1696362697554417,
+          0.8489039603672001,
+          -0.7224108412646044
+        ],
+        "max": [
+          -0.8271863512736012,
+          0.9893699466548527,
+          -0.6291696153271757
+        ]
+      },
+      "center": [
+        -0.9984113105145214,
+        0.9191369535110263,
+        -0.6757902282958901
+      ],
+      "halfExtents": [
+        0.17122495924092024,
+        0.0702329931438263,
+        0.04662061296871434
+      ],
+      "parts": [
+        {
+          "mesh": "body",
+          "component": 1,
+          "triangles": 648,
+          "bounds": {
+            "min": [
+              -1.1696362697554417,
+              0.8702928417766955,
+              -0.7224108412646044
+            ],
+            "max": [
+              -0.9669150819305551,
+              0.9893699466548527,
+              -0.6291696153271757
+            ]
+          },
+          "category": "mirror_left"
+        },
+        {
+          "mesh": "detail_carbon",
+          "component": 2,
+          "triangles": 108,
+          "bounds": {
+            "min": [
+              -0.980278538562774,
+              0.8489039603672001,
+              -0.7026863569290236
+            ],
+            "max": [
+              -0.8271863512736012,
+              0.9161365930153832,
+              -0.6570554259924415
+            ]
+          },
+          "category": "mirror_left"
+        },
+        {
+          "mesh": "detail_mirror_left",
+          "component": 0,
+          "triangles": 576,
+          "bounds": {
+            "min": [
+              -1.1544838641289268,
+              0.8832535334879082,
+              -0.675130626494683
+            ],
+            "max": [
+              -0.9796017358943756,
+              0.9771429821913251,
+              -0.6365180022105195
+            ]
+          },
+          "category": "mirror_left"
+        }
+      ]
+    },
+    "right": {
+      "actualNeutralBounds": {
+        "min": [
+          0.8287468374677641,
+          0.8307329054597549,
+          -0.7041486364626404
+        ],
+        "max": [
+          1.0783270099371278,
+          0.9037894283038578,
+          -0.6145417626420211
+        ]
+      },
+      "center": [
+        0.953536923702446,
+        0.8672611668818063,
+        -0.6593451995523307
+      ],
+      "halfExtents": [
+        0.12479008623468185,
+        0.036528261422051456,
+        0.044803436910309635
+      ],
+      "parts": [
+        {
+          "mesh": "body",
+          "component": 2,
+          "triangles": 292,
+          "bounds": {
+            "min": [
+              0.9656406299860306,
+              0.8307329054597549,
+              -0.7041486364626404
+            ],
+            "max": [
+              1.0783270099371278,
+              0.9037894283038578,
+              -0.6145417626420211
+            ]
+          },
+          "category": "mirror_right"
+        },
+        {
+          "mesh": "detail_carbon",
+          "component": 5,
+          "triangles": 108,
+          "bounds": {
+            "min": [
+              0.8287468374677641,
+              0.8494198687701768,
+              -0.6795708612918065
+            ],
+            "max": [
+              0.980691124149835,
+              0.8850359549736287,
+              -0.630840481103282
+            ]
+          },
+          "category": "mirror_right"
+        },
+        {
+          "mesh": "detail_mirror_right",
+          "component": 0,
+          "triangles": 2,
+          "bounds": {
+            "min": [
+              1.0053833365430775,
+              0.8614321311273249,
+              -0.6421203099531831
+            ],
+            "max": [
+              1.0545541765444708,
+              0.8752336365106865,
+              -0.6232866247157776
+            ]
+          },
+          "category": "mirror_right"
+        }
+      ]
+    }
+  },
+  "coverage": {
+    "checks": 136,
+    "failed": 0,
+    "continuousWheelProof": {
+      "method": "Analytical per-vertex cylinder support: allow every wheel-carrier vertex unrestricted spin about local X (even fixed calipers, conservatively), then |carrier yaw|<=inner Ackermann angle. X radius=max_v,theta(|x_v|cos(theta)+hypot(y_v,z_v)sin(theta)); Z radius uses reversed coefficients. Max at endpoint or atan2(B,A). Linear triangle interiors cannot exceed support maxima. Geometry unchanged.",
+      "steerAngleLimit": 0.3,
+      "maximumInnerCarrierYaw": 0.3295398042830066,
+      "results": [
+        {
+          "wheel": "wheel_fl",
+          "center": [
+            -0.8958395697294567,
+            0.3778706204759123,
+            -1.459290875591517
+          ],
+          "maxCarrierYaw": 0.3295398042830066,
+          "xRadius": {
+            "value": 0.24767174994840713,
+            "theta": 0.3295398042830066,
+            "mesh": "wheel_spin_fl_rubber",
+            "vertex": 1968,
+            "A": 0.14601789695960488,
+            "R": 0.3384063492685147
+          },
+          "zRadius": {
+            "value": 0.3888710470032255,
+            "theta": 0.29607400617312457,
+            "mesh": "wheel_spin_fl_rubber",
+            "vertex": 338,
+            "A": 0.11345985296327121,
+            "R": 0.3719510088209705
+          },
+          "envelope": {
+            "minX": -1.143511319677864,
+            "maxX": -0.6481678197810495,
+            "minZ": -1.8481619225947425,
+            "maxZ": -1.0704198285882915
+          }
+        },
+        {
+          "wheel": "wheel_fr",
+          "center": [
+            0.8958395697294567,
+            0.3778706204759123,
+            -1.459290875591517
+          ],
+          "maxCarrierYaw": 0.3295398042830066,
+          "xRadius": {
+            "value": 0.24767174994840713,
+            "theta": 0.3295398042830066,
+            "mesh": "wheel_spin_fr_rubber",
+            "vertex": 144,
+            "A": 0.14601789695960488,
+            "R": 0.3384063492685147
+          },
+          "zRadius": {
+            "value": 0.3888710470032255,
+            "theta": 0.29607400617312457,
+            "mesh": "wheel_spin_fr_rubber",
+            "vertex": 338,
+            "A": 0.11345985296327121,
+            "R": 0.3719510088209705
+          },
+          "envelope": {
+            "minX": 0.6481678197810495,
+            "maxX": 1.143511319677864,
+            "minZ": -1.8481619225947425,
+            "maxZ": -1.0704198285882915
+          }
+        },
+        {
+          "wheel": "wheel_rl",
+          "center": [
+            -0.8958395697294567,
+            0.3778706204759123,
+            1.4413350520479036
+          ],
+          "maxCarrierYaw": 0,
+          "xRadius": {
+            "value": 0.17512280806086877,
+            "theta": 0,
+            "mesh": "wheel_spin_rl_dark_alloy",
+            "vertex": 5248,
+            "A": 0.17512280806086877,
+            "R": 0.061169657749099826
+          },
+          "zRadius": {
+            "value": 0.37787064162049694,
+            "theta": 0,
+            "mesh": "wheel_spin_rl_rubber",
+            "vertex": 469,
+            "A": 0.08978127150186599,
+            "R": 0.37787064162049694
+          },
+          "envelope": {
+            "minX": -1.0709623777903254,
+            "maxX": -0.7207167616685879,
+            "minZ": 1.0634644104274067,
+            "maxZ": 1.8192056936684005
+          }
+        },
+        {
+          "wheel": "wheel_rr",
+          "center": [
+            0.8958395697294567,
+            0.3778706204759123,
+            1.4413350520479036
+          ],
+          "maxCarrierYaw": 0,
+          "xRadius": {
+            "value": 0.17512280806086877,
+            "theta": 0,
+            "mesh": "wheel_spin_rr_dark_alloy",
+            "vertex": 5258,
+            "A": 0.17512280806086877,
+            "R": 0.061169657749099826
+          },
+          "zRadius": {
+            "value": 0.37787064162049694,
+            "theta": 0,
+            "mesh": "wheel_spin_rr_rubber",
+            "vertex": 469,
+            "A": 0.08978127150186599,
+            "R": 0.37787064162049694
+          },
+          "envelope": {
+            "minX": 0.7207167616685879,
+            "maxX": 1.0709623777903254,
+            "minZ": 1.0634644104274067,
+            "maxZ": 1.8192056936684005
+          }
+        }
+      ]
+    },
+    "sampledGeometryPoses": [
+      "legacy_steer_0_wing_0",
+      "legacy_steer_-0.3_wing_0",
+      "legacy_steer_0.3_wing_0",
+      "legacy_steer_0_wing_1",
+      "legacy_steer_-0.3_wing_1",
+      "legacy_steer_0.3_wing_1",
+      "ackermann_steer_-0.3_wing_0",
+      "ackermann_steer_0.3_wing_0",
+      "neutral_wing_0.25",
+      "neutral_wing_0.5",
+      "neutral_wing_0.75",
+      "ackermann_steer_0.3_quarter_wheel_turn"
+    ],
+    "exactScope": "All original visible authored mesh categories retained. Body/aero/glass/interior triangle-clipped slab bounds checked in all listed poses, mirrors isolated by disconnected components, rear wheels in rear slab. Front and rear wheel containment proven for continuous steer<=.3 and arbitrary wheel spin.",
+    "notProven": "Continuous aero articulation between sampled 0/.25/.5/.75/1, continuous sprung pitch/roll, full vehicle pitch/roll, cosmetics/add-ons, and temporal/swept contact are not formally covered by this audit. Margins are proposed engineering allowances, not a replacement for those lifecycle/pose contracts."
+  },
+  "implementation": "Store a few fixed numeric primitives. Use one enclosing broadphase, then these primitives only for nearby contacts; no GLB decode or mesh scan in per-frame collision code. Carry contact role body/wheel/mirror so mirror-only overlap can be treated independently instead of making every outlier a terminal strike. Keep geometric detection separate from response/severity rules.",
+  "sourceAsset": {
+    "path": "public/assets/roadster.glb",
+    "sha256": "d71068fb3da4771f1a5945f03d078cd97a4cac4f0884442cda9c7c732722100e"
+  }
+}

@@ -19,7 +19,7 @@ export class RunTelemetry {
     this.metrics={distanceM:0,groundDistanceM:0,airDistanceM:0,activeSeconds:0,roadEventsCompleted:0,precisionLandings:0,airborneOvertakes:0,maxCleanGroundSegmentM:0,rawScore:0,revives:0,goalReached:false,peakSpeedMps:0,airSeconds:0,landings:0};
     this.distanceHigh=0;this.elapsedHigh=0;this.eventHigh=0;this.overtakeHigh=0;this.reviveHigh=0;
     this.lastPhase='ready';this.lastAltitude=0;this.lastVerticalSpeed=0;this.lastRoll=0;this.cleanGround=0;this.groundSinceReward=0;
-    this.cycle=null;this.rewardedLandingDistances=[];this.finalized=false;this.lastTouchdownElapsed=-1;
+    this.cycle=null;this.flightHazard=false;this.rewardedLandingDistances=[];this.finalized=false;this.lastTouchdownElapsed=-1;
     // Some synchronous Game events fire after elapsed advances but before that substep travels.
     // Keep one bounded distance allowance for its final same-timestamp observation.
     this.sampleElapsed=-1;this.sampleTravelRemaining=0;this.sampleAirborne=false;
@@ -28,12 +28,12 @@ export class RunTelemetry {
    * Accumulate one simulation sample. Elapsed simulation time takes precedence over caller dt,
    * avoiding rewards during hidden-tab pauses, repeated observations and frame-time jitter.
    */
-  observe(state,dt=0) {
+  observe(state,dt=0,touchdownData=null) {
     if(this.finalized||!state||typeof state!=='object')return this.snapshot();
     const elapsed=finite(state.elapsed,this.elapsedHigh),distance=finite(state.distance,this.distanceHigh),advance=elapsed-this.elapsedHigh;
     const active=state.phase==='playing'||state.phase==='crashed'&&this.lastPhase==='playing';
     const revives=Math.floor(finite(state.revives));
-    if(revives>this.reviveHigh){this.metrics.revives+=revives-this.reviveHigh;this.reviveHigh=revives;this.cycle=null;this.cleanGround=0;this.lastAltitude=0;}
+    if(revives>this.reviveHigh){this.metrics.revives+=revives-this.reviveHigh;this.reviveHigh=revives;this.cycle=null;this.flightHazard=false;this.cleanGround=0;this.lastAltitude=0;}
     // A state reset belongs to a new telemetry instance; it must not earn old distance again.
     if(elapsed+1e-7<this.elapsedHigh||distance+1e-5<this.distanceHigh){this.lastPhase=state.phase;return this.snapshot();}
     const seconds=active&&advance>0&&advance<=MAX_SAMPLE_SECONDS?advance:0;
@@ -46,9 +46,9 @@ export class RunTelemetry {
     if(delta>0)this.sampleTravelRemaining=delta<=this.sampleTravelRemaining?this.sampleTravelRemaining-delta:0;
     if(seconds>0||travelled>0){this.metrics.activeSeconds+=seconds;this.metrics.distanceM+=travelled;if(seconds>0)this.metrics.peakSpeedMps=Math.max(this.metrics.peakSpeedMps,Math.min(MAX_SPEED_MPS,finite(state.speed)));
       // A transition sample belongs to the airborne cycle until its touchdown, not clean ground.
-      if(this.sampleAirborne){this.metrics.airDistanceM+=travelled;this.metrics.airSeconds+=seconds;this.cleanGround=0;if(seconds>0&&!this.cycle&&airborne)this.cycle={maximumAltitude:altitude,seconds:0,clean:true};if(this.cycle&&seconds>0){this.cycle.maximumAltitude=Math.max(this.cycle.maximumAltitude,altitude);this.cycle.seconds+=seconds;}}
+      if(this.sampleAirborne){this.metrics.airDistanceM+=travelled;this.metrics.airSeconds+=seconds;this.cleanGround=0;if(seconds>0&&!this.cycle&&airborne)this.cycle={maximumAltitude:altitude,seconds:0,clean:!this.flightHazard};if(this.cycle&&seconds>0){this.cycle.maximumAltitude=Math.max(this.cycle.maximumAltitude,altitude);this.cycle.seconds+=seconds;}}
       else{this.metrics.groundDistanceM+=travelled;this.groundSinceReward+=travelled;this.cleanGround+=travelled;this.metrics.maxCleanGroundSegmentM=Math.max(this.metrics.maxCleanGroundSegmentM,this.cleanGround);}
-      if(this.lastAltitude>0&&altitude===0)this.touchdown(state,null,elapsed);
+      if(this.lastAltitude>0&&altitude===0)this.touchdown(state,touchdownData,elapsed);
     }
     // Game can increment later counters after an earlier event observed the same substep.
     // Read each monotonic counter once without manufacturing another second or distance budget.
@@ -59,11 +59,12 @@ export class RunTelemetry {
     if(active){this.metrics.rawScore=Math.floor(finite(state.score));this.metrics.goalReached=this.metrics.goalReached||(state.goalReached===true&&this.metrics.distanceM>=RUN_REWARDS.goalMetres);}
     this.distanceHigh=Math.max(this.distanceHigh,distance);this.elapsedHigh=Math.max(this.elapsedHigh,elapsed);this.lastPhase=state.phase;this.lastAltitude=altitude;
     this.lastVerticalSpeed=Number.isFinite(state.verticalSpeed)?state.verticalSpeed:0;this.lastRoll=Number.isFinite(state.rollAngle)?state.rollAngle:0;
+    if(altitude===0)this.flightHazard=false;
     return this.snapshot();
   }
   /** Consume a real touchdown once, using pre-touchdown sample data when the game has reset velocity. */
   touchdown(state,payload,elapsed) {
-    if(this.lastTouchdownElapsed===elapsed||!this.cycle)return;
+    if(state.altitude!==0||elapsed<this.elapsedHigh||this.lastTouchdownElapsed===elapsed||!this.cycle)return;
     this.lastTouchdownElapsed=elapsed;const cycle=this.cycle;this.cycle=null;
     if(cycle.maximumAltitude<.8||cycle.seconds<.35)return;
     this.metrics.landings++;
@@ -80,13 +81,17 @@ export class RunTelemetry {
    * only mark hazards, touchdown and revive boundaries, so duplicated callbacks award nothing.
    */
   event(name,payload,state) {
-    if(this.finalized)return this.snapshot();
+    // Impact is optional visual/audio feedback; physical contacts have their own event.
+    if(this.finalized||name==='impact')return this.snapshot();
     // Collision happens synchronously before the next renderer observation.
-    if(name==='cone'||name==='crash'){this.cleanGround=0;if(this.cycle)this.cycle.clean=false;}
+    const hazard=name==='cone'||name==='crash'||name==='contact';
+    if(hazard){this.cleanGround=0;if(this.cycle)this.cycle.clean=false;}
     const touchdownData=name==='land'?{verticalSpeed:this.lastVerticalSpeed,rollAngle:this.lastRoll,...(payload&&typeof payload==='object'?payload:{})}:payload;
-    if(state)this.observe(state,0);
+    if(state)this.observe(state,0,name==='land'?touchdownData:null);
     if(name==='land'&&state)this.touchdown(state,touchdownData,finite(state.elapsed,this.elapsedHigh));
-    if(name==='cone'||name==='crash')this.cleanGround=0;
+    // A hazard can create the first airborne sample, or happen during low takeoff before
+    // the .08 m accounting threshold. Preserve that hazard for this flight, not the next.
+    if(hazard){this.cleanGround=0;if(this.cycle)this.cycle.clean=false;if(finite(state?.altitude,this.lastAltitude)>0)this.flightHazard=true;}
     return this.snapshot();
   }
   /** Return a bounded independent cumulative receipt; no ad or currency value can change raw score. */

@@ -64,6 +64,7 @@ function copyAnchor(target, source) {
     || !Number.isFinite(source.elapsed) || !Number.isFinite(source.speed)) return false;
   target.lane = source.lane; target.z = source.z; target.height = source.height;
   target.distance = source.distance; target.elapsed = source.elapsed; target.speed = source.speed;
+  target.impactYaw=Number.isFinite(source.impactYaw)?source.impactYaw:null;
   target.heading = Number.isFinite(source.heading) ? source.heading : 0;
   target.offsetX = Number.isFinite(source.offsetX) ? source.offsetX : 0;
   target.offsetZ = Number.isFinite(source.offsetZ) ? source.offsetZ : 0;
@@ -122,8 +123,8 @@ export function createDrivingBonusEffects(scene, { bend, reducedMotion = false }
 
   function place(slot, state) {
     const anchor = slot.anchor;
-    let lane = anchor.lane, z = anchor.z + anchor.speed * (state.elapsed - anchor.elapsed) - (state.distance - anchor.distance);
-    let heading = anchor.heading;
+    let lane = anchor.lane, z = anchor.z + anchor.speed * (state.elapsed - anchor.elapsed) - (state.distance+(state.sceneTravel||0) - anchor.distance);
+    let heading = anchor.heading, impactYaw=anchor.impactYaw;
     if (anchor.entityId !== null && anchor.entityKind !== null) {
       const traffic = state.traffic;
       if (traffic) for (let i = 0; i < traffic.length; i++) {
@@ -131,6 +132,7 @@ export function createDrivingBonusEffects(scene, { bend, reducedMotion = false }
         if (item.id === anchor.entityId && item.kind === anchor.entityKind) {
           const liveLane = trafficLateral(item);
           if (Number.isFinite(liveLane) && Number.isFinite(item.z)) {
+            impactYaw=item.impactActive&&Number.isFinite(item.impactYaw)?item.impactYaw:null;
             lane = liveLane; z = item.z; heading = Number.isFinite(item.heading) ? item.heading : 0;
           }
           break;
@@ -141,13 +143,13 @@ export function createDrivingBonusEffects(scene, { bend, reducedMotion = false }
       // Scalar equivalent of trafficPose: rotate around the measured rear axle,
       // then apply the captured nose/corner offset in the vehicle's local space.
       const rear = trafficDefinition(anchor.entityKind).rearAxleZ, axleZ = -z + rear;
-      const roadYaw = -Math.atan((bend(axleZ - 1, state.distance) - bend(axleZ + 1, state.distance)) / 2);
-      const c = Math.cos(heading), yaw = Math.atan2(Math.tan(roadYaw) * c - Math.sin(heading), c);
+      const roadYaw = -Math.atan((bend(axleZ - 1, state.distance+(state.sceneTravel||0)) - bend(axleZ + 1, state.distance+(state.sceneTravel||0))) / 2);
+      const c = Math.cos(heading), yaw = impactYaw??Math.atan2(Math.tan(roadYaw) * c - Math.sin(heading), c);
       const sy = Math.sin(yaw), cy = Math.cos(yaw);
-      slot.mesh.position.set((lane - 1) * 3.5 + bend(axleZ, state.distance) - sy * rear + cy * anchor.offsetX + sy * anchor.offsetZ,
+      slot.mesh.position.set((lane - 1) * 3.5 + bend(axleZ, state.distance+(state.sceneTravel||0)) - sy * rear + cy * anchor.offsetX + sy * anchor.offsetZ,
         anchor.height, axleZ - cy * rear - sy * anchor.offsetX + cy * anchor.offsetZ);
     } else {
-      slot.mesh.position.set((lane - 1) * 3.5 + bend(-z, state.distance) + anchor.offsetX,
+      slot.mesh.position.set((lane - 1) * 3.5 + bend(-z, state.distance+(state.sceneTravel||0)) + anchor.offsetX,
         anchor.height, -z + anchor.offsetZ);
     }
   }

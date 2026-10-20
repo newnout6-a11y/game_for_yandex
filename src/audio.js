@@ -53,10 +53,10 @@ export class GameAudio {
       const now = this.context.currentTime;
       const osc = this.context.createOscillator();
       const gain = this.context.createGain();
-      osc.type = kind === 'crash' ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(kind === 'crash' ? 110 : kind === 'goal' ? 660 : 520, now);
-      osc.frequency.exponentialRampToValueAtTime(kind === 'crash' ? 35 : 1040, now + .16);
-      gain.gain.setValueAtTime(.075, now);
+      osc.type = kind === 'crash' || kind === 'impact' ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(kind === 'crash' || kind === 'impact' ? 110 : kind === 'goal' ? 660 : 520, now);
+      osc.frequency.exponentialRampToValueAtTime(kind === 'crash' || kind === 'impact' ? 35 : 1040, now + .16);
+      gain.gain.setValueAtTime(kind==='impact'?.035:.075, now);
       gain.gain.exponentialRampToValueAtTime(.0001, now + .25);
       osc.connect(gain).connect(this.context.destination);
       osc.start(now); osc.stop(now + .26);

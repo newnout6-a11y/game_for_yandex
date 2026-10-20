@@ -60,7 +60,7 @@ test('hover clears traffic only above safety altitude and cannot collect ground 
   const g=make();g.state.speed=24;g.state.altitude=3.3;g.state.nitro=50;
   g.state.traffic=[{id:1,lane:1,z:2,speed:12}];g.state.pickups=[{id:2,lane:1,z:2}];
   g.update(.1,{flight:true,throttle:1});assert.equal(g.state.phase,'playing');assert.equal(g.state.charges,0);
-  const low=make();low.state.speed=24;low.state.altitude=1;low.state.traffic=[{id:1,lane:1,z:2,speed:12}];low.update(.1,{flight:true});assert.equal(low.state.phase,'crashed');
+  const low=make();low.state.speed=24;low.state.altitude=1;low.state.traffic=[{id:1,lane:1,z:2,speed:12}];low.update(.1,{flight:true});assert.equal(low.state.traffic[0].contacted,true,'low hover must physically contact the roof');
 });
 test('depleted thrusters descend and revive resets all flight state',()=>{
   const g=make();g.state.speed=24;g.state.altitude=3;g.state.nitro=.1;advance(g,.2,{flight:true});assert.equal(g.state.nitro,0);assert.equal(g.state.flying,false);assert.ok(g.state.altitude<3.1);
@@ -75,6 +75,6 @@ test('same-lane traffic slows behind a lead vehicle and spawns avoid overlap',()
 
 test('airborne clearance respects taller SUV and delivery-van roofs',()=>{
   for(const [kind,altitude,clear] of [['van',1.9,false],['van',2.8,true],['suv',1.7,false],['suv',2.2,true]]){
-    const g=make();g.state.speed=24;g.state.altitude=altitude;g.state.nitro=50;g.state.traffic=[{id:1,lane:1,z:2,speed:12,kind}];g.update(.01,{flight:true});assert.equal(g.state.phase,clear?'playing':'crashed',kind+' '+altitude);
+    const g=make();g.state.speed=24;g.state.altitude=altitude;g.state.nitro=50;g.state.traffic=[{id:1,lane:1,z:2,speed:12,kind}];g.update(.01,{flight:true});assert.equal(Boolean(g.state.traffic[0].contacted),!clear,kind+' '+altitude);if(clear)assert.equal(g.state.phase,'playing');
   }
 });

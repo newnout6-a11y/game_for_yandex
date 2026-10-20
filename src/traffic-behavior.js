@@ -419,6 +419,7 @@ export function updateTrafficManoeuvres(state, dt) {
   // Sorting makes competing claims deterministic, independent of array ordering.
   const cars = [...state.traffic].sort((a, b) => b.z - a.z || (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : a.lane - b.lane));
   for (const car of cars) {
+    if(car.impactActive)continue;
     const seed = seedFor(car);
     car.driver = trafficDriverProfile(car);
     car.driverIntent ??= 'cruise';
@@ -460,7 +461,7 @@ export function updateTrafficManoeuvres(state, dt) {
   }
   const occupancy = new Map(cars.map(car => [car, occupiedTrafficLanes(car)]));
   for (const car of cars) {
-    if (car.laneChange || !validLane(car.lane)) continue;
+    if (car.impactActive || car.laneChange || !validLane(car.lane)) continue;
     const seen = inspectLane(state, cars, occupancy, car, car.lane), driver = car.driver;
     const leader = seen.leader;
     const closing = leader ? speed(car) - speed(leader) : 0;

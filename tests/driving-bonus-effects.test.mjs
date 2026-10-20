@@ -255,3 +255,16 @@ test('production renderer preference assignment propagates before any render/pau
   near(mesh.scale.x, .88 + .2 * .1 / DRIVING_BONUS_LIFETIME);
   f.effects.dispose();
 });
+
+test('source feedback follows physical impact yaw and signed unearned scene correction',()=>{
+ const f=fixture(),s=state({sceneTravel:4}),car={id:14,kind:'sedan',x:.4,z:3,heading:-.4,impactActive:true,impactYaw:.4,speed:18};s.traffic=[car];
+ const a=anchor(s,{distance:s.distance+s.sceneTravel,entityId:14,entityKind:'sedan',lane:car.x,z:car.z,heading:car.heading,impactYaw:car.impactYaw,offsetX:1.1,offsetZ:-2.3});
+ f.effects.emit('pass',a,s);const p=trafficPose(car,s.distance+s.sceneTravel);vectorNear(visible(f)[0].position,new T.Vector3(p.x+Math.cos(p.yaw)*a.offsetX+Math.sin(p.yaw)*a.offsetZ,a.height,p.z-Math.sin(p.yaw)*a.offsetX+Math.cos(p.yaw)*a.offsetZ));
+ f.effects.clear();s.traffic=[];const fixed=anchor(s,{distance:s.distance+s.sceneTravel,z:6});f.effects.emit('charge',fixed,s);s.sceneTravel+=2;f.effects.update(s,0);near(visible(f)[0].position.z,-4);f.effects.dispose();
+});
+
+test('checkpoint gate follows crash scene travel from its own creation offset without mutating reward distance',()=>{
+ const renderer={hazards:new Map(),hazardPools:{cone:[],barrier:[]},gate:new T.Group(),scene:new T.Scene()};
+ const s=state({obstacles:[],sceneTravel:8,roadEvent:{type:'checkpoint',lane:1,remaining:150,sceneTravelStart:8}});RoadRenderer.prototype.renderEvents.call(renderer,s,false);near(renderer.gate.position.z,-150);
+ s.sceneTravel=12;RoadRenderer.prototype.renderEvents.call(renderer,s,false);near(renderer.gate.position.z,-146);assert.equal(s.distance,100);assert.equal(s.roadEvent.remaining,150);
+});

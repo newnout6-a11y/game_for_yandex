@@ -46,7 +46,7 @@ for(const [label,stepsBeforeCrash] of [['active horn',12],['cooldown tail',84]])
   assert.equal(game.revive(),false,'an ineligible revive must not clear cooldown');
   assert.equal(s.hornCooldown,cooldown);
 
-  s.obstacles=[{kind:'barrier',x:s.x,z:0}];game.update(dt,{horn:true});
+  game.update(dt,{horn:true});game.crash(); // Lifecycle fixture, not a zero-speed lethal-overlap rule.
   assert.equal(s.phase,'crashed');assert.equal(s.hornHeld,true);
   const frozen={time:s.hornTime,cooldown:s.hornCooldown};
   game.update(2,{horn:false});

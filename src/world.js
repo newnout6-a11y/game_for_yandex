@@ -253,19 +253,20 @@ export class RoadRenderer {
     for(const obstacle of menu?[]:(state.obstacles||[])){
       active.add(obstacle.id);let mesh=this.hazards.get(obstacle.id);
       if(!mesh){mesh=this.hazardPools[obstacle.kind].pop()||(obstacle.kind==='cone'?this.coneTemplate:this.barrierTemplate).clone(true);mesh.userData.kind=obstacle.kind;this.hazards.set(obstacle.id,mesh);this.scene.add(mesh);}
-      mesh.position.set((obstacle.x-1)*3.5+roadBend(-obstacle.z,state.distance),.02,-obstacle.z);
-      mesh.rotation.y=-Math.atan((roadBend(-obstacle.z-1,state.distance)-roadBend(-obstacle.z+1,state.distance))/2);
+      mesh.position.set((obstacle.x-1)*3.5+roadBend(-obstacle.z,state.distance+(state.sceneTravel||0)),.02,-obstacle.z);
+      mesh.rotation.y=-Math.atan((roadBend(-obstacle.z-1,state.distance+(state.sceneTravel||0))-roadBend(-obstacle.z+1,state.distance+(state.sceneTravel||0)))/2);
     }
     for(const[id,mesh]of this.hazards)if(!active.has(id)){this.scene.remove(mesh);this.hazardPools[mesh.userData.kind].push(mesh);this.hazards.delete(id);}
     const event=state.roadEvent;this.gate.visible=!menu&&event?.type==='checkpoint';
-    if(this.gate.visible)this.gate.position.set((event.lane-1)*3.5+roadBend(-event.remaining,state.distance),.03,-event.remaining);
+    if(this.gate.visible){const remaining=event.remaining-((state.sceneTravel||0)-(event.sceneTravelStart||0));this.gate.position.set((event.lane-1)*3.5+roadBend(-remaining,state.distance+(state.sceneTravel||0)),.03,-remaining);}
   }
   /**
    * Translate a gameplay effect notification into sparks and optional impact shake.
    * @param {string} kind - Supported keys are crash and cone; accepted bonuses use source-anchored bonus().
    * @returns {void} Updates visual effect state without changing gameplay outcomes.
    */
-  effect(kind) {
+  effect(kind,contact) {
+    if(kind==='impact'){this.impact=Math.max(this.impact,Math.min(.65,(contact?.deltaSpeed||0)/12));this.spawnParticles(8,'#e8b96a',contact);}
     if(kind==='crash') {this.impact=1; this.spawnParticles(34,'#e8b96a');}
     if(kind==='cone') this.spawnParticles(8,'#b7a890');
   }
@@ -282,13 +283,13 @@ export class RoadRenderer {
    * @param {T.ColorRepresentation} color - Spark color and cache key for a reused basic material.
    * @returns {void} Appends mutable positions, metre-per-second velocities and second-based lifetimes.
    */
-  spawnParticles(count,color) {
+  spawnParticles(count,color,contact) {
     if(!this.loaded)return;
     if(!this.sparkMaterials.has(color))this.sparkMaterials.set(color,new T.MeshBasicMaterial({color}));
     const material=this.sparkMaterials.get(color);
     for(let i=0;i<count;i++){
       const mesh=new T.Mesh(this.sparkGeometry,material);mesh.scale.setScalar(.6+Math.random()*.7);
-      mesh.position.copy(this.player.position);mesh.position.y=.6;this.scene.add(mesh);
+      mesh.position.copy(this.player.position);if(contact&&Number.isFinite(contact.x)&&Number.isFinite(contact.z))mesh.position.set(contact.x,.6,contact.z);mesh.position.y=.6;this.scene.add(mesh);
       this.particles.push({mesh,v:new T.Vector3((Math.random()-.5)*7,Math.random()*4,Math.random()*7-2),life:.6+Math.random()*.5});
     }
   }
@@ -402,7 +403,7 @@ export class RoadRenderer {
     }
     this.needsRender=false;this.wasMenu=menu;this.time+=paused?0:dt;
     if(menu&&!this.reducedMotion)this.menuDistance+=dt*4;
-    const distance=menu?this.menuDistance:state.distance, phone=this.camera.aspect<.8;
+    const distance=menu?this.menuDistance:state.distance+(state.sceneTravel||0), phone=this.camera.aspect<.8;
     this.distance=distance;
     for(const strip of this.strips){
       const p=strip.geometry.attributes.position,b=strip.userData.base;

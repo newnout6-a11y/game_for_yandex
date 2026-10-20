@@ -48,6 +48,8 @@ const renderer=new RoadRenderer(byId('scene'),percent=>{loading={progress:Math.r
 const glance=new CockpitGlanceControls(direction=>renderer.setLookDirection(direction));
 const game=new Game({onEvent:(event,value,feedback)=>{
   if(event==='boost-empty'){input.releaseEmptyTouchBoost(0);return;}
+  if(event==='contact'){telemetry?.event(event,undefined,game.state);return;}
+  if(event==='impact'){audio.tone('impact');renderer.effect('impact',value);return;}
   // Ordinary passes have no new reward, telemetry observation or audio cue.
   if(event==='pass'){renderer.bonus(event,feedback,game.state);return;}
   telemetry?.event(event,value,game.state);audio.tone(event);renderer.effect(event);
