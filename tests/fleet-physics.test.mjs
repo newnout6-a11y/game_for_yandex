@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
 import { TRAFFIC_CATALOG, TRAFFIC_CATEGORIES, TRAFFIC_KINDS, chooseTrafficKind, trafficDefinition, trafficCenterGap } from '../src/traffic-catalog.js';
-import { trafficHitsPlayer, playerBottom, playerTrafficDepth, trafficCollisionParts, trailerYaw } from '../src/traffic-physics.js';
+import { playerBottom, playerTrafficDepth, trafficCollisionParts, trailerYaw } from '../src/traffic-physics.js';
+import { captureContactFrame, resolveVehicleContacts } from '../src/vehicle-contacts.js';
 
 /**
  * Start an isolated fleet-physics game and remove every initial hazard.
@@ -17,6 +18,12 @@ const make = () => { const g = new Game(); g.start(); Object.assign(g.state, { t
  * @param {number} seconds - Requested simulated duration, not wall-clock time.
  */
 const advance = (g, seconds) => { for (let i = 0; i < seconds * 120; i++) g.update(1 / 120); };
+/** Resolve a stationary contact proposal through the same compound solver as Game. */
+function contact(car, player = {}) {
+  const s = make().state;
+  Object.assign(s, player, { traffic: [{ speed: 0, ...car }] });
+  return resolveVehicleContacts(s, captureContactFrame(s), 1 / 120, 0);
+}
 
 test('pure fleet catalog separates eight immutable vehicle identities and four activity-neutral categories', () => {
   assert.equal(TRAFFIC_KINDS.length, 8); assert.equal(Object.keys(TRAFFIC_CATEGORIES).length, 4);
@@ -34,23 +41,33 @@ test('pure fleet catalog separates eight immutable vehicle identities and four a
 test('maximum hover clears low passenger vehicles but not tall freight and fire apparatus', () => {
   const state = { x: 1, heading: 0, altitude: 3.3, rollAngle: 0, distance: 0 };
   for (const kind of TRAFFIC_KINDS) {
-    const collision = trafficHitsPlayer({ lane: 1, z: 0, kind }, state);
-    assert.equal(collision, trafficDefinition(kind).height + .08 > 3.3, kind);
+    const result = contact({ lane: 1, z: 0, kind }, state);
+    assert.equal(result.contacts.some(c => c.kind === 'traffic'), trafficDefinition(kind).height > 3.3, kind);
+    assert.equal(result.fatal, false, 'parked overlap has no closing energy');
   }
   assert.ok(playerBottom(3.3, Math.PI / 4) < 2.75, 'rolled width lowers the swept underbody');
-  assert.equal(trafficHitsPlayer({ lane: 1, z: 0, kind: 'towtruck' }, { ...state, rollAngle: Math.PI / 4 }), true);
+  assert.ok(contact({ lane: 1, z: 0, kind: 'towtruck' }, { ...state, rollAngle: Math.PI / 4 }).contacts.some(c => c.kind === 'traffic'));
 });
 
 test('physical width, length, heading and articulated trailer determine collision instead of lane constants', () => {
   const state = { x: 1.66, heading: 0, altitude: 0, rollAngle: 0, distance: 0 };
-  assert.equal(trafficHitsPlayer({ lane: 1, z: 0, kind: 'hatch' }, state), false);
-  assert.equal(trafficHitsPlayer({ lane: 1, z: 0, kind: 'semi' }, state), true, 'wide trailer flank');
-  assert.equal(trafficHitsPlayer({ lane: 1, z: 8, kind: 'semi' }, { ...state, x: 1 }), true, 'long trailer rear still overlaps');
-  assert.equal(trafficHitsPlayer({ lane: 1, z: 8, kind: 'sedan' }, { ...state, x: 1 }), false);
+  assert.equal(contact({ lane: 1, z: 0, kind: 'hatch' }, state).contacts.length, 0);
+  assert.ok(contact({ lane: 1, z: 0, kind: 'semi' }, state).contacts.some(c => c.kind === 'traffic'), 'wide trailer flank');
+  assert.ok(contact({ lane: 1, z: 8, kind: 'semi' }, { ...state, x: 1 }).contacts.some(c => c.kind === 'traffic'), 'long trailer rear still overlaps');
+  assert.equal(contact({ lane: 1, z: 8, kind: 'sedan' }, { ...state, x: 1 }).contacts.length, 0);
+  assert.ok(contact({ lane: 1, z: 0, kind: 'hatch' }, { ...state, heading: Math.PI / 2 }).contacts.some(c => c.kind === 'traffic'), 'heading turns the long player body across the neighboring flank');
+  for (const direction of [-1, 1]) {
+    const car = { lane: 1 + direction, z: 0, kind: 'semi', trailerAngle: 0 };
+    const player = { ...state, x: 1, distance: -385 };
+    assert.equal(contact(car, player).contacts.length, 0, 'straight neighboring trailer clears');
+    assert.ok(contact({ ...car, trailerAngle: -direction * .5 }, player).contacts.some(c => c.kind === 'traffic'), 'only the articulated trailer swings into the player');
+  }
   for (const distance of [0, 2000, 100000]) {
     const parts = trafficCollisionParts({ kind: 'semi', lane: 2, z: 180 }, distance);
     assert.equal(parts.length, 2); assert.ok(parts.every(p => Number.isFinite(p.x + p.z + p.halfLength)));
     assert.ok(Math.abs(trailerYaw({ kind: 'semi', z: 180 }, distance)) <= .12);
+    assert.ok(contact({ kind: 'semi', lane: 1, z: 8 }, { ...state, x: 1, distance }).contacts.some(c => c.kind === 'traffic'), 'curved-road trailer rear remains a live contact');
+    assert.equal(contact({ kind: 'sedan', lane: 1, z: 8 }, { ...state, x: 1, distance }).contacts.length, 0, 'the same road frame must not create a short-body contact');
   }
 });
 

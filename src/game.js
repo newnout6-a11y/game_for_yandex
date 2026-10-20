@@ -234,10 +234,19 @@ export class Game {
       s.speed=s.forwardVelocity=Math.max(0,s.speed-18*step);s.lateralVelocity*=Math.exp(-4*step);s.yawRate*=Math.exp(-4*step);
       s.x+=s.lateralVelocity*step/LANE_WIDTH;s.heading+=s.yawRate*step;
       const travel=s.speed*step;
-      for(const car of s.traffic){if(car.impactActive)advanceTrafficImpact(car,step);car.z+=(car.speed||0)*step-travel;}
+      for(const car of s.traffic){
+        const beforeX=trafficLateral(car),beforeZ=car.z;
+        if(car.impactActive)advanceTrafficImpact(car,step);
+        car.z+=(car.speed||0)*step-travel;
+        // Coast is still physical movement. Keep wheel clocks/hinge poses in
+        // sync, without running planners, rewards or gameplay time again.
+        car.travelDistance=(car.travelDistance||0)+Math.hypot(Math.max(0,car.z-beforeZ+travel),(trafficLateral(car)-beforeX)*LANE_WIDTH);
+        if(trafficDefinition(car.kind).articulated)updateTrailerKinematics(car,previous.distance+travel,step);
+      }
       for(const o of s.obstacles)o.z-=travel;
       const result=resolveVehicleContacts(s,previous,step,travel);
       s.sceneTravel+=result.physicalTravel;for(const p of s.pickups)p.z-=result.physicalTravel;
+      s.rearDistance+=(result.wheelTravel||0);s.wheelDistance=s.rearDistance;
       updatePlayerDynamics(s,step);s.impactRemaining=Math.max(0,life-step);remaining-=step;
     }
   }

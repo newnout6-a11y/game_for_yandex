@@ -217,8 +217,10 @@ function translationSweep(a0, a1, b0, b1, out, work) {
  * microscopic grazing interval prevented proof. In that case advance at most
  * out.earliestPossibleTime, then retry a shorter interval, never invent impact.
  * uncertainStart/uncertainEnd delimit the first unresolved interval (remaining
- * interval to 1 on a work limit). Hits expose earliestPossibleTime/timeError
- * too, so a caller can distinguish confirmed contact time from its lower bound.
+ * interval to 1 on a work limit). A tolerance-sized interval with no contact
+ * sample is refined further, never skipped for a later hit. Hits expose
+ * earliestPossibleTime/timeError too, to distinguish confirmed contact time
+ * from its lower bound.
  *
  * options: maxIterations (default 2048, hard cap 65536 SAT evaluations),
  * maxDepth (default 32, hard cap 48), timeTolerance (default 1e-8 fraction).
@@ -254,7 +256,7 @@ export function sweepOBB(a0, a1, b0, b1, out = {}, options = DEFAULT_OPTIONS) {
       Math.hypot(b1.halfWidth, b1.halfLength)) * Math.abs(turnB);
   const extentChangeBound = Math.hypot(widthChangeA, lengthChangeA) + Math.hypot(widthChangeB, lengthChangeB);
   const stack = work.stack;
-  let count = 1, unresolved = false;
+  let count = 1;
   stack[0] = 0; stack[1] = 1; stack[2] = 0;
   while (count > 0) {
     const index = --count * 3;
@@ -294,13 +296,16 @@ export function sweepOBB(a0, a1, b0, b1, out = {}, options = DEFAULT_OPTIONS) {
         out.earliestPossibleTime = Math.min(out.earliestPossibleTime, low);
         return hit(work.a, work.b, work.sat, firstHit, out);
       }
-      if (!unresolved) {
-        unresolved = true;
+      // Tolerance bounds a confirmed hit, not permission to skip an unproven
+      // earlier interval. Refine this interval first; fail closed only when a
+      // hard limit prevents proof. Later intervals remain on the DFS stack.
+      if (depth >= maxDepth) {
+        out.status = 'unresolved';
         out.earliestPossibleTime = low;
         out.uncertainStart = low;
         out.uncertainEnd = high;
+        return null;
       }
-      continue;
     }
     // Push right, then left; DFS therefore proves/visits earlier times first.
     let next = count++ * 3;
@@ -308,7 +313,6 @@ export function sweepOBB(a0, a1, b0, b1, out = {}, options = DEFAULT_OPTIONS) {
     next = count++ * 3;
     stack[next] = low; stack[next + 1] = middle; stack[next + 2] = depth + 1;
   }
-  if (unresolved) out.status = 'unresolved';
   return null;
 }
 

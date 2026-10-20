@@ -2,7 +2,7 @@ import { sweepOBB, resolveContactImpulse } from './contact-physics.js';
 import { trafficDefinition } from './traffic-catalog.js';
 import { ROCKET_CONTACT_SHAPE } from './player-contact-shape.js';
 import { playerBoundsFor } from './player-spec.js';
-import { trafficPose, trafficCollisionParts, trafficHitch, roadYaw, roadCurve, LANE_WIDTH } from './traffic-physics.js';
+import { trafficPose, trafficCollisionParts, trafficHitch, trailerYaw, roadYaw, roadCurve, LANE_WIDTH } from './traffic-physics.js';
 
 const finite=(v,f=0)=>Number.isFinite(v)?v:f;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -55,7 +55,36 @@ function clipManeuverClock(car,old,seconds){
   car.laneChange=next;car.lane=old.lane;car.signal=Math.sign(next.to-next.from);car.signalTime=finite(old.signalTime)+seconds;
   if(old.driverIntent!==undefined)car.driverIntent=old.driverIntent;
 }
-function advance(actors,seconds){for(const a of actors){if(a.kind==='player')a.integratedTravel-=a.body.vz*seconds;else if(a.kind==='traffic')a.integratedTravel=(a.integratedTravel||0)+Math.hypot(a.body.vx,a.body.vz)*seconds;a.body.x+=a.body.vx*seconds;a.body.z+=a.body.vz*seconds;a.body.yaw+=a.body.yawRate*seconds;}}
+/** Forward tire rolling, excluding lateral slip and positional depenetration. */
+function rollingTravel(body,seconds){
+  const turn=body.yawRate*seconds,middle=body.yaw+turn*.5;
+  // Integral of body-forward velocity through the constant-yaw-rate segment.
+  const sinc=Math.abs(turn)<1e-8?1:Math.sin(turn*.5)/(turn*.5);
+  return Math.max(0,(-body.vx*Math.sin(middle)-body.vz*Math.cos(middle))*seconds*sinc);
+}
+function advance(actors,seconds){for(const a of actors){if(a.kind==='player'){a.integratedTravel-=a.body.vz*seconds;a.integratedWheelTravel+=rollingTravel(a.body,seconds);}else if(a.kind==='traffic')a.integratedTravel=(a.integratedTravel||0)+Math.hypot(a.body.vx,a.body.vz)*seconds;a.body.x+=a.body.vx*seconds;a.body.z+=a.body.vz*seconds;a.body.yaw+=a.body.yawRate*seconds;}}
+/** Reconcile wheel motion from the resolved axle, not the tractor's path.
+ * Both cached points must first move into the final road frame. The retained
+ * hinge pose is unchanged here; distance and curvature describe that same pose.
+ */
+function reconcileTrailerWheelPath(car,old,previousDistance){
+  const next=car.trailerState;let prior=old.trailerState;
+  if(!prior){
+    const hitch=trafficHitch(old,previousDistance),yaw=hitch.yaw+trailerYaw(old,previousDistance),length=trafficDefinition(old.kind).trailerAxleDistance;
+    prior={distance:previousDistance,hitchX:hitch.x,hitchZ:hitch.z,axleX:hitch.x+Math.sin(yaw)*length,axleZ:hitch.z+Math.cos(yaw)*length};
+  }
+  const delta=next.distance-prior.distance;
+  if(!Number.isFinite(delta)||Math.abs(delta)>10){
+    car.trailerTravelDistance=finite(old.trailerTravelDistance,finite(old.travelDistance));
+    car.trailerCurvature=0;return;
+  }
+  const transport=(x,z)=>({x:x+roadCurve(z+delta,next.distance)-roadCurve(z,prior.distance),z:z+delta});
+  const hitch=transport(prior.hitchX,prior.hitchZ),axle=transport(prior.axleX,prior.axleZ);
+  const oldYaw=Math.atan2(axle.x-hitch.x,axle.z-hitch.z);
+  const travel=Math.hypot(next.axleX-axle.x,next.axleZ-axle.z);
+  car.trailerTravelDistance=finite(old.trailerTravelDistance,finite(old.travelDistance))+travel;
+  car.trailerCurvature=travel>1e-8?-Math.atan2(Math.sin(next.yaw-oldYaw),Math.cos(next.yaw-oldYaw))/travel:0;
+}
 function verticalInterval(before,after,part,height,from,to,dt){
   // Each rolling interval spans <=.01rad. The nonlinear projected-solid curve
   // differs from its chord by <0.03mm at this asset scale; no broad-phase union
@@ -78,9 +107,9 @@ function verticalInterval(before,after,part,height,from,to,dt){
  */
 export function resolveVehicleContacts(s,previous,dt,travelled){
   s.impactCooldown=Math.max(0,finite(s.impactCooldown)-dt);
-  if(!(dt>0)||s.invincible>0)return{travelled,physicalTravel:travelled,sceneCorrection:0,contacts:[],fatal:false};
+  if(!(dt>0)||s.invincible>0)return{travelled,physicalTravel:travelled,wheelTravel:Math.max(0,travelled),sceneCorrection:0,contacts:[],fatal:false};
   const b=playerBoundsFor(s),start={x:(previous.x-1)*LANE_WIDTH,z:0,yaw:-previous.heading};
-  const player={kind:'player',integratedTravel:0,previousRoll:previous.rollAngle,endRoll:previous.rollAngle+rollDelta(previous.rollAngle,finite(s.rollAngle)),body:body(start.x,0,start.yaw,b.width,b.length,MASSES[s.vehicleId]||1.3,((s.x-previous.x)*LANE_WIDTH)/dt,-travelled/dt,(-finite(s.heading)-start.yaw)/dt),parts:playerContactParts(s).map((part,i)=>({...part,start:playerContactParts(previous)[i]})),changed:false};
+  const player={kind:'player',integratedTravel:0,integratedWheelTravel:0,previousRoll:previous.rollAngle,endRoll:previous.rollAngle+rollDelta(previous.rollAngle,finite(s.rollAngle)),body:body(start.x,0,start.yaw,b.width,b.length,MASSES[s.vehicleId]||1.3,((s.x-previous.x)*LANE_WIDTH)/dt,-travelled/dt,(-finite(s.heading)-start.yaw)/dt),parts:playerContactParts(s).map((part,i)=>({...part,start:playerContactParts(previous)[i]})),changed:false};
   const actors=[player];
   for(const car of s.traffic){const old=previous.traffic.get(car);if(!old)continue;const spec=trafficDefinition(car.kind);
     if(Math.min(Math.abs(old.z),Math.abs(car.z))>spec.length/2+b.length/2+Math.abs(travelled)+3)continue;
@@ -170,10 +199,10 @@ export function resolveVehicleContacts(s,previous,dt,travelled){
       car.trailerAngle=finite(old.trailerAngle)+(finite(car.trailerAngle)-finite(old.trailerAngle))*fraction;
       const distance=previous.distance+physical,hitch=trafficHitch(car,distance),yaw=hitch.yaw+car.trailerAngle;
       car.trailerState={distance,hitchX:hitch.x,hitchZ:hitch.z,axleX:hitch.x+Math.sin(yaw)*spec.trailerAxleDistance,axleZ:hitch.z+Math.cos(yaw)*spec.trailerAxleDistance,yaw};
-      car.trailerTravelDistance=finite(old.trailerTravelDistance)+finite(actor.integratedTravel);
+      reconcileTrailerWheelPath(car,old,previous.distance);
     }
   }
-  return{travelled:actual,physicalTravel:physical,sceneCorrection:physical-actual,contacts,fatal};
+  return{travelled:actual,physicalTravel:physical,wheelTravel:player.integratedWheelTravel,sceneCorrection:physical-actual,contacts,fatal};
 }
 /** Advance hit traffic momentum, without restoring a cancelled lane-change path. */
 export function advanceTrafficImpact(car,dt){

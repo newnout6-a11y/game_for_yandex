@@ -175,6 +175,132 @@ test('rotational query has a strict bounded work budget and reports uncertainty,
   assert.ok(out.uncertainEnd <= 1);
 });
 
+test('an earlier unproven rotational leaf takes precedence over a later confirmed hit', () => {
+  const a0 = box(0,0,-Math.PI/2,.18,3), a1 = box(0,0,Math.PI/2,.18,3);
+  const b = box(0,2.8,0,.2,.2), out = {};
+  const low = 57/128, high = 58/128, laterHit = 58.5/128;
+  // The depth-7 leaf has three clear samples, but cannot be proved clear by
+  // its motion bound. The next leaf's midpoint really does overlap.
+  for (const time of [low, (low+high)/2, high]) {
+    assert.ok(oracleGap(lerpBox(a0,a1,time),b) > 0);
+  }
+  assert.ok(oracleGap(lerpBox(a0,a1,laterHit),b) < 0);
+  for (const options of [{maxDepth:7}, {maxDepth:7,timeTolerance:.01}]) {
+    assert.equal(sweepOBB(a0,a1,b,b,out,options),null);
+    assert.equal(out.status,'unresolved');
+    assert.equal(out.earliestPossibleTime,low);
+    assert.equal(out.uncertainStart,low);
+    assert.equal(out.uncertainEnd,high);
+    assert.equal(out.iterations,15);
+    assert.equal(out.initialOverlap,false);
+  }
+  // A sufficiently refined query still returns actual contact, including
+  // when retrying from the earliest unproven time with the reused output.
+  const full = sweepOBB(a0,a1,b,b,{});
+  assert.ok(full);
+  assert.ok(sweepOBB(lerpBox(a0,a1,low),a1,b,b,out));
+  near(low + (1-low)*out.time,full.time,1e-8);
+  assert.equal(out.uncertainStart,1);
+  assert.equal(out.uncertainEnd,1);
+  assert.ok(oracleGap(lerpBox(a0,a1,low+(1-low)*out.time),b) <= 1e-14);
+});
+
+test('tolerance-sized uncertainty is refined before any later contact is returned', () => {
+  const a0 = box(0,0,-Math.PI/2,.18,3), a1 = box(0,0,Math.PI/2,.18,3);
+  const b = box(0,2.8,0,.2,.2), out = {};
+  // The old traversal used 19 evaluations to return a hit after skipping the
+  // unproven [57/128,58/128] leaf. The same budget must now stop at uncertainty.
+  assert.equal(sweepOBB(a0,a1,b,b,out,{timeTolerance:.01,maxIterations:19}),null);
+  assert.equal(out.status,'unresolved');
+  assert.equal(out.earliestPossibleTime,58/128);
+  assert.ok(out.iterations <= 19);
+  // Two more evaluations suffice only because the earlier leaf has now been
+  // refined and proved clear, not because its uncertainty was discarded.
+  assert.equal(sweepOBB(a0,a1,b,b,out,{timeTolerance:.01,maxIterations:21}),out);
+  assert.equal(out.status,'hit');
+  assert.equal(out.earliestPossibleTime,58/128);
+  assert.equal(out.time,58.5/128);
+  assert.equal(out.uncertainStart,1);
+  assert.equal(out.uncertainEnd,1);
+  assert.ok(out.timeError <= .01);
+  assert.ok(oracleGap(lerpBox(a0,a1,out.time),b) < 0);
+  assert.equal(out.iterations,21);
+});
+
+test('evaluation budgets preserve the first unproven leaf instead of enabling a later hit', () => {
+  const a0 = box(0,0,-Math.PI/2,.18,3), a1 = box(0,0,Math.PI/2,.18,3);
+  const b = box(0,2.8,0,.2,.2), out = {};
+  // With 14 evaluations the next leaf cannot be sampled within the budget.
+  assert.equal(sweepOBB(a0,a1,b,b,out,{maxDepth:7,maxIterations:14}),null);
+  assert.equal(out.status,'unresolved');
+  assert.equal(out.earliestPossibleTime,57/128);
+  assert.equal(out.uncertainStart,57/128);
+  assert.equal(out.uncertainEnd,1);
+  assert.equal(out.iterations,12);
+  // Fifteen evaluations finish that leaf. Nineteen previously let a later
+  // hit overwrite the uncertainty; extra budget must not change precedence.
+  for (const maxIterations of [15, 18, 19, 2048]) {
+    assert.equal(sweepOBB(a0,a1,b,b,out,{maxDepth:7,maxIterations}),null);
+    assert.equal(out.status,'unresolved');
+    assert.equal(out.earliestPossibleTime,57/128);
+    assert.equal(out.uncertainStart,57/128);
+    assert.equal(out.uncertainEnd,58/128);
+    assert.equal(out.iterations,15);
+    assert.ok(out.iterations <= maxIterations);
+  }
+  // The exact translation path is independent of adaptive work limits.
+  assert.equal(sweepOBB(box(0,0),box(0,100),box(0,50),box(0,50),out,
+    {maxDepth:7,maxIterations:8,timeTolerance:.01}),out);
+  assert.equal(out.status,'hit');
+  near(out.time,.46);
+  assert.equal(out.timeError,0);
+  assert.equal(out.uncertainStart,1);
+});
+
+test('captured adaptive sweeps prove earlier intervals or fail closed at a hard limit', () => {
+  const cases = [
+    {
+      a0: box(-.31791209802031517,0,-.08141065970994532,.9603999932762235,1.1830162485130131),
+      a1: box(1.4616641085594893,-2.9966698279604316,-.19954384542070325,.9603999932762235,1.1830162485130131),
+      b0: box(1.6545712146908045,-4.440484508872032,-.26443145452067257,1.1109636966139078,3.00985241192393),
+      b1: box(.046786678954958916,-5.050558325834572,.28279624124988906,1.1109636966139078,3.00985241192393),
+      options: {},
+      low: .15424718707799911, high: .1542471945285797, laterHit: .15424719825387,
+      expectedStatus: 'hit',
+    },
+    {
+      a0: box(.10597343603149056,0,-.04712686873972416,1.1194152884418145,1.8521176921203732),
+      a1: box(2.1268112659454346,-2.9895093105733395,.1684303829912096,1.1194152884418145,1.8521176921203732),
+      b0: box(2.0853291116654873,-5.507791833020747,.1631956815719604,.6167667565867305,3.1538571468554437),
+      b1: box(3.7860937463119626,-7.310035017319024,-.4044259778223932,.6167667565867305,3.1538571468554437),
+      options: {maxDepth:4},
+      low: .3125, high: .375, laterHit: .4375,
+      expectedStatus: 'unresolved',
+    },
+  ];
+  for (const {a0,a1,b0,b1,options,low,high,laterHit,expectedStatus} of cases) {
+    const out = {};
+    assert.ok(oracleGap(lerpBox(a0,a1,laterHit),lerpBox(b0,b1,laterHit)) < 0);
+    const result = sweepOBB(a0,a1,b0,b1,out,options);
+    assert.equal(out.status,expectedStatus);
+    if (expectedStatus === 'hit') {
+      assert.equal(result,out);
+      // Default precision can prove the previously skipped interval clear.
+      assert.equal(out.earliestPossibleTime,high);
+      assert.equal(out.time,laterHit);
+      assert.equal(out.uncertainStart,1);
+      assert.equal(out.uncertainEnd,1);
+      assert.ok(out.timeError <= 1e-8);
+    } else {
+      assert.equal(result,null);
+      assert.equal(out.earliestPossibleTime,low);
+      assert.equal(out.uncertainStart,low);
+      assert.equal(out.uncertainEnd,high);
+    }
+    assert.ok(out.iterations <= 2048);
+  }
+});
+
 test('linearly expanding extents hit at actual first contact, not at an inflated starting box', () => {
   const a0 = box(0,0,0,1,1), a1 = {...a0,halfWidth:3}, b = box(3,0,0,1,1), out = {};
   assert.ok(sweepOBB(a0,a1,b,b,out));

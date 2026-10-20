@@ -1,7 +1,6 @@
-import { sweepOBB } from './contact-physics.js';
 import { trafficLateral } from './traffic-behavior.js';
 import { trafficDefinition } from './traffic-catalog.js';
-import { PLAYER_BOUNDS, playerBoundsFor } from './player-spec.js';
+import { PLAYER_BOUNDS } from './player-spec.js';
 
 export { PLAYER_BOUNDS };
 export const LANE_WIDTH = 3.5;
@@ -265,32 +264,4 @@ export function trafficCollisionParts(car, distance) {
     rectangle(x + Math.sin(yaw) * spec.hitchZ + Math.sin(ty) * local,
       z + Math.cos(yaw) * spec.hitchZ + Math.cos(ty) * local, spec.width, trailerLength, ty),
   ];
-}
-/**
- * Checks vertical clearance and temporally coherent oriented translation.
- * No union of different-time side/longitudinal overlaps is treated as contact.
- * The Game resolver additionally supplies changing heading and contact response;
- * this compatibility query keeps its historical endpoint-only signature.
- * @param {Object} car - Traffic entity with current z, x and optional previousLateral.
- * @param {Object} state - Player lane-coordinate x, heading/roll in radians,
- * altitude in metres and accumulated distance in metres.
- * @param {number} [previousX=state.x] - Player's prior continuous lane coordinate.
- * @param {number} [previousZ=car.z] - Traffic's prior metres-ahead separation.
- * @returns {boolean} Whether any traffic part overlaps the player's swept body.
- */
-export function trafficHitsPlayer(car, state, previousX = state.x, previousZ = car.z) {
-  const spec=trafficDefinition(car.kind),bounds=playerBoundsFor(state);
-  if(playerBottom(state.altitude,state.rollAngle,bounds)>=spec.height+.08)return false;
-  const roll=state.rollAngle||0,width=Math.abs(Math.cos(roll))*bounds.width+Math.abs(Math.sin(roll))*bounds.height;
-  const offset=-(bounds.height/2-.58)*Math.sin(roll),yaw=-(state.heading||0);
-  const current=trafficLateral(car),prior=Number.isFinite(car.previousLateral)?car.previousLateral:current;
-  const player0={x:(previousX-1)*LANE_WIDTH+Math.cos(yaw)*offset,z:-Math.sin(yaw)*offset,yaw,halfWidth:width/2,halfLength:bounds.length/2};
-  const player1={...player0,x:(state.x-1)*LANE_WIDTH+Math.cos(yaw)*offset};
-  const oldParts=trafficCollisionParts({...car,x:prior,z:previousZ},state.distance),parts=trafficCollisionParts(car,state.distance);
-  for(let i=0;i<parts.length;i++){
-    const a=oldParts[i],b=parts[i];
-    const box=p=>({x:p.x,z:p.z,yaw:Math.atan2(p.forward[0],p.forward[1]),halfWidth:p.halfWidth,halfLength:p.halfLength});
-    if(sweepOBB(player0,player1,box(a),box(b),{}))return true;
-  }
-  return false;
 }

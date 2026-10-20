@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game} from '../src/game.js';
 import {captureContactFrame,resolveVehicleContacts,playerContactHeight,playerContactParts,CONTACT_TUNING} from '../src/vehicle-contacts.js';
-import {trafficHitsPlayer} from '../src/traffic-physics.js';
 const fixture=()=>{const events=[],game=new Game({onEvent:(e,v)=>events.push([e,v])});game.start();Object.assign(game.state,{traffic:[],pickups:[],obstacles:[],nextSpawn:Infinity,nextEvent:Infinity});return{game,s:game.state,events};};
 const advance=(game,time,controls={})=>{for(let t=0;t<time-1e-9;t+=1/120)game.update(Math.min(1/120,time-t),controls);};
 
@@ -37,10 +36,29 @@ test('actual barrier depth .14m and cone base .58m are not lane-wide rectangles'
  const clear=fixture();clear.s.speed=25;clear.s.x=1+(1.18+1.35+.03)/3.5;clear.s.obstacles=[{id:1,kind:'barrier',x:1,z:3}];advance(clear.game,.15);assert.equal(clear.s.phase,'playing');assert.ok(!clear.events.some(e=>e[0]==='impact'));
 });
 
-test('new collision query rejects the historical asynchronous-overlap false positive',()=>{
- const state={x:.9928925654193589,heading:-.06630136563211411,distance:3070.751689804385,altitude:0,rollAngle:0};
- const car={kind:'sedan',lane:2,x:1.5668571428571427,previousLateral:1.5668571428571427,z:4.7282164796,speed:18};
- assert.equal(trafficHitsPlayer(car,state,1,5.12),false);
+test('live resolver rejects the historical asynchronous-overlap false positive',()=>{
+ const {s}=fixture(),dt=1/120,travelled=5.12-4.7282164796+18*dt;
+ Object.assign(s,{x:1,heading:-.06630136563211411,distance:3070.751689804385-travelled,altitude:0,rollAngle:0,speed:travelled/dt});
+ const car={kind:'sedan',lane:2,x:1.5668571428571427,z:5.12,speed:18};s.traffic=[car];
+ const previous=captureContactFrame(s);
+ s.x=.9928925654193589;car.z=4.7282164796;
+ const result=resolveVehicleContacts(s,previous,dt,travelled);
+ assert.equal(result.contacts.length,0);assert.equal(result.fatal,false);
+ assert.equal(result.travelled,travelled);assert.equal(result.sceneCorrection,0);
+ assert.equal(car.contacted,undefined);assert.equal(s.contactUnresolved,undefined);
+});
+
+test('live compound sweep catches traffic crossed between two clear endpoint poses',()=>{
+ for(const z of [6,-6]){
+  const {s}=fixture();Object.assign(s,{distance:-385,traffic:[{kind:'sedan',lane:1,z,speed:0}]});
+  assert.equal(resolveVehicleContacts(s,captureContactFrame(s),1/120,0).contacts.length,0,'endpoint alone is clear');
+ }
+ const {s}=fixture(),dt=.25,travelled=12;
+ const car={kind:'sedan',lane:1,z:6,speed:0};Object.assign(s,{distance:-385,speed:travelled/dt,traffic:[car]});
+ const previous=captureContactFrame(s);car.z=-6;
+ const result=resolveVehicleContacts(s,previous,dt,travelled);
+ assert.ok(result.contacts.some(c=>c.kind==='traffic'&&c.entity===car&&c.partRole==='body'));
+ assert.equal(result.fatal,true);assert.ok(result.travelled<travelled);assert.equal(car.contacted,true);
 });
 
 test('capture preserves configured height and rolled pivot at both endpoints',()=>{
@@ -104,4 +122,24 @@ test('a lane completion genuinely reached before safe clipping retains its compl
  const car={id:99,kind:'sedan',lane:0,x:0,z:-5,speed:18,heading:0,laneChange:{phase:'moving',elapsed:2.999,duration:3,from:0,to:1,signalDuration:1},signal:1,laneChangeCooldown:0};s.traffic=[car];const before=captureContactFrame(s);
  car.z+=(18-65)/120;Object.assign(car,{laneChange:null,signal:0,lane:1,laneChangeCooldown:23});for(const o of s.obstacles)o.z-=65/120;
  const result=resolveVehicleContacts(s,before,1/120,65/120);assert.equal(s.contactBudgetStops,1);assert.ok(result.travelled>65*.001);assert.equal(car.laneChange,null);assert.equal(car.lane,1);assert.equal(car.laneChangeCooldown,23);assert.ok(!car.impactActive);
+});
+
+test('actual high-speed Game steering preserves the historical 21mm grazing clearance',()=>{
+ const events=[],game=new Game({random:()=>.5,onEvent:(event,value)=>events.push([event,value])});game.start();const s=game.state;
+ Object.assign(s,{speed:65,heading:-Math.asin(4.2/65),steerAngle:0,x:1,distance:(Math.PI-.35)*1100-.5405347146833196,nextSpawn:Infinity,nextEvent:Infinity,safeCorridor:null,obstacles:[],pickups:[],traffic:[{id:1,kind:'sedan',lane:1,x:1+1.984/3.5,heading:0,z:5.12,speed:18,cruiseSpeed:18}]});
+ const before=s.distance;game.update(1/120,{steer:-1,throttle:1});
+ assert.equal(s.phase,'playing');assert.ok(s.distance-before>.53);assert.ok(!events.some(e=>['contact','impact','crash'].includes(e[0])));assert.equal(s.contactUnresolved,undefined);
+});
+
+test('resolved player wheel travel excludes pure side slip and positional overlap correction',()=>{
+ const {s}=fixture();const before=captureContactFrame(s);s.x+=.1/3.5;
+ const sliding=resolveVehicleContacts(s,before,1/120,0);assert.equal(sliding.wheelTravel,0);
+ const parked=fixture();parked.s.obstacles=[{id:99,kind:'barrier',x:1,z:0}];const old=captureContactFrame(parked.s);
+ const separated=resolveVehicleContacts(parked.s,old,1/120,0);assert.equal(separated.wheelTravel,0);assert.notEqual(separated.physicalTravel,0);
+});
+
+test('crash coast rotates player wheels from actual rolling travel without awarding progress',()=>{
+ const {game,s}=fixture();Object.assign(s,{speed:20,forwardVelocity:20,impactRemaining:.65});game.crash();const before={rear:s.rearDistance,distance:s.distance,score:s.score};
+ game.update(.1,()=>{throw new Error('crash sampled input');});assert.ok(s.rearDistance>before.rear+1.8);assert.equal(s.wheelDistance,s.rearDistance);assert.equal(s.distance,before.distance);assert.equal(s.score,before.score);
+ while(s.impactRemaining>1e-9)game.update(.1);const frozen=s.rearDistance;game.update(.1);assert.equal(s.rearDistance,frozen);
 });
