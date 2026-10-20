@@ -11,6 +11,30 @@ import { normalizeCameraMode } from './camera-view.js';
  * @returns {HTMLElement|null} Matching element; callers rely on validated HTML assets.
  */
 const byId = id => document.getElementById(id);
+/** Change only HUD values that differ, without rounding or delaying presentation. */
+function setHudProperty(target, property, value) {
+  if (target[property] !== value) target[property] = value;
+}
+function setHudAttribute(element, name, value) {
+  if (element.getAttribute?.(name) !== value) element.setAttribute(name, value);
+}
+// CSSOM can serialize fractional widths differently from their input strings. Remember
+// both forms so identical frames are no-ops, while changed inputs or DOM values still update.
+const hudStyleValues = new WeakMap();
+function setHudStyle(style, name, value) {
+  const custom = name.startsWith('--');
+  const current = custom ? (style.getPropertyValue?.(name) ?? style[name]) : style[name];
+  let values = hudStyleValues.get(style);
+  let previous = values?.get(name);
+  if (current === value || (previous?.input === value && previous.output === current)) return;
+  if (custom) style.setProperty(name, value);
+  else style[name] = value;
+  const output = custom ? (style.getPropertyValue?.(name) ?? style[name]) : style[name];
+  if (!values) { values = new Map(); hudStyleValues.set(style, values); }
+  if (!previous) { previous = {}; values.set(name, previous); }
+  previous.input = value;
+  previous.output = output;
+}
 const arrow = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>';
 export class UI {
   /**
@@ -151,70 +175,70 @@ export class UI {
    * @param {Object} s - Current Game state, including flight/roll telemetry and optional road event.
    */
   hud(s) {
-    byId('score').textContent = String(Math.floor(s.score)).padStart(5, '0');
-    byId('speed').textContent = String(Math.round(s.speed * 3.6));
-    byId('distance').textContent = formatNumber(s.distance) + ' м';
-    byId('challengeProgress').style.width = clamp(s.distance / CONFIG.goal * 100, 0, 100) + '%';
-    byId('challengeTitle').textContent = s.goalReached ? 'Цель выполнена' : 'Цель: проехать 1 500 м';
-    byId('combo').hidden = s.combo <= 1;
-    byId('combo').textContent = '×' + s.combo;
+    setHudProperty(byId('score'), 'textContent', String(Math.floor(s.score)).padStart(5, '0'));
+    setHudProperty(byId('speed'), 'textContent', String(Math.round(s.speed * 3.6)));
+    setHudProperty(byId('distance'), 'textContent', formatNumber(s.distance) + ' м');
+    setHudStyle(byId('challengeProgress').style, 'width', clamp(s.distance / CONFIG.goal * 100, 0, 100) + '%');
+    setHudProperty(byId('challengeTitle'), 'textContent', s.goalReached ? 'Цель выполнена' : 'Цель: проехать 1 500 м');
+    setHudProperty(byId('combo'), 'hidden', s.combo <= 1);
+    setHudProperty(byId('combo'), 'textContent', '×' + s.combo);
     const dialSpeed=clamp(s.speed*3.6/300,0,1);
-    byId('speedNeedle').setAttribute('transform','rotate('+(-90+dialSpeed*180)+' 110 120)');
-    byId('speedArc').style.strokeDashoffset=String(100-dialSpeed*100);
+    setHudAttribute(byId('speedNeedle'), 'transform', 'rotate('+(-90+dialSpeed*180)+' 110 120)');
+    setHudStyle(byId('speedArc').style, 'strokeDashoffset', String(100-dialSpeed*100));
     const gauges = hudGaugePresentation(s);
     if (this.reserveLevel !== gauges.reserveLevel) {
-      for (const id of ['boostBtn', 'flightBtn']) byId(id).style.setProperty('--reserve-level', String(gauges.reserveLevel));
+      for (const id of ['boostBtn', 'flightBtn']) setHudStyle(byId(id).style, '--reserve-level', String(gauges.reserveLevel));
       this.reserveLevel = gauges.reserveLevel;
     }
-    byId('sharedEnergyStatus').textContent = gauges.reserveText;
+    setHudProperty(byId('sharedEnergyStatus'), 'textContent', gauges.reserveText);
     const rail = byId('mobileGoalRail');
-    rail.style.setProperty('--goal-progress', String(gauges.progress));
-    rail.dataset.complete = String(gauges.complete);
-    rail.setAttribute('aria-valuemax', String(CONFIG.goal));
-    rail.setAttribute('aria-valuenow', String(gauges.value));
-    rail.setAttribute('aria-valuetext', gauges.goalText);
-    byId('nitroValue').textContent = Math.round(s.nitro) + '%';
-    byId('nitroFill').style.width = s.nitro + '%';
-    byId('boostBtn').disabled = s.nitro <= 0;
+    setHudStyle(rail.style, '--goal-progress', String(gauges.progress));
+    setHudProperty(rail.dataset, 'complete', String(gauges.complete));
+    setHudAttribute(rail, 'aria-valuemax', String(CONFIG.goal));
+    setHudAttribute(rail, 'aria-valuenow', String(gauges.value));
+    setHudAttribute(rail, 'aria-valuetext', gauges.goalText);
+    setHudProperty(byId('nitroValue'), 'textContent', Math.round(s.nitro) + '%');
+    setHudStyle(byId('nitroFill').style, 'width', s.nitro + '%');
+    setHudProperty(byId('boostBtn'), 'disabled', s.nitro <= 0);
     const boost = boostPresentation(s);
-    byId('boostBtn').dataset.boostState = boost.mode;
-    byId('boostStatus').textContent = boost.label;
+    setHudProperty(byId('boostBtn').dataset, 'boostState', boost.mode);
+    setHudProperty(byId('boostStatus'), 'textContent', boost.label);
     const flight = flightPresentation(s);
-    byId('flightStatus').dataset.mode = flight.mode;
-    byId('flightValue').textContent = flight.value;
-    byId('flightHint').textContent = flight.hint;
-    byId('flightBtn').dataset.mode = flight.mode;
+    setHudProperty(byId('flightStatus').dataset, 'mode', flight.mode);
+    setHudProperty(byId('flightValue'), 'textContent', flight.value);
+    setHudProperty(byId('flightHint'), 'textContent', flight.hint);
+    setHudProperty(byId('flightBtn').dataset, 'mode', flight.mode);
     if (this.flightMode !== flight.mode) {
-      byId('flightAnnouncement').textContent = flight.announcement;
+      setHudProperty(byId('flightAnnouncement'), 'textContent', flight.announcement);
       this.flightMode = flight.mode;
     }
     const airborne = s.altitude > .05 || s.flying || s.rolling;
-    byId('flightTelemetry').hidden = !airborne;
+    setHudProperty(byId('flightTelemetry'), 'hidden', !airborne);
     const climb = Number.isFinite(s.verticalSpeed) ? s.verticalSpeed : 0;
     const power = Math.round(clamp(Number(s.thrusterPower) || 0, 0, 1) * 100);
-    byId('verticalSpeed').textContent = (climb > .05 ? '+' : '') + (Math.abs(climb) < .05 ? '0,0' : climb.toFixed(1).replace('.', ',')) + ' м/с';
-    byId('thrusterPower').textContent = 'ТЯГА ' + power + '%';
+    setHudProperty(byId('verticalSpeed'), 'textContent', (climb > .05 ? '+' : '') + (Math.abs(climb) < .05 ? '0,0' : climb.toFixed(1).replace('.', ',')) + ' м/с');
+    setHudProperty(byId('thrusterPower'), 'textContent', 'ТЯГА ' + power + '%');
     const roll = rollPresentation(s);
-    byId('rollStatus').dataset.mode = roll.mode;
-    byId('rollValue').textContent = roll.value;
-    byId('rollHint').textContent = roll.hint;
+    setHudProperty(byId('rollStatus').dataset, 'mode', roll.mode);
+    setHudProperty(byId('rollValue'), 'textContent', roll.value);
+    setHudProperty(byId('rollHint'), 'textContent', roll.hint);
     for (const id of ['rollLeftBtn', 'rollRightBtn']) {
       const button = byId(id);
-      button.setAttribute('aria-disabled', String(!s.rollReady || Boolean(s.rolling)));
-      button.dataset.mode = roll.mode;
+      setHudAttribute(button, 'aria-disabled', String(!s.rollReady || Boolean(s.rolling)));
+      setHudProperty(button.dataset, 'mode', roll.mode);
     }
     if (this.rollMode !== roll.mode) {
-      byId('rollAnnouncement').textContent = roll.announcement;
+      setHudProperty(byId('rollAnnouncement'), 'textContent', roll.announcement);
       this.rollMode = roll.mode;
     }
-    byId('runHint').hidden = (s.elapsed > 10 && s.distance > 15) || Boolean(s.roadEvent);
+    setHudProperty(byId('runHint'), 'hidden', (s.elapsed > 10 && s.distance > 15) || Boolean(s.roadEvent));
     // Keep live instructions and failures, not a second text reward banner.
     const e=s.roadEvent, last=s.lastEvent?.until>s.elapsed&&!s.lastEvent.success?s.lastEvent:null;
-    byId('eventBanner').hidden=!e&&!last;
+    setHudProperty(byId('eventBanner'), 'hidden', !e&&!last);
     const title=e?.title||(last?'Не пройдено: '+last.title:'');
-    if(byId('eventTitle').textContent!==title)byId('eventTitle').textContent=title;
-    byId('eventHint').textContent=e?.hint||'Следующее событие впереди.';
-    byId('eventMeter').textContent=e?(e.type==='convoy'?e.carsLeft+' авто':(e.type==='checkpoint'?Math.ceil(e.seconds)+' с · ':'')+Math.max(0,Math.ceil(e.remaining))+' м'):'';
+    setHudProperty(byId('eventTitle'), 'textContent', title);
+    setHudProperty(byId('eventHint'), 'textContent', e?.hint||'Следующее событие впереди.');
+    setHudProperty(byId('eventMeter'), 'textContent', e?(e.type==='convoy'?e.carsLeft+' авто':(e.type==='checkpoint'?Math.ceil(e.seconds)+' с · ':'')+Math.max(0,Math.ceil(e.remaining))+' м'):'');
   }
   /**
    * Open a trusted application-authored modal, preserve return focus and make background controls inert.

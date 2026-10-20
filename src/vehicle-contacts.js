@@ -9,20 +9,27 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 // Each 120Hz roll step is far below PI; unwrap its upright 2PI→0 reset.
 const rollDelta=(before,after)=>Math.atan2(Math.sin(after-before),Math.cos(after-before));
 const sweepScratch=new WeakMap();
+// Every compound vertex stays inside this sphere about the actual roll pivot,
+// for ANY yaw/roll, not only endpoint poses. Projection onto X is conservative.
+const ROCKET_ORBIT_RADIUS=Math.max(...ROCKET_CONTACT_SHAPE.map(p=>Math.hypot(
+  Math.abs(p.centerX)+p.halfWidth,Math.abs(p.centerY-.58)+p.halfHeight,Math.abs(p.centerZ)+p.halfLength)));
+
 // Arcade masses in tonnes. They affect relative impulses, not economy or assets.
 const MASSES=Object.freeze({rocket:1.3,hatch:1.15,sedan:1.45,suv:2,van:2.8,boxtruck:7,semi:16,towtruck:6,firetruck:11});
 export const CONTACT_TUNING=Object.freeze({restitution:.12,friction:.22,slop:.001,iterations:6,fatalClosing:10,fatalDelta:7,railInner:7.615});
 /** Snapshot before any player/traffic integration; no rendering objects enter physics. */
 export function captureContactFrame(s){
-  return {x:s.x,playerBounds:playerBoundsFor(s),vehicleId:s.vehicleId,steerAngle:s.steerAngle,heading:finite(s.heading),altitude:finite(s.altitude),rollAngle:finite(s.rollAngle),distance:s.distance+finite(s.sceneTravel),
-    traffic:new Map(s.traffic.filter(car=>Math.abs(car.z)<trafficDefinition(car.kind).length/2+playerBoundsFor(s).length/2+14).map(car=>[car,{...car,laneChange:car.laneChange?{...car.laneChange}:undefined,trailerState:car.trailerState?{...car.trailerState}:undefined}])),
-    obstacles:new Map(s.obstacles.filter(o=>Math.abs(o.z)<playerBoundsFor(s).length/2+14).map(o=>[o,{...o}]))};
+  const bounds=playerBoundsFor(s);
+  return {x:s.x,playerBounds:bounds,vehicleId:s.vehicleId,steerAngle:s.steerAngle,heading:finite(s.heading),altitude:finite(s.altitude),rollAngle:finite(s.rollAngle),distance:s.distance+finite(s.sceneTravel),
+    traffic:new Map(s.traffic.filter(car=>Math.abs(car.z)<trafficDefinition(car.kind).length/2+bounds.length/2+14).map(car=>[car,{...car,laneChange:car.laneChange?{...car.laneChange}:undefined,trailerState:car.trailerState?{...car.trailerState}:undefined}])),
+    obstacles:new Map(s.obstacles.filter(o=>Math.abs(o.z)<bounds.length/2+14).map(o=>[o,{...o}]))};
 }
 /** Project one conservative local solid around the exact .58m roll pivot. */
-function projectPart(p,roll){
+function projectPart(p,roll,out={}){
   const c=Math.cos(roll),sn=Math.sin(roll),cy=p.centerY-.58;
   const centerY=.58+p.centerX*sn+cy*c,halfHeight=Math.abs(sn)*p.halfWidth+Math.abs(c)*p.halfHeight;
-  return {x:p.centerX*c-cy*sn,z:p.centerZ,halfWidth:Math.abs(c)*p.halfWidth+Math.abs(sn)*p.halfHeight,halfLength:p.halfLength,yaw:0,bottom:centerY-halfHeight,top:centerY+halfHeight,local:p};
+  out.x=p.centerX*c-cy*sn;out.z=p.centerZ;out.halfWidth=Math.abs(c)*p.halfWidth+Math.abs(sn)*p.halfHeight;out.halfLength=p.halfLength;out.yaw=0;out.bottom=centerY-halfHeight;out.top=centerY+halfHeight;out.local=p;
+  return out;
 }
 /** Body, wheel and localized mirror proxies, transformed through actual roll. */
 export function playerContactParts(s){
@@ -36,11 +43,20 @@ export function playerContactHeight(s){
   return {bottom:center-half,top:center+half};
 }
 function body(x,z,yaw,width,length,mass,vx,vz,yawRate){return{x,z,yaw,vx,vz,yawRate,invMass:mass?1/mass:0,invInertia:mass?12/(mass*(width*width+length*length)):0};}
-function shapeAt(actor,part,seconds=0,fraction=1){
-  const projected=actor.kind==='player'?projectPart(part.local,actor.previousRoll+(actor.endRoll-actor.previousRoll)*fraction):null;
-  const old=part.start||part,mix=key=>projected?projected[key]:old[key]+(part[key]-old[key])*fraction;
-  const yaw=actor.body.yaw+actor.body.yawRate*seconds,c=Math.cos(yaw),s=Math.sin(yaw),x=mix('x'),z=mix('z');
-  return{x:actor.body.x+actor.body.vx*seconds+c*x+s*z,z:actor.body.z+actor.body.vz*seconds-s*x+c*z,yaw:yaw+mix('yaw'),halfWidth:mix('halfWidth'),halfLength:mix('halfLength')};
+/** Caller-owned scratch shapes never escape a query; hit data is copied. */
+function shapeAt(actor,part,seconds,fraction,out,projected){
+  if(actor.kind==='player')projectPart(part.local,actor.previousRoll+(actor.endRoll-actor.previousRoll)*fraction,projected);
+  else{
+    const old=part.start||part;
+    projected.x=old.x+(part.x-old.x)*fraction;projected.z=old.z+(part.z-old.z)*fraction;
+    projected.yaw=old.yaw+(part.yaw-old.yaw)*fraction;
+    projected.halfWidth=old.halfWidth+(part.halfWidth-old.halfWidth)*fraction;
+    projected.halfLength=old.halfLength+(part.halfLength-old.halfLength)*fraction;
+  }
+  const yaw=actor.body.yaw+actor.body.yawRate*seconds,c=Math.cos(yaw),s=Math.sin(yaw),x=projected.x,z=projected.z;
+  out.x=actor.body.x+actor.body.vx*seconds+c*x+s*z;out.z=actor.body.z+actor.body.vz*seconds-s*x+c*z;
+  out.yaw=yaw+projected.yaw;out.halfWidth=projected.halfWidth;out.halfLength=projected.halfLength;
+  return out;
 }
 function localPart(part,root){const c=Math.cos(root.yaw),s=Math.sin(root.yaw),dx=part.x-root.x,dz=part.z-root.z;return{x:c*dx-s*dz,z:s*dx+c*dz,yaw:Math.atan2(part.forward[0],part.forward[1])-root.yaw,halfWidth:part.halfWidth,halfLength:part.halfLength};}
 /** Reconstruct a clipped planner clock without mixing signal and moving epochs. */
@@ -85,17 +101,23 @@ function reconcileTrailerWheelPath(car,old,previousDistance){
   car.trailerTravelDistance=finite(old.trailerTravelDistance,finite(old.travelDistance))+travel;
   car.trailerCurvature=travel>1e-8?-Math.atan2(Math.sin(next.yaw-oldYaw),Math.cos(next.yaw-oldYaw))/travel:0;
 }
-function verticalInterval(before,after,part,height,from,to,dt){
-  // Each rolling interval spans <=.01rad. The nonlinear projected-solid curve
-  // differs from its chord by <0.03mm at this asset scale; no broad-phase union
-  // becomes a hit. Both temporal endpoints use this part's actual Y bounds.
-  const at=t=>{const f=t/dt,p=projectPart(part.local,finite(before.rollAngle)+rollDelta(finite(before.rollAngle),finite(after.rollAngle))*f),alt=.012+finite(before.altitude)+(finite(after.altitude)-finite(before.altitude))*f;return{bottom:alt+p.bottom,top:alt+p.top};};
-  const lo=at(from),hi=at(to);let start=0,end=1;
-  for(const [v0,v1,bound,less] of [[lo.bottom,hi.bottom,height,true],[lo.top,hi.top,0,false]]){
+function verticalInterval(before,after,part,height,from,to,dt,out,projected){
+  // Same <=.01rad chord and exact interval rules as the narrow phase. Scratch
+  // eliminates per-pair arrays/closures, not temporal samples or precision.
+  const roll=finite(before.rollAngle),turn=rollDelta(roll,finite(after.rollAngle));
+  const altitude=finite(before.altitude),rise=finite(after.altitude)-altitude;
+  let f=from/dt;projectPart(part.local,roll+turn*f,projected);
+  const loBottom=.012+altitude+rise*f+projected.bottom,loTop=.012+altitude+rise*f+projected.top;
+  f=to/dt;projectPart(part.local,roll+turn*f,projected);
+  const hiBottom=.012+altitude+rise*f+projected.bottom,hiTop=.012+altitude+rise*f+projected.top;
+  let start=0,end=1;
+  for(let i=0;i<2;i++){
+    const v0=i===0?loBottom:loTop,v1=i===0?hiBottom:hiTop,bound=i===0?height:0,less=i===0;
     const d=v1-v0;if(Math.abs(d)<1e-12){if(less?v0>=bound:v0<=bound)return null;continue;}
     const t=(bound-v0)/d;if((d>0)===less)end=Math.min(end,t);else start=Math.max(start,t);
   }
-  return end>=start&&end>=0&&start<=1?{from:from+Math.max(0,start)*(to-from),to:from+Math.min(1,end)*(to-from)}:null;
+  if(!(end>=start&&end>=0&&start<=1))return null;
+  out.from=from+Math.max(0,start)*(to-from);out.to=from+Math.min(1,end)*(to-from);return out;
 }
 /**
  * Resolve the earliest continuous player contact, then the remaining substep.
@@ -108,13 +130,16 @@ function verticalInterval(before,after,part,height,from,to,dt){
 export function resolveVehicleContacts(s,previous,dt,travelled){
   s.impactCooldown=Math.max(0,finite(s.impactCooldown)-dt);
   if(!(dt>0)||s.invincible>0)return{travelled,physicalTravel:travelled,wheelTravel:Math.max(0,travelled),sceneCorrection:0,contacts:[],fatal:false};
+  const priorPlayerParts=playerContactParts(previous);
   const b=playerBoundsFor(s),start={x:(previous.x-1)*LANE_WIDTH,z:0,yaw:-previous.heading};
-  const player={kind:'player',integratedTravel:0,integratedWheelTravel:0,previousRoll:previous.rollAngle,endRoll:previous.rollAngle+rollDelta(previous.rollAngle,finite(s.rollAngle)),body:body(start.x,0,start.yaw,b.width,b.length,MASSES[s.vehicleId]||1.3,((s.x-previous.x)*LANE_WIDTH)/dt,-travelled/dt,(-finite(s.heading)-start.yaw)/dt),parts:playerContactParts(s).map((part,i)=>({...part,start:playerContactParts(previous)[i]})),changed:false};
+  const player={kind:'player',integratedTravel:0,integratedWheelTravel:0,previousRoll:previous.rollAngle,endRoll:previous.rollAngle+rollDelta(previous.rollAngle,finite(s.rollAngle)),body:body(start.x,0,start.yaw,b.width,b.length,MASSES[s.vehicleId]||1.3,((s.x-previous.x)*LANE_WIDTH)/dt,-travelled/dt,(-finite(s.heading)-start.yaw)/dt),parts:playerContactParts(s).map((part,i)=>({...part,start:priorPlayerParts[i]})),changed:false};
+  const playerRadius=((s.vehicleId??'rocket')==='rocket'?ROCKET_ORBIT_RADIUS:Math.hypot(b.width/2,Math.max(.58,Math.abs(b.height-.58)),b.length/2))+1e-9;
   const actors=[player];
   for(const car of s.traffic){const old=previous.traffic.get(car);if(!old)continue;const spec=trafficDefinition(car.kind);
     if(Math.min(Math.abs(old.z),Math.abs(car.z))>spec.length/2+b.length/2+Math.abs(travelled)+3)continue;
     const p0=trafficPose(old,previous.distance),p1=trafficPose(car,previous.distance+travelled);p1.z-=travelled;
-    actors.push({kind:'traffic',entity:car,body:body(p0.x,p0.z,p0.yaw,spec.width,spec.length,MASSES[car.kind]||2,(p1.x-p0.x)/dt,(p1.z-p0.z)/dt,(p1.yaw-p0.yaw)/dt),parts:trafficCollisionParts(car,previous.distance+travelled).map((part,i)=>{const end={...part,z:part.z-travelled};return{...localPart(end,p1),start:localPart(trafficCollisionParts(old,previous.distance)[i],p0)};}),height:spec.height+.012,changed:false});
+    const priorTrafficParts=trafficCollisionParts(old,previous.distance);
+    actors.push({kind:'traffic',entity:car,body:body(p0.x,p0.z,p0.yaw,spec.width,spec.length,MASSES[car.kind]||2,(p1.x-p0.x)/dt,(p1.z-p0.z)/dt,(p1.yaw-p0.yaw)/dt),parts:trafficCollisionParts(car,previous.distance+travelled).map((part,i)=>{const end={...part,z:part.z-travelled};return{...localPart(end,p1),start:localPart(priorTrafficParts[i],p0)};}),height:spec.height+.012,changed:false});
   }
   for(const o of s.obstacles){const old=previous.obstacles.get(o);if(!old||o.hit||Math.abs(old.z)>b.length/2+Math.abs(travelled)+4)continue;
     const cone=o.kind==='cone',x=(old.x-1)*LANE_WIDTH+roadCurve(-old.z,previous.distance);
@@ -123,17 +148,24 @@ export function resolveVehicleContacts(s,previous,dt,travelled){
   // The rails match the authored landscape, not an invisible lane-centre clamp.
   for(const side of [-1,1])actors.push({kind:'rail',body:body(side*(CONTACT_TUNING.railInner+.2),0,0,.4,100,0,0,0,0),parts:[{x:0,z:0,yaw:0,halfWidth:.2,halfLength:50}],height:1.02,changed:false});
   let clock=0,fatal=false,iterations=0,slices=0;const contacts=[],suppressed=new Set(),trimSuppressed=new Map();
-  let query=sweepScratch.get(s);if(!query){query={};sweepScratch.set(s,query);}
+  let query=sweepScratch.get(s);if(!query){query={hit:{},a0:{},a1:{},b0:{},b1:{},projected:{},vertical:{}};sweepScratch.set(s,query);}
   while(clock<dt-1e-10&&iterations<CONTACT_TUNING.iterations&&slices++<64){
     let first=null,uncertain=null;
     const sliceEnd=Math.min(dt,clock+dt*Math.min(1,.01/Math.max(.01,Math.abs(player.endRoll-player.previousRoll))));
+    // Roots translate linearly within a solver slice. Recompute after every
+    // impulse, and retain the original advance/bookkeeping even when all pairs
+    // are rejected. No cadence, tire odometry or narrow-phase tolerance changes.
+    const nextPlayerX=player.body.x+player.body.vx*(sliceEnd-clock);
+    const playerMinX=Math.min(player.body.x,nextPlayerX)-playerRadius,playerMaxX=Math.max(player.body.x,nextPlayerX)+playerRadius;
     for(let i=1;i<actors.length;i++){const other=actors[i];if(suppressed.has(other))continue;
+      if(other.kind==='rail'&&(other.body.x>0?playerMaxX<CONTACT_TUNING.railInner:playerMinX>-CONTACT_TUNING.railInner))continue;
       for(const pa of player.parts){
       if(trimSuppressed.get(other)?.has(pa.local.id))continue;
-      const vertical=verticalInterval(previous,s,pa,other.height,clock,sliceEnd,dt);if(!vertical)continue;
+      const vertical=verticalInterval(previous,s,pa,other.height,clock,sliceEnd,dt,query.vertical,query.projected);if(!vertical)continue;
       const wait=vertical.from-clock,span=vertical.to-vertical.from;if(span<1e-10)continue;
+      const a0=shapeAt(player,pa,wait,(clock+wait)/dt,query.a0,query.projected),a1=shapeAt(player,pa,wait+span,(clock+wait+span)/dt,query.a1,query.projected);
       for(const pb of other.parts){
-        const a0=shapeAt(player,pa,wait,(clock+wait)/dt),a1=shapeAt(player,pa,wait+span,(clock+wait+span)/dt),b0=shapeAt(other,pb,wait,(clock+wait)/dt),b1=shapeAt(other,pb,wait+span,(clock+wait+span)/dt),out=query;
+        const b0=shapeAt(other,pb,wait,(clock+wait)/dt,query.b0,query.projected),b1=shapeAt(other,pb,wait+span,(clock+wait+span)/dt,query.b1,query.projected),out=query.hit;
         const hit=sweepOBB(a0,a1,b0,b1,out);
         if(hit){const time=wait+hit.time*span;if(!first||time<first.time-1e-10)first={...hit,time,other,playerPart:pa.local};}
         else if(out.status==='unresolved'){const time=wait+Math.max(0,out.earliestPossibleTime||0)*span;if(!uncertain||time<uncertain.time)uncertain={time,other};}

@@ -165,6 +165,54 @@ test('normal playback caps each pane to 15/10 Hz, paused frames cache and force 
   }
 });
 
+test('detached owned cars skip all captures and refresh immediately on return without changing live budgets',()=>{
+  for(const compact of [false,true]) for(const screen of [false,true]) {
+    const mode=screen?'cockpit':'chase',f=fixture({compact,screen,convex:screen});
+    assert.equal(f.mirrors.update(f.camera,{dt:0,mode}),3);
+    const targets=f.renderer.calls.map(call=>call.target),budget=f.mirrors.diagnostics.budget;
+    f.scene.remove(f.player);
+    const updateWorldMatrix=f.player.updateWorldMatrix;
+    let detachedTransforms=0;
+    f.player.updateWorldMatrix=function(...args){detachedTransforms++;return updateWorldMatrix.apply(this,args);};
+    for(let frame=0;frame<60;frame++) {
+      assert.equal(f.mirrors.update(f.camera,{dt:1/60,mode,force:frame===0}),0);
+    }
+    assert.equal(detachedTransforms,0,'a detached model needs no mirror transform work');
+    assert.equal(f.renderer.calls.length,3,'neither reflection nor right-camera captures run for a detached car');
+    f.panes.forEach((pane,index)=>assert.equal(pane.material,f.originals[index]));
+    assert.ok(f.mirrors.diagnostics.panes.every(pane=>!pane.active&&pane.reason==='detached'));
+    if(screen) {
+      assert.equal(f.mirrors.diagnostics.rightCamera.active,false);
+      assert.equal(f.mirrors.diagnostics.rightCamera.reason,'detached');
+    }
+    f.scene.add(f.player);
+    assert.equal(f.mirrors.update(f.camera,{dt:0,mode,paused:true}),3,'return refreshes without waiting for the next capture tick');
+    assert.deepEqual(f.mirrors.diagnostics.budget,budget);
+    f.renderer.calls.slice(-3).forEach((call,index)=>assert.equal(call.target,targets[index],'return reuses full-resolution targets'));
+    assert.equal(f.mirrors.update(f.camera,{dt:0,mode,paused:true}),0,'unchanged paused frames still cache');
+    const resumed=f.renderer.calls.length;
+    for(let frame=0;frame<60;frame++)f.mirrors.update(f.camera,{dt:1/60,mode});
+    assert.equal(f.renderer.calls.length-resumed,(compact?10:15)*3,'visible cadence is unchanged');
+    f.mirrors.dispose();
+  }
+});
+
+test('mirror ownership requires the captured scene, including detached ancestors and foreign scenes',()=>{
+  const f=fixture({screen:true,convex:true}),group=new T.Group(),otherScene=new T.Scene();
+  group.add(f.player);
+  assert.equal(f.mirrors.update(f.camera,{dt:1,mode:'cockpit',force:true}),0,'a parent alone is not scene membership');
+  otherScene.add(group);
+  assert.equal(f.mirrors.update(f.camera,{dt:1,mode:'cockpit',force:true}),0,'membership in another scene is not enough');
+  assert.equal(f.renderer.calls.length,0);
+  f.scene.add(group);
+  assert.equal(f.mirrors.update(f.camera,{dt:0,mode:'cockpit',paused:true}),3,'nested membership in the captured scene remains supported');
+  f.scene.remove(group);
+  assert.equal(f.mirrors.update(f.camera,{dt:0,mode:'cockpit',force:true}),0,'removing an ancestor also suspends captures');
+  f.scene.add(group);
+  assert.equal(f.mirrors.update(f.camera,{dt:0,mode:'cockpit',paused:true}),3);
+  f.mirrors.dispose();
+});
+
 test('offscreen, hidden and backfacing panes keep the authored fallback and never erase casings',()=>{
   const f=fixture();f.mirrors.update(f.camera,{dt:0});const passes=f.renderer.calls.length;
   f.panes[0].visible=false;f.panes[1].position.x=100;f.panes[2].rotation.y=Math.PI;
