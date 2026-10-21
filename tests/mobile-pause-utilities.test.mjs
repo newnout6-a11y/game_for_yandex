@@ -3,14 +3,13 @@ import assert from 'node:assert/strict';
 import {UI} from '../src/ui.js';
 function withDocument(nodes,fn){const previous=globalThis.document;globalThis.document={getElementById:id=>nodes[id]||null};try{return fn();}finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}}
 function button(){return{attributes:{},textContent:'',innerHTML:'',setAttribute(k,v){this.attributes[k]=v;}};}
-test('only the mobile pause dialog renders real reachable sound/help action buttons',()=>{
+test('both mobile and desktop pause dialogs render real reachable sound/help action buttons',()=>{
  for(const mobile of [true,false])for(const enabled of [true,false]){
   const ui=Object.create(UI.prototype);ui.app={dataset:{mobileControls:String(mobile)}};ui.soundEnabled=enabled;ui.cameraMode='chase';ui.renderSettingsElement={};let html,appended;
   ui.open=(type,markup)=>{assert.equal(type,'pause');html=markup;};
   withDocument({pauseRenderSettings:{append(node){appended=node;}}},()=>ui.pause());
   assert.equal(appended,ui.renderSettingsElement);assert.match(html,/data-action="resume"/);assert.match(html,/data-action="camera"/);
-  if(mobile){assert.match(html,/data-action="pauseHelp">Управление/);assert.match(html,new RegExp('id="pauseSoundBtn"[^>]*aria-pressed="'+enabled+'"'));assert.match(html,/aria-label="(?:Включить|Выключить) звук"/);}
-  else assert.doesNotMatch(html,/pauseSound|pauseHelp|pause-mobile-utilities/);
+  assert.match(html,/data-action="pauseHelp">Управление/);assert.match(html,new RegExp('id="pauseSoundBtn"[^>]*aria-pressed="'+enabled+'"'));assert.match(html,/aria-label="(?:Включить|Выключить) звук"/);
  }
 });
 test('accepted sound state updates mounted pause button without rebuilding or losing its focus',()=>{

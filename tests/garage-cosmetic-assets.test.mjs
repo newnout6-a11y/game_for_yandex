@@ -92,7 +92,12 @@ function crossing(triangle, node) {
 }
 
 test('cosmetics are original finite Blender assets with exact source provenance and small mobile budgets', async () => {
-  assert.equal(manifest.sourceRoadsterSha256, createHash('sha256').update(base.bytes).digest('hex'));
+  const revision = JSON.parse(await readFile(new URL('../art/roadster-wing-preservation.json', import.meta.url)));
+  // Keep the accessories' real historical authoring source. Only the later
+  // wing/pocket revision is new; current fit/pivot/clearance checks still run.
+  assert.equal(manifest.sourceRoadsterSha256, revision.baseline.glbSha256);
+  assert.equal(createHash('sha256').update(base.bytes).digest('hex'), revision.current.glbSha256);
+  assert.notEqual(revision.baseline.glbSha256, revision.current.glbSha256);
   assert.deepEqual(manifest.cars, ['rocket']);
   assert.equal(manifest.body.id, 'body_splitter');
   assert.equal(manifest.wheels.id, 'wheel_turbine');

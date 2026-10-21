@@ -21,7 +21,6 @@ const BASELINE = {
   outsideArtwork: '33e58b2e314c2bfeaf985d0f03483558c81c8ab13778949fab9165263a6a8701',
 };
 const ARTWORK = [300, 247, 680, 201];
-const OLD_DESCRIPTION = 'Original orthographic side-profile status graphic; no factory software or live telemetry claim.';
 const DESCRIPTION = 'Offline Blender render of this authored Rocket in parked/stowed pose; live game instruments remain separate; no factory UI claim.';
 // The old diagram's 3px roof stroke overshot its y=247 vertices by two
 // rows (46 pixels at y=245..246). Remove those obsolete car pixels too.
@@ -46,14 +45,6 @@ const OTHER_IMAGES = {
 const hash = value => createHash('sha256').update(value).digest('hex');
 /** Read a project file independently of the process working directory. */
 const file = relative => readFile(new URL('../' + relative, import.meta.url));
-
-/** Compare JSON meaning independently of the serializer's object-key ordering. */
-function canonical(value) {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === 'object')
-    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
-  return value;
-}
 
 /** Read exact GLB chunks and enforce every embedded view's declared bounds. */
 function glb(bytes) {
@@ -128,23 +119,35 @@ function crop(image, [x, y, width, height]) {
   }));
 }
 
-test('tablet artwork changes no accepted model structure, geometry, UVs, materials or other images', async () => {
+test('historical tablet-only geometry anchors remain intact through the separately audited wing revision', async () => {
   const { json, viewBytes } = glb(await file('public/assets/roadster.glb'));
+  const revision = JSON.parse(await file('art/roadster-wing-preservation.json'));
+  const metadataBytes = await file('art/textures/roadster-tablet-rocket.json');
+  const metadata = JSON.parse(metadataBytes);
   assert.equal(json.nodes.length, 99); assert.equal(json.meshes.length, 69); assert.equal(json.materials.length, 31);
   const ui = json.images.find(image => image.name === 'roadster-cabin-original-ui');
   assert.equal(ui.bufferView, 82);
-  const normalized = structuredClone(json);
-  const root = normalized.nodes.find(node => node.name === 'Roadster');
-  assert.equal(root.extras.driverDisplay.ui_artwork, DESCRIPTION, 'Correct the obsolete side-profile description without changing model metadata');
-  root.extras.driverDisplay.ui_artwork = OLD_DESCRIPTION;
-  delete normalized.buffers[0].byteLength;
-  delete normalized.bufferViews[82].byteOffset; delete normalized.bufferViews[82].byteLength;
-  assert.equal(hash(JSON.stringify(canonical(normalized))), BASELINE.normalizedJson,
-    'Only the tablet PNG storage and its exact descriptive text may change; every node transform, other extra and full-size mirror stays exact');
-  const imageViews = new Set(json.images.map(image => image.bufferView));
-  assert.equal(hash(Buffer.concat(json.bufferViews.flatMap((_, index) => imageViews.has(index) ? [] : [viewBytes(index)]))), BASELINE.geometryBytes,
-    'Compare actual positions, normals, indices, UVs and other non-image buffer bytes, not only metadata counts');
-  assert.equal(hash(Buffer.concat(json.bufferViews.flatMap((_, index) => index === 82 ? [] : [viewBytes(index)]))), BASELINE.nonUiBytes);
+  const root = json.nodes.find(node => node.name === 'Roadster');
+  assert.equal(root.extras.driverDisplay.ui_artwork, DESCRIPTION);
+  // The tablet-only edit preserved the original model. A later intentional wing
+  // revision must not pretend to satisfy that historical whole-geometry hash.
+  // Keep the old anchors, chain its exact output into a separate preservation
+  // proof, and verify the current bytes against that revision. The companion
+  // roadster-preservation suite independently checks all 69 runtime batches,
+  // every attribute/index, all nodes/materials, and the exact editable source.
+  assert.equal(hash(metadataBytes), revision.provenance.historicalTabletMetadataSha256);
+  assert.equal(revision.historicalTabletAnchors.normalizedJsonSha256, BASELINE.normalizedJson);
+  assert.equal(revision.historicalTabletAnchors.geometryBytesSha256, BASELINE.geometryBytes);
+  assert.equal(revision.historicalTabletAnchors.nonUiBytesSha256, BASELINE.nonUiBytes);
+  assert.equal(revision.historicalTabletAnchors.immutableFingerprintSha256, BASELINE.immutableFingerprint);
+  assert.equal(revision.historicalTabletAnchors.sourceBlendSha256, BASELINE.blend);
+  assert.equal(revision.historicalTabletAnchors.sourceGlbSha256, BASELINE.glb);
+  assert.equal(metadata.output.glbSha256, revision.baseline.glbSha256);
+  assert.equal(metadata.output.blendSha256, revision.baseline.blendSha256);
+  assert.equal(hash(await file('public/assets/roadster.glb')), revision.current.glbSha256);
+  assert.equal(hash(await file('art/roadster.blend')), revision.current.blendSha256);
+  assert.notEqual(revision.current.glbSha256, revision.baseline.glbSha256);
+  assert.equal(revision.current.uiSha256, metadata.output.uiSha256, 'Wing correction must not repaint the accepted tablet');
   for (const [name, expected] of Object.entries(OTHER_IMAGES)) {
     const image = json.images.find(image => image.name === name);
     assert.ok(image, name); assert.equal(hash(viewBytes(image.bufferView)), expected, name + ' must remain byte-for-byte unchanged');
@@ -183,9 +186,8 @@ test('the rendered Rocket source has transparent margins, useful detail and reco
   const bytes = await file('art/textures/roadster-tablet-rocket.png'), image = png(bytes);
   const metadata = JSON.parse(await file('art/textures/roadster-tablet-rocket.json'));
   assert.equal(metadata.schemaVersion, 1);
-  // A rerender starts from this same model with the new UI packed inside it.
-  // Distinguish the explicitly preserved first-source anchors from the actual
-  // latest integration/render inputs, whose whole-file hashes may change.
+  // This metadata describes the accepted historical render, not a rerender of
+  // the later corrected wing. Its source anchors and outputs remain immutable.
   assert.equal(metadata.geometryFingerprintSha256, BASELINE.immutableFingerprint);
   assert.equal(metadata.sourceBlendSha256, BASELINE.blend);
   assert.equal(metadata.sourceGlbSha256, BASELINE.glb);
@@ -220,8 +222,11 @@ test('the rendered Rocket source has transparent margins, useful detail and reco
   assert.ok(bounds[2] - bounds[0] > image.width * .65 && bounds[3] - bounds[1] > image.height * .65, 'Use the available illustration area');
   assert.ok(colors.size > 1000, 'Preserve shaded model detail rather than a flat replacement pictogram');
   assert.equal(metadata.output.uiSha256, hash(await file('art/textures/roadster-cabin-original-ui.png')));
-  assert.equal(metadata.output.glbSha256, hash(await file('public/assets/roadster.glb')));
-  assert.equal(metadata.output.blendSha256, hash(await file('art/roadster.blend')));
+  const revision = JSON.parse(await file('art/roadster-wing-preservation.json'));
+  assert.equal(metadata.output.glbSha256, revision.baseline.glbSha256);
+  assert.equal(metadata.output.blendSha256, revision.baseline.blendSha256);
+  assert.equal(revision.current.glbSha256, hash(await file('public/assets/roadster.glb')));
+  assert.equal(revision.current.blendSha256, hash(await file('art/roadster.blend')));
 });
 
 test('every car-panel pixel comes from the actual RGBA model render, not a handmade fallback', async () => {

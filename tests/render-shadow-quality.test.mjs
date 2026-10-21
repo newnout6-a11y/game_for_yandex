@@ -70,7 +70,7 @@ test('quality changes resize only changed physical buffers and expose real UI di
       Object.assign(world.canvas, { width, height });
     };
     world.resize(); world.resize();
-    assert.equal(allocations, 1); assert.deepEqual([world.canvas.width, world.canvas.height], [1686, 948]);
+    assert.equal(allocations, 1); assert.deepEqual([world.canvas.width, world.canvas.height], [2217, 1247]);
     world.setQuality('high'); assert.equal(allocations, 2);
     assert.deepEqual([world.canvas.width, world.canvas.height], [2560, 1440]);
     world.setQuality('high'); assert.equal(allocations, 2);

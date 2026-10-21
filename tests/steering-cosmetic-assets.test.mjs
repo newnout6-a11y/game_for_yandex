@@ -35,7 +35,12 @@ function exactBounds(root) {
 }
 
 test('steering variants preserve the accepted source and exact existing pivot contract', async () => {
-  assert.equal(createHash('sha256').update(base.bytes).digest('hex'),manifest.sourceRoadsterSha256);
+  const revision = JSON.parse(await readFile(new URL('../art/roadster-wing-preservation.json', import.meta.url)));
+  // Keep the accessories' real historical authoring source. Only the later
+  // wing/pocket revision is new; current fit/pivot/clearance checks still run.
+  assert.equal(manifest.sourceRoadsterSha256, revision.baseline.glbSha256);
+  assert.equal(createHash('sha256').update(base.bytes).digest('hex'), revision.current.glbSha256);
+  assert.notEqual(revision.baseline.glbSha256, revision.current.glbSha256);
   const pivot = base.scene.getObjectByName('steering_yoke');
   assert.deepEqual(pivot.position.toArray(),manifest.mount.originalPivotTranslation);
   assert.deepEqual(pivot.quaternion.toArray(),manifest.mount.originalPivotQuaternion);
