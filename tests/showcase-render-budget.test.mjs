@@ -24,14 +24,14 @@ test('desktop and explicit non-showcase calls keep previous selected-quality dim
   assert.deepEqual(renderDimensions(w,h,dpr,true,quality,false),renderDimensions(w,h,dpr,true,quality));
  }
 });
-test('showcase boundary resizes once, road restores its old buffer, and repeat screen refreshes allocate nothing',()=>browserFixture(()=>{
+test('showcase boundary preserves sharp Auto road pixels and repeat screen refreshes allocate nothing',()=>browserFixture(()=>{
  Object.assign(globalThis,{innerWidth:551,innerHeight:360,devicePixelRatio:2.625,matchMedia:()=>({matches:true})});
  const world=Object.create(RoadRenderer.prototype),reports=[];let allocations=0;
  Object.assign(world,{quality:'auto',canvas:{width:826,height:540,style:{}},renderer:{setSize(w,h){allocations++;Object.assign(world.canvas,{width:w,height:h});}},camera:{updateProjectionMatrix(){}},onRenderSettings:info=>reports.push(info)});
  world.setShowcase(true);assert.equal(allocations,1);assert.deepEqual([world.canvas.width,world.canvas.height],[1446,945]);assert.equal(reports.at(-1).showcase,true);
  world.setShowcase(true);world.resize();assert.equal(allocations,1);
- world.setShowcase(false);assert.equal(allocations,2);assert.deepEqual([world.canvas.width,world.canvas.height],[826,540]);assert.equal(reports.at(-1).showcase,false);
- world.setShowcase(false);assert.equal(allocations,2);assert.equal(world.quality,'auto');
+ world.setShowcase(false);assert.equal(allocations,1);assert.deepEqual([world.canvas.width,world.canvas.height],[1446,945]);assert.equal(reports.at(-1).showcase,false);
+ world.setShowcase(false);assert.equal(allocations,1);assert.equal(world.quality,'auto');
 }));
 test('graphics UI reports the actual showcase resolution and separate driving cost without promising 4K',()=>browserFixture(()=>{
  const elements=Object.fromEntries(['renderQuality','renderResolution','renderQualityHint'].map(k=>[k,{}]));globalThis.document={getElementById:id=>elements[id]};

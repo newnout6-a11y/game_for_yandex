@@ -2,6 +2,7 @@ import * as T from '../public/vendor/three.js';
 import { createCar, animatePlayerCar, animatePlayerHardware, animatePlayerBody, resetPlayerMotion, setPlayerInteriorView } from './car.js';
 import { loadAssets, createSkyReflectionSource } from './assets.js';
 import { renderDimensions, textureAnisotropy, normalizeRenderQuality, renderShadowSettings } from './render-settings.js';
+import { createAutoRenderController } from './adaptive-render.js';
 import { updateChase } from './motion.js';
 import { normalizeCameraMode, createCockpitView, shouldUseCockpit, updateCockpitCamera, COCKPIT_GLANCE_YAW } from './camera-view.js';
 import { createCockpitDisplay } from './cockpit-display.js';
@@ -57,6 +58,11 @@ export class RoadRenderer {
     this.canvas = canvas; this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.compact = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 600;
+    const gl=this.renderer.getContext();
+    this.autoDevice={deviceMemory:globalThis.navigator?.deviceMemory,hardwareConcurrency:globalThis.navigator?.hardwareConcurrency,maxEdge:gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)};
+    this.autoContextLost=false;
+    canvas.addEventListener('webglcontextlost',()=>{this.autoContextLost=true;this.autoController?.suspend();});
+    canvas.addEventListener('webglcontextrestored',()=>{this.autoContextLost=false;this.autoController?.suspend();this.resize();});
     this.renderer.setPixelRatio(1);
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = T.PCFSoftShadowMap;
     this.renderer.toneMapping = T.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .84;
@@ -297,7 +303,7 @@ export class RoadRenderer {
    * Synchronize CSS viewport sizing, bounded drawing-buffer resolution and camera aspect.
    * @returns {void} Reads current browser dimensions/DPR, updates compact mode and requests a redraw.
    */
-  setQuality(value) { this.quality = normalizeRenderQuality(value); this.resize(); }
+  setQuality(value) { const next=normalizeRenderQuality(value);if(next!==this.quality)this.autoController?.suspend();this.quality=next;this.resize(); }
   /** Switch only at menu/road boundaries; repeated UI refreshes do not reallocate the canvas. */
   setShowcase(value) {
     const next=value===true;
@@ -329,11 +335,29 @@ export class RoadRenderer {
     const w=innerWidth,h=innerHeight;
     this.canvas.style.width=w+'px';this.canvas.style.height=h+'px';
     this.compact = matchMedia('(pointer: coarse)').matches || Math.min(w,h)<600;
-    const size=renderDimensions(w,h,devicePixelRatio||1,this.compact,this.quality,this.showcase===true);
+    const autoKey=[w,h,devicePixelRatio||1,this.compact].join(':');
+    if(this.autoKey!==autoKey){
+      this.autoKey=autoKey;const options={width:w,height:h,dpr:devicePixelRatio||1,compact:this.compact,...this.autoDevice};
+      if(this.autoController)this.autoController.reconfigure(options);else this.autoController=createAutoRenderController(options);
+    }
+    const auto=this.autoController.info();
+    const size=renderDimensions(w,h,devicePixelRatio||1,this.compact,this.quality,this.showcase===true,auto);
     this.applyShadowQuality();
     if(this.canvas.width!==size.width||this.canvas.height!==size.height)this.renderer.setSize(size.width,size.height,false);
     this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.needsRender=true;
-    this.onRenderSettings?.({quality:this.quality,width:size.width,height:size.height,compact:this.compact,showcase:this.showcase===true});
+    this.autoStatus=auto.status;
+    this.onRenderSettings?.({quality:this.quality,width:size.width,height:size.height,compact:this.compact,showcase:this.showcase===true,auto});
+  }
+  /** Sample only a frame actually rendered during active play; never clamped simulation dt. */
+  observeAutoFrame(frameMs,workMs,active=false) {
+    if(!this.autoController)return;
+    const eligible=active&&this.loaded&&this.quality==='auto'&&!this.showcase&&!this.autoContextLost;
+    const changed=eligible?this.autoController.observe(frameMs,workMs):this.autoController.suspend();
+    if(changed&&this.quality==='auto'){this.autoResizePending=true;this.needsRender=true;}
+    else if(!this.autoResizePending&&this.quality==='auto'&&this.autoStatus!==this.autoController.status){
+      this.autoStatus=this.autoController.status;
+      this.onRenderSettings?.({quality:this.quality,width:this.canvas.width,height:this.canvas.height,compact:this.compact,showcase:this.showcase===true,auto:this.autoController.info()});
+    }
   }
   /**
    * Remove one live traffic vehicle and retain it in its kind-specific reuse pool.
@@ -394,6 +418,9 @@ export class RoadRenderer {
     // Lifecycle resets must clear even a settled paused/menu frame before its guard.
     if(this.bonusEffects?.sync(state,menu||this.showcase===true))this.needsRender=true;
     if(!this.loaded)return;
+    // setSize clears WebGL's buffer: apply adaptive changes before this frame's
+    // draw, never after rendering and immediately before browser composition.
+    if(this.autoResizePending){this.autoResizePending=false;this.resize();}
     if(menu&&this.reducedMotion&&!this.needsRender&&this.wasMenu)return;
     if(paused&&!menu&&this.wasPaused&&!this.needsRender&&this.pausedFor>.6&&!this.particles.length&&!this.impact)return;
     this.pausedFor=paused&&!menu?(this.pausedFor||0)+dt:0;this.wasPaused=paused&&!menu;

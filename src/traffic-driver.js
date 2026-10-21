@@ -62,6 +62,17 @@ export function prepareDriverRig(car){
  const rig={head,headRest:head?.quaternion.clone(),headYaw:0,headPitch:0,wheel,body,arms,stalk:car.getObjectByName('indicator_stalk'),rest:wheel.quaternion.clone(),turn:new T.Quaternion(),axis:new T.Vector3(0,0,1),point:new T.Vector3(),shoulder:new T.Vector3(),elbow:new T.Vector3(),end:new T.Vector3(),pole:new T.Vector3(),direction:new T.Vector3(),bend:new T.Vector3(),local:new T.Vector3(),q:new T.Quaternion(),q2:new T.Quaternion(),maxGripError:0};
  car.userData.driver=rig;return rig;
 }
+// These reads are valid only inside the solver after its explicit world refresh.
+// Unlike Object3D getters they do not repeatedly refresh unchanged ancestors.
+const worldReadPosition = new T.Vector3(), worldReadScale = new T.Vector3();
+/** Read a quaternion from a matrix refreshed by this synchronous solver.
+ * @param {T.Object3D} node - Node whose matrixWorld is current.
+ * @param {T.Quaternion} target - Reused quaternion output.
+ * @returns {T.Quaternion} The supplied target, without refreshing ancestors.
+ */
+function freshWorldQuaternion(node,target){
+ node.matrixWorld.decompose(worldReadPosition,target,worldReadScale);return target;
+}
 /**
  * Rotates a joint's local +Y bone axis toward a world-space target.
  * Converts direction through the parent's inverse world rotation and refreshes
@@ -72,8 +83,8 @@ export function prepareDriverRig(car){
  * @returns {void}
  */
 function aimJoint(joint,target,rig){
- joint.getWorldPosition(rig.point);rig.local.copy(target).sub(rig.point).normalize();
- joint.parent.getWorldQuaternion(rig.q).invert();rig.local.applyQuaternion(rig.q);
+ rig.point.setFromMatrixPosition(joint.matrixWorld);rig.local.copy(target).sub(rig.point).normalize();
+ freshWorldQuaternion(joint.parent,rig.q).invert();rig.local.applyQuaternion(rig.q);
  joint.quaternion.setFromUnitVectors(UP,rig.local);joint.updateMatrixWorld(true);
 }
 /**
@@ -101,20 +112,20 @@ export function animateTrafficDriver(car,item,roadWheelAngle,dt=1/60){
   r.head.quaternion.copy(r.headRest).multiply(r.q).multiply(r.q2);
   r.head.userData.glance=r.headYaw;r.head.userData.nod=r.headPitch;
  }
- car.updateMatrixWorld(true);r.maxGripError=0;
+ car.updateWorldMatrix(true,true);r.maxGripError=0;
  for(const arm of r.arms){
-  arm.shoulder.getWorldPosition(r.shoulder);arm.grip.getWorldPosition(r.end);
+  r.shoulder.setFromMatrixPosition(arm.shoulder.matrixWorld);r.end.setFromMatrixPosition(arm.grip.matrixWorld);
   const gesture=arm.side==='l'&&r.stalk?stalkGesture(item.signal,item.signalTime||0):0;
-  if(gesture){r.stalk.getWorldPosition(r.point);r.end.lerp(r.point,gesture);}
+  if(gesture){r.point.setFromMatrixPosition(r.stalk.matrixWorld);r.end.lerp(r.point,gesture);}
   r.direction.copy(r.end).sub(r.shoulder);const wanted=r.direction.length();
   const distance=clamp(wanted,Math.abs(arm.upper-arm.lower)+.0001,arm.upper+arm.lower-.0001);r.direction.normalize();
-  r.body.localToWorld(r.pole.copy(arm.pole));r.bend.copy(r.pole).sub(r.shoulder);r.bend.addScaledVector(r.direction,-r.bend.dot(r.direction));
+  r.pole.copy(arm.pole).applyMatrix4(r.body.matrixWorld);r.bend.copy(r.pole).sub(r.shoulder);r.bend.addScaledVector(r.direction,-r.bend.dot(r.direction));
   if(r.bend.lengthSq()<1e-8)r.bend.set(0,-1,0).addScaledVector(r.direction,r.direction.y);
   r.bend.normalize();const along=(arm.upper*arm.upper-arm.lower*arm.lower+distance*distance)/(2*distance),height=Math.sqrt(Math.max(0,arm.upper*arm.upper-along*along));
   r.elbow.copy(r.shoulder).addScaledVector(r.direction,along).addScaledVector(r.bend,height);
   r.end.copy(r.shoulder).addScaledVector(r.direction,distance);
   aimJoint(arm.shoulder,r.elbow,r);aimJoint(arm.elbow,r.end,r);
-  arm.grip.getWorldQuaternion(r.q);r.q.multiply(arm.handOffset);arm.hand.parent.getWorldQuaternion(r.q2).invert();arm.hand.quaternion.copy(r.q2.multiply(r.q));arm.hand.updateMatrixWorld(true);
+  freshWorldQuaternion(arm.grip,r.q);r.q.multiply(arm.handOffset);freshWorldQuaternion(arm.hand.parent,r.q2).invert();arm.hand.quaternion.copy(r.q2.multiply(r.q));arm.hand.updateMatrixWorld(true);
   r.maxGripError=Math.max(r.maxGripError,Math.abs(wanted-distance));
  }
  r.wheel.userData.angle=angle;r.wheel.userData.stalkGesture=stalkGesture(item.signal,item.signalTime||0);

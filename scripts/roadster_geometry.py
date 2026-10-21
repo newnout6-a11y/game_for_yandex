@@ -87,9 +87,14 @@ def build_exterior(api):
         ob=mesh(name,verts,faces,mat,smooth=smooth)
         return finish_sheet(ob,thickness,normal_fn)
 
-    def polygon_shell(name,pts,mat,thickness=.012,outward=(0,1,0),bevel=.0):
+    def polygon_shell(name,pts,mat,thickness=.012,outward=(0,1,0),bevel=.0,whole_polygon=False):
         """Close a game-metre polygon inward from the requested outward direction."""
         n=(Vector(pts[1])-Vector(pts[0])).cross(Vector(pts[2])-Vector(pts[0]))
+        if whole_polygon:
+            # A concave airfoil's first tiny bend need not have the same
+            # orientation as its whole cap. Use its signed polygon area so the
+            # 4-mm manufactured wall grows inward, not beyond the side seam.
+            n=sum((Vector(pts[i]).cross(Vector(pts[(i+1)%len(pts)])) for i in range(len(pts))),Vector())
         face=tuple(range(len(pts)))
         if n.dot(Vector(outward))<0:face=tuple(reversed(face))
         ob=mesh(name,pts,[face],mat)
@@ -277,9 +282,24 @@ def build_exterior(api):
             points=[tuple(center+tangent*x+up*y) for x,y in [(-.0265,-.007),(.0265,-.007),(.0265,.007),(-.0265,.007)]]
             api['mirror_pane'](side,points,normal)
 
+    def wing_span_x(x, local_z):
+        """Taper the aft blade/hinges to the rear quarter, in wing-local metres.
+
+        The former constant .986 half-span projected about 49 mm beyond each
+        narrowing quarter at the trailing edge when stowed. This fixed authored
+        planform retains the full front span and a small physical side seam;
+        runtime still only moves rigid parts, never scales or hides the blade.
+        """
+        return x*(.955-.130*(local_z-.075))/.986
+
     def pocket_edge(x, trailing=False):
         """Return the inferred pocket boundary around the stowed 8-degree airfoil."""
         q=min(1,abs(x/.986));a=math.radians(8)
+        # Invert the tapered span at this edge to retain the original curved
+        # leading/trailing profile across the physical (not pre-taper) width.
+        for iteration in range(5):
+            local_z=(.215 if trailing else -.235)+.075*q*q
+            q=min(1,abs(x/wing_span_x(.986,local_z)))
         dy=(-.010 if trailing else -.015)+.015*q*q
         dz=(.215 if trailing else -.235)+.075*q*q
         return 2.04+sin(a)*dy+cos(a)*dz+(.006 if trailing else -.006)
@@ -597,29 +617,32 @@ def build_exterior(api):
     foil=[(-.235,-.010),(-.196,.010),(-.120,.022),(-.010,.028),(.110,.020),(.207,.004),(.215,-.005),(.115,-.014),(-.010,-.020),(-.135,-.021),(-.222,-.015),(-.235,-.010)]
     for i in range(65):
         x=-.986+1.972*i/64;q=abs(x/.986);yy=1.125+.015*q*q;zz=2.040+.075*q*q
-        rows.append([(x,yy+dy,zz+dz) for dz,dy in foil])
+        rows.append([(wing_span_x(x,zz+dz-2.04),yy+dy,zz+dz) for dz,dy in foil])
     ni=len(rows);nj=len(foil);verts=[p for row in rows for p in row];faces=[(i*nj+j,i*nj+j+1,(i+1)*nj+j+1,(i+1)*nj+j) for i in range(ni-1) for j in range(nj-1)]
     faces += [tuple(reversed(range(nj))),tuple((ni-1)*nj+j for j in range(nj))]
     blade=mesh('sculpted_rear_aerofoil',verts,faces,'body',smooth=True)
     for vert in blade.data.vertices:vert.co-=v((0,1.13,2.04))
     blade.parent=wing_pivot
     for s in (-1,1):
-        side='l' if s<0 else 'r';hinge=(s*.986,1.088,2.115)
-        tip=bpy.data.objects.new('wing_tip_'+side,None);bpy.context.collection.objects.link(tip);tip.parent=wing_pivot;tip.location=v((s*.986,-.042,.075))
-        tip.rotation_mode='QUATERNION';tip.rotation_quaternion=Quaternion(v((0,0,1)),s*math.radians(8))
-        tip['aeroRole']='tip';tip['aeroStowPositionOffset']=[0,0,0];tip['aeroStowAxis']=[0,0,1];tip['aeroStowAngle']=-s*(pi/2+math.radians(8))
+        side='l' if s<0 else 'r';hinge=(s*.955,1.088,2.115)
+        hinge_axis=Vector((-s*.130,0,1)).normalized()
+        tip=bpy.data.objects.new('wing_tip_'+side,None);bpy.context.collection.objects.link(tip);tip.parent=wing_pivot;tip.location=v((s*.955,-.042,.075))
+        tip.rotation_mode='QUATERNION';tip.rotation_quaternion=Quaternion(v(hinge_axis),s*math.radians(8))
+        tip['aeroRole']='tip';tip['aeroStowPositionOffset']=[0,0,0];tip['aeroStowAxis']=list(hinge_axis);tip['aeroStowAngle']=-s*(pi/2+math.radians(8))
         points=[(s*.986,1.088,1.880),(s*.986,.958,1.900),(s*.986,.987,2.310),(s*.986,1.088,2.330)]
-        fence=polygon_shell('wing_tapered_fence_'+side,points,'body',.004,(s,0,0),.001)
+        points=[(wing_span_x(x,z-2.04),y,z) for x,y,z in points]
+        fence=polygon_shell('wing_tapered_fence_'+side,points,'body',.004,(s,0,s*.130),.001)
         for vert in fence.data.vertices:vert.co-=v(hinge)
         fence.parent=tip
-        tube('wing_tip_hinge_'+side,[(0,0,-.218),(0,0,.210)],.006,'dark_alloy',tip,segments=8)
+        tube('wing_tip_hinge_'+side,[(-s*.130*z,0,z) for z in [-.218,.210]],.006,'dark_alloy',tip,segments=8)
         for zz in [-.157,.155]:
-            beam('wing_hinge_pedestal_'+side,(s*.976,-.025,.075+zz),(s*.986,-.036,.075+zz),.011,.012,'dark_alloy',wing_pivot)
+            beam('wing_hinge_pedestal_'+side,(wing_span_x(s*.976,.075+zz),-.025,.075+zz),(wing_span_x(s*.986,.075+zz),-.036,.075+zz),.011,.012,'dark_alloy',wing_pivot)
         # A real short end cap joins the foil's lower skin to the hinge mount.
         # The moving fence folds underneath it, wholly below the aerofoil.
         points=[(s*.986,1.140+dy,2.115+dz) for dz,dy in [(-.235,-.010),(-.222,-.015),(-.135,-.021),(-.010,-.020),(.115,-.014),(.215,-.005)]]
         points.extend([(s*.986,1.094,2.330),(s*.986,1.094,1.880)])
-        cap=polygon_shell('wing_fixed_lower_end_cap_'+side,points,'body',.004,(s,0,0),.001)
+        points=[(wing_span_x(x,z-2.04),y,z) for x,y,z in points]
+        cap=polygon_shell('wing_fixed_lower_end_cap_'+side,points,'body',.004,(s,0,s*.130),.001,whole_polygon=True)
         for vert in cap.data.vertices:vert.co-=v((0,1.13,2.04))
         cap.parent=wing_pivot
 
@@ -632,7 +655,7 @@ def build_exterior(api):
         x=-.993+1.986*i/64;q=min(1,abs(x/.986));row=[]
         for dz,dy in lower:
             yy=-.005+.015*q*q+dy;zz=.075*q*q+dz
-            row.append((x,.85+cos(a)*yy-sin(a)*zz-.052,2.04+sin(a)*yy+cos(a)*zz))
+            row.append((wing_span_x(x,zz),.85+cos(a)*yy-sin(a)*zz-.052,2.04+sin(a)*yy+cos(a)*zz))
         cut_rows.append(row)
     ni=len(cut_rows);nj=len(lower);base=[p for row in cut_rows for p in row];n=len(base)
     verts=base+[(x,1.50,z) for x,y,z in base];faces=[]

@@ -152,7 +152,7 @@ test('production binds the actual started player and equipped loadout, not a sho
   assert.match(main, /routeVehicleSelection=\{id:renderer\.playerVehicleId,appearance:\{\.\.\.profile\.loadouts\[id\]\?\.cosmetics\}/);
   assert.match(main, /routeVehicleMarker=new RouteVehicleMarker\(\{renderer:renderer\.renderer,makeVehicle:\(id,appearance\)=>renderer\.createShowcaseVehicle\(id,appearance\)/);
   assert.match(main, /runResult=null;routeVehicleSelection=null;routeVehicleMarker\?\.sync\(null\)/);
-  assert.match(main, /routeVehicleMarker\?\.update\(dt,\{visible:mobileControls&&!orientationBlocked&&!document\.hidden/);
+  assert.match(main, /routeVehicleMarker\?\.update\(dt,\{visible:!orientationBlocked&&!document\.hidden/);
   assert.doesNotMatch(source, /previewId|requestAnimationFrame|new T\.WebGLRenderer|toDataURL|drawImage|setInterval|setTimeout/);
   assert.equal((main.match(/requestAnimationFrame\(tick\)/g) || []).length, 2, 'only existing main frame loop remains');
   assert.match(html, /aria-describedby="mobileGoalVehicleLabel"/); assert.match(html, /<canvas id="mobileGoalVehicleCanvas" width="160" height="80" hidden>/);

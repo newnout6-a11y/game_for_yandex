@@ -65,6 +65,14 @@ test('all runtime artwork matches hashes and explicitly records its provenance a
     const bytes=await readFile('public/'+item.file);
     assert.equal(createHash('sha256').update(bytes).digest('hex'),item.sha256,item.file);
     assert.equal(bytes.length,item.bytes);
+    if (item.file === 'assets/roadster.glb') {
+      assert.equal(item.provenance, 'art/roadster-wing-preservation.json');
+      const revision = JSON.parse(await readFile(item.provenance));
+      assert.equal(item.sha256, revision.current.glbSha256);
+      assert.equal(item.editableSource, 'art/roadster.blend');
+      assert.match(item.changes, /intentional rear-wing seating revision/);
+      assert.match(item.changes, /no tablet rerender/i);
+    }
     // The supplied film and requested character prop have explicit third-party provenance.
     // This is a provenance check, not a commercial redistribution clearance.
     if (suppliedMedia.has(item.file)) {

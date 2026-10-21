@@ -86,9 +86,9 @@ function harness(state = {}) {
     startRun() { assert.fail('driving inputs must not start another run'); },
     applyScreen() {}, syncGameplay() { effects.syncs++; }, showResults() { s.screen = 'results'; },
     innerWidth: 551, innerHeight: 360, coarsePointer: true, mobileControls: true, matchMedia: () => ({ matches: s.coarsePointer }),
-    previous: 0, orientationBlocked: false, garageScene: null, garageDirty: false,
+    performance: { now: () => 0 }, assetsReady: true, autoFrameActive: false, previous: 0, orientationBlocked: false, garageScene: null, garageDirty: false,
     renderer: {
-      reducedMotion: false, render() { effects.renders++; },
+      reducedMotion: false, observeAutoFrame() {}, render() { effects.renders++; },
       effect(event) { effects.visualEvents.push(event); },
       bonus() {},
     },
@@ -569,4 +569,36 @@ test('boostPresentation and the real HUD distinguish effect, speed, brake, air a
     assert.equal(h.button('boostBtn').dataset.boostState, mode); assert.equal(h.button('boostStatus').textContent, label);
     assert.equal(h.button('boostBtn').disabled, h.s.game.state.nitro <= 0);
   }
+});
+
+
+test('desktop focused flight and unavailable roll buttons preserve global Space nitro and accessible Enter', () => {
+  for (const id of ['flightBtn', 'rollLeftBtn', 'rollRightBtn']) {
+    const h = harness(); h.s.mobileControls = false;
+    const button = h.button(id);
+    if (id !== 'flightBtn') button.setAttribute('aria-disabled', 'true');
+    const down = button.emit('keydown', {code:'Space'});
+    assert.equal(down.stopped, false); assert.equal(down.prevented, false);
+    h.s.document.emit('keydown', down);
+    assert.deepEqual(h.s.input.read(), {...NEUTRAL, boost:true});
+    const up = button.emit('keyup', {code:'Space'});
+    assert.equal(up.stopped, false);
+    h.s.document.emit('keyup', up);
+    assert.deepEqual(h.s.input.read(), NEUTRAL);
+    const enter = button.emit('keydown', {code:'Enter'});
+    assert.equal(enter.stopped, true); assert.equal(enter.prevented, true);
+    assert.equal(h.s.input.read().flight, id === 'flightBtn');
+    assert.equal(h.s.input.read().boost, false);
+    button.emit('keyup', {code:'Enter'});
+    assert.deepEqual(h.s.input.read(), NEUTRAL);
+  }
+});
+
+test('mobile focused flight keeps Space activation without changing the document nitro binding', () => {
+  const h = harness(), button = h.button('flightBtn');
+  const event = button.emit('keydown', {code:'Space'});
+  assert.equal(event.stopped, true); assert.equal(event.prevented, true);
+  assert.equal(h.s.input.read().flight, true); assert.equal(h.s.input.read().boost, false);
+  button.emit('keyup', {code:'Space'});
+  assert.deepEqual(h.s.input.read(), NEUTRAL);
 });

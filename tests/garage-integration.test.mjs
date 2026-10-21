@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { bindGarageOrbitInput } from '../src/garage-orbit-input.js';
 import { recoverPendingRunResult } from '../src/pending-run-result.js';
 import { homeVehicleFraming } from '../src/home-framing.js';
+import { resultsVehicleFraming } from '../src/results-framing.js';
 import { Game } from '../src/game.js';
 import { DrivingInput } from '../src/input.js';
 import { RunTelemetry } from '../src/run-telemetry.js';
@@ -66,7 +67,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     constructor(_canvas,_progress,options) { this.ready=Promise.resolve();this.renderer={};this.scene={environment:null};this.cosmeticCapabilities={};this.cameraMode=options.cameraMode;this.quality=options.quality;this.playerMirrors={suspend(){}}; }
     setRoute(value) { this.route=value; } setQuality(value) { this.quality=value; }
     setShowcase(value) { this.showcase=value; }
-    setCameraMode(value) { this.cameraMode=value; } setLookDirection() {} resize() {} effect() {} bonus() {} render() {}
+    setCameraMode(value) { this.cameraMode=value; } setLookDirection() {} resize() {} effect() {} bonus() {} render() {} observeAutoFrame(frameMs,workMs,active) {this.lastAutoFrame={frameMs,workMs,active};}
     selectOwnedVehicle(id,appearance) { this.playerVehicleId=id;this.playerAppearance=structuredClone(appearance||{}); } createShowcaseVehicle(id) { return {id}; }
   }
   class GarageScene {
@@ -106,7 +107,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     window:{addEventListener(name,callback){listen(`window:${name}`,callback);}},
     performance:{now:()=>0},innerWidth:1200,innerHeight:800,requestAnimationFrame(){},
     matchMedia:()=>({matches:false,addEventListener(){}}),location:{reload(){}},
-    Game,recoverPendingRunResult,homeVehicleFraming,bindGarageOrbitInput,RunTelemetry,deriveGarageView,getEngineeringModifiers,getRunDoubleOffer,LIMITS,CATALOG,ADS,vehicleDefinition,
+    Game,recoverPendingRunResult,homeVehicleFraming,resultsVehicleFraming,bindGarageOrbitInput,RunTelemetry,deriveGarageView,getEngineeringModifiers,getRunDoubleOffer,LIMITS,CATALOG,ADS,vehicleDefinition,
     createStorage:()=>createStorage(()=>localStorage),createProgressionStorage:()=>({...profileStore,dispatch:action=>rejectSettings&&action.type==='UPDATE_SETTINGS'?{ok:false,changed:false,reason:'future-version-read-only',profile:profileStore.get(),persistence:profileStore.status()}:profileStore.dispatch(structuredClone(action))}),
     createOrientationGate:({onChange})=>{orientationHandler=onChange;onChange(portrait);return {blocked:portrait};},createSdk:()=>sdk,createLifecycle,createAds,createAdCadence,loadOwnGames,openOwnGame,
     createPlatformServices:options=>{
@@ -121,7 +122,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
   vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,syncFleetMiniatures,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,ui,storage,lifecycle,garageDirty,fleetMiniatures,fleetTouchRemaining,routeVehicleMarker,routeVehicleSelection}}};',context,{filename:'src/main.js'});
   if(useRealPlatform)await platformServices.init();
   for(let i=0;i<5;i++)await Promise.resolve();
-  return {api:context.controller,profileStore,requests,listeners,nodes,cloudSaves,cloudWrites,platformServices,storageValues:saved,rejectSettings(){rejectSettings=true;},failStorageWrites(){failStorageWrites=true;},failCloudWrites(){failCloudWrites=true;},replaceCloud(profile){const result=profileStore.replaceFromCloud(profile);platformChanged();return result;},setPlatformState(patch){platformState={...platformState,...patch};platformChanged();},setOrientation:value=>orientationHandler(value),get readyCalls(){return readyCalls;}};
+  return {document:context.document,api:context.controller,profileStore,requests,listeners,nodes,cloudSaves,cloudWrites,platformServices,storageValues:saved,rejectSettings(){rejectSettings=true;},failStorageWrites(){failStorageWrites=true;},failCloudWrites(){failCloudWrites=true;},replaceCloud(profile){const result=profileStore.replaceFromCloud(profile);platformChanged();return result;},setPlatformState(patch){platformState={...platformState,...patch};platformChanged();},setOrientation:value=>orientationHandler(value),get readyCalls(){return readyCalls;}};
 }
 
 /** Import ownership through the same sanitizer as a legitimate saved/cloud profile. */
@@ -800,7 +801,8 @@ test('route marker copies the real started selection and paint, never an unowned
   assert.deepEqual(structuredClone(routeVehicleSelection.appearance),renderer.playerAppearance);
   assert.deepEqual(routeVehicleMarker.selection.appearance,renderer.playerAppearance);
   assert.notEqual(routeVehicleSelection.appearance,h.profileStore.get().loadouts.hatch.cosmetics);
-  assert.equal(routeVehicleMarker.activity.visible,false,'desktop cannot show route marker');
+  assert.equal(routeVehicleMarker.activity.visible,true,'desktop shows the same selected-run marker as mobile');
+  assert.equal(routeVehicleMarker.activity.paused,false);
 });
 
 test('replacement profile clears marker identity and next run adopts its actual equipped vehicle',async()=>{
@@ -809,4 +811,43 @@ test('replacement profile clears marker identity and next run adopts its actual 
   assert.equal(h.api.state.routeVehicleSelection,null);assert.equal(h.api.state.routeVehicleMarker.selection,null);
   await h.api.startRun();assert.equal(h.api.state.routeVehicleMarker.selection.id,'hatch');
   assert.equal(h.api.state.routeVehicleMarker.selection.scopeKey,`${h.profileStore.get().profileId}:${h.profileStore.getReplacementEpoch()}`);
+});
+
+
+test('desktop route marker uses the production frame path and respects pause, orientation and results',async()=>{
+  const h=await controller();await h.api.startRun();
+  assert.equal(h.nodes.get('app').dataset.mobileControls,'false');
+  const marker=h.api.state.routeVehicleMarker;
+  h.api.tick(16);assert.equal(marker.lastUpdate.visible,true);assert.equal(marker.lastUpdate.paused,false);
+  h.listeners.get('pauseBtn:click')();h.api.tick(32);
+  assert.equal(marker.activity.visible,true);assert.equal(marker.activity.paused,true);
+  assert.equal(marker.lastUpdate.visible,true);assert.equal(marker.lastUpdate.paused,true);
+  await h.api.handleAction('resume');h.api.tick(48);assert.equal(marker.lastUpdate.paused,false);
+  h.setOrientation(true);h.api.tick(64);assert.equal(marker.lastUpdate.visible,false);assert.equal(marker.lastUpdate.paused,true);
+  h.setOrientation(false);h.api.tick(80);assert.equal(marker.lastUpdate.visible,true);
+  h.api.state.game.crash();h.api.showResults();h.api.tick(96);
+  assert.equal(marker.activity.visible,false);assert.equal(marker.lastUpdate.visible,false);assert.equal(marker.lastUpdate.paused,true);
+});
+
+
+test('production Auto sampler excludes transition, hidden, ad, orientation and paused frames',async()=>{
+ const h=await controller();await h.api.startRun();const r=h.api.state.renderer;
+ h.api.tick(16);assert.equal(r.lastAutoFrame.active,false,'first frame cannot borrow menu cadence');
+ h.api.tick(32);assert.equal(r.lastAutoFrame.active,true);assert.equal(r.lastAutoFrame.frameMs,16);
+ h.api.state.lifecycle.pause('ad');h.api.tick(48);assert.equal(r.lastAutoFrame.active,false);
+ h.api.state.lifecycle.resume('ad');await h.api.handleAction('resume');h.api.tick(64);assert.equal(r.lastAutoFrame.active,false,'first resumed frame ignored');
+ h.setOrientation(true);h.api.tick(80);assert.equal(r.lastAutoFrame.active,false);
+ h.setOrientation(false);h.api.state.renderer.autoContextLost=true;h.api.tick(96);assert.equal(r.lastAutoFrame.active,false);
+});
+
+
+test('short visibility round trip synchronously invalidates Auto even when user resumes before rAF',async()=>{
+ const h=await controller();await h.api.startRun();const r=h.api.state.renderer;
+ h.api.tick(16);h.api.tick(32);assert.equal(r.lastAutoFrame.active,true);
+ h.document.hidden=true;h.listeners.get('document:visibilitychange')();
+ assert.equal(r.lastAutoFrame.active,false,'pending experiment is suspended at the event, not at a future rAF');
+ h.document.hidden=false;h.listeners.get('document:visibilitychange')();
+ assert.equal(h.api.state.screen,'paused','visibility alone does not resume the game');
+ await h.api.handleAction('resume');h.api.tick(532);assert.equal(r.lastAutoFrame.active,false,'hidden interval must never count as active');
+ h.api.tick(548);assert.equal(r.lastAutoFrame.active,true);
 });
