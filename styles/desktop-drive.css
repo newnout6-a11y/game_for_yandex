@@ -1,0 +1,145 @@
+/* The accepted driving presentation also applies to mouse/keyboard players.
+   Keep the input eligibility flag unchanged: desktop gets ability actions and
+   keyboard hints, never touch steering or pedals. Legacy mobile-* names refer
+   to the existing shared DOM, reserve and selected-model snapshot machinery. */
+.desktop-control-key { display: none; }
+
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .toolbar :is(#soundBtn, #helpBtn),
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) :is(.nitro-block, .challenge) { display: none; }
+
+/* Retain the descriptions/live announcements, not the removed status panel. */
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) #flightStatus {
+  position: absolute;
+  inset: auto auto 0 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  background: none;
+  pointer-events: none;
+}
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .score-block { gap: 2px; padding: 3px 5px; box-shadow: none; }
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .score-block > strong { font-size: 24px; letter-spacing: .04em; }
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .score-block > .eyebrow { font-size: 9px; }
+
+/* The same thin top-edge milestone and real selected-car snapshot as mobile.
+   Reserve both ends of the track so the car cannot cover the start/flag. */
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .mobile-goal-rail {
+  --goal-progress: 0;
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 3px);
+  left: max(calc(var(--page-gutter) + 180px), calc(50% - 140px));
+  right: max(calc(var(--page-gutter) + 152px), calc(50% - 140px));
+  display: block;
+  height: 20px;
+  pointer-events: none;
+  color: #edfaff;
+}
+#app:not([data-mobile-controls="true"]) .mobile-goal-track { position: relative; height: 100%; margin: 0 38px 0 20px; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-track::before,
+#app:not([data-mobile-controls="true"]) .mobile-goal-track::after { content: ""; position: absolute; top: 14px; left: 0; height: 2px; border-radius: 1px; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-track::before { width: 100%; border-top: 1px solid rgba(237, 250, 255, .5); background: rgba(13, 39, 47, .62); }
+#app:not([data-mobile-controls="true"]) .mobile-goal-track::after { width: calc(clamp(0, var(--goal-progress), 1) * 100%); background: #a3effa; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-start { position: absolute; top: 12px; left: -2px; width: 6px; height: 6px; border: 1px solid rgba(237, 250, 255, .8); border-radius: 50%; background: #173640; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-car { position: absolute; z-index: 1; top: -3px; left: calc(clamp(0, var(--goal-progress), 1) * 100%); width: 40px; height: 20px; transform: translateX(-50%); }
+#app:not([data-mobile-controls="true"]) .mobile-goal-car canvas { display: block; width: 100%; height: 100%; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-car canvas[hidden] { display: none; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-car-status { display: block; text-align: center; font-size: 9px; line-height: 20px; color: rgba(237, 250, 255, .75); }
+#app:not([data-mobile-controls="true"]) .mobile-goal-car-status[hidden] { display: none; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-flag { position: absolute; top: 0; right: -38px; width: 17px; height: 19px; stroke-width: 1; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-flag-field { fill: #f1fbff; stroke: #173640; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-flag-checks { fill: #173640; stroke: none; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-flag-pole { stroke: #173640; stroke-width: 1.5; }
+#app:not([data-mobile-controls="true"]) .mobile-goal-rail[data-complete="true"] .mobile-goal-track::after { background: #d4f9ff; }
+#app:not([data-mobile-controls="true"])[data-screen="playing"] .mobile-goal-car { transition: left 120ms linear; }
+#app:not([data-mobile-controls="true"])[data-screen="playing"] .mobile-goal-track::after { transition: width 120ms linear; }
+
+/* Existing independent actions, with their actual keyboard shortcuts below.
+   The inherited game HUD is non-interactive except for the buttons themselves. */
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .touch-controls { display: block; width: 264px; height: 76px; }
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .touch-controls > :is(.steer-pair, .pedal-pair) { display: none; }
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .touch-controls .ability-pair { inset: 0 auto auto 0; display: flex; gap: 8px; width: auto; align-items: stretch; }
+#app:not([data-mobile-controls="true"]) .touch-controls .ability-pair button {
+  --control-ring: rgba(255, 255, 255, .32);
+  --control-glyph: rgba(255, 255, 255, .85);
+  --control-wash: rgba(8, 14, 20, .18);
+  position: relative;
+  inset: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 3px;
+  width: 60px;
+  min-width: 44px;
+  height: 76px;
+  min-height: 44px;
+  margin: 0;
+  padding: 48px 0 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--control-glyph);
+  text-shadow: 0 1px 3px #08141b;
+  transform: none;
+  transition: none;
+}
+#app:not([data-mobile-controls="true"]) .ability-pair .control-desktop { display: none; }
+#app:not([data-mobile-controls="true"]) .ability-pair .control-label { font-size: 8px; letter-spacing: .03em; line-height: 1; }
+#app:not([data-mobile-controls="true"]) .ability-pair .desktop-control-key { display: block; margin: 0; padding: 0; border: 0; font: 10px/1.2 var(--font-mono); }
+#app:not([data-mobile-controls="true"]) .ability-pair .mobile-control-face { position: absolute; top: 2px; left: 50%; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--control-ring); border-radius: 50%; background: var(--control-wash); color: var(--control-glyph); transform: translateX(-50%); pointer-events: none; }
+#app:not([data-mobile-controls="true"]) .ability-pair .mobile-control-icon { display: block; width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#app:not([data-mobile-controls="true"]) :is(#boostBtn, #flightBtn) { --reserve-level: .6; }
+#app:not([data-mobile-controls="true"]) :is(#boostBtn, #flightBtn) .mobile-control-face { overflow: hidden; isolation: isolate; }
+#app:not([data-mobile-controls="true"]) .ability-reserve-fill { position: absolute; right: 0; bottom: 0; left: 0; height: calc(clamp(0, var(--reserve-level), 1) * 100%); background: rgba(82, 192, 244, .52); border-top: calc(clamp(0, var(--reserve-level) * 100, 1) * 1px) solid rgba(183, 247, 255, .82); border-radius: 48% 48% 0 0 / 2px 2px 0 0; pointer-events: none; }
+#app:not([data-mobile-controls="true"]) #boostBtn .ability-reserve-fill { background: rgba(255, 149, 51, .58); border-top-color: rgba(255, 219, 158, .9); }
+#app:not([data-mobile-controls="true"]) :is(#boostBtn, #flightBtn) .mobile-control-icon { position: relative; z-index: 1; color: #fff; }
+#app:not([data-mobile-controls="true"]) :is(#boostBtn, #flightBtn) .ability-glyph-outline { stroke: rgba(9, 37, 45, .86); stroke-width: 4; }
+#app:not([data-mobile-controls="true"])[data-screen="playing"] .ability-reserve-fill { transition: height 120ms linear; }
+#app:not([data-mobile-controls="true"]) .ability-pair .nitro-bolt { fill: currentColor; stroke: none; }
+#app:not([data-mobile-controls="true"]) .ability-pair .boost-plume { opacity: 0; }
+#app:not([data-mobile-controls="true"]) #boostBtn:is([data-boost-state="active"], [data-boost-state="boosting"]) .boost-plume { opacity: 1; }
+/* The large telemetry panel is intentionally removed; readiness stays visible on controls. */
+#app:not([data-mobile-controls="true"]) .touch-controls .ability-pair button[data-mode="ready"] { --control-ring: #ffd38a; --control-glyph: #fff2d0; --control-wash: rgba(255, 174, 64, .16); }
+#app:not([data-mobile-controls="true"]) .touch-controls .ability-pair button:is(:active, [data-held="true"], [data-mode="flying"], [data-mode="rolling"], [data-boost-state="active"], [data-boost-state="boosting"]) { --control-ring: #9beeff; --control-glyph: #fff; --control-wash: rgba(91, 221, 255, .14); }
+#app:not([data-mobile-controls="true"]) .touch-controls .ability-pair button:is(:disabled, [aria-disabled="true"]) { --control-ring: rgba(255, 255, 255, .18); --control-glyph: rgba(255, 255, 255, .5); opacity: 1; }
+#app:not([data-mobile-controls="true"]) .touch-controls .ability-pair button:focus-visible { outline: none; }
+#app:not([data-mobile-controls="true"]) .touch-controls .ability-pair button:focus-visible .mobile-control-face { outline: 2px solid #fff; outline-offset: 3px; }
+#app:not([data-mobile-controls="true"]) #boostStatus { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+#app:not([data-mobile-controls="true"])[data-flight="false"] .touch-controls :is(#flightBtn, .roll-button) { display: none; }
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .horn-control { left: 280px; right: auto; bottom: 0; }
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .glance-controls { left: 280px; bottom: 52px; transform: none; }
+#app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .speed-block { bottom: 0; }
+
+/* Sound/help/settings remain real reachable actions through Pause on all inputs. */
+#app[data-screen="paused"] .pause-mobile-utilities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+#app[data-screen="paused"] .pause-mobile-utilities > .button { min-width: 0; min-height: 44px; margin: 0; padding: 8px; }
+
+/* Small mouse-only windows keep the same capabilities without revealing pedals. */
+@media (max-width: 760px) {
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .speed-block { top: 0; bottom: auto; width: auto; height: auto; align-items: flex-end; }
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .speed-block strong { font-size: 28px; }
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .speed-dial { display: none; }
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .horn-control { left: auto; right: 0; }
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .glance-controls { left: auto; right: 0; }
+}
+@media (max-width: 600px) {
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .brand > span { display: none; }
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .brand { min-width: 44px; min-height: 44px; justify-content: center; }
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .mobile-goal-rail { left: max(calc(var(--page-gutter) + 56px), calc(50% - 140px)); right: max(calc(var(--page-gutter) + 100px), calc(50% - 140px)); }
+}
+@media (max-width: 440px) {
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .touch-controls { width: 240px; }
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .touch-controls .ability-pair { gap: 0; }
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .horn-control { bottom: 84px; }
+  #app:not([data-mobile-controls="true"]):is([data-screen="playing"], [data-screen="paused"]) .glance-controls { left: 0; right: auto; bottom: 84px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #app:not([data-mobile-controls="true"]) .ability-reserve-fill,
+  #app:not([data-mobile-controls="true"]) .mobile-goal-car,
+  #app:not([data-mobile-controls="true"]) .mobile-goal-track::after { transition: none; }
+}
