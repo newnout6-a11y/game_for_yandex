@@ -1,5 +1,6 @@
 // These are physical drawing-buffer budgets, not CSS viewport sizes. Auto keeps
-// the original browser-friendly cost; higher profiles are explicit opt-ins.
+// a bounded fallback for standalone callers. RoadRenderer supplies the session
+// adaptive budget; higher manual profiles remain explicit opt-ins.
 const RENDER_PROFILES = Object.freeze({
   auto: Object.freeze({ desktopPixels: 1600000, compactPixels: 800000, dpr: 1.5, desktopEdge: 2048, compactEdge: 2048 }),
   high: Object.freeze({ desktopPixels: 3686400, compactPixels: 1600000, dpr: 2, desktopEdge: 3840, compactEdge: 2560 }),
@@ -37,16 +38,18 @@ export function normalizeRenderQuality(quality) {
  * @param {boolean} [compact=false] - Select the profile's smaller compact-device budget.
  * @param {string} [quality='auto'] - Auto, High or Ultra profile (case-insensitive).
  * @param {boolean} [showcase=false] - Use the bounded compact parked-menu budget, never the road budget.
+ * @param {Object|null} [auto=null] - Session-local Auto pixel/edge/DPR budget; ignored for manual profiles and showcases.
  * @returns {{width: number, height: number, scale: number}} Floored positive buffer dimensions and unrounded scale.
  */
-export function renderDimensions(width, height, dpr = 1, compact = false, quality = 'auto', showcase = false) {
+export function renderDimensions(width, height, dpr = 1, compact = false, quality = 'auto', showcase = false, auto = null) {
   const w = Math.max(1, Number.isFinite(width) ? width : 1);
   const h = Math.max(1, Number.isFinite(height) ? height : 1);
   const normalized=normalizeRenderQuality(quality);
   const profile = compact&&showcase ? {...RENDER_PROFILES[normalized],...SHOWCASE_COMPACT[normalized]} : RENDER_PROFILES[normalized];
-  const ratio = Math.max(1, Math.min(Number.isFinite(dpr) ? dpr : 1, profile.dpr));
-  const pixelBudget = compact ? profile.compactPixels : profile.desktopPixels;
-  const maxEdge = compact ? profile.compactEdge : profile.desktopEdge;
+  const adaptive=normalized==='auto'&&!showcase&&auto&&Number.isFinite(auto.pixels)&&auto.pixels>0?auto:null;
+  const ratio = Math.max(1, Math.min(Number.isFinite(dpr) ? dpr : 1, adaptive?.maxDpr||profile.dpr));
+  const pixelBudget = adaptive?Math.min(auto.pixels,compact?3686400:8294400):(compact ? profile.compactPixels : profile.desktopPixels);
+  const maxEdge = adaptive?Math.max(1,Math.min(adaptive.maxEdge||4096,4096)):(compact ? profile.compactEdge : profile.desktopEdge);
   // Keep exact native multiples for normal viewports; split roots are a safe
   // fallback when multiplying two otherwise finite inputs would overflow.
   const area = w * h;

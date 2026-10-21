@@ -57,8 +57,12 @@ const game=new Game({onEvent:(event,value,feedback)=>{
   if(event==='cone')ui.toast('КОНУС · −50 ОЧКОВ');
   if(event==='event-clear'&&!value.success)ui.toast('СОБЫТИЕ НЕ ПРОЙДЕНО');
 }});
+let autoFrameActive=false;
 const lifecycle=createLifecycle(()=>{
   clearInput();
+  // Events can pause and resume between rAF callbacks. Discard the interval
+  // and any pending Auto trial synchronously, without changing pause semantics.
+  autoFrameActive=false;renderer.observeAutoFrame(0,0,false);
   if(lifecycle.paused&&garageScene?.advance?.(0,{visible:false}))garageDirty=true;
   if(screen==='playing'&&lifecycle.paused&&lifecycle.reasons().some(reason=>reason!=='orientation')){screen='paused';applyScreen();lifecycle.pause('user');ui.pause();}
   syncGameplay();
@@ -145,7 +149,7 @@ function refreshFleetVisibility(){
 }
 /** The route marker is independent of unowned Fleet previews and follows only the live run. */
 function syncRouteVehicleActivity(){
-  routeVehicleMarker?.setActivity({visible:mobileControls&&!orientationBlocked&&!document.hidden&&['playing','paused'].includes(screen),paused:screen!=='playing'||lifecycle.paused||busy||!!loading.adPending});
+  routeVehicleMarker?.setActivity({visible:!orientationBlocked&&!document.hidden&&['playing','paused'].includes(screen),paused:screen!=='playing'||lifecycle.paused||busy||!!loading.adPending});
 }
 /** Queue cloud sync only after the local transactional reducer has accepted a real change. */
 function changed(result){
@@ -415,12 +419,15 @@ for (const [id,action] of controlBindings) {
   });
   for(const name of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(name,event=>input.set(action,'pointer-'+event.pointerId,false));
   button.addEventListener('keydown',event=>{
+    // Desktop Space is always nitro, even when another ability owns focus.
+    // Enter remains focused-button activation; mobile keeps native Space activation.
+    if(event.code==='Space'&&!mobileControls)return;
     if(!['Enter','Space'].includes(event.code)||screen!=='playing'||lifecycle.paused)return;
     event.preventDefault();event.stopPropagation();
     if(button.disabled||button.getAttribute('aria-disabled')==='true')return;
     input.set(action,id+'-'+event.code,true);
   });
-  button.addEventListener('keyup',event=>{ if(['Enter','Space'].includes(event.code)){event.preventDefault();event.stopPropagation();input.set(action,id+'-'+event.code,false);} });
+  button.addEventListener('keyup',event=>{ if(event.code==='Space'&&!mobileControls)return; if(['Enter','Space'].includes(event.code)){event.preventDefault();event.stopPropagation();input.set(action,id+'-'+event.code,false);} });
   button.addEventListener('blur',()=>{input.set(action,id+'-Enter',false);input.set(action,id+'-Space',false);});
 }
 // Dedicated held glances never enter DrivingInput and never turn scene swipes into drag-look.
@@ -537,7 +544,8 @@ byId('garageShell').addEventListener('garage-layout-change',()=>{garageDirty=tru
 byId('garageShell').addEventListener('scroll',()=>{fleetVisibilityDirty=true;},true);
 /** Advance only live simulation; a settled garage has no recurring render or shadow work. */
 function tick(time){
-  const dt=Math.min((time-previous)/1000,.1);previous=time;
+  const frameMs=time-previous,frameStart=performance.now();
+  const dt=Math.min(frameMs/1000,.1);previous=time;
   const garageVisible=!orientationBlocked&&!document.hidden&&['hub','garage','results'].includes(screen);
   const paintChanged=garageScene?.advance?.(dt,{visible:garageVisible,reducedMotion:renderer.reducedMotion===true,mediaActive:!lifecycle.paused&&!loading.adPending&&!garageUI.settingsOpen});
   if(paintChanged)garageDirty=true;
@@ -547,12 +555,14 @@ function tick(time){
     for(const[id,action]of controlBindings){const held=String(input.active(action)),button=byId(id);if(button.dataset.held!==held)button.dataset.held=held;if(button.getAttribute('aria-pressed')!==held)button.setAttribute('aria-pressed',held);}
     syncGlanceControls();renderer.render(game.state,{dt,paused:screen!=='playing'||lifecycle.paused});
   }else if(!orientationBlocked&&garageScene?.ready&&(garageDirty||renderer.needsRender||garageScene.animating)&&!document.hidden){garageScene.render(innerWidth,innerHeight,garageFraming(),{stableOrbit:screen!=='results'});garageDirty=false;renderer.needsRender=false;}
+  const autoActive=assetsReady&&screen==='playing'&&game.state.phase!=='crashed'&&!lifecycle.paused&&!orientationBlocked&&!document.hidden&&!busy&&!loading.adPending&&!renderer.autoContextLost;
+  renderer.observeAutoFrame(frameMs,performance.now()-frameStart,autoActive&&autoFrameActive);autoFrameActive=autoActive;
   const fleetVisible=garageVisible&&screen==='garage'&&tab==='fleet';
   const fleetPaused=lifecycle.paused||busy||loading.adPending||garageUI.settingsOpen||!!garageUI.view?.platform?.conflict;
   if(fleetVisible&&fleetVisibilityDirty)refreshFleetVisibility();
   if(fleetTouchRemaining>0&&fleetVisible&&!fleetPaused){fleetTouchRemaining=Math.max(0,fleetTouchRemaining-dt);if(!fleetTouchRemaining)fleetMiniatures?.setInteraction(null);}
   fleetMiniatures?.update(dt,{visible:fleetVisible,paused:fleetPaused,reducedMotion:renderer.reducedMotion===true});
-  routeVehicleMarker?.update(dt,{visible:mobileControls&&!orientationBlocked&&!document.hidden&&['playing','paused'].includes(screen),paused:screen!=='playing'||lifecycle.paused||busy||!!loading.adPending});
+  routeVehicleMarker?.update(dt,{visible:!orientationBlocked&&!document.hidden&&['playing','paused'].includes(screen),paused:screen!=='playing'||lifecycle.paused||busy||!!loading.adPending});
   audio.update(game.state,screen==='playing'&&!lifecycle.paused);requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);

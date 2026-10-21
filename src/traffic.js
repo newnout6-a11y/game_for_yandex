@@ -65,6 +65,11 @@ export function createTrafficCar(kind='sedan',color=null) {
   car.userData={...car.userData,kind,category:spec.category,length:spec.length,width:spec.width,height:spec.height,wheelRadius:spec.wheelRadius,wheels,paint,brakeMaterial,indicators,trailer:car.getObjectByName('trailer')||null};
   prepareTrafficRig(car);
   prepareDriverRig(car);
+  // Authored mesh-local transforms are immutable; roots, suspension pivots,
+  // wheels and all driver joints retain automatic local-matrix updates.
+  const r=car.userData.driver;
+  const animated=new Set([car,car.userData.bodyRig,car.userData.trailer,car.userData.trailerRig,...wheels,r?.wheel,r?.head,...(r?.arms.flatMap(a=>[a.shoulder,a.elbow,a.hand])||[])]);
+  car.traverse(node=>{if(node.isMesh&&!animated.has(node)){node.updateMatrix();node.matrixAutoUpdate=false;}});
   return car;
 }
 

@@ -140,8 +140,14 @@ export class UI {
     byId('renderQuality').value = quality;
     byId('renderResolution').textContent = info.width + ' × ' + info.height;
     const compact = info.compact;
+    if(quality==='auto'&&!info.showcase&&info.auto){
+      const budget=(info.auto.pixels/1000000).toFixed(2).replace('.',',');
+      const status=info.auto.status==='cadence-limited'?'Чёткость сохранена: частота кадров может ограничиваться не только графикой.':info.auto.status==='measuring'?'Проверяется устойчивость нового разрешения.':'Подбор по экрану и устойчивой частоте кадров во время езды.';
+      byId('renderQualityHint').textContent='Авто: бюджет '+budget+' млн пикселей. '+status+' Обучение действует только на этом устройстве в текущем сеансе; это не обещание 60 FPS.';
+      return;
+    }
     if(compact&&info.showcase){
-      byId('renderQualityHint').textContent='Гараж: до '+(quality==='auto'?'1,6':'2,1')+' млн пикселей для чётких контуров. В заезде действует отдельный экономный лимит; это не 4K. Повышенная детализация увеличивает нагрузку на графику и расход батареи.';
+      byId('renderQualityHint').textContent='Гараж: до '+(quality==='auto'?'1,6':'2,1')+' млн пикселей для чётких контуров. В заезде Авто подбирает разрешение по устройству и плавности; это не 4K. Повышенная детализация увеличивает нагрузку на графику и расход батареи.';
       return;
     }
     byId('renderQualityHint').textContent = quality === 'auto'
@@ -275,9 +281,7 @@ export class UI {
    */
   pause() {
     const cockpit = this.cameraMode === 'cockpit';
-    const utilities = this.app?.dataset?.mobileControls === 'true'
-      ? '<div class="pause-mobile-utilities"><button class="button secondary" id="pauseSoundBtn" data-action="pauseSound" aria-label="' + (this.soundEnabled ? 'Выключить звук' : 'Включить звук') + '" aria-pressed="' + !!this.soundEnabled + '">Звук: ' + (this.soundEnabled ? 'включён' : 'выключен') + '</button><button class="button secondary" data-action="pauseHelp">Управление</button></div>'
-      : '';
+    const utilities = '<div class="pause-mobile-utilities"><button class="button secondary" id="pauseSoundBtn" data-action="pauseSound" aria-label="' + (this.soundEnabled ? 'Выключить звук' : 'Включить звук') + '" aria-pressed="' + !!this.soundEnabled + '">Звук: ' + (this.soundEnabled ? 'включён' : 'выключен') + '</button><button class="button secondary" data-action="pauseHelp">Управление</button></div>';
     this.open('pause', '<h2 id="dialogTitle">Пауза</h2><p>Заезд остановлен.</p><div id="pauseRenderSettings"></div><button class="button primary" data-action="resume">Продолжить заезд ' + arrow + '</button><button class="button secondary pause-camera-button" id="pauseCameraBtn" data-action="camera" aria-label="Вид из кабины" aria-pressed="' + cockpit + '">Вид из кабины: ' + (cockpit ? 'включён' : 'выключен') + '</button>' + utilities + '<button class="button secondary" data-action="menu">В главное меню</button><p class="dialog-note">Esc — продолжить</p>');
     byId('pauseRenderSettings').append(this.renderSettingsElement);
   }
