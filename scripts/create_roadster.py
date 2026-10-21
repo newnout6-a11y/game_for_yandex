@@ -1,10 +1,13 @@
-"""Reference-reconstructed angular Rocket roadster, authored in editable Blender. Run with Blender 4.x --background --python.
+"""Reference-reconstructed angular Rocket roadster, authored in editable Blender. Run with Blender 4.3.x (64-bit little-endian) --background --python.
 Coordinates in all helpers are game axes: +Y up, -Z forward; exported glTF is metres.
 No external models, materials, images or add-ons are required.
 """
-import bpy, bmesh, math, os, sys, json
+import bpy, bmesh, math, os, sys, json, struct
 from mathutils import Vector
 from math import sin, cos, pi, sqrt
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
+from portable_blender_images import require_supported_blender, save_portable_blend
+require_supported_blender(bpy.app.version, sys.byteorder, struct.calcsize('P'))
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREVIEW=os.environ.get('ROADSTER_PREVIEW',os.path.join(ROOT,'art','previews'))
 os.makedirs(PREVIEW,exist_ok=True)
@@ -424,8 +427,26 @@ for i,sx in enumerate([-.399,-.135,.135,.399]):
     socket['thrusterDirection']=[0,0,1];socket['thrusterRole']='boost';socket['socketType']='rear_nozzle';socket['apertureRadius']=.035;model_objects.append(socket)
 model_objects.append(asset_root)
 for ob in model_objects:ob['asset_role']='roadster'
+def portable_authoring_paths():
+    """Keep packed records as portable as the visible image paths."""
+    for image in bpy.data.images:
+        if not image.packed_file:
+            continue
+        relative = '//textures/' + image.name + '.png'
+        image.filepath = relative
+        for packed in image.packed_files:
+            packed.filepath = relative
+    bpy.context.scene.render.filepath = '//previews/'
+    for screen in bpy.data.screens:
+        for area in screen.areas:
+            for space in area.spaces:
+                if space.type == 'FILE_BROWSER' and space.params:
+                    space.params.directory = b'//'
+
+portable_authoring_paths()
 bpy.context.scene.unit_settings.system='METRIC';bpy.context.preferences.filepaths.save_version=0
-bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT,'art','roadster.blend'))
+save_portable_blend(os.path.join(ROOT,'art','roadster.blend'), lambda path:
+    bpy.ops.wm.save_as_mainfile(filepath=path, relative_remap=False, compress=False, copy=True, check_existing=False))
 
 def join_group(obs,name):
     """Batch meshes sharing one material and motion parent after editable source save."""
