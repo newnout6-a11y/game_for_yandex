@@ -6,6 +6,7 @@ import { createAds } from '../src/ads.js';
 import { createLifecycle } from '../src/lifecycle.js';
 import { createPlatformServices, CLOUD_PROFILE_KEY } from '../src/platform-services.js';
 import { createProgressionStorage } from '../src/progression-storage.js';
+import { createProfile } from '../src/progression.js';
 import { GarageUI, normalizeGarageView } from '../src/garage-ui.js';
 
 /** Isolated browser save storage; no real account, browser or advertising is involved. */
@@ -19,21 +20,21 @@ function deferred() {
   const promise = new Promise(yes => { resolve = yes; });
   return { promise, resolve };
 }
-/** Render the real footer with only text/append DOM primitives and record its genuine UI actions. */
-function footerActions(platform) {
+/** Render the real settings save controls with only text/append DOM primitives and record its genuine UI actions. */
+function saveControlActions(platform) {
   const actions = [];
-  const doc = { createElement: () => ({ children: [], append(...nodes) { this.children.push(...nodes); } }) };
+  const doc = { createElement: () => ({ children: [], setAttribute() {}, append(...nodes) { this.children.push(...nodes); } }) };
   const presenter = {
     doc, view: normalizeGarageView({ platform }),
     button(label, action) { actions.push({ label, ...action }); return doc.createElement('button'); },
   };
-  GarageUI.prototype.renderFooter.call(presenter);
+  GarageUI.prototype.renderSaveControls.call(presenter);
   return actions;
 }
 
 test('a healthy guest cloud save still exposes explicit account login for cross-device progress', () => {
   for (const cloudStatus of ['durable', 'loaded']) {
-    const actions = footerActions({ sdk: true, cloud: true, cloudConnected: true,
+    const actions = saveControlActions({ sdk: true, cloud: true, cloudConnected: true,
       authenticated: false, auth: 'guest', cloudStatus, local: { localSaved: true } });
     assert.ok(actions.some(action => action.type === 'cloudConnect'),
       `Guest ${cloudStatus} is not account authorization and must not hide the only login CTA`);
@@ -41,7 +42,7 @@ test('a healthy guest cloud save still exposes explicit account login for cross-
 });
 
 test('an authorized player can retry a failed cloud read without reopening login', () => {
-  const actions = footerActions({ sdk: true, cloud: true, cloudConnected: false,
+  const actions = saveControlActions({ sdk: true, cloud: true, cloudConnected: false,
     authenticated: true, auth: 'authorized', cloudStatus: 'error', local: { localSaved: true } });
   assert.ok(actions.some(action => action.type === 'retryCloud'),
     'A frozen failed read needs a retryCloud action; local progression must not silently remain unsynced');
@@ -108,5 +109,39 @@ test('a transient initial Player failure exposes a retry and recovers the same c
  const store=createProgressionStorage({provider:memory(),idFactory:()=> 'cloud_retry_fixture'}),lifecycle=createLifecycle();let calls=0,writes=0;
  const real={getPlayer:async()=>{if(++calls===1)throw new Error('temporary network outage');return {getUniqueID:()=> 'guest',isAuthorized:()=>false,getData:async()=>({[CLOUD_PROFILE_KEY]:{formatVersion:1,accountId:'guest',profile:store.get()}}),setData:async()=>{writes++;}};}};
  const platform=createPlatformServices({sdk:{init:async()=>real,get:()=>real},lifecycle,profileStore:store,minSaveIntervalMs:0});
- try{await platform.init();const failed=platform.getState();assert.equal(failed.cloud.status,'error');const actions=footerActions({...failed,sdk:true,cloud:false,cloudStatus:failed.cloud.status});assert.ok(actions.some(action=>action.type==='retryCloud'));await platform.retryCloud();assert.equal(platform.getState().cloud.status,'loaded');assert.equal(platform.getState().auth,'guest');assert.equal(writes,0);assert.equal(store.get().wallet.credits,300);}finally{platform.dispose();}
+ try{await platform.init();const failed=platform.getState();assert.equal(failed.cloud.status,'error');const actions=saveControlActions({...failed,sdk:true,cloud:false,cloudStatus:failed.cloud.status});assert.ok(actions.some(action=>action.type==='retryCloud'));await platform.retryCloud();assert.equal(platform.getState().cloud.status,'loaded');assert.equal(platform.getState().auth,'guest');assert.equal(writes,0);assert.equal(store.get().wallet.credits,300);}finally{platform.dispose();}
+});
+
+
+test('a validated cloud load with unavailable local storage reports the existing copy, not session-only or a new durable write', async () => {
+  const remote = createProfile({ now: 1000, id: 'audit_existing_cloud' });
+  remote.wallet.credits = 1234; remote.revision = 12;
+  const store = createProgressionStorage({
+    provider: () => { throw Object.assign(new Error('Local storage unavailable'), { name: 'SecurityError' }); },
+    now: () => 1000, idFactory: () => 'audit_unavailable_local',
+  });
+  let writes = 0;
+  const real = { getPlayer: async () => ({
+    getUniqueID: () => 'guest', isAuthorized: () => false,
+    getData: async () => ({ [CLOUD_PROFILE_KEY]: { formatVersion: 1, accountId: 'guest', profile: structuredClone(remote) } }),
+    setData: async () => { writes++; },
+  }) };
+  const platform = createPlatformServices({ sdk: { init: async () => real, get: () => real }, lifecycle: createLifecycle(), profileStore: store, minSaveIntervalMs: 0 });
+  try {
+    await platform.init();
+    const state = platform.getState();
+    assert.equal(state.cloud.status, 'loaded');
+    assert.equal(state.local.localSaved, false);
+    assert.equal(store.get().wallet.credits, 1234);
+    assert.equal(writes, 0, 'Loading a validated existing profile must not be reported as a new cloud write');
+    const doc = { createElement: () => ({ children: [], textContent: '', setAttribute() {}, append(...nodes) { this.children.push(...nodes); } }) };
+    const presenter = { doc, view: normalizeGarageView({ profile: store.get(), cloud: state.cloud, local: state.local, platform: { ...state, sdk: true, cloud: state.cloud.available } }), button() { return doc.createElement('button'); } };
+    const text = node => node.textContent + node.children.map(text).join('');
+    for (const alertsOnly of [false, true]) {
+      const controls = GarageUI.prototype.renderSaveControls.call(presenter, { alertsOnly });
+      assert.match(text(controls), /На устройстве не сохранено · загружена облачная копия/);
+      assert.doesNotMatch(text(controls), /только в этой сессии|сохранено в облаке|облако не подтверждено/i);
+    }
+    assert.equal(writes, 0, 'Presentation never causes a save');
+  } finally { platform.dispose(); }
 });

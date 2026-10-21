@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Game} from '../src/game.js';
 import {CONFIG} from '../src/config.js';
+import {PLAYER_HANDLING} from '../src/player-motion.js';
 import {seededRandom} from '../src/util.js';
 import {playerTrafficDepth} from '../src/traffic-physics.js';
 /**
@@ -36,7 +37,7 @@ test('gas accelerates, release coasts, brake wins over gas and stops without rev
 });
 test('continuous steering ramps wheel angle, never selects a lane and holds an intermediate position',()=>{
   const g=make();g.state.speed=25;g.update(1/60,{throttle:1,steer:-1});
-  assert.ok(g.state.x>.99);assert.ok(Math.abs(g.state.steerAngle)<.03);
+  assert.ok(g.state.x>.99);assert.ok(Math.abs(g.state.steerAngle)<=PLAYER_HANDLING.maxSteerRate*g.state.steeringSlewMultiplier/60+1e-12);
   advance(g,.45,{throttle:1,steer:-1});assert.ok(g.state.x<.9&&g.state.x>.5);
   advance(g,2,{throttle:1});const x=g.state.x;assert.ok(Math.abs(x-Math.round(x))>.03);
   advance(g,.4,{throttle:1});assert.ok(Math.abs(g.state.x-x)<.005);
@@ -46,11 +47,11 @@ test('steering at rest turns wheels but cannot move or teleport the car',()=>{
   assert.equal(g.steer(NaN),false);g.steer(-1);assert.equal(g.state.x,1);g.releaseControls();g.update(.1,{});assert.equal(g.state.x,1);
 });
 test('road edges bound lateral motion and direction changes have inertia',()=>{
-  const g=make();g.state.speed=35;advance(g,3,{throttle:1,steer:1});assert.ok(g.state.x<=2.24);
+  const g=make();g.state.speed=35;advance(g,3,{throttle:1,steer:1});assert.ok(g.state.x<=1+6.5/3.5);
   // Edge approach has already aligned the car; test reversal inertia separately away from the shoulder.
   const turn=make();turn.state.speed=35;advance(turn,.22,{throttle:1,steer:1});const angle=turn.state.steerAngle;assert.ok(angle>0);
   turn.update(.01,{throttle:1,steer:-1});assert.ok(turn.state.steerAngle<angle&&Math.abs(turn.state.steerAngle-angle)<.035);
-  advance(g,6,{throttle:1,steer:-1});assert.ok(g.state.x>=-.24);assert.ok(Number.isFinite(g.state.heading));
+  advance(g,6,{throttle:1,steer:-1});assert.ok(g.state.x>=1-6.5/3.5);assert.ok(Number.isFinite(g.state.heading));
 });
 test('physics agrees across 60 and 120 Hz and ignores invalid deltas and controls',()=>{
   const a=make(),b=make();for(let i=0;i<120;i++)a.update(1/60,{throttle:1,steer:.2});for(let i=0;i<240;i++)b.update(1/120,{throttle:1,steer:.2});
@@ -65,7 +66,7 @@ test('reset clears control, event and run state and validates difficulty',()=>{
 });
 test('swept collision catches fast traffic crossing and stops simulation after a crash',()=>{
   const events=[],g=make({/** Record event names so the swept-collision fixture can assert a single crash notification. */ onEvent:e=>events.push(e)});g.state.speed=100;g.state.traffic=[{lane:1,z:8,speed:8}];g.update(.1);
-  assert.equal(g.state.phase,'crashed');assert.deepEqual(events,['crash']);const d=g.state.distance;g.update(.1,{throttle:1});assert.equal(g.state.distance,d);assert.equal(g.steer(1),false);
+  assert.equal(g.state.phase,'crashed');assert.equal(events.filter(e=>e==='crash').length,1);assert.ok(events.includes('impact'));assert.ok(events.includes('contact'));const d=g.state.distance;g.update(.1,{throttle:1});assert.equal(g.state.distance,d);assert.equal(g.steer(1),false);
 });
 test('matching traffic speed does not pull cars backwards toward the player',()=>{
   const g=make();g.state.speed=20;g.state.traffic=[{lane:1,z:30,speed:20}];g.update(.01,{throttle:.16});assert.ok(Math.abs(g.state.traffic[0].z-30)<.001);

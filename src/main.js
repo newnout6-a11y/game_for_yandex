@@ -1,7 +1,7 @@
 import { recoverPendingRunResult } from './pending-run-result.js';
 import { homeVehicleFraming } from './home-framing.js';
+import { resultsVehicleFraming } from './results-framing.js';
 import { compactGarageFraming } from './garage-framing.js';
-import { createThumbDrive } from './thumb-drive.js';
 import { createOrientationGate } from './orientation-gate.js';
 import { Game } from './game.js';
 import { RoadRenderer } from './world.js';
@@ -10,6 +10,7 @@ import { GarageScene } from './garage-scene.js';
 import { bindGarageOrbitInput } from './garage-orbit-input.js';
 import { GarageUI } from './garage-ui.js';
 import { FleetMiniatures } from './garage-fleet-miniatures.js';
+import { RouteVehicleMarker } from './route-vehicle-marker.js';
 import { createProgressionStorage } from './progression-storage.js';
 import { deriveGarageView, getEngineeringModifiers, getRunDoubleOffer, LIMITS } from './progression.js';
 import { CATALOG, ADS, vehicleDefinition } from './progression-catalog.js';
@@ -30,10 +31,11 @@ const byId=id=>document.getElementById(id);
 const storage=createStorage(), profileStore=createProgressionStorage();
 const settings={...storage.get(),...profileStore.get().settings};
 const sdk=createSdk(),audio=new GameAudio(settings.sound),input=new DrivingInput();
-let otherGames=[],inspection='overview',orientationBlocked=false,thumbDrive=null,garageOrbitInput=null;
+let otherGames=[],inspection='overview',orientationBlocked=false,mobileControls=false,garageOrbitInput=null;
 let screen='loading',tab='fleet',busy=false,assetsReady=false,assetsFailed=false,garageScene=null,platform=null;
 let startingRun=false;
 let fleetMiniatures=null,fleetTargets=[],fleetVisibilityDirty=true,fleetTouchRemaining=0;
+let routeVehicleMarker=null,routeVehicleSelection=null;
 let run=null,telemetry=null,runResult=null,runBest=0,continuedBest=0,savedDistance=0,runCounted=false,crashElapsed=0,helpFromGame=false;
 let appliedSettingsKey='',appliedSelectedId=profileStore.get().selectedVehicleId;
 let appliedProfileId=profileStore.get().profileId,observedNextSequence=profileStore.get().ledger.nextSequence,appliedReplacementEpoch=profileStore.getReplacementEpoch();
@@ -44,13 +46,16 @@ const garageUI=new GarageUI({root:byId('garageShell'),onAction:action=>void hand
 const playButton=byId('playBtn');playButton.disabled=true;
 const renderer=new RoadRenderer(byId('scene'),percent=>{loading={progress:Math.round(percent*.85),message:'Модели, материалы и трасса'};refreshGarage();},{quality:settings.renderQuality,cameraMode:settings.cameraMode,onRenderSettings:info=>ui.renderSettings(info)});
 const glance=new CockpitGlanceControls(direction=>renderer.setLookDirection(direction));
-const game=new Game({onEvent:(event,value)=>{
+const game=new Game({onEvent:(event,value,feedback)=>{
+  if(event==='boost-empty'){input.releaseEmptyTouchBoost(0);return;}
+  if(event==='contact'){telemetry?.event(event,undefined,game.state);return;}
+  if(event==='impact'){audio.tone('impact');renderer.effect('impact',value);return;}
+  // Ordinary passes have no new reward, telemetry observation or audio cue.
+  if(event==='pass'){renderer.bonus(event,feedback,game.state);return;}
   telemetry?.event(event,value,game.state);audio.tone(event);renderer.effect(event);
-  if(event==='near')ui.toast('БЛИЗКО! ×'+value);
-  if(event==='charge')ui.toast('+22% ЭНЕРГИИ');
-  if(event==='goal')ui.toast('1 500 М · ЦЕЛЬ ПРОЙДЕНА');
+  if(event==='near'||event==='charge'||event==='goal'||(event==='event-clear'&&value.success)){renderer.bonus(event,feedback,game.state);ui.announceBonus(event,value,game.state);}
   if(event==='cone')ui.toast('КОНУС · −50 ОЧКОВ');
-  if(event==='event-clear')ui.toast(value.success?'+'+value.points+' · СОБЫТИЕ ПРОЙДЕНО':'СОБЫТИЕ НЕ ПРОЙДЕНО');
+  if(event==='event-clear'&&!value.success)ui.toast('СОБЫТИЕ НЕ ПРОЙДЕНО');
 }});
 const lifecycle=createLifecycle(()=>{
   clearInput();
@@ -64,11 +69,10 @@ platform=createPlatformServices({sdk,lifecycle,profileStore,onState:()=>{reconci
 const orientationGate=createOrientationGate({window,document,appRoot:byId('app'),onChange:blocked=>{
   orientationBlocked=blocked;clearInput();if(blocked)lifecycle.pause('orientation');else lifecycle.resume('orientation');garageDirty=true;signalReady();
 }});
-thumbDrive=createThumbDrive({root:byId('thumbDrive'),window,onControls:controls=>input.setAnalog('thumb-drive',controls)});
-syncThumbControls();
-/** Enable one-thumb controls only for actual touch landscape play; keyboard ownership remains independent. */
-function syncThumbControls(){const nav=window.navigator||{};const touch=Number(nav.maxTouchPoints)>0&&matchMedia('(pointer: coarse)').matches;const eligible=touch&&innerWidth>=innerHeight&&!orientationBlocked;byId('app').dataset.thumbDrive=String(eligible);thumbDrive?.setEnabled(eligible&&screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing');}
-window.addEventListener('resize',syncThumbControls);
+syncMobileControls();
+/** Compact arrows are selected by the real touch viewport, never by desktop width alone. */
+function syncMobileControls(){const nav=window.navigator||{};const eligible=Number(nav.maxTouchPoints)>0&&matchMedia('(pointer: coarse)').matches&&innerWidth>=innerHeight&&!orientationBlocked;if(mobileControls!==eligible)clearInput();mobileControls=eligible;byId('app').dataset.mobileControls=String(eligible);syncRouteVehicleActivity();}
+window.addEventListener('resize',()=>syncMobileControls());
 /** Loading completion is sent once only after an interactive landscape entry is available. */
 function signalReady(){if(assetsReady&&!orientationBlocked)sdk.ready();}
 
@@ -78,7 +82,7 @@ function reconcileProfileLineage(){
   const replaced=profileStore.getReplacementEpoch()!==appliedReplacementEpoch||profile.profileId!==appliedProfileId||profile.ledger.nextSequence<observedNextSequence||(run&&profile.ledger.activeRun?.id!==run.id);
   appliedProfileId=profile.profileId;observedNextSequence=profile.ledger.nextSequence;appliedReplacementEpoch=profileStore.getReplacementEpoch();
   if(!replaced)return;
-  adCadence=createAdCadence(ADS.interstitial);run=null;telemetry=null;runResult=null;clearInput();
+  adCadence=createAdCadence(ADS.interstitial);run=null;telemetry=null;runResult=null;routeVehicleSelection=null;routeVehicleMarker?.sync(null);clearInput();
   if(assetsReady){ui.close();game.state.phase='ready';screen='hub';lifecycle.resume('user');restorePendingResult();applyScreen();syncGameplay();}
 }
 /** Restore only persisted results from the accepted profile, never a fabricated road simulation or fresh award. */
@@ -98,20 +102,21 @@ function hydrateStoredSettings(){
   renderer.setQuality(settings.renderQuality);renderer.setCameraMode(settings.cameraMode);renderer.setRoute(settings.route);ui.sound(settings.sound);garageDirty=true;
 }
 /** Release input owners at every screen or lifecycle boundary, including mirror glances. */
-function clearInput(){garageOrbitInput?.cancel();thumbDrive?.clear();input.clear();game.releaseControls();glance.clear();}
+function clearInput(){garageOrbitInput?.cancel();input.clear();game.releaseControls();glance.clear();}
 /** Only genuine active simulation is reported as gameplay or produces engine audio. */
-function syncGameplay(){syncThumbControls();const active=screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing';sdk.gameplay(active);audio.update(game.state,active);}
+function syncGameplay(){syncMobileControls();const active=screen==='playing'&&!lifecycle.paused&&game.state.phase==='playing';ui.syncBonusAnnouncements(game.state,active);sdk.gameplay(active);audio.update(game.state,active);}
 /** Keep legacy driving HUD separate from the new menu; hidden legacy controls cannot receive focus. */
 function applyScreen(){
   garageOrbitInput?.cancel();
   const driving=['playing','paused'].includes(screen);ui.setScreen(driving?screen:'menu');
+  renderer.setShowcase(!driving);
   byId('menu').hidden=true;byId('hud').hidden=!driving;document.querySelector('.topbar').hidden=!driving;
   byId('app').dataset.screen=screen;garageUI.setVisible(!driving);
   const flight=vehicleDefinition(profileStore.get().selectedVehicleId)?.flight!==false;
   byId('app').dataset.flight=String(flight);byId('cameraBtn').hidden=!driving||!flight;
   document.querySelector('.nitro-hint').textContent=flight?'Нитро + полёт · общий запас':'Нитро · запас энергии';
   byId('runHint').textContent=flight?'W / ↑ — газ · S / ↓ — тормоз · A D / ← → — руль · F — полёт · Q / E — кувырок · C — камера · H — сигнал':'W / ↑ — газ · S / ↓ — тормоз · A D / ← → — руль · SPACE — нитро · H — сигнал';
-  if(!driving){glance.clear();renderer.playerMirrors?.suspend?.();}garageDirty=true;
+  if(!driving){glance.clear();renderer.playerMirrors?.suspend?.();}syncRouteVehicleActivity();garageDirty=true;
 }
 /** Reflect authored capabilities, exact prices and honest platform persistence without computing awards in the UI. */
 function refreshGarage(){
@@ -137,6 +142,10 @@ function refreshFleetVisibility(){
   const panel=byId('garageShell').querySelector('.gs-workbench')?.getBoundingClientRect();
   const targets=fleetTargets.map(target=>{const r=target.canvas.getBoundingClientRect(),list=target.canvas.closest('.gs-vehicle-list')?.getBoundingClientRect()||panel;return {...target,visible:!!panel&&!!list&&r.width>0&&r.height>0&&Math.min(r.right,panel.right,list.right,innerWidth)-Math.max(r.left,panel.left,list.left,0)>8&&Math.min(r.bottom,panel.bottom,list.bottom,innerHeight)-Math.max(r.top,panel.top,list.top,0)>8};});
   const profile=profileStore.get();fleetMiniatures.sync(targets,{scopeKey:`${profile.profileId}:${profileStore.getReplacementEpoch()}`});
+}
+/** The route marker is independent of unowned Fleet previews and follows only the live run. */
+function syncRouteVehicleActivity(){
+  routeVehicleMarker?.setActivity({visible:mobileControls&&!orientationBlocked&&!document.hidden&&['playing','paused'].includes(screen),paused:screen!=='playing'||lifecycle.paused||busy||!!loading.adPending});
 }
 /** Queue cloud sync only after the local transactional reducer has accepted a real change. */
 function changed(result){
@@ -212,6 +221,9 @@ async function startRun(){
     // The previous phase is closed before reconfiguration; no live car can change dimensions mid-run.
     game.state.phase='ready';game.configureVehicle(id,getEngineeringModifiers(profile,id,profile.mode));game.reset(settings.difficulty);
     renderer.selectOwnedVehicle(id,profile.loadouts[id]?.cosmetics);renderer.setRoute(settings.route);renderer.setCameraMode(settings.cameraMode);
+    // Freeze precisely the loadout used by the real run; garage browsing must never replace it.
+    routeVehicleSelection={id:renderer.playerVehicleId,appearance:{...profile.loadouts[id]?.cosmetics},scopeKey:`${profile.profileId}:${profileStore.getReplacementEpoch()}`};
+    routeVehicleMarker?.sync(routeVehicleSelection);
     game.start();runBest=profile.records[profile.mode]?.[`${id}:${settings.difficulty}`]?.score||0;continuedBest=profile.records.continued?.[`${id}:${settings.difficulty}`]?.score||0;savedDistance=0;runCounted=false;crashElapsed=0;
     ui.close();clearInput();lifecycle.resume('user');screen='playing';applyScreen();ui.hud(game.state);void audio.unlock();
     if(lifecycle.paused){screen='paused';applyScreen();lifecycle.pause('user');ui.pause();}
@@ -246,6 +258,12 @@ function toggleCamera(){
   if(!updateSettings({cameraMode:settings.cameraMode==='cockpit'?'chase':'cockpit'}))return;
   ui.camera(settings.cameraMode);ui.notice(settings.cameraMode==='cockpit'?'Выбран вид из кабины':'Выбрана внешняя камера');
 }
+/** Use the same transactional sound preference from the toolbar and mobile pause menu. */
+async function toggleSound(){
+  if(!updateSettings({sound:!settings.sound}))return;
+  await audio.unlock();syncGameplay();
+  ui.notice(settings.sound?'Звук включён':'Звук выключен');
+}
 /** Enable deliberate held glances only when the actual Rocket eye is active and gameplay has focus. */
 function syncGlanceControls(){
   const visible=renderer.playerVehicleId==='rocket'&&renderer.cameraMode==='cockpit'&&['playing','paused'].includes(screen);
@@ -274,6 +292,8 @@ async function handleAction(action){
   }else if(action==='menu'){
     if(['playing','paused'].includes(screen))saveRun();finalizeRun();ui.close();screen='hub';clearInput();lifecycle.resume('user');applyScreen();syncGameplay();refreshGarage();
   }else if(action==='camera'){if(ui.modalType==='pause')toggleCamera();}
+  else if(action==='pauseSound'){if(screen==='paused'&&ui.modalType==='pause')await toggleSound();}
+  else if(action==='pauseHelp'){if(screen==='paused'&&ui.modalType==='pause'){helpFromGame=true;ui.help();}}
   else if(action==='closeHelp'){ui.close();if(helpFromGame)ui.pause();helpFromGame=false;}
 }
 /** Translate UI intents into validated economy actions; no DOM value directly awards credits or paid entitlements. */
@@ -339,11 +359,7 @@ byId('helpBtn').addEventListener('click', () => {
   if (screen === 'playing') pauseRun();
   ui.help();
 });
-byId('soundBtn').addEventListener('click', async () => {
-  if(!updateSettings({sound:!settings.sound}))return;
-  await audio.unlock(); syncGameplay();
-  ui.notice(settings.sound ? 'Звук включён' : 'Звук выключен');
-});
+byId('soundBtn').addEventListener('click', toggleSound);
 byId('fullscreenBtn').addEventListener('click', async () => {
   try {
     if (document.fullscreenElement) await document.exitFullscreen();
@@ -394,7 +410,7 @@ for (const [id,action] of controlBindings) {
   const button=byId(id);
   button.addEventListener('pointerdown',event=>{
     event.preventDefault();if(screen!=='playing'||lifecycle.paused||event.button>0||button.disabled||button.getAttribute('aria-disabled')==='true')return;
-    input.set(action,'pointer-'+event.pointerId,true);
+    if(event.pointerType==='touch')input.setTouch(action,'pointer-'+event.pointerId,true);else input.set(action,'pointer-'+event.pointerId,true);
     try { button.setPointerCapture(event.pointerId); } catch { /* Synthetic pointer events have no active capture. */ }
   });
   for(const name of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(name,event=>input.set(action,'pointer-'+event.pointerId,false));
@@ -463,6 +479,8 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) { clearInput(); gesture = null; pauseRun('hidden'); }
   else lifecycle.resume('hidden');
 });
+window.addEventListener('pagehide',event=>{ui.clearBonusAnnouncements(!event.persisted);if(!event.persisted){routeVehicleMarker?.dispose();fleetMiniatures?.dispose();}});
+window.addEventListener('pageshow', () => syncGameplay());
 window.addEventListener('blur', () => { clearInput(); gesture = null; pauseRun('blur'); });
 window.addEventListener('focus', () => lifecycle.resume('blur'));
 sdk.on('game_api_pause', () => pauseRun('platform'));
@@ -480,8 +498,11 @@ async function initialize(){
     profileStore.setCapabilities(renderer.cosmeticCapabilities||{});
     garageScene=new GarageScene({renderer:renderer.renderer,compact:renderer.compact,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),onStatus:status=>{if(status.error){loading={...loading,error:'Не удалось загрузить мастерскую. Проверь соединение.'};if(assetsReady)garageUI.notice('Новый бокс не загрузился. Сохранение цело, прежний бокс остаётся доступен. Повтори загрузку в разделе бокса.');}garageDirty=true;}});
     fleetMiniatures=new FleetMiniatures({renderer:renderer.renderer,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),environment:renderer.scene.environment,onChange:({id,canvas,status})=>{if(!canvas?.isConnected||fleetTargets.find(target=>target.id===id)?.canvas!==canvas)return;canvas.parentElement.dataset.state=status;const label=canvas.parentElement.querySelector('.gs-miniature-status');if(label)label.textContent=status==='error'?'Нет превью':'3D';}});
+    routeVehicleMarker=new RouteVehicleMarker({renderer:renderer.renderer,makeVehicle:(id,appearance)=>renderer.createShowcaseVehicle(id,appearance),environment:renderer.scene.environment,canvas:byId('mobileGoalVehicleCanvas'),element:byId('mobileGoalVehicle'),label:byId('mobileGoalVehicleLabel'),status:byId('mobileGoalVehicleStatus')});
+    routeVehicleMarker.sync(routeVehicleSelection);syncRouteVehicleActivity();
     loading={progress:90,message:'Открываем бокс…'};refreshGarage();
     garageScene.setVehicle(previewId,profileStore.get().loadouts[previewId]?.cosmetics||{});
+    void garageScene.prepareToy();
     if(!await garageScene.setTier(profileStore.get().garage.level))throw new Error('Garage asset unavailable');
     assetsReady=true;void loadOwnGames(sdk).then(games=>{otherGames=games;if(!['playing','paused'].includes(screen))refreshGarage();});playButton.disabled=false;loading={progress:100,message:'Готово'};screen='hub';restorePendingResult();applyScreen();refreshGarage();signalReady();syncGameplay();
   }catch(error){console.error('Interactive startup failed:',error);assetsFailed=true;loading={...loading,error:'Не удалось загрузить игру. Проверь соединение и повтори.'};refreshGarage();}
@@ -491,6 +512,10 @@ let previous=performance.now();
 garageOrbitInput=bindGarageOrbitInput({element:byId('scene'),window,document,enabled:()=>!orientationBlocked&&!document.hidden&&!busy&&!loading.adPending&&!garageUI.settingsOpen&&!garageUI.view?.platform?.conflict&&['hub','garage'].includes(screen),onOrbit:(dx,dy)=>{garageScene?.orbit(dx,dy);garageDirty=true;}});
 /** Reserve the real visible inspection rectangle, including the mobile drawer, rather than hiding half the car under UI. */
 function garageFraming(){
+  if(screen==='results'){
+    const measured=resultsVehicleFraming({width:innerWidth,height:innerHeight,stage:document.querySelector('.gs-results-stage')?.getBoundingClientRect()});
+    if(measured)return measured;
+  }
   if(screen==='hub'){
     const bounds=selector=>document.querySelector(selector)?.getBoundingClientRect();
     const measured=homeVehicleFraming({width:innerWidth,height:innerHeight,header:bounds('.gs-header'),route:bounds('.gs-route-cell'),label:bounds('.gs-hero-vehicle'),actions:bounds('.gs-hub-actions'),footer:bounds('.gs-footer')});
@@ -516,17 +541,18 @@ function tick(time){
   const garageVisible=!orientationBlocked&&!document.hidden&&['hub','garage','results'].includes(screen);
   const paintChanged=garageScene?.advance?.(dt,{visible:garageVisible,reducedMotion:renderer.reducedMotion===true,mediaActive:!lifecycle.paused&&!loading.adPending&&!garageUI.settingsOpen});
   if(paintChanged)garageDirty=true;
-  if(screen==='playing'&&!lifecycle.paused){game.update(dt,input.read());telemetry?.observe(game.state,dt);if(game.state.phase==='crashed'){clearInput();syncGameplay();crashElapsed+=dt;if(crashElapsed>=.65){crashElapsed=0;showResults();}}}
+  if(screen==='playing'&&!lifecycle.paused){game.update(dt,()=>input.read());input.releaseEmptyTouchBoost(game.state.nitro);telemetry?.observe(game.state,dt);if(game.state.phase==='crashed'){clearInput();syncGameplay();crashElapsed+=dt;if(crashElapsed>=.65){crashElapsed=0;showResults();}}}
   if(!orientationBlocked&&['playing','paused'].includes(screen)){
     ui.hud(game.state);
     for(const[id,action]of controlBindings){const held=String(input.active(action)),button=byId(id);if(button.dataset.held!==held)button.dataset.held=held;if(button.getAttribute('aria-pressed')!==held)button.setAttribute('aria-pressed',held);}
     syncGlanceControls();renderer.render(game.state,{dt,paused:screen!=='playing'||lifecycle.paused});
-  }else if(!orientationBlocked&&garageScene?.ready&&(garageDirty||renderer.needsRender||garageScene.animating)&&!document.hidden){garageScene.render(innerWidth,innerHeight,garageFraming());garageDirty=false;renderer.needsRender=false;}
+  }else if(!orientationBlocked&&garageScene?.ready&&(garageDirty||renderer.needsRender||garageScene.animating)&&!document.hidden){garageScene.render(innerWidth,innerHeight,garageFraming(),{stableOrbit:screen!=='results'});garageDirty=false;renderer.needsRender=false;}
   const fleetVisible=garageVisible&&screen==='garage'&&tab==='fleet';
   const fleetPaused=lifecycle.paused||busy||loading.adPending||garageUI.settingsOpen||!!garageUI.view?.platform?.conflict;
   if(fleetVisible&&fleetVisibilityDirty)refreshFleetVisibility();
   if(fleetTouchRemaining>0&&fleetVisible&&!fleetPaused){fleetTouchRemaining=Math.max(0,fleetTouchRemaining-dt);if(!fleetTouchRemaining)fleetMiniatures?.setInteraction(null);}
   fleetMiniatures?.update(dt,{visible:fleetVisible,paused:fleetPaused,reducedMotion:renderer.reducedMotion===true});
+  routeVehicleMarker?.update(dt,{visible:mobileControls&&!orientationBlocked&&!document.hidden&&['playing','paused'].includes(screen),paused:screen!=='playing'||lifecycle.paused||busy||!!loading.adPending});
   audio.update(game.state,screen==='playing'&&!lifecycle.paused);requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);

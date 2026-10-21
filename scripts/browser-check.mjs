@@ -228,7 +228,7 @@ async function primaryButtonStates(page) {
   await page.mouse.move(0, 0); await inspect('default');
   await button.hover(); await inspect('hover');
   await page.mouse.move(0, 0);
-  await page.locator('.gs-hub-title').focus(); await page.keyboard.press('Tab');
+  await page.locator('.gs-home-heading').focus(); await page.keyboard.press('Tab');
   assert.equal(await page.evaluate(() => document.activeElement.dataset.gsFocus), 'startDrive', 'Primary action is keyboard reachable');
   await inspect('keyboard-focus');
   await button.hover(); await page.mouse.down();

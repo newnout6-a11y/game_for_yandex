@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { updatePlayerPath, integratePlayerArc, playerTargetHeading, PLAYER_HANDLING, PLAYER_WHEELBASE } from '../src/player-motion.js';
+import { updatePlayerPath, playerTargetHeading, playerEffectiveGrip, PLAYER_HANDLING, PLAYER_WHEELBASE } from '../src/player-motion.js';
 import { playerConfiguration } from '../src/player-configuration.js';
-import { acceptedPlayerPath, measurePlayerHandling, measureBraking } from '../scripts/measure-player-handling.mjs';
+import { measurePlayerHandling, measureBraking } from '../scripts/measure-player-handling.mjs';
 
 const close = (actual, expected, epsilon = 1e-10) => assert.ok(Math.abs(actual - expected) <= epsilon, `${actual} != ${expected}`);
 function configured(id, speed) {
@@ -19,7 +19,7 @@ test('highway lateral intent is speed-independent and continuously proportional,
   for (const speed of [18, 28, 40, 52, 65]) for (const input of [-1, -.5, -.15, 0, .15, .5, 1]) {
     const state = { x: 1, speed };
     const target = playerTargetHeading(state, input);
-    close(speed * Math.sin(target), input * PLAYER_HANDLING.lateralSpeed);
+    close(speed * Math.tan(target), input * PLAYER_HANDLING.lateralSpeed);
     for (let frame = 0; frame < 480; frame++) centredStep(state, input, 1 / 120);
     const sample = centredStep(state, input, 1 / 120);
     close(sample.lateral * 120, input * PLAYER_HANDLING.lateralSpeed, .000001);
@@ -27,28 +27,29 @@ test('highway lateral intent is speed-independent and continuously proportional,
   }
 });
 
-test('release removes substantially less unwanted travel than accepted controller without snapping yaw', () => {
+test('held steering is prompt at highway speed and release/countersteer retain finite inertia', () => {
   for (const speed of [28, 40, 52, 65]) {
-    const old = measurePlayerHandling(acceptedPlayerPath, speed), current = measurePlayerHandling(updatePlayerPath, speed);
-    assert.ok(current.releaseDriftMetres < old.releaseDriftMetres * .76, `${speed}: release improvement`);
-    assert.ok(current.releaseDriftMetres < .76, `${speed}: bounded correction tail`);
-    assert.ok(current.settledAfterSeconds < old.settledAfterSeconds * .7, `${speed}: settle improvement`);
-    assert.ok(current.reverseAfterSeconds < old.reverseAfterSeconds, `${speed}: reverse response`);
-    assert.ok(current.laneSeconds >= 1 && current.laneSeconds <= 1.1, `${speed}: consistent lane traversal`);
-    assert.ok(current.initialMovementSeconds <= .15, `${speed}: movement latency`);
+    const current = measurePlayerHandling(updatePlayerPath, speed);
+    assert.ok(current.laneSeconds >= .85 && current.laneSeconds <= .97, `${speed}: 3.5 m traversal stays responsive`);
+    assert.ok(current.initialMovementSeconds <= (speed >= 52 ? .14 : .15), `${speed}: first 10 cm of real motion`);
+    assert.ok(current.releaseDriftMetres > .3 && current.releaseDriftMetres < .82, `${speed}: finite, controllable release tail`);
+    assert.ok(current.settledAfterSeconds < .43, `${speed}: road-heading recovery`);
+    assert.ok(current.reverseAfterSeconds > .25 && current.reverseAfterSeconds <= .35, `${speed}: no instant velocity reversal`);
     assert.ok(current.releaseHeadingRadians > .05, 'release starts from a real turning pose');
-    assert.ok(current.maximumLateralAcceleration <= 10 + 1e-9);
+    assert.ok(current.maximumLateralAcceleration <= playerEffectiveGrip() + 1e-9);
+    close(current.steadyLateralMps, PLAYER_HANDLING.lateralSpeed, 1e-6);
   }
 });
 
-test('slow road manoeuvring responds sooner without moving or yawing at standstill', () => {
-  const old = measurePlayerHandling(acceptedPlayerPath, 8), current = measurePlayerHandling(updatePlayerPath, 8);
-  assert.ok(current.laneSeconds < old.laneSeconds * .8);
-  assert.ok(current.initialMovementSeconds < old.initialMovementSeconds * .8);
-  assert.ok(current.reverseAfterSeconds < old.reverseAfterSeconds * .8);
+test('slow road manoeuvring remains continuous and steering cannot propel a stationary car', () => {
+  const current = measurePlayerHandling(updatePlayerPath, 8);
+  assert.ok(current.laneSeconds < 1.4);
+  assert.ok(current.initialMovementSeconds < .2);
+  assert.ok(current.reverseAfterSeconds < .5);
   const state = { x: 1, speed: 0 };
   for (let frame = 0; frame < 120; frame++) close(updatePlayerPath(state, -1, 1 / 120), 0);
   close(state.x, 1); close(state.heading, 0); close(state.steerAngle, -.3);
+  close(state.lateralVelocity, 0); close(state.forwardVelocity, 0);
 });
 
 test('actual direct-controller trajectory agrees at 30, 60 and 120 Hz through reversal and release', () => {
@@ -66,18 +67,22 @@ test('actual direct-controller trajectory agrees at 30, 60 and 120 Hz through re
   }
 });
 
-test('every integrated controller step uses its steered rear-axle arc, including countersteer', () => {
+test('trajectory integrates persistent velocity and yaw while visible rack follows axle geometry', () => {
   for (const speed of [4, 18, 52]) {
-    const state = { x: 1, speed };
+    const state = { x: 1, speed, heading: 0, yawRate: 0, lateralVelocity: 0 };
+    let observedSlip = false;
     for (let frame = 0; frame < 240; frame++) {
-      const before = { x: state.x, heading: state.heading || 0 };
-      const forward = updatePlayerPath(state, frame < 48 ? .6 : frame < 96 ? -.6 : 0, 1 / 120);
-      const arc = integratePlayerArc(before.heading, speed, state.curvature, 1 / 120);
-      close(state.heading, arc.heading);
-      close((state.x - before.x) * 3.5, arc.x);
-      close(forward, arc.forward);
+      const before = { ...state }, dt = 1 / 120;
+      const forward = updatePlayerPath(state, frame < 48 ? .6 : frame < 96 ? -.6 : 0, dt);
+      close(state.heading - before.heading, (before.yawRate + state.yawRate) * .5 * dt);
+      close((state.x - before.x) * 3.5, (before.lateralVelocity + state.lateralVelocity) * .5 * dt);
+      close(forward, (before.speed + state.forwardVelocity) * .5 * dt);
       close(state.curvature, Math.tan(state.steerAngle) / PLAYER_WHEELBASE);
+      close(state.speed, state.forwardVelocity);
+      assert.ok(Math.abs(state.slipAngle) < .17, 'bounded tire slip, not arbitrary diagonal sliding');
+      if (Math.abs(state.slipAngle) > 1e-5) observedSlip = true;
     }
+    assert.ok(observedSlip, 'finite tire response is not an imposed no-slip trajectory');
   }
 });
 
@@ -89,16 +94,19 @@ test('neutral steering has no centre-lane magnet or discrete lane snap', () => {
   }
 });
 
-test('road edges align the car continuously before the hard clamp across all owned vehicles', () => {
+test('shoulder assist aligns the car continuously without a hidden lane-edge wall', () => {
   for (const id of ['rocket', 'hatch', 'sedan', 'suv', 'van']) for (const speed of [8, 18, 28, 52, 65]) for (const sign of [-1, 1]) {
     const state = configured(id, speed);
     for (let frame = 0; frame < 720; frame++) {
-      const heading = state.heading;
+      const heading = state.heading, yaw = state.yawRate || 0;
       updatePlayerPath(state, sign, 1 / 120);
       assert.ok(state.x > PLAYER_HANDLING.minX && state.x < PLAYER_HANDLING.maxX, `${id}/${speed}: no hard clipping`);
-      assert.ok(Math.abs(state.heading - heading) <= Math.min(speed * Math.tan(.3) / state.playerWheelbase, state.maxLateralAcceleration / speed) / 120 + 1e-8);
+      close(state.heading - heading, (yaw + state.yawRate) / 240);
+      assert.ok(Math.abs(state.heading) <= PLAYER_HANDLING.maxHeading + .01);
+      assert.ok(Math.abs(state.lateralAcceleration) <= playerEffectiveGrip(state) + 1e-9);
     }
     assert.ok(Math.abs(state.heading) < .002);
+    assert.ok((state.x - 1) * sign > 1.6, 'the physical shoulder beyond the old x±1.24 limit is drivable');
     const edgeX = state.x;
     for (let frame = 0; frame < 36; frame++) updatePlayerPath(state, -sign, 1 / 120);
     assert.ok((state.x - edgeX) * sign < -.02, 'inward input is not held by the shoulder aid');
@@ -112,7 +120,7 @@ test('quick steering release and reversal never produce yaw ringing across speed
     for (let frame = 0; frame < 360; frame++) {
       centredStep(state, 0, 1 / 120);
       assert.ok(state.heading > -.008, `${id}/${speed}: no material opposite yaw`);
-      assert.ok(Math.abs(state.lateralAcceleration) <= state.maxLateralAcceleration + 1e-9);
+      assert.ok(Math.abs(state.lateralAcceleration) <= playerEffectiveGrip(state) + 1e-9);
     }
     assert.ok(Math.abs(state.heading) < .0001);
   }

@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import * as T from '../public/vendor/three.js';
 import { loadRoadsterGeometry } from './helpers/roadster-geometry.mjs';
+import { assertHistoricalAssetChain, stableOrbitAssetProof } from './helpers/stable-orbit-assets.mjs';
 
 const file = path => new URL(`../${path}`, import.meta.url);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -71,15 +72,16 @@ for (const tier of [1, 2, 3, 4]) {
         ray.set(origin, target.clone().sub(origin).normalize()); ray.near = 0; ray.far = origin.distanceTo(target) + .005;
         if (ray.intersectObjects(meshes, false)[0]?.object === mural) clear++;
       }
-      assert.equal(clear, view.clear_rays, `${view.name}: runtime geometry agrees with Blender visibility audit`);
-      if (view.name === 'normal-overview') assert.ok(clear >= view.total_rays * (tier < 4 ? .95 : .75), 'Actual painted motif remains visible in the normal overview');
+      const currentView = stableOrbitAssetProof(tier).mural_visibility.find(item => item.name === view.name);
+      assert.equal(clear, currentView.clear_rays, `${view.name}: runtime geometry agrees with current Blender visibility audit`);
+      if (view.name === 'normal-overview') assert.ok(clear >= view.total_rays * (tier === 2 ? .8 : tier < 4 ? .95 : .75), 'Actual paint remains visible; relocated tier2 lift has measured physical occlusion without altering the mural');
     }
   });
 
   test(`tier ${tier}: preserved source audit matches final assets, materials, TV and camera contracts`, async () => {
-    assert.equal(sha(bytes), row.glb_sha256);
+    const current = assertHistoricalAssetChain(tier, row.glb_sha256, bytes, 'glb');
     const source = await readFile(file(row.source));
-    assert.equal(sha(source), row.source_sha256);
+    assertHistoricalAssetChain(tier, row.source_sha256, source, 'source');
     assert.equal(row.non_mural_geometry_materials_images_settings_camera_tv_unchanged, true);
     assert.equal(row.runtime_preservation.non_mural_accessors_byte_identical, true);
     assert.equal(row.runtime_preservation.all_materials_identical, true);
@@ -95,7 +97,8 @@ for (const tier of [1, 2, 3, 4]) {
     assert.equal(row.door_and_frame_bounds_disjoint, true);
     assert.equal(row.original_texture_sha256, textureSha);
     assert.equal(sha(await readFile(file('public/assets/garage/original-rose-velocity-mural.png'))), textureSha);
-    assert.equal(row.runtime.bytes, bytes.length);
+    assert.equal(current.glb_bytes, bytes.length);
+    assert.equal(row.runtime.bytes, current.before_glb_bytes, 'Original operation byte count remains historical');
     assert.equal(row.runtime.draw_batches, json.materials.length);
     const material = json.materials.find(mat => mat.name === 'Original rose velocity mural');
     assert.equal(material.alphaMode, 'BLEND');

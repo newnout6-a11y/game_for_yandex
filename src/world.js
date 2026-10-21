@@ -16,6 +16,7 @@ import { createThrusterEffects } from './thrusters.js';
 import { createPlayerHeadlights } from './player-headlights.js';
 import { createRoadsidePromos } from './roadside-promos.js';
 import { buildScenicLandscape, updateScenicLandscape, scenicTerrainHeight } from './landscape.js';
+import { createDrivingBonusEffects } from './driving-bonus-effects.js';
 
 let bendDistance = NaN, bendCoefficient = 0;
 /**
@@ -35,6 +36,15 @@ export function roadBend(z, distance = 0) {
  * Gameplay state remains external; rendering updates visual resources and animation caches.
  */
 export class RoadRenderer {
+  get reducedMotion() { return this._reducedMotion ?? false; }
+  /** Keep existing preference assignments live for newly emitted and paused cues. */
+  set reducedMotion(value) {
+    const next = Boolean(value);
+    if (this._reducedMotion === next) return;
+    this._reducedMotion = next;
+    this.bonusEffects?.setReducedMotion(next);
+    this.needsRender = true;
+  }
   /**
    * Allocate the renderer and scene and start asynchronous asset initialization.
    * Detects reduced-motion/device budgets once initially and exposes completion through ready;
@@ -52,6 +62,7 @@ export class RoadRenderer {
     this.renderer.toneMapping = T.ACESFilmicToneMapping; this.renderer.toneMappingExposure = .84;
     this.scene = new T.Scene(); this.scene.background = new T.Color('#c7dce5');
     this.scene.fog = new T.Fog('#c9d6d5', 160, 510);
+    this.bonusEffects = createDrivingBonusEffects(this.scene, { bend: roadBend, reducedMotion: this.reducedMotion });
     this.camera = new T.PerspectiveCamera(54, 1, .15, 1200);
     this.traffic = new Map(); this.pickups = new Map(); this.trafficPool = new Map(); this.pickupPool = []; this.props = []; this.impact = 0; this.particles = [];
     this.sparkGeometry = new T.SphereGeometry(.04,4,3); this.sparkMaterials = new Map();
@@ -242,23 +253,29 @@ export class RoadRenderer {
     for(const obstacle of menu?[]:(state.obstacles||[])){
       active.add(obstacle.id);let mesh=this.hazards.get(obstacle.id);
       if(!mesh){mesh=this.hazardPools[obstacle.kind].pop()||(obstacle.kind==='cone'?this.coneTemplate:this.barrierTemplate).clone(true);mesh.userData.kind=obstacle.kind;this.hazards.set(obstacle.id,mesh);this.scene.add(mesh);}
-      mesh.position.set((obstacle.x-1)*3.5+roadBend(-obstacle.z,state.distance),.02,-obstacle.z);
-      mesh.rotation.y=-Math.atan((roadBend(-obstacle.z-1,state.distance)-roadBend(-obstacle.z+1,state.distance))/2);
+      mesh.position.set((obstacle.x-1)*3.5+roadBend(-obstacle.z,state.distance+(state.sceneTravel||0)),.02,-obstacle.z);
+      mesh.rotation.y=-Math.atan((roadBend(-obstacle.z-1,state.distance+(state.sceneTravel||0))-roadBend(-obstacle.z+1,state.distance+(state.sceneTravel||0)))/2);
     }
     for(const[id,mesh]of this.hazards)if(!active.has(id)){this.scene.remove(mesh);this.hazardPools[mesh.userData.kind].push(mesh);this.hazards.delete(id);}
     const event=state.roadEvent;this.gate.visible=!menu&&event?.type==='checkpoint';
-    if(this.gate.visible)this.gate.position.set((event.lane-1)*3.5+roadBend(-event.remaining,state.distance),.03,-event.remaining);
+    if(this.gate.visible){const remaining=event.remaining-((state.sceneTravel||0)-(event.sceneTravelStart||0));this.gate.position.set((event.lane-1)*3.5+roadBend(-remaining,state.distance+(state.sceneTravel||0)),.03,-remaining);}
   }
   /**
    * Translate a gameplay effect notification into sparks and optional impact shake.
-   * @param {string} kind - Supported keys are crash, near, charge and cone; others do nothing.
+   * @param {string} kind - Supported keys are crash and cone; accepted bonuses use source-anchored bonus().
    * @returns {void} Updates visual effect state without changing gameplay outcomes.
    */
-  effect(kind) {
+  effect(kind,contact) {
+    if(kind==='impact'){this.impact=Math.max(this.impact,Math.min(.65,(contact?.deltaSpeed||0)/12));this.spawnParticles(8,'#e8b96a',contact);}
     if(kind==='crash') {this.impact=1; this.spawnParticles(34,'#e8b96a');}
-    if(kind==='near') this.spawnParticles(5,'#b7a890');
-    if(kind==='charge') this.spawnParticles(12,'#d9d5b0');
     if(kind==='cone') this.spawnParticles(8,'#b7a890');
+  }
+  /** Show a short text-free cue at a captured gameplay source, never at the player by default. */
+  bonus(kind, anchor, state) {
+    if (!this.loaded || this.showcase) return false;
+    const accepted = this.bonusEffects.emit(kind, anchor, state);
+    if (accepted) this.needsRender = true;
+    return accepted;
   }
   /**
    * Emit short-lived spark meshes near the player using shared geometry/materials.
@@ -266,13 +283,13 @@ export class RoadRenderer {
    * @param {T.ColorRepresentation} color - Spark color and cache key for a reused basic material.
    * @returns {void} Appends mutable positions, metre-per-second velocities and second-based lifetimes.
    */
-  spawnParticles(count,color) {
+  spawnParticles(count,color,contact) {
     if(!this.loaded)return;
     if(!this.sparkMaterials.has(color))this.sparkMaterials.set(color,new T.MeshBasicMaterial({color}));
     const material=this.sparkMaterials.get(color);
     for(let i=0;i<count;i++){
       const mesh=new T.Mesh(this.sparkGeometry,material);mesh.scale.setScalar(.6+Math.random()*.7);
-      mesh.position.copy(this.player.position);mesh.position.y=.6;this.scene.add(mesh);
+      mesh.position.copy(this.player.position);if(contact&&Number.isFinite(contact.x)&&Number.isFinite(contact.z))mesh.position.set(contact.x,.6,contact.z);mesh.position.y=.6;this.scene.add(mesh);
       this.particles.push({mesh,v:new T.Vector3((Math.random()-.5)*7,Math.random()*4,Math.random()*7-2),life:.6+Math.random()*.5});
     }
   }
@@ -281,6 +298,12 @@ export class RoadRenderer {
    * @returns {void} Reads current browser dimensions/DPR, updates compact mode and requests a redraw.
    */
   setQuality(value) { this.quality = normalizeRenderQuality(value); this.resize(); }
+  /** Switch only at menu/road boundaries; repeated UI refreshes do not reallocate the canvas. */
+  setShowcase(value) {
+    const next=value===true;
+    if(this.showcase===next)return;
+    this.showcase=next;if(next)this.bonusEffects?.clear();this.resize();
+  }
   /** Replace the existing shadow target only when its selected resource bucket changes. */
   applyShadowQuality() {
     if (!this.sun) return;
@@ -306,11 +329,11 @@ export class RoadRenderer {
     const w=innerWidth,h=innerHeight;
     this.canvas.style.width=w+'px';this.canvas.style.height=h+'px';
     this.compact = matchMedia('(pointer: coarse)').matches || Math.min(w,h)<600;
-    const size=renderDimensions(w,h,devicePixelRatio||1,this.compact,this.quality);
+    const size=renderDimensions(w,h,devicePixelRatio||1,this.compact,this.quality,this.showcase===true);
     this.applyShadowQuality();
     if(this.canvas.width!==size.width||this.canvas.height!==size.height)this.renderer.setSize(size.width,size.height,false);
     this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.needsRender=true;
-    this.onRenderSettings?.({quality:this.quality,width:size.width,height:size.height,compact:this.compact});
+    this.onRenderSettings?.({quality:this.quality,width:size.width,height:size.height,compact:this.compact,showcase:this.showcase===true});
   }
   /**
    * Remove one live traffic vehicle and retain it in its kind-specific reuse pool.
@@ -368,6 +391,8 @@ export class RoadRenderer {
    * @returns {void} Mutates renderer-owned scene, caches and effects, not the gameplay state.
    */
   render(state,{menu=false,dt=0,paused=false}={}) {
+    // Lifecycle resets must clear even a settled paused/menu frame before its guard.
+    if(this.bonusEffects?.sync(state,menu||this.showcase===true))this.needsRender=true;
     if(!this.loaded)return;
     if(menu&&this.reducedMotion&&!this.needsRender&&this.wasMenu)return;
     if(paused&&!menu&&this.wasPaused&&!this.needsRender&&this.pausedFor>.6&&!this.particles.length&&!this.impact)return;
@@ -378,7 +403,7 @@ export class RoadRenderer {
     }
     this.needsRender=false;this.wasMenu=menu;this.time+=paused?0:dt;
     if(menu&&!this.reducedMotion)this.menuDistance+=dt*4;
-    const distance=menu?this.menuDistance:state.distance, phone=this.camera.aspect<.8;
+    const distance=menu?this.menuDistance:state.distance+(state.sceneTravel||0), phone=this.camera.aspect<.8;
     this.distance=distance;
     for(const strip of this.strips){
       const p=strip.geometry.attributes.position,b=strip.userData.base;
@@ -484,6 +509,7 @@ export class RoadRenderer {
       if(p.mesh.position.y<.03){p.mesh.position.y=.03;p.v.y=Math.abs(p.v.y)*.25;}
       if(p.life<=0){this.scene.remove(p.mesh);this.particles.splice(this.particles.indexOf(p),1);}
     }
+    if(!menu&&!this.showcase)this.bonusEffects?.update(state,dt,paused);
     // Reflect the same completed scene and real eye, without recursion or a
     // second shadow update. Inactive/offscreen panes keep their authored fallback.
     this.playerMirrors.update(this.camera, {dt:paused?0:dt,mode:this.effectiveCameraMode,paused,quality:this.quality,compact:this.compact});

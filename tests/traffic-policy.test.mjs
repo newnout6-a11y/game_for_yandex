@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { TRAFFIC_KINDS, trafficDefinition } from '../src/traffic-catalog.js';
 import { trafficDriverProfile, trafficSafeSpeed, planTrafficLongitudinal, TRAFFIC_DRIVER_LIMITS } from '../src/traffic-policy.js';
 import { occupiedTrafficLanes, updateTrafficManoeuvres, trafficHornRange } from '../src/traffic-behavior.js';
-import { trafficHitsPlayer } from '../src/traffic-physics.js';
+import { captureContactFrame, resolveVehicleContacts } from '../src/vehicle-contacts.js';
 import { Game } from '../src/game.js';
 import { CONFIG } from '../src/config.js';
 import { seededRandom } from '../src/util.js';
@@ -226,17 +226,21 @@ test('early highway horn requests complete real relative-motion yields without s
   for (const playerSpeed of [40, 50, 60]) for (const trafficSpeed of [16, 20, 23]) {
     const car = vehicle(20, 1, 225, trafficSpeed);
     const state = { ...stateFor([car]), speed: playerSpeed, x: 1, lane: 1, distance: 0,
+      heading: 0, altitude: 0, rollAngle: 0, vehicleId: 'rocket',
       playerAccelerationBound: 15, playerSpeedBound: 66, hornTime: .5, hornSerial: 11 };
     let firstSignal = null, moving = false;
     for (let i = 0; i < 120 * 7; i++) {
-      const previousZ = car.z; car.previousLateral = car.x ?? car.lane;
+      const previous = captureContactFrame(state);car.previousLateral = car.x ?? car.lane;
       updateTrafficManoeuvres(state, 1 / 120);
       if (car.laneChange?.phase === 'signal' && firstSignal === null) firstSignal = i / 120;
       if (car.laneChange?.phase === 'moving') moving = true;
-      car.z += (car.speed - state.speed) / 120; state.distance += state.speed / 120;
+      const travelled=state.speed/120;car.z += car.speed/120-travelled;
+      const contact=resolveVehicleContacts(state,previous,1/120,travelled);
+      assert.equal(contact.contacts.length,0,`unsafe highway yield at player ${playerSpeed}, traffic ${trafficSpeed}`);
+      assert.equal(contact.fatal,false);assert.equal(contact.travelled,travelled);
+      assert.equal(contact.sceneCorrection,0);assert.equal(state.contactUnresolved,undefined);
+      state.distance += contact.travelled;
       state.hornTime = Math.max(0, state.hornTime - 1 / 120);
-      assert.equal(trafficHitsPlayer(car, state, 1, previousZ), false,
-        `unsafe highway yield at player ${playerSpeed}, traffic ${trafficSpeed}`);
     }
     assert.ok(firstSignal >= car.driver.reaction, 'the earlier request does not skip individual reaction');
     assert.ok(moving); assert.equal(car.lane, 0); assert.equal(car.x, 0);

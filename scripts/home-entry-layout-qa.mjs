@@ -49,7 +49,7 @@ async function measure(frame) {
     const control = node => ({...rect(node),name:node.textContent.trim()||node.getAttribute('aria-label'),hit:hit(node),content:bounds(node),textBoxes:textBoxes(node),scrollWidth:node.scrollWidth,clientWidth:node.clientWidth});
     const root=document.querySelector('.garage-shell'),hub=document.querySelector('.gs-hub');
     const actions=[...document.querySelectorAll('.gs-hub-actions button')].map(node=>({...control(node),action:JSON.parse(node.dataset.gsAction)}));
-    const title=document.querySelector('.gs-hub-title'),route=document.querySelector('[data-gs-setting="route"]');
+    const title=document.querySelector('.gs-home-heading'),route=document.querySelector('[data-gs-setting="route"]');
     const routeStyle=getComputedStyle(route),label=route.selectedOptions[0].textContent;
     // A native select may clip its value while scrollWidth still equals clientWidth.
     // Measure the real label font, then subtract BOTH padding sides and borders.
@@ -61,13 +61,13 @@ async function measure(frame) {
     return {
       viewport:[innerWidth,innerHeight],physicalScreen:[screen.width,screen.height],root:rect(root),
       hub:{...rect(hub),content:bounds(hub),scrollTop:hub.scrollTop,scrollHeight:hub.scrollHeight,clientHeight:hub.clientHeight,overflow:getComputedStyle(hub).overflowY},
-      header:{...rect(header),textBoxes:textBoxes(header)},footer:{...rect(footer),textBoxes:textBoxes(footer)},
-      headerControls:[...header.querySelectorAll('button')].map(control),footerControls:[...footer.querySelectorAll('button')].map(control),
+      header:{...rect(header),textBoxes:textBoxes(header)},footer:footer?{...rect(footer),textBoxes:textBoxes(footer)}:null,
+      headerControls:[...header.querySelectorAll('button')].map(control),footerControls:footer?[...footer.querySelectorAll('button')].map(control):[],
       brand:rect(document.querySelector('.gs-brand')),account:rect(document.querySelector('.gs-account')),
       hero:visible(hero)?rect(hero):null,title:{...rect(title),clip:getComputedStyle(title).clipPath},
       route:{...rect(route),value:route.value,label,textWidth,contentWidth:routeContent.right-routeContent.x,content:routeContent,font:routeStyle.font,paddingLeft:routeStyle.paddingLeft,paddingRight:routeStyle.paddingRight,hit:hit(route)},
-      actions,pageOverflow:document.documentElement.scrollWidth-innerWidth,blocked:window.__homeEntryQA.gate.blocked,
-      centreObstructed:[...document.querySelectorAll('.gs-hub button,.gs-hub select,.gs-hub-title,.gs-hub-copy')].some(node=>{const r=node.getBoundingClientRect();return r.width>1&&r.height>1&&centre.x>=r.x&&centre.x<=r.right&&centre.y>=r.y&&centre.y<=r.bottom;})
+      compact:matchMedia('(orientation: landscape) and (max-height: 620px), (orientation: landscape) and (max-width: 900px)').matches,actions,pageOverflow:document.documentElement.scrollWidth-innerWidth,blocked:window.__homeEntryQA.gate.blocked,
+      centreObstructed:[...document.querySelectorAll('.gs-hub button,.gs-hub select,.gs-home-heading')].some(node=>{const r=node.getBoundingClientRect();return r.width>1&&r.height>1&&centre.x>=r.x&&centre.x<=r.right&&centre.y>=r.y&&centre.y<=r.bottom;})
     };
   });
 }
@@ -79,7 +79,8 @@ function problems(info) {
   if(info.blocked)issues.push('Landscape incorrectly blocked');
   if(info.brand.right>info.account.x)issues.push('Brand and wallet overlap');
   if(info.pageOverflow>1)issues.push('Horizontal page overflow');
-  for(const section of [info.header,info.footer]) {
+  if(info.hub.bottom>(info.footer?.y??info.viewport[1])+epsilon)issues.push('HOME extends below footer or viewport edge');
+  for(const section of [info.header,info.footer].filter(Boolean)) {
     if(!inside(section,info.root))issues.push('Header/footer outside viewport');
     if(section.textBoxes.some(box=>!inside(box,section)))issues.push('Header/footer text is clipped');
   }
@@ -92,7 +93,7 @@ function problems(info) {
     }
   }
   if(info.actions.some((a,i)=>info.actions.some((b,j)=>i<j&&overlap(a,b))))issues.push('Entry buttons overlap');
-  if(info.title.clip!=='none') {
+  if(info.compact) {
     // The 180px fixture cannot reserve the middle while retaining two 44px rows,
     // header and guest login. Its right-of-route clearance is reported honestly.
     if(info.viewport[1]>220&&info.centreObstructed)issues.push('Compact centre is obstructed by hero copy or controls');
@@ -147,7 +148,7 @@ try {
             await frame.locator('.gs-hub-actions .gs-drive-button').click();
             await frame.locator('.gs-hub-actions button').nth(1).click();
             assert.deepEqual(await frame.evaluate(()=>window.__homeEntryQA.actions.splice(0)),[{type:'startDrive'},{type:'navigate',screen:'garage',tab:'fleet'}]);
-            if(info.title.clip!=='none') {
+            if(info.compact) {
               const nextRoute=routes[(routes.indexOf(selectedRoute)+1)%routes.length];
               await frame.locator('[data-gs-setting="route"]').selectOption(nextRoute);
               assert.deepEqual(await frame.evaluate(()=>window.__homeEntryQA.actions.splice(0)),[{type:'settings',key:'route',value:nextRoute}]);

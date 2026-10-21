@@ -19,8 +19,8 @@
       8.8
     ]
   },
-  "bytes": 5217224,
-  "sha256": "b699d1e22cff09f43bda4a76f71656c49d5db20b376ce0c8ea0d3443bd80b75f",
+  "bytes": 5216008,
+  "sha256": "51f9f84a40ce18e7b2033546bb83011733fe49ef9f485b159589181639ee40d5",
   "original_textures": [
     "original-rose-velocity-mural.png",
     "original-workshop-wall-basecolor.png",
@@ -1791,12 +1791,12 @@
       {
         "name": "Technical island base",
         "min": [
-          -7.3,
+          -8.6,
           0.0,
           2.875
         ],
         "max": [
-          -4.9,
+          -6.2,
           1.2,
           3.725
         ]
@@ -1804,12 +1804,12 @@
       {
         "name": "Island machined work surface",
         "min": [
-          -7.33,
+          -8.63,
           1.1925,
           2.85
         ],
         "max": [
-          -4.87,
+          -6.17,
           1.2675,
           3.75
         ]
@@ -1817,12 +1817,12 @@
       {
         "name": "Island storage door",
         "min": [
-          -7.2,
+          -8.5,
           0.215,
           2.8375
         ],
         "max": [
-          -6.5,
+          -7.8,
           1.145,
           2.8725
         ]
@@ -1830,12 +1830,12 @@
       {
         "name": "Island storage door.001",
         "min": [
-          -6.45,
+          -7.75,
           0.215,
           2.8375
         ],
         "max": [
-          -5.75,
+          -7.05,
           1.145,
           2.8725
         ]
@@ -1843,12 +1843,12 @@
       {
         "name": "Island storage door.002",
         "min": [
-          -5.7,
+          -7.0,
           0.215,
           2.8375
         ],
         "max": [
-          -5.0,
+          -6.3,
           1.145,
           2.8725
         ]
@@ -1856,12 +1856,12 @@
       {
         "name": "Diagnostic display housing",
         "min": [
-          -7.04,
+          -8.34,
           1.6,
           3.505
         ],
         "max": [
-          -5.16,
+          -6.46,
           2.5,
           3.595
         ]
@@ -1869,12 +1869,12 @@
       {
         "name": "Anti-glare display",
         "min": [
-          -7.0,
+          -8.3,
           1.64,
           3.494
         ],
         "max": [
-          -5.2,
+          -6.5,
           2.46,
           3.504
         ]
@@ -1882,12 +1882,12 @@
       {
         "name": "Integrated monitor pillar",
         "min": [
-          -6.16,
+          -7.46,
           1.2,
           3.51
         ],
         "max": [
-          -6.04,
+          -7.34,
           2.0,
           3.63
         ]
@@ -1895,12 +1895,12 @@
       {
         "name": "Technical island base.001",
         "min": [
-          4.9,
+          6.2,
           0.0,
           2.875
         ],
         "max": [
-          7.3,
+          8.6,
           1.2,
           3.725
         ]
@@ -1908,12 +1908,12 @@
       {
         "name": "Island machined work surface.001",
         "min": [
-          4.87,
+          6.17,
           1.1925,
           2.85
         ],
         "max": [
-          7.33,
+          8.63,
           1.2675,
           3.75
         ]
@@ -1921,12 +1921,12 @@
       {
         "name": "Island storage door.003",
         "min": [
-          5.0,
+          6.3,
           0.215,
           2.8375
         ],
         "max": [
-          5.7,
+          7.0,
           1.145,
           2.8725
         ]
@@ -1934,12 +1934,12 @@
       {
         "name": "Island storage door.004",
         "min": [
-          5.75,
+          7.05,
           0.215,
           2.8375
         ],
         "max": [
-          6.45,
+          7.75,
           1.145,
           2.8725
         ]
@@ -1947,12 +1947,12 @@
       {
         "name": "Island storage door.005",
         "min": [
-          6.5,
+          7.8,
           0.215,
           2.8375
         ],
         "max": [
-          7.2,
+          8.5,
           1.145,
           2.8725
         ]
@@ -1960,12 +1960,12 @@
       {
         "name": "Diagnostic display housing.001",
         "min": [
-          5.16,
+          6.46,
           1.6,
           3.505
         ],
         "max": [
-          7.04,
+          8.34,
           2.5,
           3.595
         ]
@@ -1973,12 +1973,12 @@
       {
         "name": "Anti-glare display.001",
         "min": [
-          5.2,
+          6.5,
           1.64,
           3.494
         ],
         "max": [
-          7.0,
+          8.3,
           2.46,
           3.504
         ]
@@ -1986,12 +1986,12 @@
       {
         "name": "Integrated monitor pillar.001",
         "min": [
-          6.04,
+          7.34,
           1.2,
           3.51
         ],
         "max": [
-          6.16,
+          7.46,
           2.0,
           3.63
         ]
@@ -4480,6 +4480,23 @@
     "historical_operation": true,
     "scope_note": "Before/after hashes and preservation claims describe the earlier poster replacement only, not the current asset after subsequent edits."
   },
+  "mural_relocation_history": [
+    {
+      "operation": "Move the complete original Rose Velocity mural from multi-surface rear projection onto one solid right concrete wall",
+      "source_before_sha256": "313b5030694560fa4c17561112b1733e549091078a650da7131628184813e920",
+      "source_after_sha256": "907035a0b08ea131f5505e18cbd3cbdc64f2f0bd6a5a24b854cd28fb3b5ed470",
+      "glb_before_sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
+      "glb_after_sha256": "5a8de7f1a88bbda4aa6a8ad4bbaac107a858cff921db90f89b900beea5a92635",
+      "changed_scope": [
+        "Original rose velocity mural mesh positions, topology and UVs",
+        "Mural placement metadata"
+      ],
+      "full_glb_byte_identical": false,
+      "preservation_scope": "Non-mural mesh accessor payloads, all material definitions and embedded images only; not the complete pre-mural GLB buffer.",
+      "verification_report": "art/garage/mural-placement-audit.json",
+      "historical_operation": true
+    }
+  ],
   "mural_relocation": {
     "operation": "Place the complete original Rose Velocity mural on its solid right concrete wall within actual native overview framing",
     "placement_before": {
@@ -4532,23 +4549,10 @@
       -0.75,
       0.0
     ],
-    "size_and_uvs_unchanged": true
+    "size_and_uvs_unchanged": true,
+    "historical_operation": true,
+    "scope_note": "Hashes and preservation claims describe the earlier mural relocation only; stable-orbit-placement-audit.json chains that checkpoint to this later bounded equipment translation."
   },
-  "mural_relocation_history": [
-    {
-      "operation": "Move the complete original Rose Velocity mural from multi-surface rear projection onto one solid right concrete wall",
-      "source_before_sha256": "313b5030694560fa4c17561112b1733e549091078a650da7131628184813e920",
-      "source_after_sha256": "907035a0b08ea131f5505e18cbd3cbdc64f2f0bd6a5a24b854cd28fb3b5ed470",
-      "glb_before_sha256": "2686de1c340578f9dae7a8c9c9122b2f3ee25afcbb40d01cd792e0c6091f6eae",
-      "glb_after_sha256": "5a8de7f1a88bbda4aa6a8ad4bbaac107a858cff921db90f89b900beea5a92635",
-      "changed_scope": [
-        "Original rose velocity mural mesh positions, topology and UVs",
-        "Mural placement metadata"
-      ],
-      "full_glb_byte_identical": false,
-      "preservation_scope": "Non-mural mesh accessor payloads, all material definitions and embedded images only; not the complete pre-mural GLB buffer.",
-      "verification_report": "art/garage/mural-placement-audit.json",
-      "historical_operation": true
-    }
-  ]
+  "stable_orbit_placement_audit": "art/garage/stable-orbit-placement-audit.json",
+  "preserved_rear_geometry_scope": "Historical interior-completion checkpoint; current bounded lift/island geometry changes are proven separately by stable_orbit_placement_audit."
 }

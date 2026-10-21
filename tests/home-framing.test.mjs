@@ -16,6 +16,32 @@ test('HOME framing uses the clear measured side area, not a fixed percentage str
  const input=layout(),r=homeVehicleFraming(input);assert.deepEqual(r,{x:260,y:93.2,width:286,height:185.8});
  assert.ok(r.height>input.height*.265*1.5);assert.ok(r.x>=input.route.x+input.route.width);assert.ok(r.y>=input.label.y+input.label.height);assert.ok(r.x>=input.actions.x+input.actions.width);assert.ok(r.y+r.height<input.footer.y);
 });
+test('an intentionally absent HOME label uses the clear middle below the route and above entry controls',()=>{
+ for(const absent of [null,undefined]){
+  const input={...layout(),label:absent},r=homeVehicleFraming(input);
+  assert.deepEqual(r,{x:84,y:108,width:462,height:121});
+  assert.ok(r.y>=input.header.y+input.header.height+8);
+  assert.equal(r.y,input.route.y+input.route.height+2);
+  assert.equal(r.x+r.width,input.width-14);assert.equal(r.y+r.height,input.actions.y-2);
+  assert.ok((r.x+r.width/2)/input.width>=.55&&(r.x+r.width/2)/input.width<=.60);
+  const withoutFooter=homeVehicleFraming({...input,footer:null});
+  assert.deepEqual(withoutFooter,r);
+ }
+ const input=layout();delete input.label;
+ assert.deepEqual(homeVehicleFraming(input),homeVehicleFraming({...input,label:null}));
+});
+test('label-free short and 320px HOME retain the existing safe side regions',()=>{
+ const short={...layout(560,220),label:null,actions:{x:14,y:120,width:238,height:44}};
+ assert.deepEqual(homeVehicleFraming(short),{x:260,y:60,width:286,height:124});
+ const narrow={width:320,height:180,header:{x:0,y:0,width:320,height:46},route:{x:8,y:46,width:169,height:44},label:null,actions:{x:8,y:136,width:210.5,height:44},footer:null};
+ assert.deepEqual(homeVehicleFraming(narrow),{x:179,y:48,width:133,height:86});
+});
+test('a supplied malformed HOME label still fails closed instead of being treated as absent',()=>{
+ const input=layout();
+ for(const label of [false,0,'label',{},...Object.keys(input.label).flatMap(key=>[
+  {...input.label,[key]:NaN},{...input.label,[key]:Infinity},{...input.label,[key]:undefined},{...input.label,[key]:'0'},
+ ])])assert.equal(homeVehicleFraming({...input,label}),null);
+});
 test('HOME fit follows iframe size, enlarged labels and a taller guest footer',()=>{
  for(const [w,h]of [[560,315],[667,375],[844,390],[667,300]])for(const scale of [1,1.25,1.5]){
   const input=layout(w,h,scale),r=homeVehicleFraming(input);assert.ok(r);assert.ok(r.x+r.width<=w&&r.y+r.height<input.footer.y);assert.ok(r.y>=input.label.y+input.label.height);
@@ -35,9 +61,12 @@ test('320px iframe keeps a real clear vehicle rectangle beside full route text a
  }
 });
 test('normal desktop, portrait and unavailable geometry retain the established camera',()=>{
- for(const [w,h]of [[1440,900],[1024,768],[390,844],[315,560],[0,0],[Infinity,315],[560,NaN]])assert.equal(homeVehicleFraming(layout(w,h)),null);
- assert.equal(homeVehicleFraming({...layout(),label:null}),null);assert.equal(homeVehicleFraming({...layout(),route:{x:NaN,y:62,width:100,height:44}}),null);
- assert.equal(homeVehicleFraming({...layout(),actions:{x:0,y:90,width:550,height:44},footer:{x:0,y:110,width:560,height:28}}),null);
+ for(const [w,h]of [[1440,900],[1024,768],[390,844],[315,560],[0,0],[Infinity,315],[560,NaN]])for(const label of [layout(w,h).label,null])assert.equal(homeVehicleFraming({...layout(w,h),label}),null);
+ for(const label of [layout().label,null]){
+  for(const key of ['header','route','actions'])for(const value of [null,{...layout()[key],x:NaN}])assert.equal(homeVehicleFraming({...layout(),label,[key]:value}),null);
+  assert.equal(homeVehicleFraming({...layout(),label,footer:{x:0,y:NaN,width:560,height:28}}),null);
+  assert.equal(homeVehicleFraming({...layout(),label,actions:{x:0,y:90,width:550,height:44},footer:{x:0,y:110,width:560,height:28}}),null);
+ }
 });
 test('controller calls mobile framing only for HOME; results and garage keep their existing paths',async()=>{
  const source=await readFile(new URL('../src/main.js',import.meta.url),'utf8');
@@ -54,22 +83,47 @@ const room=(await loadRoadsterGeometry(new URL('../public/assets/garage/tier1.gl
 /** Create the real showcase pipeline without a GPU; room geometry and all five car bodies are unchanged. */
 function showcase(id){const scene=new GarageScene({renderer:{toneMappingExposure:1,render(){}},makeVehicle:kind=>createOwnedVehicle(assets,kind)});scene.room=room;scene.ready=true;scene.tier=1;scene.setVehicle(id);return scene;}
 
-test('all five actual models remain fully framed and camera-safe in compact HOME and enlarged type',()=>{
+test('captured label-free HOME measurements center the real Rocket without clipping or changing its transform',()=>{
+ // DOM measurements from the 551x360 and 560x315 native cleanup captures;
+ // 150% type widens the route and buttons, rather than changing viewport size.
+ for(const [width,height]of [[551,360],[560,315]])for(const enlarged of [false,true]){
+  const input={width,height,header:{x:0,y:0,width,height:52},route:{x:14,y:62,width:enlarged?223:169,height:44},label:null,actions:{x:14,y:height-56,width:enlarged?367.75:276.5,height:44},footer:null};
+  const region=homeVehicleFraming(input),scene=showcase('rocket'),position=scene.vehicle.position.clone(),scale=scene.vehicle.scale.clone();
+  assert.equal(region.y,108);assert.equal(region.y+region.height,input.actions.y-2);
+  scene.setInspection('overview');scene.yaw=-.63;scene.pitch=.24;scene.advance(2,{visible:true,reducedMotion:true,mediaActive:false});
+  scene.render(width,height,region);
+  const points=scene.cameraContext.points.map(point=>{const p=point.clone().project(scene.camera);return{x:(p.x+1)*width/2,y:(1-p.y)*height/2};});
+  // Measure the visible mesh, not the larger fitting box, just as native QA does.
+  let left=Infinity,right=-Infinity;const vertex=scene.target.clone();scene.vehicle.updateWorldMatrix(true,true);
+  scene.vehicle.traverseVisible(node=>{if(!node.isMesh)return;const positions=node.geometry.attributes.position;for(let i=0;i<positions.count;i++){
+   vertex.fromBufferAttribute(positions,i).applyMatrix4(node.matrixWorld).project(scene.camera);
+   const x=(vertex.x+1)*width/2;left=Math.min(left,x);right=Math.max(right,x);
+  }});
+  const center=(left+right)/2/width;
+  assert.ok(center>=.55&&center<=.60,`${width}/${enlarged}: centered car, not the former right column`);
+  if(width===551)assert.ok((right-left)/width>=.44&&(right-left)/width<=.60,'551px visible Rocket remains close while reserving the complete invariant orbit envelope');
+  for(const point of points)assert.ok(point.x>=region.x-.01&&point.x<=region.x+region.width+.01&&point.y>=region.y-.01&&point.y<=region.y+region.height+.01);
+  assert.ok(scene.vehicle.position.equals(position));assert.ok(scene.vehicle.scale.equals(scale));
+ }
+});
+
+test('all five actual models remain fully framed and camera-safe with present or absent HOME labels',()=>{
  let poses=0;
- for(const id of ['rocket','hatch','sedan','suv','van'])for(const [w,h]of [[560,315],[667,375],[844,390],[667,300]])for(const scale of [1,1.5]){
-  const scene=showcase(id),r=homeVehicleFraming(layout(w,h,scale));
+ for(const id of ['rocket','hatch','sedan','suv','van'])for(const [w,h]of [[560,315],[667,375],[844,390],[667,300]])for(const scale of [1,1.5])for(const absentLabel of [false,true]){
+  const input=layout(w,h,scale);if(absentLabel)input.label=null;
+  const scene=showcase(id),r=homeVehicleFraming(input);assert.ok(r);
   for(const yaw of [-.63,0,Math.PI/2,Math.PI]){
    scene.yaw=yaw;scene.render(w,h,r);const {camera, cameraContext:c}=scene;
-   for(const point of c.points){const p=point.clone().project(camera),x=(p.x+1)*w/2,y=(1-p.y)*h/2;assert.ok(x>=r.x-.01&&x<=r.x+r.width+.01&&y>=r.y-.01&&y<=r.y+r.height+.01,`${id}/${w}/${scale}: complete body`);}
+   for(const point of c.points){const p=point.clone().project(camera),x=(p.x+1)*w/2,y=(1-p.y)*h/2;assert.ok(x>=r.x-.01&&x<=r.x+r.width+.01&&y>=r.y-.01&&y<=r.y+r.height+.01,`${id}/${w}/${scale}/labelAbsent=${absentLabel}: complete body`);}
    for(const p of [camera.position,...garageNearPlaneCorners(camera)]){assert.ok(c.limits.bounds.containsPoint(p));assert.ok(!c.vehicleBounds.containsPoint(p));for(const box of c.limits.obstacles)assert.ok(!box.containsPoint(p));}poses++;
   }
  }
- assert.equal(poses,160);
+ assert.equal(poses,320);
 });
 test('all five models stay clear with returning-player actions and the tall guest footer at320px',()=>{
  for(const id of ['rocket','hatch','sedan','suv','van'])for(const height of [180,240])for(const scale of [1,1.5]){
   const header=height===180?46:53,footerY=height-44,actionY=footerY-44-(height===180?0:12);
-  const input={width:320,height,header:{x:0,y:0,width:320,height:header},label:{x:0,y:0,width:0,height:0},route:{x:8,y:header+(height===180?0:10),width:scale===1?169:223,height:44},actions:{x:8,y:actionY,width:scale===1?211:302,height:44},footer:{x:0,y:footerY,width:320,height:44}};
+  const input={width:320,height,header:{x:0,y:0,width:320,height:header},label:null,route:{x:8,y:header+(height===180?0:10),width:scale===1?169:223,height:44},actions:{x:8,y:actionY,width:scale===1?211:302,height:44},footer:{x:0,y:footerY,width:320,height:44}};
   const region=homeVehicleFraming(input);assert.ok(region,`${id}/${height}/${scale}: bounded guest fit`);
   const scene=showcase(id);scene.yaw=-.63;scene.render(320,height,region);
   for(const point of scene.cameraContext.points){const p=point.clone().project(scene.camera),x=(p.x+1)*160,y=(1-p.y)*height/2;assert.ok(x>=region.x-.01&&x<=region.x+region.width+.01&&y>=region.y-.01&&y<=region.y+region.height+.01);assert.ok(x>=input.route.x+input.route.width||y>=input.route.y+44);assert.ok(x>=input.actions.x+input.actions.width||y<=actionY);assert.ok(y>=header&&y<=footerY);}
@@ -90,5 +144,22 @@ test('restored narrow-desktop band fits all five real cars without changing thei
   const region={x:18,y:height*.29,width:width-36,height:height*.265};scene.render(width,height,region);
   for(const point of scene.cameraContext.points){const p=point.clone().project(scene.camera),x=(p.x+1)*width/2,y=(1-p.y)*height/2;assert.ok(x>=region.x-.01&&x<=region.x+region.width+.01&&y>=region.y-.01&&y<=region.y+region.height+.01,`${id}/${width}x${height}: fallback bounds`);}
   assert.ok(scene.vehicle.position.equals(position));assert.ok(scene.vehicle.scale.equals(scale));
+ }
+});
+
+
+test('footerless HOME keeps all five real cars within the stage with present or absent labels',()=>{
+ for(const id of ['rocket','hatch','sedan','suv','van'])for(const [width,height]of [[551,360],[560,315],[844,390]])for(const scale of [1,1.5])for(const absentLabel of [false,true]){
+  const input=layout(width,height,scale);if(absentLabel)input.label=null;delete input.footer;input.actions.y=height-58;
+  const region=homeVehicleFraming(input);assert.ok(region,`${id}/${width}: absent footer is intentional`);
+  assert.equal(region.y,absentLabel?input.route.y+input.route.height+2:input.label.y+input.label.height+8);
+  const besideActions=region.x>=input.actions.x+input.actions.width+8;
+  assert.equal(region.y+region.height,besideActions?height-14:input.actions.y-(absentLabel?2:8));
+  assert.ok(region.x>=input.route.x+input.route.width+8||region.y>=input.route.y+input.route.height+(absentLabel?2:8));
+  const scene=showcase(id);scene.render(width,height,region);
+  for(const point of scene.cameraContext.points){const p=point.clone().project(scene.camera),x=(p.x+1)*width/2,y=(1-p.y)*height/2;
+   assert.ok(x>=region.x-.01&&x<=region.x+region.width+.01&&y>=region.y-.01&&y<=region.y+region.height+.01);
+   assert.ok(x>=input.actions.x+input.actions.width||y<=input.actions.y);
+  }
  }
 });

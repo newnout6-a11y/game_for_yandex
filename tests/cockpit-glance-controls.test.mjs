@@ -195,16 +195,15 @@ test('pause, modal, menu, result, crash, roll and external-camera boundaries for
 
 test('actual lifecycle clear resets gaze along with held driving controls at blur/visibility boundaries', () => {
   const { sandbox: s } = harness();
-  let releases = 0, thumbClears = 0, orbitCancels = 0;
+  let releases = 0, orbitCancels = 0;
   s.garageOrbitInput = { cancel() { orbitCancels++; } };
-  s.thumbDrive = { clear() { thumbClears++; } };
   s.game.releaseControls = () => { releases++; };
   const clear = applicationFunction('clearInput');
   assert.ok(clear); vm.runInContext(clear, s);
-  s.input.key('KeyW', true); s.document.emit('keydown', { code: 'KeyZ' });
+  s.input.key('KeyW', true); s.input.setTouch('boost','pointer-55',true); s.document.emit('keydown', { code: 'KeyZ' });
   s.clearInput();
   assert.equal(s.glance.direction, 0); assert.equal(s.glance.sources.size, 0);
-  assert.equal(s.input.read().throttle, 0); assert.equal(releases, 1); assert.equal(thumbClears, 1); assert.equal(orbitCancels, 1);
+  assert.equal(s.input.read().throttle, 0); assert.equal(s.input.read().boost, false); assert.equal(releases, 1); assert.equal(orbitCancels, 1);
   assert.match(main, /window\.addEventListener\('blur', \(\) => \{ clearInput\(\); gesture = null; pauseRun\('blur'\); \}\)/);
   assert.match(main, /if \(document\.hidden\) \{ clearInput\(\); gesture = null; pauseRun\('hidden'\); \}/);
   assert.match(main, /const\s+lifecycle\s*=\s*createLifecycle\(\(\)\s*=>\s*\{\s*clearInput\(\)/);
@@ -229,7 +228,7 @@ test('glance buttons are cockpit-only, accessible 44px holds, with concise mirro
   assert.match(theme, /--control-size: 2\.75rem;/);
   assert.match(css, /\.glance-button \{[^}]*touch-action: none;/);
   assert.match(css, /\.game-hud:has\(\.glance-controls:not\(\[hidden\]\)\) \.flight-status \{ bottom: calc\(var\(--space-24\) \+ var\(--control-size\) \+ var\(--space-2\)\); \}/);
-  assert.equal((html.match(/<canvas\b/g) || []).length, 1);
+  assert.deepEqual([...html.matchAll(/<canvas\b[^>]*\bid="([^"]+)"/g)].map(match=>match[1]), ['scene','mobileGoalVehicleCanvas'], 'only the game surface and bounded selected-route model, never a mirror overlay');
   assert.doesNotMatch(html, /<video\b/);
   let help;
   UI.prototype.help.call({ open(type, markup) { help = markup; } });

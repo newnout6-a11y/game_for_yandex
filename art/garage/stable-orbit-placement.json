@@ -1,0 +1,585 @@
+{
+  "version": 1,
+  "operation": "Clear the accepted fixed-distance orbit and rear-quarter sightlines: move complete tier2 lift sides 2.9 m outward, widen and lift only their overhead bridge, and move complete tier4 technical islands 1.3 m outward.",
+  "coordinate_system": "Game metres: +Y up, -Z front. Blender sources use X, -Z, Y.",
+  "tiers": {
+    "4": [
+      {
+        "assembly": "left technical island",
+        "translation_game_m": [
+          -1.3,
+          0,
+          0
+        ],
+        "objects": [
+          "Technical island base",
+          "Island machined work surface",
+          "Island storage door",
+          "Island handle",
+          "Island storage door.001",
+          "Island handle.001",
+          "Island storage door.002",
+          "Island handle.002",
+          "Diagnostic display housing",
+          "Anti-glare display",
+          "Readout band",
+          "Readout band.001",
+          "Readout band.002",
+          "Readout band.003",
+          "Telemetry sample",
+          "Telemetry sample.001",
+          "Telemetry sample.002",
+          "Telemetry sample.003",
+          "Telemetry sample.004",
+          "Telemetry sample.005",
+          "Telemetry sample.006",
+          "Telemetry sample.007",
+          "Telemetry sample.008",
+          "Telemetry sample.009",
+          "Telemetry sample.010",
+          "Telemetry sample.011",
+          "Telemetry sample.012",
+          "Telemetry sample.013",
+          "Telemetry sample.014",
+          "Telemetry sample.015",
+          "Telemetry sample.016",
+          "Telemetry sample.017",
+          "Telemetry sample.018",
+          "Telemetry sample.019",
+          "Display footer",
+          "Integrated monitor pillar"
+        ],
+        "original_locations_game_m": {
+          "Technical island base": [
+            -6.099999904632568,
+            0.6000000238418579,
+            3.299999952316284
+          ],
+          "Island machined work surface": [
+            -6.099999904632568,
+            1.2300000190734863,
+            3.299999952316284
+          ],
+          "Island storage door": [
+            -6.849999904632568,
+            0.6800000071525574,
+            2.8550000190734863
+          ],
+          "Island handle": [
+            -6.849999904632568,
+            0.9800000190734863,
+            2.819999933242798
+          ],
+          "Island storage door.001": [
+            -6.099999904632568,
+            0.6800000071525574,
+            2.8550000190734863
+          ],
+          "Island handle.001": [
+            -6.099999904632568,
+            0.9800000190734863,
+            2.819999933242798
+          ],
+          "Island storage door.002": [
+            -5.349999904632568,
+            0.6800000071525574,
+            2.8550000190734863
+          ],
+          "Island handle.002": [
+            -5.349999904632568,
+            0.9800000190734863,
+            2.819999933242798
+          ],
+          "Diagnostic display housing": [
+            -6.099999904632568,
+            2.049999952316284,
+            3.549999952316284
+          ],
+          "Anti-glare display": [
+            -6.099999904632568,
+            2.049999952316284,
+            3.499000072479248
+          ],
+          "Readout band": [
+            -6.693999767303467,
+            2.3206000328063965,
+            3.489000082015991
+          ],
+          "Readout band.001": [
+            -6.693999767303467,
+            2.1893999576568604,
+            3.489000082015991
+          ],
+          "Readout band.002": [
+            -6.693999767303467,
+            2.058199882507324,
+            3.489000082015991
+          ],
+          "Readout band.003": [
+            -6.693999767303467,
+            1.9270000457763672,
+            3.489000082015991
+          ],
+          "Telemetry sample": [
+            -6.22599983215332,
+            1.8860000371932983,
+            3.48799991607666
+          ],
+          "Telemetry sample.001": [
+            -6.184599876403809,
+            1.9328982830047607,
+            3.48799991607666
+          ],
+          "Telemetry sample.002": [
+            -6.143199920654297,
+            1.9578497409820557,
+            3.48799991607666
+          ],
+          "Telemetry sample.003": [
+            -6.101799964904785,
+            1.9506844282150269,
+            3.48799991607666
+          ],
+          "Telemetry sample.004": [
+            -6.060400009155273,
+            1.9184671640396118,
+            3.48799991607666
+          ],
+          "Telemetry sample.005": [
+            -6.019000053405762,
+            1.8817063570022583,
+            3.48799991607666
+          ],
+          "Telemetry sample.006": [
+            -5.97760009765625,
+            1.8633482456207275,
+            3.48799991607666
+          ],
+          "Telemetry sample.007": [
+            -5.936200141906738,
+            1.8764638900756836,
+            3.48799991607666
+          ],
+          "Telemetry sample.008": [
+            -5.894800186157227,
+            1.917235016822815,
+            3.48799991607666
+          ],
+          "Telemetry sample.009": [
+            -5.853400230407715,
+            1.9670026302337646,
+            3.48799991607666
+          ],
+          "Telemetry sample.010": [
+            -5.811999797821045,
+            2.0022799968719482,
+            3.48799991607666
+          ],
+          "Telemetry sample.011": [
+            -5.770599842071533,
+            2.0073561668395996,
+            3.48799991607666
+          ],
+          "Telemetry sample.012": [
+            -5.7291998863220215,
+            1.98272705078125,
+            3.48799991607666
+          ],
+          "Telemetry sample.013": [
+            -5.68779993057251,
+            1.9448288679122925,
+            3.48799991607666
+          ],
+          "Telemetry sample.014": [
+            -5.646399974822998,
+            1.9172182083129883,
+            3.48799991607666
+          ],
+          "Telemetry sample.015": [
+            -5.605000019073486,
+            1.9179315567016602,
+            3.48799991607666
+          ],
+          "Telemetry sample.016": [
+            -5.563600063323975,
+            1.9498056173324585,
+            3.48799991607666
+          ],
+          "Telemetry sample.017": [
+            -5.522200107574463,
+            1.9989559650421143,
+            3.48799991607666
+          ],
+          "Telemetry sample.018": [
+            -5.480800151824951,
+            2.042227029800415,
+            3.48799991607666
+          ],
+          "Telemetry sample.019": [
+            -5.4394001960754395,
+            2.0596184730529785,
+            3.48799991607666
+          ],
+          "Display footer": [
+            -6.099999904632568,
+            1.7466000318527222,
+            3.486999988555908
+          ],
+          "Integrated monitor pillar": [
+            -6.099999904632568,
+            1.600000023841858,
+            3.569999933242798
+          ]
+        }
+      },
+      {
+        "assembly": "right technical island",
+        "translation_game_m": [
+          1.3,
+          0,
+          0
+        ],
+        "objects": [
+          "Technical island base.001",
+          "Island machined work surface.001",
+          "Island storage door.003",
+          "Island handle.003",
+          "Island storage door.004",
+          "Island handle.004",
+          "Island storage door.005",
+          "Island handle.005",
+          "Diagnostic display housing.001",
+          "Anti-glare display.001",
+          "Readout band.004",
+          "Readout band.005",
+          "Readout band.006",
+          "Readout band.007",
+          "Telemetry sample.020",
+          "Telemetry sample.021",
+          "Telemetry sample.022",
+          "Telemetry sample.023",
+          "Telemetry sample.024",
+          "Telemetry sample.025",
+          "Telemetry sample.026",
+          "Telemetry sample.027",
+          "Telemetry sample.028",
+          "Telemetry sample.029",
+          "Telemetry sample.030",
+          "Telemetry sample.031",
+          "Telemetry sample.032",
+          "Telemetry sample.033",
+          "Telemetry sample.034",
+          "Telemetry sample.035",
+          "Telemetry sample.036",
+          "Telemetry sample.037",
+          "Telemetry sample.038",
+          "Telemetry sample.039",
+          "Display footer.001",
+          "Integrated monitor pillar.001"
+        ],
+        "original_locations_game_m": {
+          "Technical island base.001": [
+            6.099999904632568,
+            0.6000000238418579,
+            3.299999952316284
+          ],
+          "Island machined work surface.001": [
+            6.099999904632568,
+            1.2300000190734863,
+            3.299999952316284
+          ],
+          "Island storage door.003": [
+            5.349999904632568,
+            0.6800000071525574,
+            2.8550000190734863
+          ],
+          "Island handle.003": [
+            5.349999904632568,
+            0.9800000190734863,
+            2.819999933242798
+          ],
+          "Island storage door.004": [
+            6.099999904632568,
+            0.6800000071525574,
+            2.8550000190734863
+          ],
+          "Island handle.004": [
+            6.099999904632568,
+            0.9800000190734863,
+            2.819999933242798
+          ],
+          "Island storage door.005": [
+            6.849999904632568,
+            0.6800000071525574,
+            2.8550000190734863
+          ],
+          "Island handle.005": [
+            6.849999904632568,
+            0.9800000190734863,
+            2.819999933242798
+          ],
+          "Diagnostic display housing.001": [
+            6.099999904632568,
+            2.049999952316284,
+            3.549999952316284
+          ],
+          "Anti-glare display.001": [
+            6.099999904632568,
+            2.049999952316284,
+            3.499000072479248
+          ],
+          "Readout band.004": [
+            5.50600004196167,
+            2.3206000328063965,
+            3.489000082015991
+          ],
+          "Readout band.005": [
+            5.50600004196167,
+            2.1893999576568604,
+            3.489000082015991
+          ],
+          "Readout band.006": [
+            5.50600004196167,
+            2.058199882507324,
+            3.489000082015991
+          ],
+          "Readout band.007": [
+            5.50600004196167,
+            1.9270000457763672,
+            3.489000082015991
+          ],
+          "Telemetry sample.020": [
+            5.973999977111816,
+            1.8860000371932983,
+            3.48799991607666
+          ],
+          "Telemetry sample.021": [
+            6.015399932861328,
+            1.9328982830047607,
+            3.48799991607666
+          ],
+          "Telemetry sample.022": [
+            6.05679988861084,
+            1.9578497409820557,
+            3.48799991607666
+          ],
+          "Telemetry sample.023": [
+            6.098199844360352,
+            1.9506844282150269,
+            3.48799991607666
+          ],
+          "Telemetry sample.024": [
+            6.139599800109863,
+            1.9184671640396118,
+            3.48799991607666
+          ],
+          "Telemetry sample.025": [
+            6.181000232696533,
+            1.8817063570022583,
+            3.48799991607666
+          ],
+          "Telemetry sample.026": [
+            6.222400188446045,
+            1.8633482456207275,
+            3.48799991607666
+          ],
+          "Telemetry sample.027": [
+            6.263800144195557,
+            1.8764638900756836,
+            3.48799991607666
+          ],
+          "Telemetry sample.028": [
+            6.305200099945068,
+            1.917235016822815,
+            3.48799991607666
+          ],
+          "Telemetry sample.029": [
+            6.34660005569458,
+            1.9670026302337646,
+            3.48799991607666
+          ],
+          "Telemetry sample.030": [
+            6.388000011444092,
+            2.0022799968719482,
+            3.48799991607666
+          ],
+          "Telemetry sample.031": [
+            6.4293999671936035,
+            2.0073561668395996,
+            3.48799991607666
+          ],
+          "Telemetry sample.032": [
+            6.470799922943115,
+            1.98272705078125,
+            3.48799991607666
+          ],
+          "Telemetry sample.033": [
+            6.512199878692627,
+            1.9448288679122925,
+            3.48799991607666
+          ],
+          "Telemetry sample.034": [
+            6.553599834442139,
+            1.9172182083129883,
+            3.48799991607666
+          ],
+          "Telemetry sample.035": [
+            6.59499979019165,
+            1.9179315567016602,
+            3.48799991607666
+          ],
+          "Telemetry sample.036": [
+            6.63640022277832,
+            1.9498056173324585,
+            3.48799991607666
+          ],
+          "Telemetry sample.037": [
+            6.677800178527832,
+            1.9989559650421143,
+            3.48799991607666
+          ],
+          "Telemetry sample.038": [
+            6.719200134277344,
+            2.042227029800415,
+            3.48799991607666
+          ],
+          "Telemetry sample.039": [
+            6.7606000900268555,
+            2.0596184730529785,
+            3.48799991607666
+          ],
+          "Display footer.001": [
+            6.099999904632568,
+            1.7466000318527222,
+            3.486999988555908
+          ],
+          "Integrated monitor pillar.001": [
+            6.099999904632568,
+            1.600000023841858,
+            3.569999933242798
+          ]
+        }
+      }
+    ],
+    "2": [
+      {
+        "assembly": "left complete lift side",
+        "translation_game_m": [
+          -2.9,
+          0,
+          0
+        ],
+        "objects": [
+          "Service lift post",
+          "Lift base",
+          "Lift carriage",
+          "Retracted lift arm",
+          "Lift pad",
+          "Lift screw channel"
+        ],
+        "original_locations_game_m": {
+          "Service lift post": [
+            -3.799999952316284,
+            1.850000023841858,
+            2.0
+          ],
+          "Lift base": [
+            -3.799999952316284,
+            0.07000000029802322,
+            2.0
+          ],
+          "Lift carriage": [
+            -3.799999952316284,
+            0.6499999761581421,
+            1.75
+          ],
+          "Retracted lift arm": [
+            -3.799999952316284,
+            0.25,
+            2.799999952316284
+          ],
+          "Lift pad": [
+            -3.799999952316284,
+            0.3100000023841858,
+            3.4000000953674316
+          ],
+          "Lift screw channel": [
+            -3.799999952316284,
+            2.0,
+            1.7699999809265137
+          ]
+        }
+      },
+      {
+        "assembly": "right complete lift side",
+        "translation_game_m": [
+          2.9,
+          0,
+          0
+        ],
+        "objects": [
+          "Service lift post.001",
+          "Lift base.001",
+          "Lift carriage.001",
+          "Retracted lift arm.001",
+          "Lift pad.001",
+          "Lift screw channel.001"
+        ],
+        "original_locations_game_m": {
+          "Service lift post.001": [
+            3.799999952316284,
+            1.850000023841858,
+            2.0
+          ],
+          "Lift base.001": [
+            3.799999952316284,
+            0.07000000029802322,
+            2.0
+          ],
+          "Lift carriage.001": [
+            3.799999952316284,
+            0.6499999761581421,
+            1.75
+          ],
+          "Retracted lift arm.001": [
+            3.799999952316284,
+            0.25,
+            2.799999952316284
+          ],
+          "Lift pad.001": [
+            3.799999952316284,
+            0.3100000023841858,
+            3.4000000953674316
+          ],
+          "Lift screw channel.001": [
+            3.799999952316284,
+            2.0,
+            1.7699999809265137
+          ]
+        }
+      },
+      {
+        "assembly": "lift overhead bridge",
+        "translation_game_m": [
+          0,
+          0.3,
+          0
+        ],
+        "widen_game_x_m": 5.8,
+        "original_width_m": 8.05,
+        "final_width_m": 13.85,
+        "objects": [
+          "Lift overhead cable support"
+        ],
+        "original_locations_game_m": {
+          "Lift overhead cable support": [
+            0.0,
+            4.099999904632568,
+            2.0
+          ]
+        }
+      }
+    ]
+  },
+  "preserved": "All unrelated garage source parts, shell, lights, material graphs, packed textures, TV and mural. Runtime owned-car parking placement is separate."
+}

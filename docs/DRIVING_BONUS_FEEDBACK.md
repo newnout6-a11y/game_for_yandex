@@ -1,0 +1,11 @@
+# Spatial driving-bonus feedback
+
+Driving reward feedback is graphical rather than a central text toast. Near passes and ordinary overtakes produce a small pale broken halo beside the actual passed car's near front corner. Collected charges use their captured pickup location; checkpoint/roadworks use their gate/exit; convoy completion uses the last actual passed target; the 1500 m milestone uses the actual crossing location. There are no bonus words or floating reward numbers. Active road-event instructions, failed-event and cone warnings, persistent score/combo gauges and settlement receipts remain.
+
+Existing event names and numeric/result payloads retain their semantics. A third callback argument is a frozen presentation-only source snapshot. Ordinary passes add a visual-only notification that bypasses telemetry and sound; they do not invent a new score reward. Flight rolls are manoeuvre initiations, not awards, so their cost and existing effects are unchanged. Precision landing and other ledger metrics are not converted into invented per-callback rewards.
+
+Cues are real depth-tested world-space geometry, not screen-edge-clamped labels. Traffic tracking resolves same-run simulation identity rather than pooled meshes. The snapshot preserves continuous lane/heading and source coordinates before removal. Each view, including real mirrors, billboards the same source with its own camera. A vehicle behind the cockpit does not create a false mark on the windshield.
+
+Eight fixed reusable meshes share one 72-triangle shape consisting of four short curved segments, without detached targeting ticks. There are eight small preallocated fade materials and no textures, particles, text, timers or additional scene/shadow passes. A cue lasts .72 seconds of active rendering; pause freezes it. Reduced motion removes expansion, retaining only the brief fade. Reset, revive, ready/crash, menu/showcase clear old cues before render early returns. State/reward/persistence logic does not depend on effects.
+
+Verification includes actual Game event source/reward contracts, production callback and HUD tests, real Three pose/clip-space/mirror tests, bounded resource and lifecycle tests, and native software-rendered Game callbacks. Hardware FPS, touch latency, power and thermal behavior require a physical device; these captures do not establish those metrics.

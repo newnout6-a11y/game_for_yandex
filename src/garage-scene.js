@@ -2,9 +2,14 @@ import * as T from '../public/vendor/three.js';
 import { applyVehicleAppearance } from './owned-vehicles.js';
 import { VehiclePaintTransition } from './paint-transition.js';
 import { GarageCameraMotion, frameCockpitCustomization, garageCameraLimits, garageBoxCorners, constrainGarageCamera } from './garage-camera-motion.js';
+import { garageOrbitEnvelope, garageOrbitPoints, garageOrbitDistance, createGarageOrbitRig, applyGarageOrbitRig, GARAGE_ORBIT_DISTANCE_FACTOR } from './garage-stable-orbit.js';
 import { setPlayerInteriorView } from './car.js';
 import { textureAnisotropy } from './render-settings.js';
 import { GarageScreenPlayer } from './garage-screen-player.js';
+import { GarageToyProp } from './garage-toy-prop.js';
+
+/** Fixed clear side bays, measured against all five real vehicle envelopes and the complete orbit band. */
+export const GARAGE_PARKING_BAYS = Object.freeze([Object.freeze({x:-7.8,z:-1.6}),Object.freeze({x:7.8,z:-1.6})]);
 
 /**
  * Display an authored workshop and the selected real vehicle on the existing
@@ -21,17 +26,28 @@ export class GarageScene {
     this.screenDisplay = new GarageScreenPlayer({onChange:()=>this.onStatus({screenFrame:true})});
     this.scene = new T.Scene(); this.scene.background = new T.Color('#20282b');
     this.camera = new T.PerspectiveCamera(38, 1, .1, 80);
-    this.scene.add(new T.HemisphereLight('#e6eff0', '#575047', 1.3));
-    this.key = new T.DirectionalLight('#fff0d6', 3.0); this.key.position.set(-4, 5.7, -3);
+    this.scene.add(new T.HemisphereLight('#e6eff0', '#575047', 1.6));
+    // A local ceiling fixture cannot be shadowed by the roof above it. The old
+    // infinite directional light clipped that roof across its finite ortho map,
+    // projecting a hard triangular coverage boundary onto the room shell.
+    this.key = new T.SpotLight('#fff0d6', 50, 16, 66*Math.PI/180, .3, 2);
+    this.key.position.set(0,4.5,-.8);this.key.target.position.set(0,0,-.8);
     this.key.castShadow = true; this.key.shadow.mapSize.set(1024, 1024);
     // The TV changes pixels, not occluders. Rebuild this static light map only
     // when authored geometry, visibility, parking or GPU context actually changes.
     this.key.shadow.autoUpdate=false;this.key.shadow.needsUpdate=true;
-    Object.assign(this.key.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: .1, far: 24 });
+    // Keep the shadow projection tied to the spotlight cone, not a smaller
+    // manually clipped rectangle. The penumbra fades at that same edge.
+    // The emitter sits below every authored suspended lamp, not behind its casing.
+    // This 66-degree half-cone spends the same 1024 map on a 20.2m floor
+    // footprint (19.7mm/texel), rather than 62m at 8m depth.
+    this.key.shadow.camera.near=.1;this.key.shadow.camera.far=16;this.key.shadow.focus=1;
     this.key.shadow.normalBias = .025; this.key.shadow.bias = -.0002;
     this.scene.add(this.key, this.key.target);
     this.fill = new T.DirectionalLight('#a7d6df', 1.1); this.fill.position.set(5, 3, 4); this.scene.add(this.fill);
-    this.loader = new T.GLTFLoader(); this.cache = new Map(); this.generation = 0;
+    this.loader = new T.GLTFLoader();
+    this.toyProp=new GarageToyProp(this.loader,{onError:error=>this.onStatus({toyError:String(error.message||error)})});
+    this.cache = new Map(); this.generation = 0;
     this.tier = 0; this.ready = false; this.disposed = false; this.yaw = -.63; this.pitch = .24; this.zoom = 1;
     this.vehicle = null; this.vehicleKey = ''; this.environmentTarget = null; this.inspection='overview'; this.orbitOffset=0;
     this.loadingTier=null;this.failedTier=null;this.environmentDirty=false;this.parkedVehicles=[];this.parkedKey='';
@@ -39,6 +55,15 @@ export class GarageScene {
     this.onContextRestored=()=>{this.environmentDirty=true;this.key.shadow.needsUpdate=true;this.onStatus({contextRestored:true});};
     renderer.domElement?.addEventListener('webglcontextrestored',this.onContextRestored);
     this.target = new T.Vector3(0, .83, 0); this.lastWidth = 0; this.lastHeight = 0;
+  }
+
+  /** Install the authored decorative toy once and wake a settled room for its cached bake; missing decoration never blocks entry. */
+  async prepareToy(){
+    if(this.disposed)return false;
+    const toy=await this.toyProp.load();
+    if(this.disposed||!toy)return false;
+    if(toy.parent!==this.scene){this.scene.add(toy);this.cameraLimits=null;this.environmentDirty=true;this.key.shadow.needsUpdate=true;this.onStatus({toyReady:true});}
+    return true;
   }
 
   /** Load one authored tier transactionally; failure retains the previous usable room until an explicit retry. */
@@ -100,9 +125,11 @@ export class GarageScene {
   /** Keep the owned car/materials during cosmetics edits; replace only for a different model. */
   setVehicle(id, appearance = {}) {
     const key = JSON.stringify([id, appearance]);
+    const geometryKey=JSON.stringify([appearance['body.addon'],appearance['wheels.geometry'],appearance['wheels.finish']==='rim_copper',appearance['cockpit.steering']]);
     if (key === this.vehicleKey) return;
     this.key.shadow.needsUpdate=true;
     if(this.vehicle&&id===this.vehicleId&&this.vehicle.userData.appearance){
+      if(geometryKey!==this.orbitGeometryKey){this.orbitEnvelope=null;this.orbitRig=null;this.orbitBounds=null;this.orbitGeometryKey=geometryKey;}
       applyVehicleAppearance(this.vehicle,appearance);
       this.paintTransition?.retarget({reducedMotion:this.reducedMotion});
       for(const wipe of this.rimTransitions)wipe.retarget({reducedMotion:this.reducedMotion});
@@ -118,7 +145,7 @@ export class GarageScene {
     this.vehicle = next; this.vehicleId=id; this.vehicleKey = key; if(id!=='rocket'&&this.inspection==='cockpit')this.setInspection('overview'); next.position.set(0, id==='rocket'?.006:(next.userData.groundY||.006), 0); this.scene.add(next);
     this.paintTransition=new VehiclePaintTransition(next);
     this.rimTransitions=[...new Set((next.userData.appearance?.rims||[]).map(entry=>entry.root).filter(Boolean))].map(root=>new VehiclePaintTransition(next,{slot:"rims",root}));
-    this.cameraMotion.active=false;this.orbitRecovery=null;
+    this.cameraMotion.active=false;this.orbitRecovery=null;this.orbitGeometryKey=geometryKey;this.orbitEnvelope=null;this.orbitRig=null;this.orbitBounds=null;
     const size = new T.Box3().setFromObject(next, true).getSize(new T.Vector3());
     this.vehicleLength = Math.max(4.7, size.z); this.target.y = Math.max(.75, Math.min(1.2, size.y * .52));
   }
@@ -157,7 +184,7 @@ export class GarageScene {
     const key=JSON.stringify(records);if(key===this.parkedKey)return;this.key.shadow.needsUpdate=true;
     for(const car of this.parkedVehicles){this.scene.remove(car);for(const material of car.userData.ownedAppearanceMaterials||[])material.dispose();}
     this.parkedVehicles=[];this.parkedKey=key;
-    records.forEach((record,index)=>{const car=this.makeVehicle(record.id,record.appearance||{});car.position.set(index?6.2:-6.2,record.id==='rocket'?.006:(car.userData.groundY||.006),-.8);this.scene.add(car);this.parkedVehicles.push(car);});
+    records.forEach((record,index)=>{const car=this.makeVehicle(record.id,record.appearance||{});car.position.set(GARAGE_PARKING_BAYS[index].x,record.id==='rocket'?.006:(car.userData.groundY||.006),GARAGE_PARKING_BAYS[index].z);this.scene.add(car);this.parkedVehicles.push(car);});
   }
 
   /** Select an actual geometry inspection view without hiding car parts or changing driving cameras. */
@@ -185,8 +212,8 @@ export class GarageScene {
       this.pitch=Math.max(.13,Math.min(.48,shownPitch));
       // Keep the full displayed pose at takeover, then restore mode limits and
       // framing in 350 ms. Pointer deltas still act immediately on the requested orbit.
-      this.orbitRecovery={radius,progress:0,pitchOffset:shownPitch-this.pitch,yawOffset:shownYaw-this.yaw,
-        target:this.camera.userData.garageLookTarget?.clone(),points:this.camera.userData.garageFocusPoints?.map(point=>point.clone()),fov:this.camera.fov,near:this.camera.near};
+      this.orbitRecovery={radius:this.inspection==='wheels'?radius:delta.length(),progress:0,pitchOffset:shownPitch-this.pitch,yawOffset:shownYaw-this.yaw,
+        target:this.camera.userData.garageLookTarget?.clone(),points:this.camera.userData.garageFocusPoints?.map(point=>point.clone()),fov:this.camera.fov,near:this.camera.near,offsetX:this.camera.view?.offsetX||0,offsetY:this.camera.view?.offsetY||0};
       this.cameraMotion.active=false;
     }
     this.yaw+=horizontal*.004;
@@ -198,7 +225,7 @@ export class GarageScene {
   }
 
   /** Render one parked showcase frame, restoring the road exposure after the shared renderer call. */
-  render(width, height, region=null) {
+  render(width, height, region=null, { stableOrbit = true } = {}) {
     if (this.disposed || !this.ready || !this.vehicle) return false;
     if(this.environmentDirty){try{this.rebuildEnvironment();}catch(error){this.environmentDirty=false;this.onStatus({error:String(error.message||error)});}}
     const aspect = Math.max(.25, width / Math.max(1, height));
@@ -225,28 +252,64 @@ export class GarageScene {
         this.camera.clearViewOffset();
         this.camera.position.fromArray(data.reference_eye_game_m||data.inspection_eye_game_m).applyMatrix4(frame.matrixWorld);
         frameCockpitCustomization(this.camera,this.vehicle,data,frame,width,height,region,this.orbitOffset);
-        this.camera.userData.garageExterior=false;this.camera.userData.garageLookTarget=null;
+        this.camera.userData.garageExterior=false;this.camera.userData.garageLookTarget=null;this.camera.userData.garageStableOrbit=null;
         this.camera.updateMatrixWorld();return this.drawScene();
       }
     }
     const minimumFov=aspect<1?49:38;
-    const limits=this.cameraLimits||(this.cameraLimits=garageCameraLimits(this.room,this.parkedVehicles));
+    const limits=this.cameraLimits||(this.cameraLimits=garageCameraLimits(this.room,[...this.parkedVehicles,this.toyProp.root].filter(Boolean)));
     let radius=Math.min((this.vehicleLength||4.7)*(aspect<1?1.95:1.75)*this.zoom,limits.orbitRadius);
     if(this.inspection==='wheels')radius=1.9;
-    const vehicleBounds=new T.Box3().setFromObject(this.vehicle,true);
-    let pitch=this.pitch,yaw=this.yaw,lookTarget=target,fitFov=minimumFov;
-    let points=garageBoxCorners(focus===this.vehicle?vehicleBounds:new T.Box3().setFromObject(focus,true));
+    const vehicleBounds=stableOrbit&&this.inspection!=='wheels'?(this.orbitBounds||(this.orbitBounds=new T.Box3().setFromObject(this.vehicle,true))):new T.Box3().setFromObject(this.vehicle,true);
+    if(stableOrbit&&this.inspection!=='wheels'){
+      this.orbitEnvelope ||= garageOrbitEnvelope(this.vehicle,this.target);
+      const desiredDistance=Math.min((this.vehicleLength||4.7)*(aspect<1?1.95:1.75),limits.orbitRadius)*GARAGE_ORBIT_DISTANCE_FACTOR*Math.max(.1,Number(this.zoom)||1);
+      if(this.orbitDistanceLimits!==limits||this.orbitDistanceBounds!==vehicleBounds||this.orbitDistanceRequested!==desiredDistance){
+        this.orbitDistance=this.zoom===1?desiredDistance:garageOrbitDistance(desiredDistance,limits,this.target,vehicleBounds);
+        this.orbitDistanceLimits=limits;this.orbitDistanceBounds=vehicleBounds;this.orbitDistanceRequested=desiredDistance;
+      }
+      const distance=this.orbitDistance;
+      const key=JSON.stringify([this.vehicleId,width,height,region,distance,minimumFov]);
+      if(!this.orbitRig||this.orbitRigKey!==key){
+        this.orbitRig=createGarageOrbitRig({envelope:this.orbitEnvelope,distance,width,height,region,minimumFov,referencePoints:garageBoxCorners(vehicleBounds),pivot:this.target});this.orbitRigKey=key;
+        this.orbitFocusPoints=garageOrbitPoints(this.orbitEnvelope,this.target);
+      }
+      let rig=this.orbitRig,yaw=this.yaw,pitch=this.pitch,lookTarget=target;
+      if(this.orbitRecovery){
+        const recovery=this.orbitRecovery,p=recovery.progress,t=p*p*(3-2*p);
+        yaw+=recovery.yawOffset*(1-t);pitch+=recovery.pitchOffset*(1-t);
+        lookTarget=recovery.target?recovery.target.clone().lerp(target,t):target;
+        rig={...rig,distance:T.MathUtils.lerp(recovery.radius,rig.distance,t),fov:T.MathUtils.lerp(recovery.fov,rig.fov,t),near:T.MathUtils.lerp(recovery.near,rig.near,t),offsetX:T.MathUtils.lerp(recovery.offsetX,rig.offsetX,t),offsetY:T.MathUtils.lerp(recovery.offsetY,rig.offsetY,t)};
+      }
+      applyGarageOrbitRig(this.camera,rig,target,yaw,Math.atan(Math.sin(pitch)),width,height);
+      this.camera.lookAt(lookTarget);this.camera.updateMatrixWorld();this.camera.userData.garageLookTarget=lookTarget.clone();
+      this.camera.userData.garageFocusPoints=this.orbitFocusPoints;
+      this.cameraContext={limits,pivot:this.target.clone(),target:lookTarget,vehicleBounds,points:this.orbitFocusPoints,width,height,region,minimumFov:rig.fov,fixedProjection:rig};
+      if(this.orbitRecovery)constrainGarageCamera(this.camera,this.cameraContext);
+      return this.drawScene();
+    }
+    this.camera.userData.garageStableOrbit=null;
+    let pitch=this.pitch,yaw=this.yaw,lookTarget=target;
+    let points=garageBoxCorners(focus===this.vehicle?vehicleBounds:new T.Box3().setFromObject(focus,true)),recoveryProjection=null;
+    if(this.orbitRecovery){
+      const destination=new T.PerspectiveCamera(minimumFov,aspect,.08,80);
+      destination.position.copy(target).add(new T.Vector3(Math.sin(yaw)*radius,Math.sin(pitch)*radius,-Math.cos(yaw)*radius));
+      constrainGarageCamera(destination,{limits,pivot:this.target.clone(),target,vehicleBounds,points,width,height,region,minimumFov});
+      const recovery=this.orbitRecovery,p=recovery.progress,t=p*p*(3-2*p);
+      recoveryProjection={fov:T.MathUtils.lerp(recovery.fov,destination.fov,t),near:T.MathUtils.lerp(recovery.near,destination.near,t),offsetX:T.MathUtils.lerp(recovery.offsetX,destination.view?.offsetX||0,t),offsetY:T.MathUtils.lerp(recovery.offsetY,destination.view?.offsetY||0,t)};
+    }
     if(this.orbitRecovery){
       const recovery=this.orbitRecovery,p=recovery.progress,t=p*p*(3-2*p);
       radius=T.MathUtils.lerp(recovery.radius,radius,t);pitch+=recovery.pitchOffset*(1-t);yaw+=recovery.yawOffset*(1-t);
       if(recovery.target)lookTarget=recovery.target.clone().lerp(target,t);
+      // Preserve focus metadata for a later interrupted preset. This does not
+      // fit the active lens: recoveryProjection above exclusively owns its optics.
       if(recovery.points?.length===points.length)points=recovery.points.map((point,index)=>point.clone().lerp(points[index],t));
-      fitFov=T.MathUtils.lerp(recovery.fov,minimumFov,t);
-      this.camera.near=T.MathUtils.lerp(recovery.near,this.camera.near,t);this.camera.updateProjectionMatrix();
     }
     this.camera.position.copy(target).add(new T.Vector3(Math.sin(yaw)*radius,Math.sin(pitch)*radius,-Math.cos(yaw)*radius));
-    this.cameraContext={limits,pivot:this.target.clone(),target:lookTarget,vehicleBounds,points,width,height,region,minimumFov:fitFov};
+    this.cameraContext={limits,pivot:this.target.clone(),target:lookTarget,vehicleBounds,points,width,height,region,minimumFov,fixedProjection:recoveryProjection};
     constrainGarageCamera(this.camera,this.cameraContext);
+
 
     return this.drawScene();
   }
@@ -262,7 +325,7 @@ export class GarageScene {
   /** Release exclusively owned room GPU assets once; vehicle source buffers remain with the road asset cache. */
   dispose() {
     if (this.disposed) return; this.disposed = true; ++this.generation;
-    this.paintTransition?.dispose();for(const wipe of this.rimTransitions)wipe.dispose();this.screenDisplay.dispose();
+    this.paintTransition?.dispose();for(const wipe of this.rimTransitions)wipe.dispose();this.screenDisplay.dispose();this.toyProp.dispose();
     this.renderer.domElement?.removeEventListener('webglcontextrestored',this.onContextRestored);
     this.environmentTarget?.dispose(); this.key.shadow.map?.dispose();
     const geometries = new Set(), materials = new Set(), textures = new Set();

@@ -57,6 +57,9 @@ export function garagePrice(value) {
 }
 /** Own-key checks prevent prototype names becoming owned catalog entries. */
 const owns = (collection, id) => Array.isArray(collection) ? collection.some(value => value === id || value?.id === id) : !!collection && Object.hasOwn(collection, id) && collection[id] !== false;
+/** Save problems are signalled on the existing Settings target, never over the catalogue. */
+const UNCERTAIN_CLOUD_STATUSES = new Set(['error', 'uncertain', 'rate-limited', 'frozen']);
+const saveNeedsAttention = view => !view.platform.conflict && ((view.local?.saved ?? view.local?.localSaved) === false || view.platform.storageAvailable === false || UNCERTAIN_CLOUD_STATUSES.has(view.cloud?.status));
 /** Display summaries alone cannot authorize a whole-profile replacement. */
 function conflictSnapshot(conflict, choice) {
   const raw = Object.hasOwn(conflict, choice) ? conflict[choice] : conflict[`${choice}Profile`];
@@ -238,13 +241,16 @@ export class GarageUI {
     this.onMiniatures = onMiniatures; this.onMiniatureInteraction = onMiniatureInteraction; this.miniatureHoverId = null; this.miniatureFocusId = null;
     this.visible = true; this.busy = false; this.settingsOpen = false; this.mobileOpen = false; this.atelierSection = 'body'; this.atelierBodySection = 'surface';
     this.view = normalizeGarageView(); this.noticeText = ''; this.disposed = false;
-    root.classList.add('garage-shell'); root.setAttribute('aria-label', 'Roadster — гараж и меню');
+    root.classList.add('garage-shell'); root.classList.add('gs-liquid-glass'); root.setAttribute('aria-label', 'Roadster — гараж и меню');
     this.clickHandler = event => this.handleClick(event);
     this.changeHandler = event => this.handleChange(event);
     this.keyHandler = event => this.handleKey(event);
     root.addEventListener('click', this.clickHandler);
     root.addEventListener('change', this.changeHandler);
     root.addEventListener('keydown', this.keyHandler);
+    const ResizeObserverClass = this.doc.defaultView?.ResizeObserver;
+    this.resizeObserver = ResizeObserverClass ? new ResizeObserverClass(() => this.updateCatalogOverflow()) : null;
+    this.resizeObserver?.observe(root);
     this.miniatureHandlers = Object.fromEntries(['pointerover','pointerout','pointerdown','focusin','focusout'].map(type => [type, event => this.handleMiniatureInteraction(event)]));
     for (const [type, handler] of Object.entries(this.miniatureHandlers)) root.addEventListener(type, handler);
   }
@@ -273,12 +279,14 @@ export class GarageUI {
       if (this.view.screen === 'hub') main.append(this.renderHub());
       if (this.view.screen === 'garage') main.append(this.renderGarage());
       if (this.view.screen === 'results') main.append(this.renderResults());
-      main.append(this.renderFooter());
+      const saveAlert = this.renderSaveControls({ alertsOnly: true });
+      if (saveAlert) main.append(saveAlert);
     }
     const live = element(this.doc, 'div', 'gs-notice', this.noticeText);
     live.setAttribute('role', 'status'); live.setAttribute('aria-live', 'polite'); live.setAttribute('aria-atomic', 'true');
     live.hidden = !this.noticeText; main.append(live); this.root.append(main);
     const conflict = this.view.platform.conflict;
+    this.root.dataset.modal = conflict || this.settingsOpen ? 'open' : 'closed';
     main.inert = !!conflict || this.settingsOpen;
     if (conflict) this.root.append(this.renderCloudConflict(conflict));
     else if (this.settingsOpen) this.root.append(this.renderSettings());
@@ -312,6 +320,12 @@ export class GarageUI {
     else if (oldScreen !== this.view.screen && this.visible) this.root.querySelector('[data-gs-heading]')?.focus({ preventScroll: true });
     if (this.view.screen !== 'garage' || this.view.tab !== 'fleet') { this.miniatureHoverId = null; this.miniatureFocusId = null; this.onMiniatureInteraction(null); }
     this.onMiniatures(this.getFleetMiniatureTargets());
+    this.updateCatalogOverflow();
+  }
+  /** One cue for the shared catalogue scroll area, without another strip. */
+  updateCatalogOverflow() {
+    const panel = this.root.querySelector('.gs-workbench');
+    if (panel) panel.dataset.scrollable = String(panel.scrollHeight > panel.clientHeight + 1);
   }
   /** Hide the entire presentation during gameplay, including its keyboard targets. */
   setVisible(visible) {
@@ -335,7 +349,8 @@ export class GarageUI {
     this.root.removeEventListener('click', this.clickHandler); this.root.removeEventListener('change', this.changeHandler); this.root.removeEventListener('keydown', this.keyHandler);
     for (const [type, handler] of Object.entries(this.miniatureHandlers)) this.root.removeEventListener(type, handler);
     this.onMiniatureInteraction(null); this.onMiniatures([]);
-    this.root.replaceChildren(); this.root.classList.remove('garage-shell'); this.disposed = true;
+    this.resizeObserver?.disconnect();
+    this.root.replaceChildren(); this.root.classList.remove('garage-shell'); this.root.classList.remove('gs-liquid-glass'); delete this.root.dataset.modal; this.disposed = true;
   }
   /** Exact authored-model targets; unowned catalog entries always use their stock appearance. */
   getFleetMiniatureTargets() {
@@ -480,32 +495,36 @@ export class GarageUI {
     const head = element(this.doc, 'header', 'gs-header');
     if (this.view.screen !== 'hub') { const back = this.button('', { type: 'navigate', screen: 'hub' }, { iconName: 'back', className: 'gs-mobile-home gs-icon-button' }); back.setAttribute('aria-label', 'На главную'); head.append(back); }
     head.append(this.brand());
-    const context = element(this.doc, 'div', 'gs-header-context');
-    context.append(element(this.doc, 'span', 'gs-status-dot'), element(this.doc, 'span', '', this.view.screen === 'garage' ? 'ЛИЧНЫЙ ГАРАЖ' : this.view.screen === 'results' ? 'ЗАЕЗД ЗАВЕРШЁН' : 'ДОРОГА НАЧИНАЕТСЯ ЗДЕСЬ'));
-    const badge = this.renderEquippedBadge(); if (badge) context.append(badge);
-    head.append(context);
+    // HOME drops promotional context, but an earned season badge stays intact.
+    const badge = this.renderEquippedBadge();
+    if (this.view.screen !== 'hub' || badge) {
+      const context = element(this.doc, 'div', 'gs-header-context');
+      if (this.view.screen !== 'hub') context.append(element(this.doc, 'span', 'gs-status-dot'), element(this.doc, 'span', '', this.view.screen === 'garage' ? 'ЛИЧНЫЙ ГАРАЖ' : 'ЗАЕЗД ЗАВЕРШЁН'));
+      if (badge) context.append(badge);
+      head.append(context);
+    }
     const account = element(this.doc, 'div', 'gs-account');
     const balance = element(this.doc, 'div', 'gs-balance'); balance.setAttribute('aria-label', `Баланс: ${garageNumber(this.view.balances.credits)} кредитов`);
     balance.append(element(this.doc, 'span', 'gs-currency-mark', '₵'), element(this.doc, 'strong', '', garageNumber(this.view.balances.credits)));
     account.append(balance);
-    const settings = this.localButton('', 'openSettings', 'settings', 'gs-icon-button'); settings.setAttribute('aria-label', 'Настройки'); settings.dataset.gsSettingsOpen = 'true'; settings.dataset.gsFocus = 'openSettings'; account.append(settings); head.append(account);
+    const settings = this.localButton('', 'openSettings', 'settings', 'gs-icon-button');
+    const saveWarning = saveNeedsAttention(this.view);
+    settings.setAttribute('aria-label', saveWarning ? 'Ошибка сохранения. Открыть настройки' : 'Настройки');
+    if (saveWarning) {
+      settings.dataset.gsSaveWarning = 'true'; settings.title = 'Проблема с сохранением: подробности в настройках';
+      const indicator = element(this.doc, 'span', 'gs-save-indicator', '!'); indicator.setAttribute('aria-hidden', 'true'); settings.append(indicator);
+    }
+    settings.dataset.gsSettingsOpen = 'true'; settings.dataset.gsFocus = 'openSettings'; account.append(settings); head.append(account);
     return head;
   }
   /** A playable-first welcome: no account wall, no automatic advertisement. */
   renderHub() {
     const hub = element(this.doc, 'main', `gs-hub${this.view.otherGames.length ? ' gs-has-other-games' : ''}`);
-    const introduction = element(this.doc, 'section', 'gs-hub-intro');
-    introduction.append(element(this.doc, 'p', 'gs-kicker', 'НЕБО БЛИЖЕ, ЧЕМ КАЖЕТСЯ'));
-    const title = element(this.doc, 'h1', 'gs-hub-title'); title.dataset.gsHeading = 'true'; title.tabIndex = -1;
-    title.append(element(this.doc, 'span', '', 'ДЕРЖИ ТРАССУ.'), element(this.doc, 'span', 'gs-title-accent', 'ЗАБИРАЙ НЕБО.')); introduction.append(title);
-    introduction.append(element(this.doc, 'p', 'gs-hub-copy', 'Твой родстер. Твоя мастерская. Свобода выбирать линию, даже когда дорога заканчивается.'));
+    const title = element(this.doc, 'h1', 'gs-home-heading', 'Главная');
+    title.dataset.gsHeading = 'true'; title.tabIndex = -1; hub.append(title);
     const actions = element(this.doc, 'div', 'gs-hub-actions');
     actions.append(this.button(number(this.view.profile.stats?.runs ?? this.view.profile.runs) ? 'Снова на трассу' : 'На трассу', { type: 'startDrive' }, { primary: true, iconName: 'arrow', className: 'gs-drive-button' }));
-    actions.append(this.button('Войти в гараж', { type: 'navigate', screen: 'garage', tab: 'fleet' }, { iconName: 'garage' })); introduction.append(actions);
-    introduction.append(element(this.doc, 'p', 'gs-small-note', 'Можно играть сразу. Вход в аккаунт необязателен.'));
-    hub.append(introduction);
-    const carLabel = element(this.doc, 'div', 'gs-hero-vehicle');
-    carLabel.append(element(this.doc, 'span', 'gs-kicker', 'В ТВОЁМ БОКСЕ'), element(this.doc, 'strong', '', this.view.selected.name), element(this.doc, 'span', 'gs-small-note', this.view.selected.role || 'ДОРОГА / НЕБО')); hub.append(carLabel);
+    actions.append(this.button('Войти в гараж', { type: 'navigate', screen: 'garage', tab: 'fleet' }, { iconName: 'garage' })); hub.append(actions);
     const bottom = element(this.doc, 'section', 'gs-hub-dock');
     const workshop = element(this.doc, 'div', 'gs-dock-cell'); workshop.append(element(this.doc, 'span', 'gs-kicker', `БОКС ${String(this.view.garage.level).padStart(2, '0')} / 04`), element(this.doc, 'strong', '', this.view.garage.tiers[this.view.garage.level - 1]?.name || 'Личный гараж'), element(this.doc, 'span', 'gs-small-note', 'От первой машины до собственного ангара'));
     const badge = this.renderEquippedBadge(); if (badge) workshop.append(badge);
@@ -569,7 +588,9 @@ export class GarageUI {
     stage.append(stageBottom); garage.append(stage);
     const panel = element(this.doc, 'section', 'gs-workbench'); panel.id = 'gs-workbench'; panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', `gs-tab-${this.view.tab}`); panel.tabIndex = 0; panel.dataset.gsFocus = 'workbench';
     const tab = GARAGE_TABS.find(item => item.id === this.view.tab);
-    const panelHead = element(this.doc, 'div', 'gs-panel-heading'); panelHead.append(element(this.doc, 'h2', '', tab.name)); panel.append(panelHead);
+    const panelHead = element(this.doc, 'div', 'gs-panel-heading'); panelHead.append(element(this.doc, 'h2', '', tab.name));
+    if (this.view.tab === 'fleet') panelHead.append(element(this.doc, 'span', 'gs-fleet-count', `${this.view.vehicles.filter(item => item.owned).length} / ${this.view.vehicles.length}`));
+    panel.append(panelHead);
     const renderer = { fleet: 'renderFleet', style: 'renderStyle', engineering: 'renderEngineering', contracts: 'renderContracts', season: 'renderSeason' }[this.view.tab];
     panel.append(this[renderer]());
     garage.append(panel); return garage;
@@ -605,7 +626,6 @@ export class GarageUI {
     }
     detail.append(this.settingSelect('runMode', 'Класс заезда', [['standard', 'Заводской · без улучшений'], ['tuned', 'Настроенный · отдельный рекорд']], this.view.settings.runMode));
     content.append(detail);
-    const caption = element(this.doc, 'div', 'gs-section-label'); caption.append(element(this.doc, 'span', '', 'ЛИНИЯ АВТОМОБИЛЕЙ'), element(this.doc, 'span', '', `${this.view.vehicles.filter(item => item.owned).length} / ${this.view.vehicles.length}`)); content.append(caption);
     const list = element(this.doc, 'div', 'gs-vehicle-list');
     for (const [index, car] of this.view.vehicles.entries()) {
       const selected = car.id === this.view.selected.id;
@@ -613,7 +633,7 @@ export class GarageUI {
       const thumb = element(this.doc, 'div', 'gs-car-thumb'); thumb.setAttribute('aria-hidden', 'true'); thumb.dataset.state='pending';
       const canvas=element(this.doc,'canvas','gs-car-miniature');canvas.width=320;canvas.height=180;canvas.dataset.fleetModel=car.id;
       thumb.append(canvas,element(this.doc,'span','gs-miniature-status','3D'));
-      const copy = element(this.doc, 'div', 'gs-vehicle-row-copy'); copy.append(element(this.doc, 'strong', '', car.name), element(this.doc, 'span', '', car.owned ? car.id === 'rocket' ? 'Стартовая машина · в гараже' : 'В твоём гараже' : car.price == null ? 'Скоро в каталоге' : `${garageNumber(car.price)} ₵`));
+      const copy = element(this.doc, 'div', 'gs-vehicle-row-copy'); copy.append(element(this.doc, 'strong', '', car.name), element(this.doc, 'span', '', car.owned ? 'В твоём гараже' : car.price == null ? 'Скоро в каталоге' : `${garageNumber(car.price)} ₵`));
       button.append(element(this.doc, 'span', 'gs-list-index', String(index + 1).padStart(2, '0')), thumb, copy, icon(this.doc, selected ? 'check' : 'arrow')); list.append(button);
     }
     content.append(list, element(this.doc, 'p', 'gs-small-note', 'Выбор открывает осмотр. Кредиты списываются только после нажатия «Купить».')); return content;
@@ -646,6 +666,7 @@ export class GarageUI {
     const loadout = this.view.loadout || this.view.profile.loadouts?.[this.view.selected.id] || {};
     if (!all.length) content.append(this.emptyState('Ателье готовится к работе', 'Детали появятся здесь, когда каталог будет подключён. Никаких случайных контейнеров.'));
     let featured = false;
+    let panelScrollHintPlaced = false;
     for (const slot of slots) {
       const paletteSlot = ['body.paint', 'paint', 'body.finish', 'body.tint', 'wheels.finish', 'wheels.geometry', 'cockpit.theme', 'cockpit.steering'].includes(slot);
       const group = element(this.doc, 'section', `gs-item-group${paletteSlot ? ' gs-sample-group' : ''}`); group.dataset.gsSlot = slot; group.hidden = categoryOf(slot) !== this.atelierSection || categoryOf(slot) === 'body' && (this.atelierBodySection === 'glass' ? slot !== 'body.tint' : slot === 'body.tint');
@@ -664,6 +685,13 @@ export class GarageUI {
       }
       const groupHeading = element(this.doc, 'div', 'gs-material-heading');
       groupHeading.append(element(this.doc, 'h3', 'gs-section-label', slotTitles[slot] || slot), element(this.doc, 'span', 'gs-material-count', String(slotItems.length).padStart(2, '0')));
+      // The whole panel scrolls together: use the first visible heading's existing
+      // space once, not a repeated hint that suggests independent section scrolls.
+      if (!group.hidden && !panelScrollHintPlaced) {
+        const scrollHint = element(this.doc, 'span', 'gs-catalog-scroll-hint', 'Ещё ↓');
+        scrollHint.setAttribute('aria-hidden', 'true'); groupHeading.append(scrollHint);
+        panelScrollHintPlaced = true;
+      }
       group.append(groupHeading);
       const reset = element(this.doc, 'div', 'gs-cosmetic-reset');
       const resetButton = this.button('Серийный вариант', { type: 'resetCosmetic', slot }, { disabled: !this.view.selected.owned || factorySelected, className: 'gs-small-button' });
@@ -883,6 +911,12 @@ export class GarageUI {
   renderResults() {
     const result = this.view.runResult || {}; const receipt = result.receipt || result.settlement || result;
     const main = element(this.doc, 'main', 'gs-results');
+    // Presentation-only alternate labels keep the same single controller action.
+    const resultButton = (text, compactText, action, options) => {
+      const button = this.button('', action, options);
+      button.prepend(element(this.doc, 'span', 'gs-result-wide-label', text), element(this.doc, 'span', 'gs-result-compact-label', compactText));
+      button.setAttribute('aria-label', text); return button;
+    };
     const intro = element(this.doc, 'section', 'gs-result-intro'); intro.tabIndex = 0; intro.setAttribute('aria-label', 'Результат текущего заезда');
     const title = element(this.doc, 'h1', '', result.recovered ? (result.recoveryKind==='result'?'Сохранённый результат':'Прерванный заезд') : result.newRecord ? 'Новый рекорд' : 'Результат заезда'); title.dataset.gsHeading = 'true'; title.tabIndex = -1; intro.append(title);
     intro.append(element(this.doc, 'p', 'gs-result-vehicle', `${this.view.selected.name} / ${result.mode === 'continued' || result.continued ? 'С продолжением' : result.mode === 'tuned' || result.modified ? 'Настроенная' : 'Заводская'} сборка`));
@@ -891,7 +925,7 @@ export class GarageUI {
     const airSeconds = result.flightTime ?? metrics.airSeconds;
     if (Number.isFinite(airSeconds) && airSeconds > 0) stats.append(stat(this.doc, 'В НЕБЕ', garageNumber(airSeconds), 'с'));
     intro.append(stats);
-    const highlights = element(this.doc, 'div', 'gs-run-highlights');
+    const highlights = element(this.doc, 'div', 'gs-run-highlights'); highlights.tabIndex = 0; highlights.setAttribute('aria-label', 'Дополнительные показатели заезда. Прокрутите при необходимости.');
     if (Number.isFinite(metrics.peakSpeedMps) && metrics.peakSpeedMps > 0) highlights.append(stat(this.doc, 'МАКС. СКОРОСТЬ', garageNumber(metrics.peakSpeedMps * 3.6), 'км/ч'));
     for (const [id, name] of [['roadEventsCompleted', 'ДОРОЖНЫЕ СОБЫТИЯ'], ['airborneOvertakes', 'ОБГОНЫ В ВОЗДУХЕ']]) {
       if (Number.isFinite(metrics[id]) && metrics[id] > 0) highlights.append(stat(this.doc, name, garageNumber(metrics[id])));
@@ -901,15 +935,24 @@ export class GarageUI {
       highlights.append(stat(this.doc, precise ? 'ТОЧНЫЕ ПОСАДКИ / ВСЕ' : 'ПОСАДКИ', `${precise}${garageNumber(metrics.landings)}`));
     } else if (Number.isFinite(metrics.precisionLandings) && metrics.precisionLandings > 0) highlights.append(stat(this.doc, 'ТОЧНЫЕ ПОСАДКИ', garageNumber(metrics.precisionLandings)));
     if (highlights.children.length) intro.append(highlights);
+    // A real, transparent compact-only rectangle gives the camera a safe target.
+    const stage = element(this.doc, 'div', 'gs-results-stage'); stage.setAttribute('aria-hidden', 'true'); intro.append(stage);
     main.append(intro);
     const settlement = element(this.doc, 'section', 'gs-settlement');
     const earned=number(receipt.credits ?? receipt.creditsEarned),base=number(receipt.baseCredits ?? result.bonusCredits);
     const choices=element(this.doc,'div','gs-result-optional');
     // The free choice leads the decision panel; all choices stay outside its scrolling reward details.
     const freeChoice=element(this.doc,'div','gs-result-free-choice');
+    const compactRewards = element(this.doc, 'div', 'gs-result-compact-rewards');
+    compactRewards.append(stat(this.doc, 'КРЕДИТЫ', `+${garageNumber(earned)}`, '₵'), stat(this.doc, 'ОПЫТ СЕЗОНА', `+${garageNumber(receipt.xp ?? receipt.xpEarned)}`, 'XP'));
+    freeChoice.append(compactRewards);
     freeChoice.append(element(this.doc,'p','gs-result-earned',result.settled===true?`Твои +${garageNumber(earned)} ₵${result.bonusClaimed?' · удвоение получено':' · уже начислены'}`:'Обычная награда не требует видео'));
     freeChoice.append(this.button(result.finalized?'В гараж':'Завершить и забрать',result.finalized?{type:'navigate',screen:'garage',tab:'fleet'}:{type:'finishRun'},{primary:true,iconName:'garage',className:'gs-full gs-finish-free'}));
     freeChoice.append(element(this.doc,'p',result.recovered?'gs-small-note gs-recovery-note':'gs-small-note',result.finalized?'Заезд завершён. Заработанное остаётся у тебя.':result.recovered?'После перезагрузки продолжение недоступно. Заработанное остаётся у тебя.':'Завершить заезд без бонусного видео.'));
+    const pending = result.settled !== true && receipt.finalized !== true || receipt.pending === true;
+    const compactStatus = pending ? 'Результат ещё не подтверждён. Награды появятся после сохранения.' : result.saveMessage || 'Результат заезда учтён.';
+    const status = element(this.doc, 'p', 'gs-result-compact-status', `${result.bonusClaimed ? 'Удвоение получено. ' : ''}${compactStatus}`);
+    status.setAttribute('role', 'status'); intro.append(status);
     const scroll = element(this.doc, 'div', 'gs-settlement-scroll'); scroll.tabIndex = 0; scroll.setAttribute('aria-label', 'Подробности наград и условий после заезда');
     const details=element(this.doc,'details','gs-result-details');details.append(element(this.doc,'summary','','Награды и условия ↓'));
     const detailBody=element(this.doc,'div','gs-result-detail-body');details.append(detailBody);scroll.append(details);
@@ -921,12 +964,14 @@ export class GarageUI {
     if (!result.finalized && !result.bonusClaimed && (result.canRevive===true || this.view.platform.rewarded&&result.bonusEligible===true)) {
       choices.append(element(this.doc,'p','gs-kicker','ИЛИ ВЫБЕРИ ОДИН БОНУС'));
       if (result.canRevive === true) {
-        choices.append(this.button(result.reviveLabel || 'Видео → продолжить заезд', { type: 'revive' }, { iconName: this.view.platform.rewarded?'play':'arrow', className: 'gs-full' }));
+        choices.append(resultButton(result.reviveLabel || 'Видео → продолжить заезд', result.trainingContinue || !this.view.platform.rewarded ? 'Продолжить без видео' : 'Видео · продолжить', { type: 'revive' }, { iconName: this.view.platform.rewarded?'play':'arrow', className: 'gs-full' }));
         detailBody.append(element(this.doc, 'p', 'gs-small-note', result.trainingContinue||!this.view.platform.rewarded?'Тренировочный режим: без рекламы. Один раз за заезд, без удвоения.':'Одна попытка в том же заезде. Рекорд будет «С продолжением», удвоение после этого недоступно.'));
       }
       if (this.view.platform.rewarded && result.bonusEligible === true) {
-        choices.append(this.button(`Видео → ×2 и завершить · +${garageNumber(result.bonusCredits)} ₵`, { type: 'rewardedBonus' }, { iconName: 'play', className: 'gs-full' }));
-        choices.append(element(this.doc, 'p', 'gs-small-note gs-double-basis', `${garageNumber(base)} → ${garageNumber(base*2)} ₵ за вождение. Без XP.`));
+        choices.append(resultButton(`Видео → ×2 и завершить · +${garageNumber(result.bonusCredits)} ₵`, 'Видео · ×2 и завершить', { type: 'rewardedBonus' }, { iconName: 'play', className: 'gs-full' }));
+        const basis = element(this.doc, 'p', 'gs-small-note gs-double-basis');
+        basis.append(element(this.doc, 'span', 'gs-result-wide-label', `${garageNumber(base)} → ${garageNumber(base*2)} ₵ за вождение. Без XP.`), element(this.doc, 'span', 'gs-result-compact-label', `${garageNumber(base)} → ${garageNumber(base*2)} ₵ · без XP`));
+        choices.append(basis);
         detailBody.append(element(this.doc, 'p', 'gs-small-note', 'Первый рубеж, контракты, награды сезона и XP не удваиваются.'));
         detailBody.append(element(this.doc, 'p', 'gs-small-note', 'Только после подтверждения просмотра. Удвоение завершает заезд, продолжить его нельзя.'));
       }
@@ -959,25 +1004,33 @@ export class GarageUI {
     if (loading.error) node.append(this.button('Попробовать снова', { type: 'retryLoad' }, { primary: true, iconName: 'arrow' }));
     node.append(element(this.doc, 'p', 'gs-small-note', 'Вход в аккаунт не обязателен. Прогресс сохраняется автоматически.')); return node;
   }
-  /** Honest platform state: capability is not confused with a signed-in account. */
-  renderFooter() {
-    const foot = element(this.doc, 'footer', 'gs-footer');
-    foot.append(element(this.doc, 'span', 'gs-footer-brand', 'Roadster / PERFORMANCE WORKSHOP'));
-    const save = element(this.doc, 'span', 'gs-save-status');
+  /** Quiet account controls live in settings; real failures remain visible without a footer. */
+  renderSaveControls({ alertsOnly = false } = {}) {
     const cloudStatus = this.view.cloud?.status;
     const localSaved = (this.view.local?.saved ?? this.view.local?.localSaved) !== false && this.view.platform.storageAvailable !== false;
+    const cloudUnconfirmed = UNCERTAIN_CLOUD_STATUSES.has(cloudStatus);
+    if (alertsOnly && (this.settingsOpen || !saveNeedsAttention(this.view))) return null;
+    const controls = element(this.doc, 'section', alertsOnly ? 'gs-save-announcement' : 'gs-save-controls');
+    controls.setAttribute('aria-label', 'Сохранение прогресса');
+    if (alertsOnly) { controls.setAttribute('role', 'alert'); controls.setAttribute('aria-atomic', 'true'); }
+    const save = element(this.doc, 'span', 'gs-save-status');
     const localLabel = localSaved ? 'Локальное сохранение' : 'Прогресс только в этой сессии';
-    const saveLabel = this.view.platform.saveStatus || (['synced', 'saved'].includes(cloudStatus) ? 'Сохранено в облаке' : cloudStatus === 'saving' ? 'Сохраняем в облако…' : cloudStatus === 'queued' ? `${localLabel} · облако в очереди` : ['error', 'uncertain', 'rate-limited', 'frozen'].includes(cloudStatus) ? `${localLabel} · облако не подтверждено` : this.view.platform.cloudConnected === true ? 'Облачное сохранение подключено' : localLabel);
+    const cloudSaved = ['durable', 'server-durable', 'synced', 'saved'].includes(cloudStatus);
+    const localWarning = cloudSaved ? 'На устройстве не сохранено · сохранено в облаке'
+      : cloudStatus === 'loaded' ? 'На устройстве не сохранено · загружена облачная копия' : localLabel;
+    const saveLabel = cloudUnconfirmed ? `${localLabel} · облако не подтверждено`
+      : !localSaved ? localWarning
+      : this.view.platform.saveStatus || (cloudSaved ? 'Сохранено в облаке' : cloudStatus === 'loaded' ? 'Облачная копия загружена' : cloudStatus === 'saving' ? 'Сохраняем в облако…' : cloudStatus === 'queued' ? `${localLabel} · облако в очереди` : this.view.platform.cloudConnected === true ? 'Облачное сохранение подключено' : localLabel);
     save.append(element(this.doc, 'span', 'gs-status-dot'), element(this.doc, 'span', '', saveLabel));
-    foot.append(save);
+    controls.append(save);
+    if (alertsOnly) return controls;
     const authPending = this.view.platform.auth === 'pending';
     const authenticated = this.view.platform.authenticated === true || this.view.platform.auth === 'authorized';
     const guest = !authenticated && (this.view.platform.auth === 'guest' || this.view.platform.cloud || authPending);
     const cloudReadFailed = cloudStatus === 'error' && (this.view.cloud?.error == null || ['cloud-load-failed', 'invalid-cloud-response', 'invalid-cloud-profile', 'timeout', 'sdk-rate-limit', 'player-unavailable', 'invalid-player', 'cloud-replacement-failed'].includes(this.view.cloud.error));
-    if (this.view.platform.sdk && cloudReadFailed && !authPending && !this.view.platform.conflict) foot.append(this.button('Повторить загрузку из облака', { type: 'retryCloud' }, { iconName: 'cloud', className: 'gs-footer-connect' }));
-    else if (guest && !this.view.platform.conflict) foot.append(this.button(authPending ? 'Яндекс ID · ждём подтверждения…' : 'Яндекс ID · прогресс на всех устройствах', { type: 'cloudConnect' }, { disabled: authPending, iconName: 'cloud', className: 'gs-footer-connect' }));
-    else foot.append(element(this.doc, 'span', 'gs-footer-build', this.view.platform.sdk ? 'ЯНДЕКС ИГРЫ' : 'ЛОКАЛЬНЫЙ РЕЖИМ'));
-    return foot;
+    if (this.view.platform.sdk && cloudReadFailed && !authPending && !this.view.platform.conflict) controls.append(this.button('Повторить загрузку из облака', { type: 'retryCloud' }, { iconName: 'cloud', className: 'gs-save-action' }));
+    else if (!alertsOnly && guest && !this.view.platform.conflict) controls.append(this.button(authPending ? 'Яндекс ID · ждём подтверждения…' : 'Яндекс ID · прогресс на всех устройствах', { type: 'cloudConnect' }, { disabled: authPending, iconName: 'cloud', className: 'gs-save-action' }));
+    return controls;
   }
   /** Cloud divergence is an explicit choice between snapshots, never a max merge. */
   renderCloudConflict(conflict) {
@@ -1025,7 +1078,7 @@ export class GarageUI {
     const input = element(this.doc, 'input', ''); input.type = 'checkbox'; input.checked = this.view.settings.sound === true; input.dataset.gsSetting = 'sound'; input.dataset.gsFocus = 'settings:sound';
     sound.append(element(this.doc, 'span', '', 'Звук двигателя и мира'), input); dialog.append(sound);
     const controls = element(this.doc, 'div', 'gs-control-guide'); controls.append(element(this.doc, 'h3', '', 'За рулём'), element(this.doc, 'p', '', 'W / ↑ — газ · S / ↓ — тормоз'), element(this.doc, 'p', '', 'A / D или ← / → — управление'), element(this.doc, 'p', '', 'На телефоне используй кнопки на экране.'));
-    dialog.append(controls, this.button('Готово', { type: '_local', kind: 'closeSettings' }, { primary: true, className: 'gs-full' })); backdrop.append(dialog); return backdrop;
+    dialog.append(controls, this.renderSaveControls(), this.button('Готово', { type: '_local', kind: 'closeSettings' }, { primary: true, className: 'gs-full' })); backdrop.append(dialog); return backdrop;
   }
   /** Native selects provide keyboard and touch support without hidden popovers. */
   settingSelect(key, name, options, value) {

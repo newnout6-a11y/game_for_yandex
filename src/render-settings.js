@@ -7,6 +7,14 @@ const RENDER_PROFILES = Object.freeze({
 });
 const COMPACT_SHADOW = Object.freeze({ mapSize: 1024 });
 const DETAILED_SHADOW = Object.freeze({ mapSize: 2048 });
+// Parked menus redraw on demand, unlike the continuous road simulation. Give
+// their compact canvas enough native samples for a retina iframe without
+// changing the selected quality or the driving budget.
+const SHOWCASE_COMPACT = Object.freeze({
+  auto: Object.freeze({compactPixels:1600000,dpr:3,compactEdge:2560}),
+  high: Object.freeze({compactPixels:2073600,dpr:3,compactEdge:2560}),
+  ultra: Object.freeze({compactPixels:2073600,dpr:3,compactEdge:2560}),
+});
 
 /**
  * Normalize a stored or UI-provided profile without accepting arbitrary keys.
@@ -28,12 +36,14 @@ export function normalizeRenderQuality(quality) {
  * @param {number} [dpr=1] - Device pixel ratio, sanitized to at least 1 before budget scaling.
  * @param {boolean} [compact=false] - Select the profile's smaller compact-device budget.
  * @param {string} [quality='auto'] - Auto, High or Ultra profile (case-insensitive).
+ * @param {boolean} [showcase=false] - Use the bounded compact parked-menu budget, never the road budget.
  * @returns {{width: number, height: number, scale: number}} Floored positive buffer dimensions and unrounded scale.
  */
-export function renderDimensions(width, height, dpr = 1, compact = false, quality = 'auto') {
+export function renderDimensions(width, height, dpr = 1, compact = false, quality = 'auto', showcase = false) {
   const w = Math.max(1, Number.isFinite(width) ? width : 1);
   const h = Math.max(1, Number.isFinite(height) ? height : 1);
-  const profile = RENDER_PROFILES[normalizeRenderQuality(quality)];
+  const normalized=normalizeRenderQuality(quality);
+  const profile = compact&&showcase ? {...RENDER_PROFILES[normalized],...SHOWCASE_COMPACT[normalized]} : RENDER_PROFILES[normalized];
   const ratio = Math.max(1, Math.min(Number.isFinite(dpr) ? dpr : 1, profile.dpr));
   const pixelBudget = compact ? profile.compactPixels : profile.desktopPixels;
   const maxEdge = compact ? profile.compactEdge : profile.desktopEdge;

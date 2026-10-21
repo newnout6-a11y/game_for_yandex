@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import { integratePlayerArc, updatePlayerPath, PLAYER_WHEELBASE, PLAYER_REAR_OFFSET } from '../src/player-motion.js';
-import { thumbControlsFromOffset } from '../src/thumb-drive.js';
+import { DrivingInput } from '../src/input.js';
 import { Game } from '../src/game.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -89,6 +89,22 @@ export function measureBraking(speed = 28, hz = 120, brake = 1) {
   return { speedMps: speed, brake, hz, seconds, distanceMetres: game.state.distance, finalSpeedMps: game.state.speed };
 }
 
+/** Sample the current held arrows and independent pedals through the production input owner. */
+export function measureArrowPedalControls() {
+  const input = new DrivingInput(), samples = [];
+  const sample = scenario => samples.push({ scenario, ...input.read() });
+  sample('neutral');
+  input.setTouch('right', 'pointer-right', true); sample('right');
+  input.setTouch('gas', 'pointer-gas', true); sample('right-and-gas');
+  input.setTouch('left', 'pointer-left', true); sample('opposite-arrows-and-gas');
+  input.release('pointer-right'); sample('left-and-gas');
+  input.setTouch('brake', 'pointer-brake', true); sample('left-and-both-pedals');
+  input.release('pointer-gas'); sample('left-and-brake');
+  input.release('pointer-left'); sample('brake');
+  input.release('pointer-brake'); sample('released');
+  return samples;
+}
+
 export function handlingReport() {
   return {
     description: 'Arcade engineering measurements, not factory specifications or a reproduction of Traffic Racer source physics.',
@@ -96,8 +112,7 @@ export function handlingReport() {
       accepted: measurePlayerHandling(acceptedPlayerPath, speed, hz), current: measurePlayerHandling(updatePlayerPath, speed, hz),
     }))),
     braking: [30, 60, 120].flatMap(hz => [18, 28, 52].map(speed => measureBraking(speed, hz))),
-    thumb: [0, 2.7, 5, 10, 20, 30, 46.08].map(dx => ({ dx, ...thumbControlsFromOffset({ dx }) })),
-    pedals: [0, 5, 7.8, 12, 17.1, 18, 19, 24, 32.76].map(dy => ({ dy, ...thumbControlsFromOffset({ dy }) })),
+    touchControls: measureArrowPedalControls(),
   };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) console.log(JSON.stringify(handlingReport(), null, 2));

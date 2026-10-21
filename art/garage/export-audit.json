@@ -29,8 +29,8 @@
   },
   {
     "tier": 2,
-    "glb_bytes": 5337508,
-    "sha256": "dfe6183fdb7f8bbf5f6a8a60c86810775db2dc6d64385e6197bef8b406e264e5",
+    "glb_bytes": 5336996,
+    "sha256": "e1f43eb43e19592156aee5c8f7d18b71b68fb34ae85f31d03efec55c0e2e1050",
     "primitives": 21,
     "triangles": 50208,
     "materials": 21,
@@ -85,8 +85,8 @@
   },
   {
     "tier": 4,
-    "glb_bytes": 5217224,
-    "sha256": "b699d1e22cff09f43bda4a76f71656c49d5db20b376ce0c8ea0d3443bd80b75f",
+    "glb_bytes": 5216008,
+    "sha256": "51f9f84a40ce18e7b2033546bb83011733fe49ef9f485b159589181639ee40d5",
     "primitives": 20,
     "triangles": 43248,
     "materials": 20,

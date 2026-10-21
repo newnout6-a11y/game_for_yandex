@@ -65,7 +65,7 @@ test('all runtime artwork matches hashes and explicitly records its provenance a
     const bytes=await readFile('public/'+item.file);
     assert.equal(createHash('sha256').update(bytes).digest('hex'),item.sha256,item.file);
     assert.equal(bytes.length,item.bytes);
-    // Only these six specifically requested files contain the supplied film.
+    // The supplied film and requested character prop have explicit third-party provenance.
     // This is a provenance check, not a commercial redistribution clearance.
     if (suppliedMedia.has(item.file)) {
       assert.equal(item.license,'Third-party user-supplied footage; redistribution license unverified');
@@ -74,13 +74,18 @@ test('all runtime artwork matches hashes and explicitly records its provenance a
     } else if (mixedRooms.has(item.file)) {
       assert.equal(item.license,'Mixed: original project room artwork; user-provided third-party TV poster, redistribution license unverified');
       assert.match(item.changes,/user-provided Tesla footage/); disclosedThirdParty++;
+    } else if(item.file==='assets/garage/toy-racecar.glb'){
+      assert.equal(item.license,'Reference-based third-party character depiction; commercial rights unverified');
+      assert.equal(item.source,'project:art/garage/toy/toy-racecar.blend');
+      assert.equal(item.provenance,'art/garage/toy/provenance.json');
+      assert.match(item.changes,/Disney\/Pixar/);assert.match(item.changes,/not embedded or redistributed/);disclosedThirdParty++;
     } else assert.ok(['CC0-1.0','CC-BY-4.0','Original-project-artwork'].includes(item.license),item.file);
     assert.match(item.source,/^(https:|project:)/);
     if(item.file.includes('/fir-')){assert.equal(bytes.readUInt32BE(16),1024);assert.equal(bytes.readUInt32BE(20),1024);assert.equal(bytes[25],6,'PNG includes alpha');}
   }
-  assert.equal(disclosedThirdParty,6);
+  assert.equal(disclosedThirdParty,7);
   const credits=await readFile('public/assets/CREDITS.txt','utf8');
-  assert.match(credits,/vicent091036/);assert.match(credits,/CC BY 4.0/);assert.match(credits,/Poly Haven/);assert.match(credits,/Third-party|third-party/);assert.match(credits,/does not establish a commercial redistribution license/);
+  assert.match(credits,/vicent091036/);assert.match(credits,/CC BY 4.0/);assert.match(credits,/Poly Haven/);assert.match(credits,/Third-party|third-party/);assert.match(credits,/does not establish a commercial redistribution license/);assert.match(credits,/Lightning McQueen/);assert.match(credits,/Disney\/Pixar/);
 });
 test('road curvature remains finite and centered at the player through route changes', () => {
   for(const distance of [0,1000,1000000]){

@@ -1,4 +1,6 @@
 import { CONFIG, ROUTES } from './config.js';
+import { createBonusAnnouncements } from './bonus-announcements.js';
+import { hudGaugePresentation } from './hud-gauges.js';
 import { FLIGHT } from './flight.js';
 import { formatNumber, clamp } from './util.js';
 import { normalizeRenderQuality } from './render-settings.js';
@@ -9,6 +11,30 @@ import { normalizeCameraMode } from './camera-view.js';
  * @returns {HTMLElement|null} Matching element; callers rely on validated HTML assets.
  */
 const byId = id => document.getElementById(id);
+/** Change only HUD values that differ, without rounding or delaying presentation. */
+function setHudProperty(target, property, value) {
+  if (target[property] !== value) target[property] = value;
+}
+function setHudAttribute(element, name, value) {
+  if (element.getAttribute?.(name) !== value) element.setAttribute(name, value);
+}
+// CSSOM can serialize fractional widths differently from their input strings. Remember
+// both forms so identical frames are no-ops, while changed inputs or DOM values still update.
+const hudStyleValues = new WeakMap();
+function setHudStyle(style, name, value) {
+  const custom = name.startsWith('--');
+  const current = custom ? (style.getPropertyValue?.(name) ?? style[name]) : style[name];
+  let values = hudStyleValues.get(style);
+  let previous = values?.get(name);
+  if (current === value || (previous?.input === value && previous.output === current)) return;
+  if (custom) style.setProperty(name, value);
+  else style[name] = value;
+  const output = custom ? (style.getPropertyValue?.(name) ?? style[name]) : style[name];
+  if (!values) { values = new Map(); hudStyleValues.set(style, values); }
+  if (!previous) { previous = {}; values.set(name, previous); }
+  previous.input = value;
+  previous.output = output;
+}
 const arrow = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>';
 export class UI {
   /**
@@ -18,6 +44,7 @@ export class UI {
   constructor(onAction) {
     this.onAction = onAction;
     this.app = byId('app');
+    this.bonusAnnouncements = createBonusAnnouncements(byId('bonusAnnouncement'));
     this.overlay = byId('overlay');
     this.dialog = byId('dialog');
     this.renderSettingsElement = byId('renderSettings');
@@ -31,6 +58,7 @@ export class UI {
       if (this.overlay.hidden) return;
       if (event.key === 'Escape') {
         event.preventDefault(); event.stopPropagation();
+        if (event.repeat) return; // A held Escape must not close Help and then resume its parent pause.
         if (this.modalType === 'help') this.onAction('closeHelp');
         else if (this.modalType === 'pause') this.onAction('resume');
       }
@@ -47,6 +75,7 @@ export class UI {
    * @param {string} screen - menu, playing, paused or results.
    */
   setScreen(screen) {
+    if (screen !== 'playing') this.bonusAnnouncements.suspend();
     this.app.dataset.screen = screen;
     byId('menu').hidden = screen !== 'menu';
     byId('hud').hidden = screen === 'menu';
@@ -111,6 +140,10 @@ export class UI {
     byId('renderQuality').value = quality;
     byId('renderResolution').textContent = info.width + ' × ' + info.height;
     const compact = info.compact;
+    if(compact&&info.showcase){
+      byId('renderQualityHint').textContent='Гараж: до '+(quality==='auto'?'1,6':'2,1')+' млн пикселей для чётких контуров. В заезде действует отдельный экономный лимит; это не 4K. Повышенная детализация увеличивает нагрузку на графику и расход батареи.';
+      return;
+    }
     byId('renderQualityHint').textContent = quality === 'auto'
       ? 'Авто ограничивает разрешение ради плавности. Лимит: ' + (compact ? '0,8' : '1,6') + ' млн пикселей.'
       : (quality === 'high'
@@ -123,6 +156,13 @@ export class UI {
    * @param {boolean} enabled - Persisted sound preference, not AudioContext readiness.
    */
   sound(enabled) {
+    this.soundEnabled = !!enabled;
+    const pauseSound = byId('pauseSoundBtn');
+    if (pauseSound) {
+      pauseSound.setAttribute('aria-pressed', String(this.soundEnabled));
+      pauseSound.setAttribute('aria-label', enabled ? 'Выключить звук' : 'Включить звук');
+      pauseSound.textContent = 'Звук: ' + (enabled ? 'включён' : 'выключен');
+    }
     byId('soundBtn').setAttribute('aria-pressed', String(enabled));
     byId('soundBtn').setAttribute('aria-label', enabled ? 'Выключить звук' : 'Включить звук');
     byId('soundBtn').innerHTML = enabled
@@ -135,54 +175,70 @@ export class UI {
    * @param {Object} s - Current Game state, including flight/roll telemetry and optional road event.
    */
   hud(s) {
-    byId('score').textContent = String(Math.floor(s.score)).padStart(5, '0');
-    byId('speed').textContent = String(Math.round(s.speed * 3.6));
-    byId('distance').textContent = formatNumber(s.distance) + ' м';
-    byId('challengeProgress').style.width = clamp(s.distance / CONFIG.goal * 100, 0, 100) + '%';
-    byId('challengeTitle').textContent = s.goalReached ? 'Цель выполнена · +1 000 очков' : 'Цель: проехать 1 500 м';
-    byId('combo').hidden = s.combo <= 1;
-    byId('combo').textContent = '×' + s.combo;
+    setHudProperty(byId('score'), 'textContent', String(Math.floor(s.score)).padStart(5, '0'));
+    setHudProperty(byId('speed'), 'textContent', String(Math.round(s.speed * 3.6)));
+    setHudProperty(byId('distance'), 'textContent', formatNumber(s.distance) + ' м');
+    setHudStyle(byId('challengeProgress').style, 'width', clamp(s.distance / CONFIG.goal * 100, 0, 100) + '%');
+    setHudProperty(byId('challengeTitle'), 'textContent', s.goalReached ? 'Цель выполнена' : 'Цель: проехать 1 500 м');
+    setHudProperty(byId('combo'), 'hidden', s.combo <= 1);
+    setHudProperty(byId('combo'), 'textContent', '×' + s.combo);
     const dialSpeed=clamp(s.speed*3.6/300,0,1);
-    byId('speedNeedle').setAttribute('transform','rotate('+(-90+dialSpeed*180)+' 110 120)');
-    byId('speedArc').style.strokeDashoffset=String(100-dialSpeed*100);
-    byId('nitroValue').textContent = Math.round(s.nitro) + '%';
-    byId('nitroFill').style.width = s.nitro + '%';
-    byId('boostBtn').disabled = s.nitro <= 0;
+    setHudAttribute(byId('speedNeedle'), 'transform', 'rotate('+(-90+dialSpeed*180)+' 110 120)');
+    setHudStyle(byId('speedArc').style, 'strokeDashoffset', String(100-dialSpeed*100));
+    const gauges = hudGaugePresentation(s);
+    if (this.reserveLevel !== gauges.reserveLevel) {
+      for (const id of ['boostBtn', 'flightBtn']) setHudStyle(byId(id).style, '--reserve-level', String(gauges.reserveLevel));
+      this.reserveLevel = gauges.reserveLevel;
+    }
+    setHudProperty(byId('sharedEnergyStatus'), 'textContent', gauges.reserveText);
+    const rail = byId('mobileGoalRail');
+    setHudStyle(rail.style, '--goal-progress', String(gauges.progress));
+    setHudProperty(rail.dataset, 'complete', String(gauges.complete));
+    setHudAttribute(rail, 'aria-valuemax', String(CONFIG.goal));
+    setHudAttribute(rail, 'aria-valuenow', String(gauges.value));
+    setHudAttribute(rail, 'aria-valuetext', gauges.goalText);
+    setHudProperty(byId('nitroValue'), 'textContent', Math.round(s.nitro) + '%');
+    setHudStyle(byId('nitroFill').style, 'width', s.nitro + '%');
+    setHudProperty(byId('boostBtn'), 'disabled', s.nitro <= 0);
+    const boost = boostPresentation(s);
+    setHudProperty(byId('boostBtn').dataset, 'boostState', boost.mode);
+    setHudProperty(byId('boostStatus'), 'textContent', boost.label);
     const flight = flightPresentation(s);
-    byId('flightStatus').dataset.mode = flight.mode;
-    byId('flightValue').textContent = flight.value;
-    byId('flightHint').textContent = flight.hint;
-    byId('flightBtn').dataset.mode = flight.mode;
+    setHudProperty(byId('flightStatus').dataset, 'mode', flight.mode);
+    setHudProperty(byId('flightValue'), 'textContent', flight.value);
+    setHudProperty(byId('flightHint'), 'textContent', flight.hint);
+    setHudProperty(byId('flightBtn').dataset, 'mode', flight.mode);
     if (this.flightMode !== flight.mode) {
-      byId('flightAnnouncement').textContent = flight.announcement;
+      setHudProperty(byId('flightAnnouncement'), 'textContent', flight.announcement);
       this.flightMode = flight.mode;
     }
     const airborne = s.altitude > .05 || s.flying || s.rolling;
-    byId('flightTelemetry').hidden = !airborne;
+    setHudProperty(byId('flightTelemetry'), 'hidden', !airborne);
     const climb = Number.isFinite(s.verticalSpeed) ? s.verticalSpeed : 0;
     const power = Math.round(clamp(Number(s.thrusterPower) || 0, 0, 1) * 100);
-    byId('verticalSpeed').textContent = (climb > .05 ? '+' : '') + (Math.abs(climb) < .05 ? '0,0' : climb.toFixed(1).replace('.', ',')) + ' м/с';
-    byId('thrusterPower').textContent = 'ТЯГА ' + power + '%';
+    setHudProperty(byId('verticalSpeed'), 'textContent', (climb > .05 ? '+' : '') + (Math.abs(climb) < .05 ? '0,0' : climb.toFixed(1).replace('.', ',')) + ' м/с');
+    setHudProperty(byId('thrusterPower'), 'textContent', 'ТЯГА ' + power + '%');
     const roll = rollPresentation(s);
-    byId('rollStatus').dataset.mode = roll.mode;
-    byId('rollValue').textContent = roll.value;
-    byId('rollHint').textContent = roll.hint;
+    setHudProperty(byId('rollStatus').dataset, 'mode', roll.mode);
+    setHudProperty(byId('rollValue'), 'textContent', roll.value);
+    setHudProperty(byId('rollHint'), 'textContent', roll.hint);
     for (const id of ['rollLeftBtn', 'rollRightBtn']) {
       const button = byId(id);
-      button.setAttribute('aria-disabled', String(!s.rollReady || Boolean(s.rolling)));
-      button.dataset.mode = roll.mode;
+      setHudAttribute(button, 'aria-disabled', String(!s.rollReady || Boolean(s.rolling)));
+      setHudProperty(button.dataset, 'mode', roll.mode);
     }
     if (this.rollMode !== roll.mode) {
-      byId('rollAnnouncement').textContent = roll.announcement;
+      setHudProperty(byId('rollAnnouncement'), 'textContent', roll.announcement);
       this.rollMode = roll.mode;
     }
-    byId('runHint').hidden = (s.elapsed > 10 && s.distance > 15) || Boolean(s.roadEvent);
-    const e=s.roadEvent, last=s.lastEvent?.until>s.elapsed?s.lastEvent:null;
-    byId('eventBanner').hidden=!e&&!last;
-    const title=e?.title||(last?(last.success?'Пройдено: ':'Не пройдено: ')+last.title:'');
-    if(byId('eventTitle').textContent!==title)byId('eventTitle').textContent=title;
-    byId('eventHint').textContent=e?.hint||(last?.success?'Бонус +'+last.points+' очков и +15% нитро.':'Следующее событие впереди.');
-    byId('eventMeter').textContent=e?(e.type==='convoy'?e.carsLeft+' авто':(e.type==='checkpoint'?Math.ceil(e.seconds)+' с · ':'')+Math.max(0,Math.ceil(e.remaining))+' м'):'';
+    setHudProperty(byId('runHint'), 'hidden', (s.elapsed > 10 && s.distance > 15) || Boolean(s.roadEvent));
+    // Keep live instructions and failures, not a second text reward banner.
+    const e=s.roadEvent, last=s.lastEvent?.until>s.elapsed&&!s.lastEvent.success?s.lastEvent:null;
+    setHudProperty(byId('eventBanner'), 'hidden', !e&&!last);
+    const title=e?.title||(last?'Не пройдено: '+last.title:'');
+    setHudProperty(byId('eventTitle'), 'textContent', title);
+    setHudProperty(byId('eventHint'), 'textContent', e?.hint||'Следующее событие впереди.');
+    setHudProperty(byId('eventMeter'), 'textContent', e?(e.type==='convoy'?e.carsLeft+' авто':(e.type==='checkpoint'?Math.ceil(e.seconds)+' с · ':'')+Math.max(0,Math.ceil(e.remaining))+' м'):'');
   }
   /**
    * Open a trusted application-authored modal, preserve return focus and make background controls inert.
@@ -190,6 +246,7 @@ export class UI {
    * @param {string} html - Internal dialog markup; not arbitrary user-supplied HTML.
    */
   open(type, html) {
+    this.bonusAnnouncements.suspend();
     if (this.overlay.hidden) this.returnFocus = document.activeElement;
     // Reuse one settings control in the menu and pause dialog; never discard its listeners.
     this.renderSettingsHome.append(this.renderSettingsElement);
@@ -218,7 +275,10 @@ export class UI {
    */
   pause() {
     const cockpit = this.cameraMode === 'cockpit';
-    this.open('pause', '<h2 id="dialogTitle">Пауза</h2><p>Заезд остановлен.</p><div id="pauseRenderSettings"></div><button class="button primary" data-action="resume">Продолжить заезд ' + arrow + '</button><button class="button secondary pause-camera-button" id="pauseCameraBtn" data-action="camera" aria-label="Вид из кабины" aria-pressed="' + cockpit + '">Вид из кабины: ' + (cockpit ? 'включён' : 'выключен') + '</button><button class="button secondary" data-action="menu">В главное меню</button><p class="dialog-note">Esc — продолжить</p>');
+    const utilities = this.app?.dataset?.mobileControls === 'true'
+      ? '<div class="pause-mobile-utilities"><button class="button secondary" id="pauseSoundBtn" data-action="pauseSound" aria-label="' + (this.soundEnabled ? 'Выключить звук' : 'Включить звук') + '" aria-pressed="' + !!this.soundEnabled + '">Звук: ' + (this.soundEnabled ? 'включён' : 'выключен') + '</button><button class="button secondary" data-action="pauseHelp">Управление</button></div>'
+      : '';
+    this.open('pause', '<h2 id="dialogTitle">Пауза</h2><p>Заезд остановлен.</p><div id="pauseRenderSettings"></div><button class="button primary" data-action="resume">Продолжить заезд ' + arrow + '</button><button class="button secondary pause-camera-button" id="pauseCameraBtn" data-action="camera" aria-label="Вид из кабины" aria-pressed="' + cockpit + '">Вид из кабины: ' + (cockpit ? 'включён' : 'выключен') + '</button>' + utilities + '<button class="button secondary" data-action="menu">В главное меню</button><p class="dialog-note">Esc — продолжить</p>');
     byId('pauseRenderSettings').append(this.renderSettingsElement);
   }
   /**
@@ -226,7 +286,7 @@ export class UI {
    */
   help() {
     const rollRules = FLIGHT.rollMinAltitude.toFixed(1).replace('.', ',') + ' м высоты и ' + FLIGHT.rollCost + '% энергии';
-    this.open('help', '<h2 id="dialogTitle">Управление</h2><ol class="help-list"><li><strong>Обходи трафик.</strong> Удерживай A / D или ← →: руль поворачивается постепенно, положение между полосами свободное. На телефоне играй в альбомной ориентации: удерживай «Газ + руль» и веди палец вбок для поворота.</li><li><strong>Газ и тормоз.</strong> W / ↑ — разгон, S / ↓ — торможение. Без газа машина катится и замедляется; в начале заезда она стоит. На телефоне удержание блока «Газ + руль» даёт газ, движение пальца вниз включает тормоз; отпускание сбрасывает оба.</li><li><strong>Сигнал и дальний.</strong> H или кнопка «Сигнал» одновременно подаёт короткий гудок и вспышку фар. Водитель впереди уступает только при свободном безопасном промежутке. Сигнал не даёт приоритета и не гарантирует перестроение.</li><li><strong>События на дороге.</strong> Обходи ограждения дорожных работ, проходи контрольные точки между флагами и реагируй на тормозящую колонну. Успех даёт очки и нитро.</li><li><strong>Собирай заряды.</strong> Золотистый баллон даёт +22% нитро и 50 очков.</li><li><strong>Добавь скорости.</strong> Удерживай газ вместе с пробелом или кнопкой НИТРО. Заряд заканчивается — ускорение тоже.</li><li><strong>Поднимись над дорогой, только Rocket.</strong> Разгонись минимум до 44 км/ч и удерживай F или кнопку ПОЛЁТ. Родстер плавно поднимется над трафиком. Полёт и нитро расходуют один запас энергии; нитро в воздухе не действует. Отпусти кнопку для посадки. При взлёте часть заряда резервируется для мягкой посадки на тормозных соплах. После касания земли — 2 секунды перезарядки. При взлёте и посадке по-прежнему избегай машин.</li><li><strong>Сделай боковой кувырок.</strong> В полёте дождись надписи «ГОТОВ» и нажми Q / E для вращения влево / вправо или кнопку ↶ / ↷ на телефоне. Нужны ' + rollRules + '. Удерживай газ, чтобы не терять скорость. Одно нажатие — один полный оборот; для следующего отпусти кнопку. Если отпустить полёт во время кувырка, машина сначала выровняется, затем начнёт посадку.</li><li><strong>Смени ракурс.</strong> Нажми C или кнопку с камерой вверху экрана, чтобы переключиться между внешним видом и видом из кабины от первого лица. На телефоне используй ту же кнопку. Выбор сохраняется на этом устройстве; на паузе его можно изменить кнопкой «Вид из кабины». В кабине удерживай Z / X или кнопки «Взгляд» внизу экрана, чтобы посмотреть в левое / правое зеркало. Отпусти — взгляд вернётся вперёд; руль и газ не меняются. Во время бокового кувырка камера временно переходит на внешний вид для комфорта и возвращается в кабину после выравнивания машины.</li><li><strong>Рискуй с умом.</strong> Близкий обгон даёт множитель до ×5. Следующий обгон за 5 секунд продлевает серию.</li><li><strong>Доберись до 1 500 м.</strong> За цель получишь 1 000 очков. Дальше — только твой рекорд.</li></ol><p class="dialog-note">Esc / P — пауза. Рекорды спокойного потока и часа пик сохраняются отдельно по автомобилю и классу «заводской / настроенный / продолжение».</p><p class="dialog-note">Родстер и режим полёта — игровая стилизация, а не симулятор реального автомобиля. Восемь моделей трафика созданы для проекта в Blender. Прежняя Ferrari 458 Italia сохранена в исходниках, но в игре не используется: <a href="https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6" target="_blank" rel="noopener">vicent091036</a>, CC BY 4.0. Материалы и деревья — Poly Haven, CC0. <a href="./public/assets/CREDITS.txt" target="_blank" rel="noopener">Источники и лицензии</a>.</p><button class="button primary" data-action="closeHelp">Всё понятно ' + arrow + '</button>');
+    this.open('help', '<h2 id="dialogTitle">Управление</h2><ol class="help-list"><li><strong>Обходи трафик.</strong> Удерживай A / D или ← →: руль поворачивается постепенно, положение между полосами свободное. На телефоне играй в альбомной ориентации: удерживай стрелку слева для плавного поворота.</li><li><strong>Газ и тормоз.</strong> W / ↑ — разгон, S / ↓ — торможение. Без газа машина катится и замедляется; в начале заезда она стоит. На телефоне справа отдельные кнопки ГАЗ и ТОРМОЗ. Удерживай газ для разгона, тормоз имеет приоритет.</li><li><strong>Сигнал и дальний.</strong> H или кнопка «Сигнал» одновременно подаёт короткий гудок и вспышку фар. Водитель впереди уступает только при свободном безопасном промежутке. Сигнал не даёт приоритета и не гарантирует перестроение.</li><li><strong>События на дороге.</strong> Обходи ограждения дорожных работ, проходи контрольные точки между флагами и реагируй на тормозящую колонну. Успех даёт очки и нитро.</li><li><strong>Собирай заряды.</strong> Золотистый баллон даёт +22% нитро и 50 очков.</li><li><strong>Добавь скорости.</strong> На клавиатуре удерживай газ вместе с пробелом. На телефоне удерживай НИТРО: эта кнопка сама подаёт газ, пока палец на ней. Ускорение включается на земле после 18 км/ч; при торможении не действует. Заряд заканчивается — отпусти кнопку и нажми снова после пополнения.</li><li><strong>Поднимись над дорогой, только Rocket.</strong> Разгонись минимум до 44 км/ч и удерживай F или кнопку ПОЛЁТ. Родстер плавно поднимется над трафиком. Полёт и нитро расходуют один запас энергии; нитро в воздухе не действует. Отпусти кнопку для посадки. При взлёте часть заряда резервируется для мягкой посадки на тормозных соплах. После касания земли — 2 секунды перезарядки. При взлёте и посадке по-прежнему избегай машин.</li><li><strong>Сделай боковой кувырок.</strong> В полёте дождись готовности кнопок кувырка и нажми Q / E для вращения влево / вправо или кнопку ↶ / ↷ на телефоне. Нужны ' + rollRules + '. Удерживай газ, чтобы не терять скорость. Одно нажатие — один полный оборот; для следующего отпусти кнопку. Если отпустить полёт во время кувырка, машина сначала выровняется, затем начнёт посадку.</li><li><strong>Смени ракурс.</strong> Нажми C или кнопку с камерой вверху экрана, чтобы переключиться между внешним видом и видом из кабины от первого лица. На телефоне используй ту же кнопку. Выбор сохраняется на этом устройстве; на паузе его можно изменить кнопкой «Вид из кабины». В кабине удерживай Z / X или кнопки «Взгляд» внизу экрана, чтобы посмотреть в левое / правое зеркало. Отпусти — взгляд вернётся вперёд; руль и газ не меняются. Во время бокового кувырка камера временно переходит на внешний вид для комфорта и возвращается в кабину после выравнивания машины.</li><li><strong>Рискуй с умом.</strong> Близкий обгон даёт множитель до ×5. Следующий обгон за 5 секунд продлевает серию.</li><li><strong>Доберись до 1 500 м.</strong> За цель получишь 1 000 очков. Дальше — только твой рекорд.</li></ol><p class="dialog-note">Esc / P — пауза. Рекорды спокойного потока и часа пик сохраняются отдельно по автомобилю и классу «заводской / настроенный / продолжение».</p><p class="dialog-note">Родстер и режим полёта — игровая стилизация, а не симулятор реального автомобиля. Восемь моделей трафика созданы для проекта в Blender. Прежняя Ferrari 458 Italia сохранена в исходниках, но в игре не используется: <a href="https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6" target="_blank" rel="noopener">vicent091036</a>, CC BY 4.0. Материалы и деревья — Poly Haven, CC0. <a href="./public/assets/CREDITS.txt" target="_blank" rel="noopener">Источники и лицензии</a>.</p><button class="button primary" data-action="closeHelp">Всё понятно ' + arrow + '</button>');
   }
   /**
    * Build the end-of-run summary and expose at most the allowed revive action.
@@ -258,8 +318,21 @@ export class UI {
     el.textContent = message; el.classList.add('visible');
     this.noticeTimer = setTimeout(() => el.classList.remove('visible'), 3500);
   }
+  /** Only live, unobscured gameplay may announce rewards to assistive technology. */
+  syncBonusAnnouncements(state, active) {
+    this.bonusAnnouncements.sync(state, active && this.overlay.hidden && !document.hidden);
+  }
+  /** Bonus text belongs exclusively to the visually hidden polite region, never the toast. */
+  announceBonus(event, value, state) {
+    return this.bonusAnnouncements.announce(event, value, state);
+  }
+  /** Clear before page suspension; permanently cancel timers when the document is discarded. */
+  clearBonusAnnouncements(dispose = false) {
+    if (dispose) this.bonusAnnouncements.dispose();
+    else this.bonusAnnouncements.suspend();
+  }
   /**
-   * Replace the short scoring/event toast and restart its 1.8-second visibility timer.
+   * Replace a short warning toast and restart its 1.8-second visibility timer.
    * @param {string} message - Plain text assigned via textContent.
    */
   toast(message) {
@@ -375,4 +448,14 @@ export function rollPresentation(s) {
   if (s.flying && s.nitro < FLIGHT.rollCost) return { mode: 'energy', value: 'НУЖНО ' + FLIGHT.rollCost + '%', hint: 'Для кувырка нужно минимум ' + FLIGHT.rollCost + '% энергии. Собирай заряды.', announcement: 'Для кувырка недостаточно энергии' };
   if (s.flying) return { mode: 'unavailable', value: 'ВЫСОТА ≥ ' + FLIGHT.rollMinAltitude.toFixed(1).replace('.', ',') + ' М', hint: 'Для кувырка набери минимум ' + FLIGHT.rollMinAltitude.toFixed(1).replace('.', ',') + ' метра высоты и удерживай полёт.', announcement: 'Для кувырка набери высоту' };
   return { mode: 'ground', value: 'НУЖЕН ПОЛЁТ', hint: 'Взлети и набери высоту для кувырка.', announcement: '' };
+}
+
+/** Report actual boost effect separately from the physical held-button state. */
+export function boostPresentation(s) {
+  if (s.nitro <= 0) return { mode: 'empty', label: 'НЕТ ЗАРЯДА' };
+  if (s.braking) return { mode: 'braking', label: 'ТОРМОЖЕНИЕ' };
+  if (s.flying || s.altitude >= .2) return { mode: 'airborne', label: 'В ПОЛЁТЕ' };
+  if (s.boosting) return { mode: 'active', label: 'УСКОРЕНИЕ' };
+  if (s.speed <= 5) return { mode: 'too-slow', label: 'РАЗГОН' };
+  return { mode: 'ready', label: 'УДЕРЖИВАЙ' };
 }

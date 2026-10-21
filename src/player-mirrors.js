@@ -285,6 +285,10 @@ function visibleInHierarchy(node) {
   for (let parent = node; parent; parent = parent.parent) if (!parent.visible) return false;
   return true;
 }
+function belongsToScene(node, scene) {
+  for (let parent = node; parent; parent = parent.parent) if (parent === scene) return true;
+  return false;
+}
 function mirrorRole(node) {
   const role = node.userData?.mirrorRole;
   if (ROLES.includes(role)) return role;
@@ -347,7 +351,7 @@ export function createPlayerMirrors(renderer, scene, player, { compact = false, 
   let totalPasses = 0, failedPasses = 0, shadowFallbackPasses = 0, lastError = null, previousMode;
   const frustum = new T.Frustum(), viewProjection = new T.Matrix4(), eye = new T.Vector3(), sphere = new T.Sphere();
   const lastCamera = new T.Matrix4(), lastProjection = new T.Matrix4();
-  let hasCamera = false;
+  let hasCamera = false, wasDetached = false;
   const canvas = renderer?.domElement;
   // The game's rear road ends at 80 m. Fade only the extra rear passes before
   // that boundary; this is intentionally bounded visibility, not infinite road.
@@ -502,6 +506,16 @@ export function createPlayerMirrors(renderer, scene, player, { compact = false, 
     get rightCameraTexture() { return !disposed&&!contextLost&&rightCamera?.hasFrame?rightCamera.target.texture:null; },
     update(camera, { dt = 0, mode, paused = false, quality = 'auto', force = false, compact: currentCompact = compact } = {}) {
       if (disposed || contextLost || !camera?.isPerspectiveCamera || !entries.length) return 0;
+      // Owned cars stay alive when another model replaces them. A visible flag
+      // alone does not make a detached car part of this rendered scene.
+      if (!belongsToScene(player,scene)) {
+        if (!wasDetached) for (const entry of resources) fallback(entry,'detached');
+        wasDetached = true;
+        return 0;
+      }
+      // Refresh immediately on return, even with zero dt or a paused camera,
+      // rather than displaying reflections from before the vehicle switch.
+      if (wasDetached) { wasDetached = false; invalidate(); }
       const nextBudget = playerMirrorBudget({compact:currentCompact,reducedMotion,quality});
       if (nextBudget.width !== budget.width) {
         budget = nextBudget;

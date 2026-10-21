@@ -8,7 +8,7 @@ source=open(path).read().split('reports=[]')[0]
 source=source.replace('def audit(tier):','def audit(tier, envelope):')
 source=source.replace("hit=(lo[:,0]<1.999)&(hi[:,0]>-1.999)&(lo[:,1]<2.4)&(hi[:,1]>.03)&(lo[:,2]<3.599)&(hi[:,2]>-3.599)","xmin,xmax,zmin,zmax=envelope; hit=(lo[:,0]<xmax)&(hi[:,0]>xmin)&(lo[:,1]<2.6)&(hi[:,1]>.03)&(lo[:,2]<zmax)&(hi[:,2]>zmin)")
 ns={'__file__':path};exec(source,ns)
-slots={2:[{'id':'left','x':-6.2,'z':-.8,'rotationY':0}],3:[{'id':'left','x':-6.2,'z':-.8,'rotationY':0},{'id':'right','x':6.2,'z':-.8,'rotationY':0}],4:[{'id':'left','x':-6.2,'z':-.8,'rotationY':0},{'id':'right','x':6.2,'z':-.8,'rotationY':0}]}
+slots={2:[{'id':'left','x':-7.8,'z':-1.6,'rotationY':0}],3:[{'id':'left','x':-7.8,'z':-1.6,'rotationY':0},{'id':'right','x':7.8,'z':-1.6,'rotationY':0}],4:[{'id':'left','x':-7.8,'z':-1.6,'rotationY':0},{'id':'right','x':7.8,'z':-1.6,'rotationY':0}]}
 results=[]
 for tier,parks in slots.items():
     for p in parks:

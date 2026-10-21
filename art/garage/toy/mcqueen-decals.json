@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "image": "mcqueen-decals.png",
+  "editable_source": "mcqueen-decals.svg",
+  "dimensions": [
+    2048,
+    2048
+  ],
+  "background": "transparent",
+  "color_space": "sRGB",
+  "alpha": "straight",
+  "regions": {
+    "hood": {
+      "pixel_rect_top_left": [
+        32,
+        32,
+        960,
+        600
+      ],
+      "uv_rect_top_left": [
+        0.015625,
+        0.015625,
+        0.46875,
+        0.29296875
+      ],
+      "blender_uv_bounds": [
+        0.015625,
+        0.69140625,
+        0.484375,
+        0.984375
+      ]
+    },
+    "roof95": {
+      "pixel_rect_top_left": [
+        1088,
+        32,
+        896,
+        600
+      ],
+      "uv_rect_top_left": [
+        0.53125,
+        0.015625,
+        0.4375,
+        0.29296875
+      ],
+      "blender_uv_bounds": [
+        0.53125,
+        0.69140625,
+        0.96875,
+        0.984375
+      ]
+    },
+    "side_left": {
+      "pixel_rect_top_left": [
+        32,
+        680,
+        1984,
+        400
+      ],
+      "uv_rect_top_left": [
+        0.015625,
+        0.33203125,
+        0.96875,
+        0.1953125
+      ],
+      "blender_uv_bounds": [
+        0.015625,
+        0.47265625,
+        0.984375,
+        0.66796875
+      ],
+      "orientation": "Nose at left. Trailing flame tips at right. Number reads left to right."
+    },
+    "side_right": {
+      "pixel_rect_top_left": [
+        32,
+        1120,
+        1984,
+        400
+      ],
+      "uv_rect_top_left": [
+        0.015625,
+        0.546875,
+        0.96875,
+        0.1953125
+      ],
+      "blender_uv_bounds": [
+        0.015625,
+        0.2578125,
+        0.984375,
+        0.453125
+      ],
+      "orientation": "Nose at right. Trailing flame tips at left. Number reads left to right."
+    },
+    "wing": {
+      "pixel_rect_top_left": [
+        32,
+        1560,
+        944,
+        240
+      ],
+      "uv_rect_top_left": [
+        0.015625,
+        0.76171875,
+        0.4609375,
+        0.1171875
+      ],
+      "blender_uv_bounds": [
+        0.015625,
+        0.12109375,
+        0.4765625,
+        0.23828125
+      ]
+    },
+    "sponsors": {
+      "pixel_rect_top_left": [
+        1040,
+        1560,
+        416,
+        300
+      ],
+      "uv_rect_top_left": [
+        0.5078125,
+        0.76171875,
+        0.203125,
+        0.146484375
+      ],
+      "blender_uv_bounds": [
+        0.5078125,
+        0.091796875,
+        0.7109375,
+        0.23828125
+      ]
+    },
+    "tire": {
+      "pixel_rect_top_left": [
+        1520,
+        1560,
+        496,
+        440
+      ],
+      "uv_rect_top_left": [
+        0.7421875,
+        0.76171875,
+        0.2421875,
+        0.21484375
+      ],
+      "blender_uv_bounds": [
+        0.7421875,
+        0.0234375,
+        0.984375,
+        0.23828125
+      ],
+      "mapping": "Square sidewall overlay with circular LIGHTYEAR lettering at top and bottom; transparent wheel center. Center at atlas pixel [1768,1780]; outer glyph radius approximately 202 px."
+    }
+  },
+  "sampling": "Use alpha blend or alpha clip; keep the PNG alpha. Pixel rectangle origin is top-left. Blender bounds are [u_min,v_min,u_max,v_max]. Surface corners ordered bottom-left, bottom-right, top-right, top-left map directly to those bounds. Clamp to margins to avoid neighboring decals.",
+  "ownership_note": "Original vector recreations of decals inspired by the user-supplied Lightning McQueen toy photo 1000055161.jpg. Lightning McQueen, Rust-eze, the 95 livery, LIGHTYEAR and fictional sponsor identities are recognizable third-party fictional-character branding, not newly invented intellectual property. No commercial licence or ownership of the fictional identity is claimed. The reference photo is not used as a texture or billboard.",
+  "simplifications": "Tiny contingency sponsor marks are simplified type-and-color recreations. The 95 numerals are custom chamfered, forward-leaning race vectors; the main wordmarks are custom outlined vector typography. All SVG lettering is editable paths; no external fonts required."
+}

@@ -1,6 +1,6 @@
 import { trafficLateral } from './traffic-behavior.js';
 import { trafficDefinition } from './traffic-catalog.js';
-import { PLAYER_BOUNDS, playerBoundsFor } from './player-spec.js';
+import { PLAYER_BOUNDS } from './player-spec.js';
 
 export { PLAYER_BOUNDS };
 export const LANE_WIDTH = 3.5;
@@ -41,6 +41,7 @@ export function roadYaw(z, distance = 0) {
  * @returns {number} Scene/model yaw in radians, opposite lane heading on flat road.
  */
 export function trafficYaw(car, distance = 0) {
+  if(car.impactActive&&Number.isFinite(car.impactYaw))return car.impactYaw;
   const rear=trafficDefinition(car.kind).rearAxleZ,h=Number.isFinite(car.heading)?car.heading:0;
   const slope=Math.tan(roadYaw(-car.z+rear,distance)),c=Math.cos(h);
   // Lane offsets add in horizontal road coordinates, so compose slopes, not
@@ -263,29 +264,4 @@ export function trafficCollisionParts(car, distance) {
     rectangle(x + Math.sin(yaw) * spec.hitchZ + Math.sin(ty) * local,
       z + Math.cos(yaw) * spec.hitchZ + Math.cos(ty) * local, spec.width, trailerLength, ty),
   ];
-}
-/**
- * Checks vertical clearance and conservative swept ground-plane body overlap.
- * Midpoint rectangles are expanded by player/traffic lateral motion and relative
- * longitudinal travel to catch between-step contacts. Uses rolled player width,
- * player heading and independently articulated traffic parts without mutation.
- * @param {Object} car - Traffic entity with current z, x and optional previousLateral.
- * @param {Object} state - Player lane-coordinate x, heading/roll in radians,
- * altitude in metres and accumulated distance in metres.
- * @param {number} [previousX=state.x] - Player's prior continuous lane coordinate.
- * @param {number} [previousZ=car.z] - Traffic's prior metres-ahead separation.
- * @returns {boolean} Whether any traffic part overlaps the player's swept body.
- */
-export function trafficHitsPlayer(car, state, previousX = state.x, previousZ = car.z) {
-  const spec = trafficDefinition(car.kind), bounds = playerBoundsFor(state);
-  if (playerBottom(state.altitude, state.rollAngle, bounds) >= spec.height + .08) return false;
-  // At 120Hz, sweep translation conservatively between samples. This prevents
-  // narrow corner misses without replacing the vehicle by a lane-wide box.
-  const x = ((state.x + previousX) / 2 - 1) * LANE_WIDTH;
-  const roll = state.rollAngle || 0;
-  const sweptWidth = Math.abs(Math.cos(roll)) * bounds.width + Math.abs(Math.sin(roll)) * bounds.height + Math.abs(state.x - previousX) * LANE_WIDTH;
-  const sweptLength = bounds.length + Math.abs(car.z - previousZ);
-  const player = rectangle(x, 0, sweptWidth, sweptLength, -(state.heading || 0));
-  const current=trafficLateral(car),prior=Number.isFinite(car.previousLateral)?car.previousLateral:current;
-  return trafficCollisionParts({ ...car, x:(current+prior)/2, z: (car.z + previousZ) / 2 }, state.distance).some(part=>{part.halfWidth+=Math.abs(current-prior)*LANE_WIDTH/2;return rectanglesOverlap(player,part);});
 }

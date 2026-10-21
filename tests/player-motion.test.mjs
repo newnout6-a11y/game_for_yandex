@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
-import { integratePlayerArc, updatePlayerPath, updatePlayerDynamics, PLAYER_WHEELBASE as L, PLAYER_REAR_OFFSET as A, PLAYER_MAX_LATERAL_ACCELERATION, PLAYER_HANDLING } from '../src/player-motion.js';
+import { integratePlayerArc, updatePlayerPath, updatePlayerDynamics, PLAYER_WHEELBASE as L, PLAYER_REAR_OFFSET as A, playerEffectiveGrip, PLAYER_HANDLING } from '../src/player-motion.js';
 import { updateChase } from '../src/motion.js';
 /** Start a deterministic unobstructed run without spawning or unrelated events. */
 function fixture(speed=25){const game=new Game();game.start();Object.assign(game.state,{speed,traffic:[],pickups:[],nextSpawn:Infinity,nextEvent:Infinity});return game;}
@@ -37,14 +37,14 @@ test('standstill steering changes the wheels but cannot translate or yaw',()=>{
 test('steering requests are rate-limited and high-speed lateral acceleration stays bounded',()=>{
  for(const speed of [4,18,52,70])for(const sign of [-1,1]){
   const s={x:1,speed,heading:0,steerAngle:0};let prior=0;
-  for(let i=0;i<50;i++){updatePlayerPath(s,sign,1/120);assert.ok(Math.abs(s.steerAngle-prior)<=PLAYER_HANDLING.maxSteerRate/120+1e-12);assert.ok(Math.abs(s.lateralAcceleration)<=PLAYER_MAX_LATERAL_ACCELERATION+1e-8);prior=s.steerAngle;}
+  for(let i=0;i<50;i++){updatePlayerPath(s,sign,1/120);assert.ok(Math.abs(s.steerAngle-prior)<=PLAYER_HANDLING.maxSteerRate/120+1e-12);assert.ok(Math.abs(s.lateralAcceleration)<=playerEffectiveGrip(s)+1e-8);prior=s.steerAngle;}
  }
 });
 test('heading recovery countersteers rather than sliding with straight wheels',()=>{
  const g=fixture(28);run(g,.4,{throttle:1,steer:1});assert.ok(g.state.heading>0);run(g,.16,{throttle:1});
  assert.ok(g.state.steerAngle<0,'front wheels steer back toward road direction');assert.ok(g.state.heading>0,'heading cannot snap upright');run(g,2,{throttle:1});assert.ok(Math.abs(g.state.heading)<.001);
 });
-test('traffic scroll uses the exact player centre displacement, including centre-offset rotation',()=>{
+test('traffic scroll uses actual integrated player centre displacement',()=>{
  const g=fixture(25);g.state.heading=.1;g.state.traffic=[{id:1,kind:'sedan',lane:0,z:100,speed:25,cruiseSpeed:25}];
  const z=g.state.traffic[0].z,d=g.state.distance;g.update(1/120,{throttle:.2,steer:.5});
  const car=g.state.traffic[0];assert.ok(Math.abs((car.z-z)+(g.state.distance-d)-car.speed/120)<1e-10);

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
+import { assertHistoricalAssetChain } from './helpers/stable-orbit-assets.mjs';
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url));
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -95,7 +96,7 @@ test('saved workshop sources preserve non-surface materials, mural, lighting and
     assert.equal(sha(await read(poster.file)), poster.sha256);
     for (const [name, imageHash] of Object.entries(row.before.non_surface_packed_image_hashes)) assert.equal(row.after.non_surface_packed_image_hashes[name], imageHash);
     assert.equal(row.after.relative_packed_paths_verified, true); assert.deepEqual(row.after.retired_surface_payloads, []);
-    assert.equal(sha(await read(row.source)), row.after.source_sha256, 'Audit must describe the actual final saved source');
+    assertHistoricalAssetChain(row.tier, row.after.source_sha256, await read(row.source), 'source');
     for (const [surface, spec] of Object.entries(surfaces)) {
       const contract = row.after.surface_contract[surface];
       assert.equal(contract.material, spec.material); assert.equal(contract.tile_metres, spec.tileMetres);
@@ -104,7 +105,9 @@ test('saved workshop sources preserve non-surface materials, mural, lighting and
   }
   for (const row of mapAudit.rooms) {
     const bytes = await read(row.file);
-    assert.equal(row.after.bytes, bytes.length); assert.equal(row.after.sha256, sha(bytes));
+    const current = assertHistoricalAssetChain(row.tier, row.after.sha256, bytes, 'glb');
+    assert.equal(row.after.bytes, current.before_glb_bytes);
+    assert.equal(current.glb_bytes, bytes.length);
     assert.equal(row.total_byte_delta, row.after.bytes - row.before.bytes);
     assert.equal(row.surface_image_byte_delta, row.after.surface_image_bytes - row.before.surface_image_bytes);
     assert.equal(row.non_surface_image_byte_delta, 20303, 'Only the approved user-supplied TV poster adds non-surface image payload');

@@ -1,0 +1,49 @@
+{
+  "source_sha256": "b922c6f81c126908f6ed9b6ebe742d561669c076824452dc2e99208a0456606c",
+  "read_only": true,
+  "method": "SDNA field offsets and complete zero-after-NUL validation; no hardcoded workspace string search",
+  "checked_fields": [
+    {
+      "struct": "Image",
+      "field": "name[1024]",
+      "active": "//windshield-paint.png",
+      "unused_tail_bytes": 1001,
+      "nonzero_tail_bytes": 0
+    },
+    {
+      "struct": "ImagePackedFile",
+      "field": "filepath[1024]",
+      "active": "//windshield-paint.png",
+      "unused_tail_bytes": 1001,
+      "nonzero_tail_bytes": 0
+    },
+    {
+      "struct": "Image",
+      "field": "name[1024]",
+      "active": "//mcqueen-decals.png",
+      "unused_tail_bytes": 1003,
+      "nonzero_tail_bytes": 0
+    },
+    {
+      "struct": "ImagePackedFile",
+      "field": "filepath[1024]",
+      "active": "//mcqueen-decals.png",
+      "unused_tail_bytes": 1003,
+      "nonzero_tail_bytes": 0
+    },
+    {
+      "struct": "Image",
+      "field": "name[1024]",
+      "active": "",
+      "unused_tail_bytes": 1023,
+      "nonzero_tail_bytes": 0
+    },
+    {
+      "struct": "Image",
+      "field": "name[1024]",
+      "active": "",
+      "unused_tail_bytes": 1023,
+      "nonzero_tail_bytes": 0
+    }
+  ]
+}

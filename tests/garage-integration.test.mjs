@@ -6,6 +6,7 @@ import { bindGarageOrbitInput } from '../src/garage-orbit-input.js';
 import { recoverPendingRunResult } from '../src/pending-run-result.js';
 import { homeVehicleFraming } from '../src/home-framing.js';
 import { Game } from '../src/game.js';
+import { DrivingInput } from '../src/input.js';
 import { RunTelemetry } from '../src/run-telemetry.js';
 import { createProgressionStorage, PROGRESSION_STORAGE_KEY } from '../src/progression-storage.js';
 import { createProfile, deriveGarageView, getEngineeringModifiers, getRunDoubleOffer, LIMITS } from '../src/progression.js';
@@ -48,6 +49,7 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
   };
   class UI {
     constructor() { this.overlay={hidden:true}; this.modalType=null; }
+    syncBonusAnnouncements() {} announceBonus() {} clearBonusAnnouncements() {}
     setScreen() {} menu() {} renderSettings() {} toast() {} camera(value) {this.cameraMode=value;} sound(value) {this.soundEnabled=value;} glance() {} hud() {}
     notice(message) { this.lastNotice=message; }
     close() { this.overlay.hidden=true;this.modalType=null; }
@@ -63,12 +65,14 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
   class RoadRenderer {
     constructor(_canvas,_progress,options) { this.ready=Promise.resolve();this.renderer={};this.scene={environment:null};this.cosmeticCapabilities={};this.cameraMode=options.cameraMode;this.quality=options.quality;this.playerMirrors={suspend(){}}; }
     setRoute(value) { this.route=value; } setQuality(value) { this.quality=value; }
-    setCameraMode(value) { this.cameraMode=value; } setLookDirection() {} resize() {} effect() {} render() {}
-    selectOwnedVehicle(id) { this.playerVehicleId=id; } createShowcaseVehicle(id) { return {id}; }
+    setShowcase(value) { this.showcase=value; }
+    setCameraMode(value) { this.cameraMode=value; } setLookDirection() {} resize() {} effect() {} bonus() {} render() {}
+    selectOwnedVehicle(id,appearance) { this.playerVehicleId=id;this.playerAppearance=structuredClone(appearance||{}); } createShowcaseVehicle(id) { return {id}; }
   }
   class GarageScene {
     constructor(options) { this.options=options;this.tier=0;this.ready=false; }
     setVehicle(id) { this.vehicleId=id; }
+    async prepareToy() { this.toyPrepared=true;return true; }
     async setTier(tier) {
       requests.push(tier);
       if (failUpgrade && tier>1) {this.failedTier=tier;
@@ -87,7 +91,13 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     setInteraction(id){this.activeId=id;}
     update(dt,options){this.lastUpdate={dt,...options};return false;}
   }
-  class DrivingInput { clear() {} key() {} read() { return {}; } active() {return false;} set() {} release() {} }
+  class RouteVehicleMarker {
+    constructor(options){this.options=options;this.selection=null;}
+    sync(selection){this.selection=selection?structuredClone(selection):null;}
+    setActivity(options){this.activity=options;}
+    update(dt,options){this.lastUpdate={dt,...options};return false;}
+    dispose(){this.disposed=true;}
+  }
   class CockpitGlanceControls { constructor(){this.direction=0;} clear() {} setEnabled(value) {this.enabled=value;} release() {} }
   class GameAudio { constructor(enabled){this.enabled=enabled;} update() {} tone() {} async unlock() {} }
   const sdk={init:async()=>platformSdk,get:()=>platformSdk,on(){},ready(){readyCalls++;},gameplay(){}};
@@ -98,17 +108,17 @@ async function controller({ cloudProfile = null, initialProfile = null, initialS
     matchMedia:()=>({matches:false,addEventListener(){}}),location:{reload(){}},
     Game,recoverPendingRunResult,homeVehicleFraming,bindGarageOrbitInput,RunTelemetry,deriveGarageView,getEngineeringModifiers,getRunDoubleOffer,LIMITS,CATALOG,ADS,vehicleDefinition,
     createStorage:()=>createStorage(()=>localStorage),createProgressionStorage:()=>({...profileStore,dispatch:action=>rejectSettings&&action.type==='UPDATE_SETTINGS'?{ok:false,changed:false,reason:'future-version-read-only',profile:profileStore.get(),persistence:profileStore.status()}:profileStore.dispatch(structuredClone(action))}),
-    createThumbDrive:()=>({setEnabled(){},clear(){}}),createOrientationGate:({onChange})=>{orientationHandler=onChange;onChange(portrait);return {blocked:portrait};},createSdk:()=>sdk,createLifecycle,createAds,createAdCadence,loadOwnGames,openOwnGame,
+    createOrientationGate:({onChange})=>{orientationHandler=onChange;onChange(portrait);return {blocked:portrait};},createSdk:()=>sdk,createLifecycle,createAds,createAdCadence,loadOwnGames,openOwnGame,
     createPlatformServices:options=>{
       const {onState}=options;platformChanged=onState;
       if(useRealPlatform)return platformServices=createRealPlatformServices({...options,minSaveIntervalMs:0});
       return {getState:()=>structuredClone(platformState),async init(){if(cloudProfile){profileStore.replaceFromCloud(cloudProfile);onState();}},queueSave(snapshot){cloudSaves.push(structuredClone(snapshot));},async authorize(){},async resolveCloudConflict(){}};
     },
-    UI,GarageUI,RoadRenderer,GarageScene,FleetMiniatures,DrivingInput,CockpitGlanceControls,GameAudio,
+    UI,GarageUI,RoadRenderer,GarageScene,FleetMiniatures,RouteVehicleMarker,DrivingInput,CockpitGlanceControls,GameAudio,
     cameraShortcutAllowed:()=>false,glanceShortcutAllowed:()=>false,normalizeRenderQuality:value=>value,observeRenderPixelRatio() {},
   });
   const source=(await readFile(new URL('../src/main.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
-  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,syncFleetMiniatures,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,ui,storage,lifecycle,garageDirty,fleetMiniatures,fleetTouchRemaining}}};',context,{filename:'src/main.js'});
+  vm.runInContext(source+'\n globalThis.controller={startRun,showResults,handleAction,handleGarageAction,tick,refreshGarage,syncFleetMiniatures,get state(){return {busy,loading,adCadence,screen,settings,previewId,run,runResult,game,telemetry,renderer,garageScene,garageUI,audio,ui,storage,lifecycle,garageDirty,fleetMiniatures,fleetTouchRemaining,routeVehicleMarker,routeVehicleSelection}}};',context,{filename:'src/main.js'});
   if(useRealPlatform)await platformServices.init();
   for(let i=0;i<5;i++)await Promise.resolve();
   return {api:context.controller,profileStore,requests,listeners,nodes,cloudSaves,cloudWrites,platformServices,storageValues:saved,rejectSettings(){rejectSettings=true;},failStorageWrites(){failStorageWrites=true;},failCloudWrites(){failCloudWrites=true;},replaceCloud(profile){const result=profileStore.replaceFromCloud(profile);platformChanged();return result;},setPlatformState(patch){platformState={...platformState,...patch};platformChanged();},setOrientation:value=>orientationHandler(value),get readyCalls(){return readyCalls;}};
@@ -123,8 +133,8 @@ function restoredProfile() {
 }
 
 test('controller initializes an immediately playable local starter with one workshop load',async()=>{
-  const h=await controller();assert.equal(h.api.state.screen,'hub');assert.deepEqual(h.requests,[1]);
-  await h.api.startRun();assert.equal(h.api.state.screen,'playing');assert.equal(h.api.state.game.state.vehicleId,'rocket');
+  const h=await controller();assert.equal(h.api.state.screen,'hub');assert.deepEqual(h.requests,[1]);assert.equal(h.api.state.renderer.showcase,true);
+  await h.api.startRun();assert.equal(h.api.state.screen,'playing');assert.equal(h.api.state.game.state.vehicleId,'rocket');assert.equal(h.api.state.renderer.showcase,false);
   assert.equal(h.api.state.run.sequence,1);
 });
 
@@ -217,7 +227,7 @@ test('results revive retains run identity and counts distance/rewards only once'
   assert.ok(h.profileStore.get().stats.distanceM>firstDistance);
   assert.ok(h.profileStore.get().wallet.credits>=firstCredits);
   const balance=h.profileStore.get().wallet.credits;await h.api.handleAction('menu');
-  assert.equal(h.api.state.screen,'hub');assert.equal(h.profileStore.get().wallet.credits,balance);
+  assert.equal(h.api.state.screen,'hub');assert.equal(h.profileStore.get().wallet.credits,balance);assert.equal(h.api.state.renderer.showcase,true);
   assert.equal(h.profileStore.get().ledger.activeRun,null);assert.equal(h.profileStore.get().ledger.finalizedThrough,sequence);
 });
 
@@ -270,7 +280,7 @@ test('revived results compare against the continued record class rather than the
 
 test('external blur pauses retain explicit user resume and cannot accrue telemetry',async()=>{
   const h=await controller();await h.api.startRun();
-  h.listeners.get('window:blur')();assert.equal(h.api.state.screen,'paused');
+  h.listeners.get('window:blur')();assert.equal(h.api.state.screen,'paused');assert.equal(h.api.state.renderer.showcase,false);
   assert.ok(h.api.state.lifecycle.has('blur'));assert.ok(h.api.state.lifecycle.has('user'));
   const before=h.api.state.telemetry.snapshot();h.api.tick(100);h.api.tick(200);
   assert.deepEqual(h.api.state.telemetry.snapshot(),before);
@@ -747,3 +757,56 @@ for(const action of ['startDrive','navigate'])for(const replacementKind of ['dif
   assert.equal(h.api.state.screen,action==='startDrive'?'playing':'garage','the aborted no-ad transition releases its operation lock');
  });
 }
+
+test('mobile pause sound uses accepted settings and cloud queue while help returns to the same paused run',async()=>{
+  const h=await controller();await h.api.startRun();
+  h.listeners.get('pauseBtn:click')();
+  assert.equal(h.api.state.screen,'paused');assert.equal(h.api.state.ui.modalType,'pause');
+  const identity=structuredClone(h.api.state.run),queues=h.cloudSaves.length;
+  await h.api.handleAction('pauseSound');
+  assert.equal(h.profileStore.get().settings.sound,true);assert.equal(h.api.state.audio.enabled,true);
+  assert.equal(h.cloudSaves.length,queues+1);assert.deepEqual(h.cloudSaves.at(-1),h.profileStore.get());
+  assert.equal(h.api.state.screen,'paused');assert.equal(h.api.state.lifecycle.paused,true);
+  await h.api.handleAction('pauseHelp');assert.equal(h.api.state.ui.modalType,'help');
+  assert.equal(h.api.state.lifecycle.paused,true);assert.deepEqual(h.api.state.run,identity);
+  await h.api.handleAction('closeHelp');assert.equal(h.api.state.ui.modalType,'pause');
+  assert.equal(h.api.state.screen,'paused');assert.equal(h.api.state.lifecycle.paused,true);
+  assert.deepEqual(h.api.state.run,identity);assert.equal(h.cloudSaves.length,queues+1);
+});
+
+test('pause-only utility actions ignore playing or other modals and never bypass rejected settings',async()=>{
+  const h=await controller();await h.api.startRun();
+  const before=h.profileStore.get(),queues=h.cloudSaves.length;
+  await h.api.handleAction('pauseSound');await h.api.handleAction('pauseHelp');
+  assert.deepEqual(h.profileStore.get(),before);assert.equal(h.api.state.screen,'playing');
+  h.listeners.get('pauseBtn:click')();h.rejectSettings();
+  await h.api.handleAction('pauseSound');assert.deepEqual(h.profileStore.get(),before);
+  assert.equal(h.api.state.settings.sound,before.settings.sound);assert.equal(h.cloudSaves.length,queues);
+  await h.api.handleAction('pauseHelp');await h.api.handleAction('pauseSound');
+  assert.deepEqual(h.profileStore.get(),before);assert.equal(h.api.state.ui.modalType,'help');
+});
+
+test('route marker copies the real started selection and paint, never an unowned preview',async()=>{
+  const profile=restoredProfile();profile.loadouts.hatch={cosmetics:{'body.paint':'paint_copper'},engineering:{}};
+  profile.cosmetics.owned.push('paint_copper');
+  const h=await controller({initialProfile:profile});
+  await h.api.handleGarageAction({type:'selectVehicle',id:'sedan'});
+  assert.equal(h.api.state.previewId,'sedan');assert.equal(h.profileStore.get().selectedVehicleId,'hatch');
+  await h.api.startRun();
+  const {renderer,routeVehicleMarker,routeVehicleSelection}=h.api.state;
+  assert.equal(routeVehicleSelection.id,renderer.playerVehicleId);assert.equal(routeVehicleSelection.id,'hatch');
+  assert.equal(routeVehicleSelection.appearance['body.paint'],'paint_copper');
+  assert.equal(renderer.playerAppearance['body.paint'],'paint_copper');
+  assert.deepEqual(structuredClone(routeVehicleSelection.appearance),renderer.playerAppearance);
+  assert.deepEqual(routeVehicleMarker.selection.appearance,renderer.playerAppearance);
+  assert.notEqual(routeVehicleSelection.appearance,h.profileStore.get().loadouts.hatch.cosmetics);
+  assert.equal(routeVehicleMarker.activity.visible,false,'desktop cannot show route marker');
+});
+
+test('replacement profile clears marker identity and next run adopts its actual equipped vehicle',async()=>{
+  const h=await controller();await h.api.startRun();assert.equal(h.api.state.routeVehicleMarker.selection.id,'rocket');
+  const profile=restoredProfile();h.replaceCloud(profile);
+  assert.equal(h.api.state.routeVehicleSelection,null);assert.equal(h.api.state.routeVehicleMarker.selection,null);
+  await h.api.startRun();assert.equal(h.api.state.routeVehicleMarker.selection.id,'hatch');
+  assert.equal(h.api.state.routeVehicleMarker.selection.scopeKey,`${h.profileStore.get().profileId}:${h.profileStore.getReplacementEpoch()}`);
+});
